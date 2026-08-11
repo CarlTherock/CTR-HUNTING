@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>PWA Chasse Orignal 3D</title>
+
+  <!-- PWA Manifest & Theme -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- MapLibre GL JS (Carte & Relief 3D) -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <!-- Turf.js (Cône de vent & Géométrie) -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Chart.js (Graphique 24h) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Dexie.js (IndexedDB Offline) -->
+  <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+
+  <style>
+    * { touch-action: manipulation; box-sizing: border-box; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111; color: #fff; }
+    #map { width: 100%; height: 60vh; }
+    
+    #dashboard { height: 40vh; background: #1a1a1a; padding: 12px; display: flex; flex-direction: column; border-top: 1px solid #333; }
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .btn { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+    .btn.active { background: #2e7d32; border-color: #4caf50; }
+    
+    .status-bar { font-size: 13px; display: flex; justify-content: space-between; background: #222; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; }
+    .status-bar strong { color: #4caf50; }
+    .chart-box { flex: 1; position: relative; width: 100%; }
+  </style>
+</head>
+<body>
+
+  <!-- Carte 3D -->
+  <div id="map"></div>
+
+  <!-- Interface / Dashboard -->
+  <div id="dashboard">
+    <div class="controls">
+      <button id="btn-3d" class="btn active">Mode 3D OnX</button>
+      <button id="btn-sync-offline" class="btn">💾 Mode Hors-Ligne</button>
+    </div>
+
+    <div class="status-bar">
+      <div>Heure : <strong id="val-time" style="color:#fff;">12:00</strong></div>
+      <div>Activité : <strong id="val-act">--%</strong></div>
+      <div>Vent : <strong id="val-wind" style="color:#2196f3;">--° / -- km/h</strong></div>
+    </div>
+
+    <div class="chart-box">
+      <canvas id="chart24h"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // 1. Enregistrement du Service Worker PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(() => console.log('PWA Service Worker enregistré !'))
+          .catch(err => console.error('Erreur Service Worker:', err));
+      });
+    }
+
+    // 2. Base de données IndexedDB
+    const db = new Dexie("ChasseMeteoDB");
+    db.version(1).stores({ weatherCache: 'hour, activity, windDir, windSpeed' });
+
+    const defaultData = Array.from({length: 24}, (_, i) => ({
+      hour: `${i.toString().padStart(2, '0')}:00`,
+      activity: [15, 10, 10, 20, 45, 85, 95, 60, 30, 20, 15, 25, 30, 20, 15, 35, 65, 90, 80, 40, 20, 15, 10, 10][i],
+      windDir: [270, 270, 280, 290, 300, 310, 320, 330, 340, 350, 0, 10, 45, 90, 120, 150, 180, 180, 190, 200, 220, 250, 260, 270][i],
+      windSpeed: [8, 7, 6, 6, 8, 12, 15, 18, 20, 22, 20, 18, 15, 12, 10, 9, 8, 10, 12, 11, 9, 8, 8, 7][i]
+    }));
+
+    // 3. Carte MapLibre 3D avec gestes à 2 doigts
+    const hunterPos = [-71.208, 46.813]; // Québec par défaut
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256
+          },
+          'terrain-dem': {
+            type: 'raster-dem',
+            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+            encoding: 'terrarium',
+            tileSize: 256,
+            maxzoom: 15
+          }
+        },
+        layers: [{ id: 'osm', type: 'raster', source: 'osm-tiles' }],
+        terrain: { source: 'terrain-dem', exaggeration: 1.5 }
+      },
+      center: hunterPos,
+      zoom: 14,
+      pitch: 60,
+      bearing: -20,
+      maxPitch: 85,
+      touchPitch: true,
+      touchRotate: true
+    });
+
+    // Bascule 2D/3D
+    let is3D = true;
+    document.getElementById('btn-3d').addEventListener('click', (e) => {
+      is3D = !is3D;
+      map.easeTo({ pitch: is3D ? 60 : 0, duration: 800 });
+      e.target.classList.toggle('active', is3D);
+    });
+
+    // 4. Marqueur & Cône de vent
+    map.on('load', () => {
+      new maplibregl.Marker({ color: '#ff9800' }).setLngLat(hunterPos).addTo(map);
+
+      map.addSource('scent-cone-source', {
+        type: 'geojson',
+        data: turf.featureCollection([])
+      });
+
+      map.addLayer({
+        id: 'scent-cone-layer',
+        type: 'fill',
+        source: 'scent-cone-source',
+        paint: {
+          'fill-color': '#ff0000',
+          'fill-opacity': 0.45,
+          'fill-outline-color': '#800000'
+        }
+      });
+
+      updateScentCone(270, 15);
+    });
+
+    function updateScentCone(windDir, windSpeed) {
+      if (!map.getSource('scent-cone-source')) return;
+      const scentDir = (windDir + 180) % 360;
+      const dist = Math.min(0.3 + (windSpeed * 0.02), 1.0); 
+      const angle = 45;
+
+      const p1 = turf.destination(hunterPos, dist, scentDir - (angle / 2), {units: 'kilometers'}).geometry.coordinates;
+      const p2 = turf.destination(hunterPos, dist, scentDir + (angle / 2), {units: 'kilometers'}).geometry.coordinates;
+
+      const cone = turf.polygon([[hunterPos, p1, p2, hunterPos]]);
+      map.getSource('scent-cone-source').setData(cone);
+    }
+
+    // 5. Graphique 24h & Synchro Curseur
+    let activeData = defaultData;
+    const ctx = document.getElementById('chart24h').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: activeData.map(d => d.hour),
+        datasets: [
+          {
+            label: 'Activité (%)',
+            data: activeData.map(d => d.activity),
+            borderColor: '#4caf50',
+            backgroundColor: 'rgba(76, 175, 80, 0.2)',
+            fill: true,
+            tension: 0.4,
+            yAxisID: 'yAct'
+          },
+          {
+            label: 'Vent (km/h)',
+            data: activeData.map(d => d.windSpeed),
+            borderColor: '#2196f3',
+            borderDash: [5, 5],
+            fill: false,
+            yAxisID: 'yWind'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#888', font: { size: 10 } }, grid: { display: false } },
+          yAct: { min: 0, max: 100, display: false },
+          yWind: { min: 0, max: 40, display: false }
+        },
+        plugins: { legend: { display: false } },
+        onHover: (event, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const item = activeData[idx];
+            document.getElementById('val-time').innerText = item.hour;
+            document.getElementById('val-act').innerText = `${item.activity}%`;
+            document.getElementById('val-wind').innerText = `${item.windDir}° / ${item.windSpeed} km/h`;
+            updateScentCone(item.windDir, item.windSpeed);
+          }
+        }
+      }
+    });
+
+    // Sauvegarde Offline
+    document.getElementById('btn-sync-offline').addEventListener('click', async () => {
+      await db.weatherCache.bulkPut(defaultData);
+      alert("✅ Les données de vent, météo et la PWA sont prêtes pour l'utilisation Hors-Ligne !");
+    });
+  </script>
+</body>
+</html>
