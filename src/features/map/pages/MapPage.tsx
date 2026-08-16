@@ -3,9 +3,11 @@ import { MapPinOff } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
-import { EmptyState, PageHeader } from '@/components/ui'
+import { Badge, EmptyState, PageHeader } from '@/components/ui'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
 import { useLayersStore } from '@/features/layers/state/layersStore'
+import { GpsControl } from '@/features/gps/components/GpsControl'
+import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '../state/mapStore'
 
 export function MapPage() {
@@ -15,6 +17,7 @@ export function MapPage() {
   const setView = useMapStore((state) => state.setView)
   const baseLayer = useLayersStore((state) => state.baseLayer)
   const appliedBaseLayerRef = useRef(baseLayer)
+  const gpsReading = useGeolocation()
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -44,11 +47,31 @@ export function MapPage() {
     instanceRef.current?.setBaseLayer(baseLayer)
   }, [baseLayer])
 
+  useEffect(() => {
+    instanceRef.current?.setUserLocationMarker(
+      gpsReading.status === 'available' ? gpsReading.value : null,
+    )
+  }, [gpsReading])
+
+  function locate() {
+    if (gpsReading.status !== 'available') return
+    const coordinate = gpsReading.value
+    setView({ center: { lat: coordinate.lat, lng: coordinate.lng } })
+    instanceRef.current?.setView({ center: { lat: coordinate.lat, lng: coordinate.lng } })
+  }
+
   return (
     <div className="flex h-full flex-col gap-6">
       <PageHeader
         title="Map"
         description="Interactive terrain map — MapTiler Outdoor (satellite, topo, contours)."
+        actions={
+          <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
+            {gpsReading.status === 'available'
+              ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
+              : 'GPS unavailable'}
+          </Badge>
+        }
       />
       {mapProvider ? (
         <div className="relative min-h-[60vh] flex-1">
@@ -58,6 +81,7 @@ export function MapPage() {
             data-testid="map-container"
           />
           <LayerManagerPanel />
+          <GpsControl reading={gpsReading} onLocate={locate} />
         </div>
       ) : (
         <EmptyState

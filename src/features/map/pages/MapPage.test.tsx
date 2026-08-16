@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
+import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 // jsdom has no WebGL context, so MapLibre GL JS cannot run in tests — the
 // point of the MapProvider adapter is that feature code (and its tests)
 // never need to know that; we mock the adapter, not the map engine.
 const destroy = vi.fn()
 const setBaseLayer = vi.fn()
-const createMap = vi.fn(() => ({ setView: vi.fn(), setBaseLayer, destroy }))
+const setView = vi.fn()
+const setUserLocationMarker = vi.fn()
+const createMap = vi.fn(() => ({ setView, setBaseLayer, setUserLocationMarker, destroy }))
 
 let mockProvider: { createMap: typeof createMap } | null = { createMap }
 
@@ -19,9 +22,19 @@ vi.mock('@/services/map', () => ({
   },
 }))
 
+let mockGpsReading: GeolocationReading = {
+  status: 'unavailable',
+  reason: 'Geolocation is not supported by this browser.',
+}
+
+vi.mock('@/features/gps/useGeolocation', () => ({
+  useGeolocation: () => mockGpsReading,
+}))
+
 afterEach(() => {
   vi.clearAllMocks()
   mockProvider = { createMap }
+  mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
   useLayersStore.setState({ baseLayer: 'outdoor' })
 })
 
@@ -56,5 +69,32 @@ describe('MapPage', () => {
     expect(setBaseLayer).toHaveBeenCalledOnce()
     expect(setBaseLayer).toHaveBeenCalledWith('satellite')
     expect(createMap).toHaveBeenCalledOnce()
+  })
+
+  it('shows an unavailable GPS badge and a disabled locate button with no fix', () => {
+    render(<MapPage />)
+
+    expect(screen.getByText('GPS unavailable')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Center on my position' })).toBeDisabled()
+  })
+
+  it('shows the accuracy badge, marks the map and recenters on a real GPS fix', async () => {
+    mockGpsReading = {
+      status: 'available',
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 12 },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    expect(screen.getByText('GPS ±12 m')).toBeInTheDocument()
+    expect(setUserLocationMarker).toHaveBeenCalledWith({ lat: 46.8, lng: -71.2, accuracyMeters: 12 })
+
+    const locateButton = screen.getByRole('button', { name: 'Center on my position' })
+    expect(locateButton).toBeEnabled()
+
+    await user.click(locateButton)
+    expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 } })
   })
 })

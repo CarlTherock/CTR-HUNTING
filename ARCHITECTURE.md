@@ -87,7 +87,7 @@ rules explicitly forbid.
 | `settings/`                              | 0     | Functional (minimal) — connectivity + local DB check + about |
 | `map/`                                   | 1     | Functional (slice 1.1) — interactive base map, pan/zoom      |
 | `layers/`                                | 1     | Functional (slice 1.2) — base layer switcher (Outdoor/Satellite) |
-| `gps/`                                   | 1     | README only                                                  |
+| `gps/`                                   | 1     | Functional (slice 1.3) — live position via Geolocation API   |
 | `waypoints/`                             | 2     | Placeholder page                                             |
 | `tracks/`                                | 2     | README only                                                  |
 | `offline/` (feature, not `src/offline/`) | 3     | README only                                                  |

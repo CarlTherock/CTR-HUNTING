@@ -1,4 +1,4 @@
-import type { MapBaseLayerId, MapViewState } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapViewState } from '@/types'
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
@@ -8,6 +8,9 @@ export interface MapInstance {
   setView(view: Partial<MapViewState>): void
   /** Swap the active base style (e.g. Outdoor → Satellite). */
   setBaseLayer(layer: MapBaseLayerId): void
+  /** Show/update the device's current GPS position on the map. Pass
+   * `null` to remove it (no fix, permission denied, signal lost). */
+  setUserLocationMarker(coordinate: Coordinate | null): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

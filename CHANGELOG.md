@@ -3,6 +3,36 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 1 — Map, slice 1.3: live GPS (2026-08-15)
+
+Real device position via the browser Geolocation API — a marker on the
+map and a "recenter on me" control. Heading/compass and an
+accuracy-circle overlay are not built yet.
+
+### Added
+
+- `src/features/gps/useGeolocation.ts` — wraps
+  `navigator.geolocation.watchPosition`, returns a `DataPoint<Coordinate>`
+  (`src/types/data-quality.ts`); no fix is represented as `unavailable`
+  with a reason, never guessed or left at a stale position
+- `src/features/gps/components/GpsControl.tsx` — floating recenter
+  button, visibly disabled when there's no fix yet
+- `MapProvider`/`MapInstance` gained `setUserLocationMarker()`;
+  `MapTilerProvider` draws a small dot-style marker (distinct from the
+  teardrop pins waypoints will use in Phase 2) via a MapLibre `Marker`
+- `MapPage` shows a GPS accuracy badge (`±N m`) or an "unavailable" badge
+  next to the page title, and wires the marker/recenter button to the
+  new hook
+
+### Known limitations
+
+- No heading/compass or accuracy-circle overlay yet
+- Recenter only changes the map center, not zoom — the user's current
+  zoom level is preserved rather than assuming a "close-up" distance
+- GPS position is not persisted or shared outside `MapPage` yet; Phase 2
+  (waypoints) will call `useGeolocation()` directly where it needs "use
+  my current position," since the hook has no map dependency
+
 ## Phase 1 — Map, slice 1.2: layer manager (2026-08-15)
 
 Base layer switching only — Outdoor (topo, the slice 1.1 default) and

@@ -1,6 +1,21 @@
-import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
-import type { MapBaseLayerId, MapViewState } from '@/types'
+import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import type { Coordinate, MapBaseLayerId, MapViewState } from '@/types'
 import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
+
+/** Small blue dot + white ring, the near-universal "you are here" marker
+ * convention — distinct from the teardrop pins waypoints use (Phase 2), so
+ * the two are never visually confused on the same map. Built as a plain
+ * DOM element (not JSX) since MapLibre mounts markers outside React. */
+function createUserLocationElement(): HTMLDivElement {
+  const el = document.createElement('div')
+  el.style.width = '16px'
+  el.style.height = '16px'
+  el.style.borderRadius = '50%'
+  el.style.background = '#22c55e'
+  el.style.border = '2px solid white'
+  el.style.boxShadow = '0 0 0 2px rgba(34, 197, 94, 0.35)'
+  return el
+}
 
 /** MapTiler style path segment for each base layer. "Outdoor" bundles
  * topo/contours/hydrography/trails into one vector style (free tier);
@@ -67,6 +82,8 @@ export class MapTilerProvider implements MapProvider {
       })
     }
 
+    let userMarker: Marker | null = null
+
     return {
       setView(view: Partial<MapViewState>) {
         if (view.center) map.setCenter([view.center.lng, view.center.lat])
@@ -77,7 +94,20 @@ export class MapTilerProvider implements MapProvider {
       setBaseLayer: (layer: MapBaseLayerId) => {
         map.setStyle(this.styleUrl(layer))
       },
+      setUserLocationMarker(coordinate: Coordinate | null) {
+        if (!coordinate) {
+          userMarker?.remove()
+          userMarker = null
+          return
+        }
+        if (!userMarker) {
+          userMarker = new Marker({ element: createUserLocationElement() })
+          userMarker.addTo(map)
+        }
+        userMarker.setLngLat([coordinate.lng, coordinate.lat])
+      },
       destroy() {
+        userMarker?.remove()
         map.remove()
       },
     }
