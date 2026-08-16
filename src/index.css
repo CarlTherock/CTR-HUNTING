@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+/*
+ * Design system foundation — Field Terrain Intelligence
+ *
+ * The palette is dark-first: the app is primarily used outdoors, often in
+ * bright sunlight or low-light dawn/dusk conditions, where a dark UI with
+ * high-contrast accents is easier to read than a bright white surface.
+ * Tokens are exposed as CSS variables via Tailwind v4's @theme so every
+ * feature consumes the same values instead of hard-coding colors.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Surface scale */
+  --color-surface-950: #05070a;
+  --color-surface-900: #0b0f16;
+  --color-surface-800: #121826;
+  --color-surface-700: #1b2333;
+  --color-surface-600: #29334a;
+  --color-surface-500: #3c4a68;
+
+  /* Text scale */
+  --color-ink-100: #f4f6fa;
+  --color-ink-300: #c4cbdb;
+  --color-ink-500: #8b96b3;
+  --color-ink-700: #5a637e;
+
+  /* Brand / accent — evokes terrain (forest green) */
+  --color-brand-400: #4ade80;
+  --color-brand-500: #22c55e;
+  --color-brand-600: #16a34a;
+
+  /* Semantic status colors */
+  --color-status-info: #38bdf8;
+  --color-status-success: #22c55e;
+  --color-status-warning: #f59e0b;
+  --color-status-danger: #f87171;
+
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface-950 text-ink-100 font-sans antialiased;
+    /* Respect safe areas on notched devices when the PWA is installed. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  :focus-visible {
+    @apply outline-brand-400 outline-2 outline-offset-2;
+  }
+}
