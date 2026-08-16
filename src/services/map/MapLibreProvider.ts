@@ -1,5 +1,6 @@
 import type { GeoJSONSource } from 'maplibre-gl'
-import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { addProtocol, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import * as tileCache from '@/offline/tileCache'
 import type {
   Coordinate,
   MapBaseLayerId,
@@ -8,7 +9,9 @@ import type {
   Waypoint,
   WaypointCategory,
 } from '@/types'
-import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
+import { tileCenterLngLat, tileRangeForBounds, tilesForRange } from '@/utils/tiles'
+import type { LngLatBounds } from '@/utils/tiles'
+import type { CreateMapOptions, DownloadAreaProgress, MapInstance, MapProvider } from './MapProvider'
 
 /** Real vector layer IDs inside MapTiler's "Outdoor" style, grouped by
  * overlay. MapTiler doesn't expose trails/hydrography/contours as
@@ -164,6 +167,94 @@ function trackPreviewGeoJson(points: Coordinate[] | null) {
   }
 }
 
+/**
+ * Offline tile caching (Phase 3). Tile requests are redirected (via
+ * `transformRequest` below) from `https://…` to `ctrtile://…`, which
+ * MapLibre then routes to this handler instead of fetching directly —
+ * cache-first, falling back to network and caching the result. This
+ * intentionally never has to know or parse any vendor's tile URL
+ * template: MapLibre resolves the real per-tile URL internally (from
+ * whatever `tiles`/TileJSON structure the active style uses) and only
+ * hands this handler the final, already-resolved URL.
+ *
+ * Known limitation, not verified live (no map API key in this
+ * environment): MapLibre's docs note a custom protocol registered on the
+ * main thread may need to also be registered inside its worker for
+ * requests the worker itself issues (vector tile parsing runs there).
+ * This app copies MapLibre's *stock* worker unmodified
+ * (`vite.config.ts`), so if vector tile requests turn out to bypass this
+ * handler in practice, that worker-side registration is the fix —
+ * flagged here for real-device verification rather than silently assumed
+ * to work.
+ */
+const CTR_TILE_PROTOCOL = 'ctrtile'
+let tileProtocolRegistered = false
+
+interface ActiveDownload {
+  tileUrls: Set<string>
+  bytesDownloaded: number
+  onProgress: (progress: DownloadAreaProgress) => void
+}
+let activeDownload: ActiveDownload | null = null
+
+function ensureTileProtocolRegistered(): void {
+  if (tileProtocolRegistered) return
+  tileProtocolRegistered = true
+  addProtocol(CTR_TILE_PROTOCOL, async (params, abortController) => {
+    const realUrl = params.url.replace(`${CTR_TILE_PROTOCOL}://`, 'https://')
+
+    const cached = await tileCache.getTile(realUrl)
+    if (cached) {
+      return { data: await cached.arrayBuffer() }
+    }
+
+    const response = await fetch(realUrl, { signal: abortController.signal })
+    if (!response.ok) {
+      throw new Error(`Tile request failed (${response.status}): ${realUrl}`)
+    }
+    const blob = await response.clone().blob()
+    await tileCache.putTile(realUrl, response)
+
+    // Only tallied while a deliberate "download this area" is in
+    // progress (see `downloadArea` below) — ordinary browsing still
+    // benefits from the cache-first check above, but isn't counted
+    // toward any area's downloaded-tile total.
+    if (activeDownload && !activeDownload.tileUrls.has(realUrl)) {
+      activeDownload.tileUrls.add(realUrl)
+      activeDownload.bytesDownloaded += blob.size
+      activeDownload.onProgress({
+        tilesDownloaded: activeDownload.tileUrls.size,
+        bytesDownloaded: activeDownload.bytesDownloaded,
+        tileUrls: [...activeDownload.tileUrls],
+      })
+    }
+
+    return { data: await blob.arrayBuffer() }
+  })
+}
+
+/** Redirects tile (not style/sprite/glyph) requests through our custom
+ * protocol so they can be served from cache when offline. */
+function transformTileRequest(url: string, resourceType?: string) {
+  if (resourceType === 'Tile' && /^https?:\/\//.test(url)) {
+    return { url: url.replace(/^https?:\/\//, `${CTR_TILE_PROTOCOL}://`) }
+  }
+  return undefined
+}
+
+/** Resolves once the map has finished loading everything it currently
+ * needs (`'idle'`) — or after `timeoutMs`, so a download sweep can never
+ * hang forever on a tile that silently never settles. */
+function waitForIdle(map: MapLibreMap, timeoutMs = 5000): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs)
+    map.once('idle', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+}
+
 export interface MapLibreProviderApiKeys {
   /** MapTiler ("outdoor", "satellite"). Get one at
    * https://cloud.maptiler.com/account/keys/ */
@@ -238,6 +329,7 @@ export class MapLibreProvider implements MapProvider {
     // with no configured provider never pays for maplibre-gl at all — see
     // `services/map/index.ts`.
     setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`)
+    ensureTileProtocolRegistered()
 
     const map = new MapLibreMap({
       container,
@@ -246,6 +338,7 @@ export class MapLibreProvider implements MapProvider {
       zoom: initialView.zoom,
       pitch: initialView.pitch,
       bearing: initialView.bearing,
+      transformRequest: transformTileRequest,
     })
 
     map.addControl(new NavigationControl(), 'top-right')
@@ -370,6 +463,57 @@ export class MapLibreProvider implements MapProvider {
         trackPreviewPoints = points
         const source = map.getSource(TRACK_PREVIEW_SOURCE_ID) as GeoJSONSource | undefined
         source?.setData(trackPreviewGeoJson(points))
+      },
+      getBounds(): LngLatBounds {
+        const bounds = map.getBounds()
+        return {
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth(),
+        }
+      },
+      async downloadArea(
+        bounds: LngLatBounds,
+        minZoom: number,
+        maxZoom: number,
+        onProgress: (progress: DownloadAreaProgress) => void,
+        signal: AbortSignal,
+      ): Promise<DownloadAreaProgress> {
+        const savedView = {
+          center: map.getCenter(),
+          zoom: map.getZoom(),
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
+        }
+        const tileUrls = new Set<string>()
+        let bytesDownloaded = 0
+        activeDownload = {
+          tileUrls,
+          bytesDownloaded: 0,
+          onProgress: (progress) => {
+            bytesDownloaded = progress.bytesDownloaded
+            onProgress(progress)
+          },
+        }
+
+        try {
+          for (let zoom = minZoom; zoom <= maxZoom; zoom++) {
+            const range = tileRangeForBounds(bounds, zoom)
+            for (const tile of tilesForRange(range)) {
+              if (signal.aborted) {
+                throw new DOMException('Offline area download cancelled', 'AbortError')
+              }
+              const center = tileCenterLngLat(tile.x, tile.y, zoom)
+              map.jumpTo({ center: [center.lng, center.lat], zoom })
+              await waitForIdle(map)
+            }
+          }
+          return { tilesDownloaded: tileUrls.size, bytesDownloaded, tileUrls: [...tileUrls] }
+        } finally {
+          activeDownload = null
+          map.jumpTo(savedView)
+        }
       },
       destroy() {
         userMarker?.remove()

@@ -8,6 +8,9 @@ import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPane
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
+import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
+import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
 import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
@@ -32,6 +35,7 @@ export function MapPage() {
   const overlays = useLayersStore((state) => state.overlays)
   const appliedOverlaysRef = useRef(overlays)
   const gpsReading = useGeolocation()
+  const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
@@ -70,6 +74,7 @@ export function MapPage() {
     instanceRef.current = instance
     void useWaypointsStore.getState().load()
     void useTracksStore.getState().load()
+    void useOfflineStore.getState().load()
 
     return () => {
       instanceRef.current = null
@@ -142,11 +147,16 @@ export function MapPage() {
       <PageHeader
         title="Map"
         actions={
-          <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
-            {gpsReading.status === 'available'
-              ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
-              : 'GPS unavailable'}
-          </Badge>
+          <>
+            {!isOnline && (
+              <Badge variant="warning">Offline — showing cached maps</Badge>
+            )}
+            <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
+              {gpsReading.status === 'available'
+                ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
+                : 'GPS unavailable'}
+            </Badge>
+          </>
         }
       />
       {mapProvider ? (
@@ -162,6 +172,11 @@ export function MapPage() {
           <WaypointControl />
           <WaypointEditPanel />
           <TrackRecorderControl />
+          <OfflineAreaControl
+            getMapInstance={() => instanceRef.current}
+            baseLayer={baseLayer}
+            currentZoom={view.zoom}
+          />
         </div>
       ) : (
         <EmptyState

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Waypoint, Track, Observation, Photo } from '@/types'
+import type { Waypoint, Track, Observation, Photo, OfflineArea } from '@/types'
 
 /**
  * Local-first persistence layer (IndexedDB via Dexie).
@@ -37,6 +37,10 @@ export class FieldTerrainDatabase extends Dexie {
   syncQueue!: EntityTable<SyncQueueRecord, 'id'>
   /** Waypoint photos (Phase 2, slice 2.4). Blobs, not data URLs. */
   photos!: EntityTable<Photo, 'id'>
+  /** Downloaded offline map areas (Phase 3). Metadata only — the actual
+   * tile bytes live in the Cache Storage API (`offline/tileCache.ts`),
+   * not Dexie; see that file for why. */
+  offlineAreas!: EntityTable<OfflineArea, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -53,6 +57,10 @@ export class FieldTerrainDatabase extends Dexie {
     // unlisted stores from the previous version unchanged.
     this.version(2).stores({
       photos: 'id, waypointId, createdAt',
+    })
+
+    this.version(3).stores({
+      offlineAreas: 'id, status, createdAt',
     })
   }
 }

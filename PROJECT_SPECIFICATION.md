@@ -3,7 +3,10 @@
 **Status:** Phase 0 (Foundation) complete; Phase 1 (Map) complete — all
 five slices (1.1–1.5) done; Phase 2 (Waypoints & Tracks) complete — all
 four slices (2.1 create/edit/delete/categories/notes, 2.2 list page +
-drag-to-move, 2.3 GPS track recording, 2.4 waypoint photos) done
+drag-to-move, 2.3 GPS track recording, 2.4 waypoint photos) done; Phase 3
+(Offline) complete — all four slices (3.1 area selection + tile-count
+estimate, 3.2 download with live progress, 3.3 storage management, 3.4
+offline status + manual resync) done
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -56,7 +59,7 @@ exists).
 | 0   | **Foundation** ✅      | React + TypeScript + Vite + PWA + Tailwind + ESLint/Prettier + tests + feature-oriented architecture + shell/nav + design system + docs                                                            |
 | 1   | Map ✅                 | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start. All slices done: 1.1 base map, 1.2 base layer switcher, 1.3 live GPS, 1.4 overlay layers, 1.5 2D↔3D camera scaffold (elevation exaggeration is Phase 4). |
 | 2   | Waypoints & Tracks ✅  | Create/edit/move/delete waypoints, categories, notes, photos; GPS track recording; distance/duration/altitude; local save. All slices done: 2.1 create/edit/delete/categories/notes, 2.2 dedicated list page + drag-to-move, 2.3 GPS track recording (start/pause/resume/stop, live distance/duration, incremental persistence), 2.4 waypoint photos (file/camera picker, stored as Blobs, deleted with their waypoint). |
-| 3   | Offline                | Area selection, size estimate, download, progress, local storage, storage management, offline status, resync on reconnect.                                                                         |
+| 3   | Offline ✅             | Area selection, size estimate, download, progress, local storage, storage management, offline status, resync on reconnect. All slices done: 3.1 area selection (current viewport) + real tile-count estimate, 3.2 download via camera sweep + live progress + cancel, 3.3 storage management (list/delete, real `navigator.storage.estimate()`), 3.4 offline status badge + manual per-area resync. |
 | 4   | Terrain 3D             | 3D terrain, rotation/tilt/zoom/pan, orientation, altitude, slope, aspect, contour lines, elevation profile. Same layers/data as 2D.                                                                |
 | 5   | Weather                | Temperature, humidity, pressure, precipitation, cloud cover, visibility, wind, gusts, hourly forecast. Provider must be swappable.                                                                 |
 | 6   | Wind                   | Dedicated wind engine: direction, speed, gusts, temporal change, map animation, interactive timeline.                                                                                              |

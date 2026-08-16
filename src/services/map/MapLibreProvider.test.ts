@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MapLibreProvider } from './MapLibreProvider'
 
 // jsdom has no WebGL, so the real maplibre-gl Map can't initialize — mock
@@ -8,10 +8,25 @@ import { MapLibreProvider } from './MapLibreProvider'
 // can't catch: it never runs this file.
 // vi.mock's factory is hoisted above regular declarations, so the fakes it
 // references must be created via vi.hoisted() instead of plain `class`.
-const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigationControl } =
-  vi.hoisted(() => {
+const {
+  calls,
+  mapInstances,
+  markerInstances,
+  registeredProtocols,
+  FakeMap,
+  FakeMarker,
+  FakeNavigationControl,
+  fakeAddProtocol,
+} = vi.hoisted(() => {
     const calls: string[] = []
     const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
+    const registeredProtocols: Record<
+      string,
+      (params: { url: string }, ac: AbortController) => Promise<{ data: ArrayBuffer }>
+    > = {}
+    const fakeAddProtocol = (name: string, handler: (typeof registeredProtocols)[string]) => {
+      registeredProtocols[name] = handler
+    }
 
     class FakeNavigationControl {
       onAdd() {
@@ -69,8 +84,13 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
       layoutProps: Record<string, string> = {}
       sources: Record<string, { data: unknown; setDataCalls: unknown[] }> = {}
       layerIds: string[] = []
-      constructor(options: { style: string }) {
+      transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+      constructor(options: {
+        style: string
+        transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+      }) {
         this.style = options.style
+        this.transformRequest = options.transformRequest
         mapInstances.push(this)
       }
       addControl() {
@@ -98,6 +118,13 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
       fire(event: string, ...args: unknown[]) {
         for (const handler of this.handlers[event] ?? []) (handler as (...a: unknown[]) => void)(...args)
       }
+      jumpToCalls: unknown[] = []
+      once(_event: string, handler: (...args: never[]) => void) {
+        // Resolves asynchronously (not synchronously) so callers awaiting
+        // a promise built from this — like `waitForIdle` — behave like
+        // they would against a real, async-settling map.
+        queueMicrotask(() => (handler as () => void)())
+      }
       getCenter() {
         return { lat: 0, lng: 0 }
       }
@@ -109,6 +136,17 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
       }
       getBearing() {
         return 0
+      }
+      getBounds() {
+        return {
+          getWest: () => -71.3,
+          getSouth: () => 46.7,
+          getEast: () => -71.1,
+          getNorth: () => 46.9,
+        }
+      }
+      jumpTo(view: unknown) {
+        this.jumpToCalls.push(view)
       }
       setCenter() {
         /* not under test */
@@ -140,7 +178,16 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
     const mapInstances: InstanceType<typeof FakeMap>[] = []
     const markerInstances: InstanceType<typeof FakeMarker>[] = []
 
-    return { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigationControl }
+    return {
+      calls,
+      mapInstances,
+      markerInstances,
+      registeredProtocols,
+      FakeMap,
+      FakeMarker,
+      FakeNavigationControl,
+      fakeAddProtocol,
+    }
   })
 
 vi.mock('maplibre-gl', () => ({
@@ -148,6 +195,7 @@ vi.mock('maplibre-gl', () => ({
   Marker: FakeMarker,
   NavigationControl: FakeNavigationControl,
   setWorkerUrl: vi.fn(),
+  addProtocol: fakeAddProtocol,
 }))
 
 function createTestMap(
@@ -435,6 +483,137 @@ describe('MapLibreProvider', () => {
       map.fire('style.load')
 
       expect(map.layerIds).toContain('track-preview-line')
+    })
+  })
+
+  describe('getBounds', () => {
+    it('converts the engine LngLatBounds into a plain object', () => {
+      const instance = createTestMap()
+      expect(instance.getBounds()).toEqual({
+        west: -71.3,
+        south: 46.7,
+        east: -71.1,
+        north: 46.9,
+      })
+    })
+  })
+
+  describe('offline tile requests (transformRequest)', () => {
+    it('redirects Tile resource requests through the custom ctrtile:// protocol', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+
+      const result = map.transformRequest?.('https://api.maptiler.com/tiles/v3/5/10/12.pbf', 'Tile')
+      expect(result).toEqual({ url: 'ctrtile://api.maptiler.com/tiles/v3/5/10/12.pbf' })
+    })
+
+    it('leaves non-Tile requests (style, sprite, glyphs) untouched', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+
+      expect(
+        map.transformRequest?.('https://api.maptiler.com/maps/outdoor/style.json', 'Style'),
+      ).toBeUndefined()
+    })
+  })
+
+  describe('ctrtile:// protocol handler (registered once, module-wide)', () => {
+    class FakeCache {
+      store = new Map<string, Response>()
+      async match(url: string) {
+        return this.store.get(url)
+      }
+      async put(url: string, response: Response) {
+        this.store.set(url, response)
+      }
+    }
+
+    function installFakeCaches() {
+      const cache = new FakeCache()
+      vi.stubGlobal('caches', { open: async () => cache })
+      return cache
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('fetches and caches a real tile on a cache miss', async () => {
+      createTestMap() // ensures the protocol is registered at least once
+      const cache = installFakeCaches()
+      const bytes = new Uint8Array(500)
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(bytes, { status: 200 })))
+
+      const handler = registeredProtocols.ctrtile
+      const result = await handler(
+        { url: 'ctrtile://api.maptiler.com/tiles/v3/5/10/12.pbf' },
+        new AbortController(),
+      )
+
+      expect(result.data).toBeInstanceOf(ArrayBuffer)
+      expect((result.data as ArrayBuffer).byteLength).toBe(500)
+      expect(await cache.match('https://api.maptiler.com/tiles/v3/5/10/12.pbf')).toBeDefined()
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.maptiler.com/tiles/v3/5/10/12.pbf',
+        expect.anything(),
+      )
+    })
+
+    it('serves from cache on a hit, without a network fetch', async () => {
+      createTestMap()
+      const cache = installFakeCaches()
+      const realUrl = 'https://api.maptiler.com/tiles/v3/5/10/12.pbf'
+      await cache.put(realUrl, new Response(new Uint8Array(42), { status: 200 }))
+      const fetchSpy = vi.fn()
+      vi.stubGlobal('fetch', fetchSpy)
+
+      const result = await registeredProtocols.ctrtile(
+        { url: `ctrtile://${realUrl.replace('https://', '')}` },
+        new AbortController(),
+      )
+
+      expect((result.data as ArrayBuffer).byteLength).toBe(42)
+      expect(fetchSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('downloadArea', () => {
+    it('sweeps the camera across every target tile position, reports progress, and restores the original view when done', async () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.jumpToCalls = []
+
+      const bounds = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
+      const onProgress = vi.fn()
+      const controller = new AbortController()
+
+      const result = await instance.downloadArea(bounds, 10, 10, onProgress, controller.signal)
+
+      // One jumpTo per target tile at zoom 10, plus the final restore.
+      expect(map.jumpToCalls.length).toBeGreaterThan(1)
+      const restoreCall = map.jumpToCalls.at(-1) as { zoom: number }
+      expect(restoreCall.zoom).toBe(0) // FakeMap.getZoom() returns 0 — the "original" view
+      expect(result.tilesDownloaded).toBe(0) // no real tile fetches happen against FakeMap
+    })
+
+    it('stops early when the signal is aborted, without throwing past the caller', async () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      const bounds = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
+      const controller = new AbortController()
+      controller.abort()
+
+      await expect(
+        instance.downloadArea(bounds, 10, 12, vi.fn(), controller.signal),
+      ).rejects.toThrow(/cancelled/i)
+
+      // Aborted before the first tile — no sweep jumps, only the restore.
+      expect(map.jumpToCalls).toHaveLength(1)
     })
   })
 })

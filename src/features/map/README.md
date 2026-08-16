@@ -37,3 +37,10 @@ map wiring, not just shared state: waypoint markers are draggable
 `MapInstance.setTrackPreview()` draws the in-progress GPS track as a live
 line while `TrackRecorderControl` is recording — see
 `features/waypoints/README.md` for both.
+
+`MapInstance.getBounds()` and `.downloadArea()` (Phase 3 — Offline) are
+the other two map-specific escape hatches, used by
+`features/offline/components/OfflineAreaControl.tsx`. `downloadArea`
+sweeps the camera across a tile grid rather than fetching tiles directly
+— see `features/offline/README.md` for why (short version: this app
+never hard-codes or parses a vendor's tile URL template).

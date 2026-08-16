@@ -2,7 +2,7 @@ import { MapLibreProvider } from './MapLibreProvider'
 import type { MapProvider } from './MapProvider'
 import type { MapBaseLayerId } from '@/types'
 
-export type { MapProvider, MapInstance, CreateMapOptions } from './MapProvider'
+export type { MapProvider, MapInstance, CreateMapOptions, DownloadAreaProgress } from './MapProvider'
 
 const mapTilerApiKey = import.meta.env.VITE_MAP_TILES_API_KEY as string | undefined
 const esriApiKey = import.meta.env.VITE_ESRI_API_KEY as string | undefined

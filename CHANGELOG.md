@@ -3,6 +3,75 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 3 — Offline, all four slices (2026-08-16)
+
+Downloaded map areas now work fully offline: select an area, see a real
+tile-count estimate, download with live progress, manage storage, and get
+a clear offline indicator with a manual resync option.
+
+### Design decision: no vendor tile URL guessing
+
+The hard constraint: this session had no live map API key, and the
+project's "never fabricate technical facts" rule means MapTiler's/Esri's
+real per-tile URL templates couldn't be assumed or guessed. So instead of
+constructing tile URLs ourselves, `MapLibreProvider.downloadArea()`
+sweeps the map's own camera across the target tile grid (`map.jumpTo()`
+per tile, computed via real slippy-map tile math in `src/utils/tiles.ts`,
+waiting for MapLibre's `'idle'` event) — this makes MapLibre issue its
+own real tile requests using whatever template the active style actually
+has, which we never parse or need to know. Every tile request is
+redirected through a custom `ctrtile://` protocol
+(`addProtocol`/`transformRequest`) to a cache-first handler backed by the
+Cache Storage API (`src/offline/tileCache.ts` — real binary storage,
+distinct from Dexie/IndexedDB which stays for small structured records).
+
+**Known limitation, flagged in code comments, not silently assumed
+solved:** MapLibre's docs note a custom protocol may also need
+registering inside its worker (vector tile parsing runs there) — this app
+uses MapLibre's *stock*, unmodified worker, so if real-device testing
+shows vector tiles bypassing the cache, that's the fix.
+
+### Added
+
+- `src/utils/tiles.ts`: real slippy-map tile math (OSM's standard
+  formulas) — `lngLatToTile`/`tileToLngLat`/`tileCenterLngLat` (round-trip
+  tested), `tileRangeForBounds`/`tileCountForBounds`/`tilesForRange`.
+- `src/offline/tileCache.ts`: Cache Storage API wrapper (`hasTile`,
+  `getTile`, `fetchAndCacheTile`, `putTile`, `deleteTiles`,
+  `estimateStorageUsage` via real `navigator.storage.estimate()`).
+- `src/database/offlineAreasRepository.ts` (Dexie `offlineAreas` table,
+  `db.version(3)`): area metadata — bounds, zoom range, status, real
+  tile/byte counts, and the exact `tileUrls` it downloaded (so deleting
+  one area removes precisely its tiles, never another's).
+- `MapProvider.getBounds()` / `.downloadArea()`: the two new
+  `MapInstance` methods described above.
+- `features/offline/state/offlineStore.ts`: selection/download
+  orchestration — `startDownload` and `refreshArea` (re-download an
+  existing area's saved bounds, the "resync" affordance) share one
+  `runDownload` helper for persist/progress/cancel/error handling.
+- `features/offline/components/OfflineAreaControl.tsx` (Map page):
+  idle (download button + a small refresh list for already-downloaded
+  areas matching the current base layer), selecting (extra-zoom-levels
+  stepper, real tile count, start), downloading (live progress, cancel).
+- `SettingsPage`: new "Offline maps" card — completed/errored/cancelled
+  areas with delete, real storage usage/quota.
+- `MapPage`: "Offline — showing cached maps" badge when
+  `useOnlineStatus()` reports offline.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (139/139 — 39 new tests across
+`tiles.test.ts`, `tileCache.test.ts`, `offlineAreasRepository.test.ts`,
+`offlineStore.test.ts`, `MapLibreProvider.test.ts`, `SettingsPage.test.ts`
+and `MapPage.test.tsx`) and `build` all pass. In-browser: seeded/deleted
+offline-area records directly in Dexie and confirmed the Settings list,
+real storage-usage display, and delete flow all work correctly. The
+actual tile-download sweep against a live map could **not** be visually
+verified this round (no map API key in the local `.env`) — its wiring is
+covered by provider-level tests (camera sweep, protocol handler
+cache/fetch logic, cancellation) instead, consistent with prior slices
+that needed a live map.
+
 ## Phase 2 — Waypoints & Tracks, slice 2.4: waypoint photos (2026-08-16)
 
 Phase 2 is now complete. Waypoints can have photos attached, viewed, and

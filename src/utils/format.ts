@@ -12,3 +12,10 @@ export function formatDuration(ms: number): string {
 export function formatDistanceMeters(meters: number): string {
   return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`
 }
+
+/** Bytes below 1 KB, KB below 1 MB (rounded), MB at or above (1 decimal). */
+export function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`
+  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`
+  return `${bytes} B`
+}

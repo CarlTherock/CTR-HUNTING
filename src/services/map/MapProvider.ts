@@ -1,4 +1,11 @@
 import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint } from '@/types'
+import type { LngLatBounds } from '@/utils/tiles'
+
+export interface DownloadAreaProgress {
+  tilesDownloaded: number
+  bytesDownloaded: number
+  tileUrls: string[]
+}
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
@@ -20,6 +27,26 @@ export interface MapInstance {
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
+  /** The geographic bounds currently visible — the real basis for "make
+   * this area available offline" (Phase 3), not a guessed/typed-in box. */
+  getBounds(): LngLatBounds
+  /**
+   * Downloads every map tile covering `bounds` across `minZoom`–`maxZoom`
+   * for the currently active base layer, and caches them for offline use.
+   * Implemented by sweeping the camera across the area (so the map engine
+   * issues its own real tile requests — this never has to know or guess a
+   * vendor's tile URL template) while a request interceptor captures and
+   * caches whatever tiles that triggers. `onProgress` fires after each
+   * newly-cached tile with the running totals; `signal` cancels the sweep
+   * (already-cached tiles are kept, not rolled back).
+   */
+  downloadArea(
+    bounds: LngLatBounds,
+    minZoom: number,
+    maxZoom: number,
+    onProgress: (progress: DownloadAreaProgress) => void,
+    signal: AbortSignal,
+  ): Promise<DownloadAreaProgress>
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

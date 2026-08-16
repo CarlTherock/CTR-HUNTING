@@ -6,6 +6,7 @@ import { useLayersStore } from '@/features/layers/state/layersStore'
 import { useMapStore } from '../state/mapStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
+import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -20,6 +21,10 @@ const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
 const setTrackPreview = vi.fn()
+const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
+const downloadArea = vi
+  .fn()
+  .mockResolvedValue({ tilesDownloaded: 4, bytesDownloaded: 40_000, tileUrls: ['a', 'b', 'c', 'd'] })
 let lastCreateMapOptions: CreateMapOptions | undefined
 const createMap = vi.fn((options: CreateMapOptions) => {
   lastCreateMapOptions = options
@@ -30,6 +35,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setUserLocationMarker,
     setWaypoints,
     setTrackPreview,
+    getBounds,
+    downloadArea,
     destroy,
   }
 })
@@ -84,9 +91,21 @@ afterEach(async () => {
     points: [],
     distanceMeters: 0,
   })
+  useOfflineStore.setState({
+    areas: [],
+    loaded: false,
+    mode: 'idle',
+    extraZoomLevels: 2,
+    selectedBounds: null,
+    selectedZoom: null,
+    activeAreaId: null,
+    downloadProgress: null,
+  })
   await db.waypoints.clear()
   await db.tracks.clear()
+  await db.offlineAreas.clear()
   lastCreateMapOptions = undefined
+  Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
 })
 
 describe('MapPage', () => {
@@ -289,5 +308,35 @@ describe('MapPage', () => {
 
     expect(setTrackPreview).toHaveBeenLastCalledWith(null)
     expect(screen.getByRole('button', { name: 'Record a GPS track' })).toBeInTheDocument()
+  })
+
+  it('shows an offline badge when navigator.onLine is false, not when online', () => {
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false })
+    const { unmount } = render(<MapPage />)
+    expect(screen.getByText('Offline — showing cached maps')).toBeInTheDocument()
+    unmount()
+
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
+    render(<MapPage />)
+    expect(screen.queryByText('Offline — showing cached maps')).not.toBeInTheDocument()
+  })
+
+  it('selects the current viewport as an offline area, shows a real tile count, and downloads it', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Download this area for offline use' }))
+    expect(getBounds).toHaveBeenCalled()
+    // Real tile-math count for this bbox/zoom-range, not a placeholder.
+    expect(screen.getByText(/\d+ tiles? \(zoom/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Start download' }))
+
+    expect(downloadArea).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(useOfflineStore.getState().areas.at(-1)?.status).toBe('complete')
+    })
+    const [persisted] = await db.offlineAreas.toArray()
+    expect(persisted.tilesDownloaded).toBe(4)
   })
 })
