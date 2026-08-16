@@ -3,6 +3,31 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 1 — Map, slice 1.2: layer manager (2026-08-15)
+
+Base layer switching only — Outdoor (topo, the slice 1.1 default) and
+Satellite, both real MapTiler styles. Independently-toggleable overlays
+(trails, hydrography, contour lines) are slice 1.4, not started.
+
+### Added
+
+- `src/features/layers/state/layersStore.ts` — zustand store for the
+  active base layer, separate from `mapStore` (viewport)
+- `src/features/layers/components/LayerManagerPanel.tsx` — floating panel
+  over the map, radio-style base layer picker
+- `MapProvider`/`MapInstance` gained `initialBaseLayer` and
+  `setBaseLayer()`; `MapTilerProvider` maps each base layer to its
+  MapTiler style path and switches via `map.setStyle()` — no map
+  recreation, camera position is preserved across a layer switch
+- `MapBaseLayerId`/`MapBaseLayerOption` in `src/types/map.ts`
+
+### Known limitations
+
+- No overlay layers (trails, hydrography, contours) or per-layer
+  opacity/visibility yet — slice 1.4
+- Base layer selection is not persisted across sessions (matches the
+  existing viewport limitation from slice 1.1)
+
 ## Deployment: GitHub Pages (2026-08-15)
 
 - `.github/workflows/deploy.yml`: builds and deploys `dist/` to GitHub

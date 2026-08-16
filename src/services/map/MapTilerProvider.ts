@@ -1,11 +1,20 @@
 import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
-import type { MapViewState } from '@/types'
+import type { MapBaseLayerId, MapViewState } from '@/types'
 import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
 
+/** MapTiler style path segment for each base layer. "Outdoor" bundles
+ * topo/contours/hydrography/trails into one vector style (free tier);
+ * "Satellite" is raster imagery only, no labels — both are real MapTiler
+ * products, not a fabricated distinction. */
+const STYLE_PATH: Record<MapBaseLayerId, string> = {
+  outdoor: 'outdoor',
+  satellite: 'satellite',
+}
+
 /**
- * MapLibre GL JS + MapTiler "Outdoor" style (satellite/topo/contours in one
- * style, free tier). This is the only file in the app allowed to import
- * `maplibre-gl` directly — everything else depends on `MapProvider`.
+ * MapLibre GL JS + MapTiler styles (free tier). This is the only file in
+ * the app allowed to import `maplibre-gl` directly — everything else
+ * depends on `MapProvider`.
  */
 export class MapTilerProvider implements MapProvider {
   private readonly apiKey: string
@@ -14,11 +23,16 @@ export class MapTilerProvider implements MapProvider {
     this.apiKey = apiKey
   }
 
-  private get styleUrl(): string {
-    return `https://api.maptiler.com/maps/outdoor/style.json?key=${this.apiKey}`
+  private styleUrl(layer: MapBaseLayerId): string {
+    return `https://api.maptiler.com/maps/${STYLE_PATH[layer]}/style.json?key=${this.apiKey}`
   }
 
-  createMap({ container, initialView, onViewChange }: CreateMapOptions): MapInstance {
+  createMap({
+    container,
+    initialView,
+    initialBaseLayer,
+    onViewChange,
+  }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
     // bundle automatically, so it silently 404s unless we point it there
@@ -32,7 +46,7 @@ export class MapTilerProvider implements MapProvider {
 
     const map = new MapLibreMap({
       container,
-      style: this.styleUrl,
+      style: this.styleUrl(initialBaseLayer),
       center: [initialView.center.lng, initialView.center.lat],
       zoom: initialView.zoom,
       pitch: initialView.pitch,
@@ -59,6 +73,9 @@ export class MapTilerProvider implements MapProvider {
         if (view.zoom !== undefined) map.setZoom(view.zoom)
         if (view.pitch !== undefined) map.setPitch(view.pitch)
         if (view.bearing !== undefined) map.setBearing(view.bearing)
+      },
+      setBaseLayer: (layer: MapBaseLayerId) => {
+        map.setStyle(this.styleUrl(layer))
       },
       destroy() {
         map.remove()

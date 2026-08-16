@@ -1,11 +1,10 @@
 # features/layers
 
-**Status:** not yet implemented — planned for **Phase 1** of the roadmap
-(see `PROJECT_SPECIFICATION.md`).
+**Status:** Phase 1, slice 1.2 done — base layer switching (Outdoor /
+Satellite). Independently-toggleable overlays (trails, hydrography,
+contour lines, vector/raster opacity) are slice 1.4, not started.
 
-Map layer manager — base maps, satellite, topo, hydrography, contour, vector/raster overlays, per-layer visibility & opacity.
-
-This directory is a placeholder created during Phase 0 to establish the
-feature-oriented folder structure up front. It intentionally contains no
-components or logic yet — per the project rule "do not skip ahead of the
-roadmap," this feature is built out when its phase begins.
+`state/layersStore.ts` (zustand) holds which base layer is active;
+`components/LayerManagerPanel.tsx` is the floating picker rendered over the
+map in `MapPage`. Switching layers calls `MapInstance.setBaseLayer()`
+(`src/services/map/`) rather than recreating the map.

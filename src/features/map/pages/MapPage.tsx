@@ -2,13 +2,19 @@ import { useEffect, useRef } from 'react'
 import { MapPinOff } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { mapProvider } from '@/services/map'
+import type { MapInstance } from '@/services/map'
 import { EmptyState, PageHeader } from '@/components/ui'
+import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
+import { useLayersStore } from '@/features/layers/state/layersStore'
 import { useMapStore } from '../state/mapStore'
 
 export function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const instanceRef = useRef<MapInstance | null>(null)
   const view = useMapStore((state) => state.view)
   const setView = useMapStore((state) => state.setView)
+  const baseLayer = useLayersStore((state) => state.baseLayer)
+  const appliedBaseLayerRef = useRef(baseLayer)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -16,14 +22,27 @@ export function MapPage() {
     const instance = mapProvider.createMap({
       container: containerRef.current,
       initialView: view,
+      initialBaseLayer: useLayersStore.getState().baseLayer,
       onViewChange: setView,
     })
+    instanceRef.current = instance
 
-    return () => instance.destroy()
+    return () => {
+      instanceRef.current = null
+      instance.destroy()
+    }
     // Mount once: the map manages its own camera after creation, and further
     // `view` writes come *from* this effect (via setView), not into it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    // Skip the run that fires on mount with the same value the map was
+    // already created with — only react to an actual layer change.
+    if (appliedBaseLayerRef.current === baseLayer) return
+    appliedBaseLayerRef.current = baseLayer
+    instanceRef.current?.setBaseLayer(baseLayer)
+  }, [baseLayer])
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -32,11 +51,14 @@ export function MapPage() {
         description="Interactive terrain map — MapTiler Outdoor (satellite, topo, contours)."
       />
       {mapProvider ? (
-        <div
-          ref={containerRef}
-          className="rounded-card border-surface-600 min-h-[60vh] flex-1 overflow-hidden border"
-          data-testid="map-container"
-        />
+        <div className="relative min-h-[60vh] flex-1">
+          <div
+            ref={containerRef}
+            className="rounded-card border-surface-600 h-full overflow-hidden border"
+            data-testid="map-container"
+          />
+          <LayerManagerPanel />
+        </div>
       ) : (
         <EmptyState
           icon={<MapPinOff size={28} aria-hidden="true" />}

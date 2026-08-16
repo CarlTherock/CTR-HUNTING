@@ -86,7 +86,7 @@ rules explicitly forbid.
 | `dashboard/`                             | 0     | Functional — landing page, roadmap status                    |
 | `settings/`                              | 0     | Functional (minimal) — connectivity + local DB check + about |
 | `map/`                                   | 1     | Functional (slice 1.1) — interactive base map, pan/zoom      |
-| `layers/`                                | 1     | README only (folder up front, no UI yet)                     |
+| `layers/`                                | 1     | Functional (slice 1.2) — base layer switcher (Outdoor/Satellite) |
 | `gps/`                                   | 1     | README only                                                  |
 | `waypoints/`                             | 2     | Placeholder page                                             |
 | `tracks/`                                | 2     | README only                                                  |
