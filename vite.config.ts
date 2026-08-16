@@ -5,8 +5,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// GitHub Pages serves this project from https://carltherock.github.io/CTR-HUNTING/,
+// a subpath — production assets must be built with that base, but the local
+// dev server (and preview) still runs at the domain root.
+const base = process.env.GITHUB_PAGES === 'true' ? '/CTR-HUNTING/' : '/'
+
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -36,8 +42,8 @@ export default defineConfig({
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         icons: [
           {
             src: 'icons/icon-192.png',

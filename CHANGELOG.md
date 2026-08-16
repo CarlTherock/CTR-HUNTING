@@ -3,6 +3,18 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Deployment: GitHub Pages (2026-08-15)
+
+- `.github/workflows/deploy.yml`: builds and deploys `dist/` to GitHub
+  Pages on every push to `main` (typecheck/lint/test gate the deploy).
+  `VITE_MAP_TILES_API_KEY` is injected from a GitHub Actions secret, never
+  committed.
+- `vite.config.ts`: `base` (and the PWA manifest's `start_url`/`scope`) is
+  `/CTR-HUNTING/` only when built with `GITHUB_PAGES=true` (set by the
+  workflow); local dev/build stay at `/`. Fixes the previously-broken
+  deployment, which served the raw `index.html` with root-relative asset
+  paths that 404'd under the project's GitHub Pages subpath.
+
 ## Phase 1 — Map, slice 1.1: base map (2026-08-15)
 
 Interactive base map only — pan/zoom on a MapTiler "Outdoor" style. No
