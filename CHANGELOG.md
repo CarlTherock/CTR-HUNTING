@@ -3,6 +3,61 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 4 — Terrain 3D, complete (2026-08-16)
+
+Real elevation relief in 3D mode, altitude/slope/aspect point queries,
+and an elevation-profile line tool.
+
+### Design decision: AWS Terrarium tiles, not MapTiler's terrain-rgb-v2
+
+MapTiler offers a real `terrain-rgb-v2` raster-dem tileset, but this
+session couldn't verify its RGB-decoding convention from live
+documentation (no API key to inspect the actual tiles, and MapTiler's
+own docs don't state it) — MapLibre's raster-dem source needs an exact
+`encoding` value (`mapbox` | `terrarium` | `custom`) to decode elevation
+correctly, and guessing wrong would silently produce fabricated
+elevation numbers. AWS's public "Terrarium" elevation tiles
+(`s3.amazonaws.com/elevation-tiles-prod/terrarium/…`, verified via
+registry.opendata.aws and MapLibre's own official 3D-terrain example)
+are free, keyless, and their encoding is unambiguous — used instead.
+Also confirmed Esri has no MapLibre-compatible raster-dem elevation
+service (their elevation data is LERC-encoded, a different format for
+the ArcGIS SDK, not simple XYZ raster-dem tiles) — terrain is
+independent of the base-layer vendor either way, since it's a separate
+draped mesh, not part of the visual style.
+
+### Added
+
+- `src/utils/terrain.ts`: `computeSlopeAspect()` (central-difference
+  gradient from 4 real elevation samples) + `compassLabel()`.
+- `MapProvider.setTerrainEnabled(enabled, exaggeration)` /
+  `.queryElevation(coordinate)`: the DEM source is re-added on every
+  style reload (same pattern as the track-preview/offline-tile sources)
+  so a base-layer switch never silently drops terrain.
+- `mapStore.terrainExaggeration` (1×–3×, clamped) +
+  `ViewModeToggle`'s new stepper, shown only in 3D mode.
+- `features/map/terrainQuery.ts`: `sampleSlopeAspect()` and
+  `sampleElevationProfile()` — pure, directly-testable functions that
+  take a plain `queryElevation` callback rather than a `MapInstance`.
+- `components/TerrainInfoControl.tsx`: single-tap "what's the elevation/
+  slope/aspect here" tool (same arm-then-tap pattern as placing a
+  waypoint).
+- `components/ElevationProfileControl.tsx`: multi-tap "draw a path, see
+  its elevation profile" tool — a hand-rolled inline SVG chart (no
+  charting library added just for this; that's a Phase 10 decision).
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (169/169 — 30 new tests across
+`terrain.test.ts`, `terrainQuery.test.ts`, `terrainToolsStore.test.ts`,
+`mapStore.test.ts`, `MapLibreProvider.test.ts` and `MapPage.test.tsx`)
+and `build` all pass. The actual rendered 3D relief and whether AWS's
+Terrarium tiles resolve end-to-end could **not** be visually verified
+this round (no map API key in the local `.env`) — the wiring (source
+re-add on style reload, `setTerrain`/`queryTerrainElevation` calls, all
+the slope/aspect/profile math) is unit-tested instead, consistent with
+every prior slice that needed a live map.
+
 ## Phase 3 — Offline, all four slices (2026-08-16)
 
 Downloaded map areas now work fully offline: select an area, see a real

@@ -17,6 +17,10 @@ import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditP
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
+import { useTerrainToolsStore } from '../state/terrainToolsStore'
+import { sampleSlopeAspect } from '../terrainQuery'
+import { ElevationProfileControl } from '../components/ElevationProfileControl'
+import { TerrainInfoControl } from '../components/TerrainInfoControl'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 
 /** Field/street scale — close enough to make out individual trails and
@@ -30,6 +34,8 @@ export function MapPage() {
   const instanceRef = useRef<MapInstance | null>(null)
   const view = useMapStore((state) => state.view)
   const setView = useMapStore((state) => state.setView)
+  const terrainExaggeration = useMapStore((state) => state.terrainExaggeration)
+  const setTerrainExaggeration = useMapStore((state) => state.setTerrainExaggeration)
   const baseLayer = useLayersStore((state) => state.baseLayer)
   const appliedBaseLayerRef = useRef(baseLayer)
   const overlays = useLayersStore((state) => state.overlays)
@@ -64,6 +70,19 @@ export function MapPage() {
       onMapClick: (coordinate) => {
         if (useWaypointsStore.getState().isPlacing) {
           void useWaypointsStore.getState().placeWaypointAt(coordinate)
+          return
+        }
+        const terrainMode = useTerrainToolsStore.getState().mode
+        if (terrainMode === 'querying') {
+          const map = instanceRef.current
+          if (!map) return
+          useTerrainToolsStore.getState().setQueryResult({
+            coordinate,
+            elevationMeters: map.queryElevation(coordinate),
+            slopeAspect: sampleSlopeAspect((c) => map.queryElevation(c), coordinate),
+          })
+        } else if (terrainMode === 'profiling') {
+          useTerrainToolsStore.getState().addProfilePoint(coordinate)
         }
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
@@ -140,6 +159,16 @@ export function MapPage() {
   function setViewMode(pitch: number, bearing: number) {
     setView({ pitch, bearing })
     instanceRef.current?.setView({ pitch, bearing })
+    instanceRef.current?.setTerrainEnabled(pitch > 0, terrainExaggeration)
+  }
+
+  function changeTerrainExaggeration(exaggeration: number) {
+    setTerrainExaggeration(exaggeration)
+    if (view.pitch > 0) {
+      // Read back the clamped value rather than trusting the raw input —
+      // the engine must always match what the UI is about to display.
+      instanceRef.current?.setTerrainEnabled(true, useMapStore.getState().terrainExaggeration)
+    }
   }
 
   return (
@@ -167,7 +196,12 @@ export function MapPage() {
             data-testid="map-container"
           />
           <LayerManagerPanel />
-          <ViewModeToggle pitch={view.pitch} onChange={setViewMode} />
+          <ViewModeToggle
+            pitch={view.pitch}
+            onChange={setViewMode}
+            terrainExaggeration={terrainExaggeration}
+            onTerrainExaggerationChange={changeTerrainExaggeration}
+          />
           <GpsControl reading={gpsReading} onLocate={locate} />
           <WaypointControl />
           <WaypointEditPanel />
@@ -176,6 +210,10 @@ export function MapPage() {
             getMapInstance={() => instanceRef.current}
             baseLayer={baseLayer}
             currentZoom={view.zoom}
+          />
+          <TerrainInfoControl />
+          <ElevationProfileControl
+            queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
           />
         </div>
       ) : (

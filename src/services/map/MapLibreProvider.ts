@@ -147,6 +147,19 @@ function renderWaypointElement(el: HTMLDivElement, waypoint: Waypoint): void {
 const TRACK_PREVIEW_SOURCE_ID = 'track-preview'
 const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
 
+/** Terrain DEM source (Phase 4). AWS's public "Terrarium" elevation
+ * tiles — real, verified, no API key required (registry.opendata.aws/
+ * terrain-tiles/). Deliberately not MapTiler's `terrain-rgb-v2`: its
+ * RGB-decoding convention (Mapbox-compatible vs. something else) isn't
+ * documented anywhere this session could verify, and this project's
+ * hard rule is to never guess a technical fact like that — Terrarium's
+ * encoding is unambiguous and MapLibre supports it natively
+ * (`encoding: 'terrarium'`). Terrain is independent of the active base
+ * layer/vendor (it's a separate draped mesh, not part of the visual
+ * style), so this works the same under any base layer. */
+const TERRAIN_SOURCE_ID = 'terrain-dem'
+const TERRAIN_TILE_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+
 /** A LineString needs at least 2 positions to be valid GeoJSON — fewer
  * than that (recording just started, or not recording) renders as an
  * empty FeatureCollection instead of an invalid geometry. */
@@ -348,6 +361,8 @@ export class MapLibreProvider implements MapProvider {
     // per-layer visibility since it's a fresh style parse.
     const overlayState: Record<MapOverlayId, boolean> = { ...initialOverlays }
     let trackPreviewPoints: Coordinate[] | null = null
+    let terrainEnabled = false
+    let terrainExaggeration = 1.5
     map.on('style.load', () => {
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
         applyOverlay(map, overlay, overlayState[overlay])
@@ -366,6 +381,18 @@ export class MapLibreProvider implements MapProvider {
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#3b82f6', 'line-width': 4 },
       })
+      // Same reasoning as the track preview source — re-added on every
+      // style load so a base layer switch never silently drops terrain.
+      map.addSource(TERRAIN_SOURCE_ID, {
+        type: 'raster-dem',
+        tiles: [TERRAIN_TILE_URL],
+        tileSize: 256,
+        encoding: 'terrarium',
+        maxzoom: 15,
+      })
+      if (terrainEnabled) {
+        map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
+      }
     })
 
     if (onViewChange) {
@@ -463,6 +490,14 @@ export class MapLibreProvider implements MapProvider {
         trackPreviewPoints = points
         const source = map.getSource(TRACK_PREVIEW_SOURCE_ID) as GeoJSONSource | undefined
         source?.setData(trackPreviewGeoJson(points))
+      },
+      setTerrainEnabled(enabled: boolean, exaggeration: number) {
+        terrainEnabled = enabled
+        terrainExaggeration = exaggeration
+        map.setTerrain(enabled ? { source: TERRAIN_SOURCE_ID, exaggeration } : null)
+      },
+      queryElevation(coordinate: Coordinate): number | null {
+        return map.queryTerrainElevation([coordinate.lng, coordinate.lat]) ?? null
       },
       getBounds(): LngLatBounds {
         const bounds = map.getBounds()

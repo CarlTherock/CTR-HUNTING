@@ -21,6 +21,8 @@ function fakeMapInstance(
     setUserLocationMarker: vi.fn(),
     setWaypoints: vi.fn(),
     setTrackPreview: vi.fn(),
+    setTerrainEnabled: vi.fn(),
+    queryElevation: vi.fn().mockReturnValue(null),
     getBounds: vi.fn().mockReturnValue(BOUNDS),
     downloadArea,
     destroy: vi.fn(),

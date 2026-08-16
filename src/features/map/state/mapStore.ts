@@ -13,9 +13,19 @@ const DEFAULT_VIEW: MapViewState = {
   bearing: 0,
 }
 
+/** 1 = true scale, matches the "flatter" end of what real terrain
+ * relief looks like at typical zoom; higher values exaggerate relief so
+ * subtle terrain features actually read as terrain on screen. */
+const DEFAULT_TERRAIN_EXAGGERATION = 1.5
+
 interface MapState {
   view: MapViewState
   setView: (view: Partial<MapViewState>) => void
+  /** Only meaningful while `view.pitch > 0` (3D mode) — see
+   * `ViewModeToggle`/`MapPage.setViewMode`, which is what actually
+   * enables/disables terrain on the map instance itself. */
+  terrainExaggeration: number
+  setTerrainExaggeration: (exaggeration: number) => void
 }
 
 /**
@@ -30,4 +40,7 @@ export const useMapStore = create<MapState>((set) => ({
     set((state) => ({
       view: { ...state.view, ...partial },
     })),
+  terrainExaggeration: DEFAULT_TERRAIN_EXAGGERATION,
+  setTerrainExaggeration: (exaggeration) =>
+    set({ terrainExaggeration: Math.max(1, Math.min(3, exaggeration)) }),
 }))

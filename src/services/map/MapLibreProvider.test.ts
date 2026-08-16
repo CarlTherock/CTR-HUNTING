@@ -118,6 +118,14 @@ const {
       fire(event: string, ...args: unknown[]) {
         for (const handler of this.handlers[event] ?? []) (handler as (...a: unknown[]) => void)(...args)
       }
+      terrainCalls: unknown[] = []
+      elevationByLngLat: Record<string, number> = {}
+      setTerrain(options: unknown) {
+        this.terrainCalls.push(options)
+      }
+      queryTerrainElevation([lng, lat]: [number, number]) {
+        return this.elevationByLngLat[`${lng},${lat}`] ?? null
+      }
       jumpToCalls: unknown[] = []
       once(_event: string, handler: (...args: never[]) => void) {
         // Resolves asynchronously (not synchronously) so callers awaiting
@@ -483,6 +491,62 @@ describe('MapLibreProvider', () => {
       map.fire('style.load')
 
       expect(map.layerIds).toContain('track-preview-line')
+    })
+  })
+
+  describe('terrain (Phase 4)', () => {
+    it('does not enable terrain by default', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      expect(map.terrainCalls).toEqual([])
+    })
+
+    it('setTerrainEnabled(true, exaggeration) calls setTerrain with the DEM source and exaggeration', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      instance.setTerrainEnabled(true, 2)
+
+      expect(map.terrainCalls).toEqual([{ source: 'terrain-dem', exaggeration: 2 }])
+    })
+
+    it('setTerrainEnabled(false, …) calls setTerrain(null)', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      instance.setTerrainEnabled(true, 2)
+      instance.setTerrainEnabled(false, 2)
+
+      expect(map.terrainCalls.at(-1)).toBeNull()
+    })
+
+    it('re-enables terrain automatically after a base layer switch reloads the style', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setTerrainEnabled(true, 1.5)
+      map.terrainCalls = []
+      instance.setBaseLayer('satellite')
+      map.fire('style.load')
+
+      expect(map.terrainCalls).toEqual([{ source: 'terrain-dem', exaggeration: 1.5 }])
+    })
+
+    it('queryElevation delegates to the engine and returns null when unavailable', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.elevationByLngLat['-71.2,46.8'] = 312
+
+      expect(instance.queryElevation({ lat: 46.8, lng: -71.2 })).toBe(312)
+      expect(instance.queryElevation({ lat: 0, lng: 0 })).toBeNull()
     })
   })
 

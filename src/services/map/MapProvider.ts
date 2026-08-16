@@ -47,6 +47,14 @@ export interface MapInstance {
     onProgress: (progress: DownloadAreaProgress) => void,
     signal: AbortSignal,
   ): Promise<DownloadAreaProgress>
+  /** Enables or disables real 3D terrain relief (Phase 4) — a DEM source
+   * draped under the existing 2D style, not a separate mode. `exaggeration`
+   * (1 = true scale) only matters while `enabled`. */
+  setTerrainEnabled(enabled: boolean, exaggeration: number): void
+  /** Real elevation (meters) from the loaded terrain DEM at a point, or
+   * `null` if terrain is off or that tile hasn't loaded yet — never
+   * guessed/interpolated when unavailable. */
+  queryElevation(coordinate: Coordinate): number | null
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

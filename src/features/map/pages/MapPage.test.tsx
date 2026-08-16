@@ -7,6 +7,7 @@ import { useMapStore } from '../state/mapStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -21,6 +22,8 @@ const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
 const setTrackPreview = vi.fn()
+const setTerrainEnabled = vi.fn()
+const queryElevation = vi.fn(() => null as number | null)
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
 const downloadArea = vi
   .fn()
@@ -35,6 +38,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setUserLocationMarker,
     setWaypoints,
     setTrackPreview,
+    setTerrainEnabled,
+    queryElevation,
     getBounds,
     downloadArea,
     destroy,
@@ -80,6 +85,13 @@ afterEach(async () => {
   })
   useMapStore.setState({
     view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 6, pitch: 0, bearing: 0 },
+    terrainExaggeration: 1.5,
+  })
+  useTerrainToolsStore.setState({
+    mode: 'idle',
+    queryResult: null,
+    profilePoints: [],
+    profileData: null,
   })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
@@ -207,6 +219,60 @@ describe('MapPage', () => {
     await user.click(button2D)
     expect(setView).toHaveBeenCalledWith({ pitch: 0, bearing: 0 })
     expect(createMap).toHaveBeenCalledOnce()
+  })
+
+  it('enables real terrain relief when switching to 3D, and disables it back in 2D', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: '3D' }))
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 1.5)
+
+    await user.click(screen.getByRole('button', { name: '2D' }))
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(false, 1.5)
+  })
+
+  it('the exaggeration stepper only appears in 3D, and updates the engine live', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    expect(screen.queryByLabelText('More terrain exaggeration')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '3D' }))
+    await user.click(screen.getByRole('button', { name: 'More terrain exaggeration' }))
+
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 2)
+    expect(screen.getByText('2.0×')).toBeInTheDocument()
+  })
+
+  it('queries elevation/slope/aspect at a tapped point via the terrain info tool', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(312)
+    render(<MapPage />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Get elevation, slope and aspect at a point' }),
+    )
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
+
+    expect(await screen.findByText('312 m')).toBeInTheDocument()
+    expect(queryElevation).toHaveBeenCalledWith({ lat: 46.8, lng: -71.2 })
+  })
+
+  it('draws an elevation profile from tapped points and shows the chart panel', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Draw a path to see its elevation profile' }),
+    )
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.81, lng: -71.2 })
+
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+
+    expect(await screen.findByText('Elevation profile')).toBeInTheDocument()
   })
 
   it('arms placing mode, creates a real waypoint on the next map click, and opens it for editing', async () => {

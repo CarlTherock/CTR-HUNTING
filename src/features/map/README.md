@@ -1,15 +1,12 @@
 # features/map
 
-**Status:** Phase 1 complete — all five slices done: base map (1.1), layer
-manager (1.2, in `features/layers/`), live GPS (1.3, in `features/gps/`),
-additional overlay layers (1.4) and the 2D↔3D scaffold (1.5,
-`components/ViewModeToggle.tsx`).
+**Status:** Phase 1 complete (all five slices) and Phase 4 (Terrain 3D)
+complete — real elevation relief, orientation, altitude/slope/aspect, and
+elevation profile.
 
-The 2D↔3D toggle only tilts/rotates the camera (`MapViewState.pitch`/
-`bearing`, modeled in since slice 1.1) — there's no elevation exaggeration
-yet. Real terrain data + MapLibre's `setTerrain` is Phase 4 ("same
-layers/data as 2D" per the spec); this scaffold is what that phase plugs
-into, not a preview of it.
+The 2D↔3D toggle (`components/ViewModeToggle.tsx`, scaffolded in slice
+1.5 as pitch/bearing only) now also drapes real elevation relief under
+the map when switching to 3D — see "Terrain 3D (Phase 4)" below.
 
 Interactive 2D/3D map: pan/zoom, GPS, satellite/topo/trail/hydrography base
 layers, contour lines, layer manager. The map is a central, provider-agnostic
@@ -44,3 +41,42 @@ the other two map-specific escape hatches, used by
 sweeps the camera across a tile grid rather than fetching tiles directly
 — see `features/offline/README.md` for why (short version: this app
 never hard-codes or parses a vendor's tile URL template).
+
+## Terrain 3D (Phase 4)
+
+`MapInstance.setTerrainEnabled(enabled, exaggeration)` and
+`.queryElevation(coordinate)` (`MapProvider.ts`) back four things, all
+wired from `MapPage`:
+
+- **Real elevation relief** — `ViewModeToggle`'s 3D button now calls
+  `setTerrainEnabled(true, exaggeration)` (and `false` back in 2D), with
+  an exaggeration stepper (1×–3×, `mapStore.terrainExaggeration`) shown
+  only in 3D. The DEM source is AWS's public **Terrarium** elevation
+  tiles (`s3.amazonaws.com/elevation-tiles-prod/terrarium/…`) — not
+  MapTiler's `terrain-rgb-v2`, whose RGB-decoding convention couldn't be
+  verified from live documentation in this session (no API key to
+  inspect it directly, and MapTiler's own docs don't state it); Terrarium
+  is free, keyless, and its encoding is unambiguous and natively
+  supported by MapLibre (`encoding: 'terrarium'`). Terrain is independent
+  of the base-layer vendor (it's a separate draped mesh), so this works
+  under any base layer.
+- **Orientation** — the existing `NavigationControl` (compass + pan)
+  already handles rotate/tilt gestures; `ViewModeToggle`'s "2D" button
+  doubles as a bearing-reset (`onChange(0, 0)`).
+- **Altitude/slope/aspect** — `components/TerrainInfoControl.tsx`: arm,
+  tap the map once, get a real `queryElevation` reading plus a
+  slope/aspect estimate from `terrainQuery.sampleSlopeAspect()` (4
+  neighbor elevation samples, central-difference gradient — a real
+  calculation from real queried data, explicitly labeled as a rough field
+  estimate, not survey-grade).
+- **Elevation profile** — `components/ElevationProfileControl.tsx`: arm,
+  tap multiple points, "Done" samples elevation along the whole path
+  (`terrainQuery.sampleElevationProfile()`) and renders a hand-rolled
+  inline SVG line chart — no charting library added just for this; that's
+  a Phase 10 (Advanced Charts) decision, not this slice's to make.
+
+**Not verified live** (no map API key in this environment): the actual
+rendered 3D relief, and whether AWS's Terrarium tiles resolve/render
+correctly end-to-end. The wiring (source re-added on every style reload,
+`setTerrain`/`queryTerrainElevation` calls, all pure math in
+`utils/terrain.ts`/`terrainQuery.ts`) is unit-tested instead.
