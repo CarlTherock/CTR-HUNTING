@@ -8,99 +8,106 @@ import { MapLibreProvider } from './MapLibreProvider'
 // can't catch: it never runs this file.
 // vi.mock's factory is hoisted above regular declarations, so the fakes it
 // references must be created via vi.hoisted() instead of plain `class`.
-const { calls, mapInstances, FakeMap, FakeMarker, FakeNavigationControl } = vi.hoisted(() => {
-  const calls: string[] = []
-  const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
+const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigationControl } =
+  vi.hoisted(() => {
+    const calls: string[] = []
+    const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
 
-  class FakeNavigationControl {
-    onAdd() {
-      return document.createElement('div')
-    }
-  }
-
-  class FakeMarker {
-    lngLat: [number, number] | undefined
-    setLngLat(lngLat: [number, number]) {
-      calls.push('setLngLat')
-      this.lngLat = lngLat
-      return this
-    }
-    addTo() {
-      calls.push('addTo')
-      // Mirrors the real bug: MapLibre's Marker.addTo() immediately reads
-      // `this.lngLat.lng` to position itself — throws if unset.
-      if (!this.lngLat) {
-        throw new TypeError("Cannot read properties of undefined (reading 'lng')")
+    class FakeNavigationControl {
+      onAdd() {
+        return document.createElement('div')
       }
-      return this
     }
-    remove() {
-      calls.push('remove')
-      return this
-    }
-  }
 
-  class FakeMap {
-    style: string
-    handlers: Record<string, (() => void)[]> = {}
-    setStyleCalls: string[] = []
-    layoutProps: Record<string, string> = {}
-    constructor(options: { style: string }) {
-      this.style = options.style
-      mapInstances.push(this)
+    class FakeMarker {
+      lngLat: [number, number] | undefined
+      element: HTMLElement | undefined
+      constructor(options?: { element?: HTMLElement }) {
+        this.element = options?.element
+        markerInstances.push(this)
+      }
+      setLngLat(lngLat: [number, number]) {
+        calls.push('setLngLat')
+        this.lngLat = lngLat
+        return this
+      }
+      addTo() {
+        calls.push('addTo')
+        // Mirrors the real bug: MapLibre's Marker.addTo() immediately reads
+        // `this.lngLat.lng` to position itself — throws if unset.
+        if (!this.lngLat) {
+          throw new TypeError("Cannot read properties of undefined (reading 'lng')")
+        }
+        return this
+      }
+      remove() {
+        calls.push('remove')
+        return this
+      }
     }
-    addControl() {
-      /* not under test */
-    }
-    on(event: string, handler: () => void) {
-      ;(this.handlers[event] ??= []).push(handler)
-    }
-    fire(event: string) {
-      for (const handler of this.handlers[event] ?? []) handler()
-    }
-    getCenter() {
-      return { lat: 0, lng: 0 }
-    }
-    getZoom() {
-      return 0
-    }
-    getPitch() {
-      return 0
-    }
-    getBearing() {
-      return 0
-    }
-    setCenter() {
-      /* not under test */
-    }
-    setZoom() {
-      /* not under test */
-    }
-    setPitch() {
-      /* not under test */
-    }
-    setBearing() {
-      /* not under test */
-    }
-    setStyle(url: string) {
-      this.style = url
-      this.setStyleCalls.push(url)
-    }
-    getLayer(id: string) {
-      return existingLayers.has(id) ? {} : undefined
-    }
-    setLayoutProperty(id: string, _prop: string, value: string) {
-      this.layoutProps[id] = value
-    }
-    remove() {
-      /* not under test */
-    }
-  }
 
-  const mapInstances: InstanceType<typeof FakeMap>[] = []
+    class FakeMap {
+      style: string
+      handlers: Record<string, ((...args: never[]) => void)[]> = {}
+      setStyleCalls: string[] = []
+      layoutProps: Record<string, string> = {}
+      constructor(options: { style: string }) {
+        this.style = options.style
+        mapInstances.push(this)
+      }
+      addControl() {
+        /* not under test */
+      }
+      on(event: string, handler: (...args: never[]) => void) {
+        ;(this.handlers[event] ??= []).push(handler)
+      }
+      fire(event: string, ...args: unknown[]) {
+        for (const handler of this.handlers[event] ?? []) (handler as (...a: unknown[]) => void)(...args)
+      }
+      getCenter() {
+        return { lat: 0, lng: 0 }
+      }
+      getZoom() {
+        return 0
+      }
+      getPitch() {
+        return 0
+      }
+      getBearing() {
+        return 0
+      }
+      setCenter() {
+        /* not under test */
+      }
+      setZoom() {
+        /* not under test */
+      }
+      setPitch() {
+        /* not under test */
+      }
+      setBearing() {
+        /* not under test */
+      }
+      setStyle(url: string) {
+        this.style = url
+        this.setStyleCalls.push(url)
+      }
+      getLayer(id: string) {
+        return existingLayers.has(id) ? {} : undefined
+      }
+      setLayoutProperty(id: string, _prop: string, value: string) {
+        this.layoutProps[id] = value
+      }
+      remove() {
+        /* not under test */
+      }
+    }
 
-  return { calls, mapInstances, FakeMap, FakeMarker, FakeNavigationControl }
-})
+    const mapInstances: InstanceType<typeof FakeMap>[] = []
+    const markerInstances: InstanceType<typeof FakeMarker>[] = []
+
+    return { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigationControl }
+  })
 
 vi.mock('maplibre-gl', () => ({
   Map: FakeMap,
@@ -224,5 +231,90 @@ describe('MapLibreProvider', () => {
     map.layoutProps = {}
     map.fire('style.load')
     expect(map.layoutProps.contour).toBe('none')
+  })
+
+  it('reports the clicked coordinate via onMapClick', () => {
+    mapInstances.length = 0
+    const onMapClick = vi.fn()
+    const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+    provider.createMap({
+      container: document.createElement('div'),
+      initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+      initialBaseLayer: 'outdoor',
+      initialOverlays: { trails: true, hydrography: true, contours: true },
+      onMapClick,
+    })
+
+    mapInstances[0].fire('click', { lngLat: { lat: 46.8, lng: -71.2 } })
+    expect(onMapClick).toHaveBeenCalledWith({ lat: 46.8, lng: -71.2 })
+  })
+
+  describe('waypoint markers', () => {
+    const waypointA = {
+      id: 'a',
+      name: 'A',
+      coordinate: { lat: 1, lng: 1 },
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const waypointB = {
+      ...waypointA,
+      id: 'b',
+      coordinate: { lat: 2, lng: 2 },
+    }
+
+    it('positions each new waypoint marker before adding it to the map', () => {
+      calls.length = 0
+      const instance = createTestMap()
+
+      expect(() => instance.setWaypoints([waypointA])).not.toThrow()
+      expect(calls).toEqual(['setLngLat', 'addTo'])
+    })
+
+    it('updates an existing waypoint marker in place rather than recreating it', () => {
+      markerInstances.length = 0
+      const instance = createTestMap()
+
+      instance.setWaypoints([waypointA])
+      instance.setWaypoints([{ ...waypointA, coordinate: { lat: 5, lng: 5 } }])
+
+      expect(markerInstances).toHaveLength(1)
+      expect(markerInstances[0].lngLat).toEqual([5, 5])
+    })
+
+    it('removes markers for waypoints no longer in the list', () => {
+      markerInstances.length = 0
+      const instance = createTestMap()
+
+      instance.setWaypoints([waypointA, waypointB])
+      instance.setWaypoints([waypointB])
+
+      expect(markerInstances).toHaveLength(2) // none recreated
+      const [markerA] = markerInstances
+      // markerA was the one dropped from the second call.
+      expect(markerA.lngLat).toEqual([1, 1])
+    })
+
+    it('reports the clicked waypoint id via onWaypointClick, without also firing onMapClick', () => {
+      markerInstances.length = 0
+      const onMapClick = vi.fn()
+      const onWaypointClick = vi.fn()
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container: document.createElement('div'),
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+        onMapClick,
+        onWaypointClick,
+      })
+
+      instance.setWaypoints([waypointA])
+      markerInstances[0].element?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+      expect(onWaypointClick).toHaveBeenCalledWith('a')
+      expect(onMapClick).not.toHaveBeenCalled()
+    })
   })
 })

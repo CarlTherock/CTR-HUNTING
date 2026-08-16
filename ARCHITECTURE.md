@@ -88,7 +88,7 @@ rules explicitly forbid.
 | `map/`                                   | 1     | Functional (all slices) — base map, GPS, layers, 2D↔3D toggle |
 | `layers/`                                | 1     | Functional (slices 1.2, 1.4) — base layer switcher + overlay toggles |
 | `gps/`                                   | 1     | Functional (slice 1.3) — live position via Geolocation API   |
-| `waypoints/`                             | 2     | Placeholder page                                             |
+| `waypoints/`                             | 2     | Functional (slice 2.1) — create/edit/delete from the Map page |
 | `tracks/`                                | 2     | README only                                                  |
 | `offline/` (feature, not `src/offline/`) | 3     | README only                                                  |
 | `terrain/`                               | 4     | README only                                                  |
@@ -120,11 +120,11 @@ table reserved for Phase 15. This is the one database both the mobile and
 desktop layouts read from, which is how "both experiences use the same
 data" (per the spec) is satisfied without a backend.
 
-Only `settingsRepository.ts` exists as a repository today — a thin
-get/set wrapper the Settings page already uses for a real (not mocked)
-offline read/write. Feature-specific repositories (`waypointsRepository`,
-`tracksRepository`, ...) are added in the phase that owns them, following
-the same pattern, rather than being stubbed out now.
+`settingsRepository.ts` (Phase 0) and `waypointsRepository.ts` (Phase 2,
+slice 2.1) exist today — both real (not mocked) offline read/write against
+Dexie. Other feature-specific repositories (`tracksRepository`,
+`observationsRepository`, ...) are added in the phase that owns them,
+following the same pattern, rather than being stubbed out now.
 
 `src/offline/useOnlineStatus.ts` wraps `navigator.onLine` with
 `useSyncExternalStore` so any component can react to connectivity changes.

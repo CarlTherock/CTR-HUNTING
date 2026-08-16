@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { useMapStore } from '../state/mapStore'
+import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
+import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
+import type { CreateMapOptions } from '@/services/map'
 
 // jsdom has no WebGL context, so MapLibre GL JS cannot run in tests — the
 // point of the MapProvider adapter is that feature code (and its tests)
@@ -14,13 +17,12 @@ const setBaseLayer = vi.fn()
 const setOverlayVisible = vi.fn()
 const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
-const createMap = vi.fn(() => ({
-  setView,
-  setBaseLayer,
-  setOverlayVisible,
-  setUserLocationMarker,
-  destroy,
-}))
+const setWaypoints = vi.fn()
+let lastCreateMapOptions: CreateMapOptions | undefined
+const createMap = vi.fn((options: CreateMapOptions) => {
+  lastCreateMapOptions = options
+  return { setView, setBaseLayer, setOverlayVisible, setUserLocationMarker, setWaypoints, destroy }
+})
 
 let mockProvider: { createMap: typeof createMap } | null = { createMap }
 
@@ -51,7 +53,7 @@ vi.mock('@/features/gps/useGeolocation', () => ({
   useGeolocation: () => mockGpsReading,
 }))
 
-afterEach(() => {
+afterEach(async () => {
   vi.clearAllMocks()
   mockProvider = { createMap }
   mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
@@ -62,6 +64,9 @@ afterEach(() => {
   useMapStore.setState({
     view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 6, pitch: 0, bearing: 0 },
   })
+  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
+  await db.waypoints.clear()
+  lastCreateMapOptions = undefined
 })
 
 describe('MapPage', () => {
@@ -161,5 +166,49 @@ describe('MapPage', () => {
     await user.click(button2D)
     expect(setView).toHaveBeenCalledWith({ pitch: 0, bearing: 0 })
     expect(createMap).toHaveBeenCalledOnce()
+  })
+
+  it('arms placing mode, creates a real waypoint on the next map click, and opens it for editing', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    expect(screen.getByText('Tap the map to place a waypoint')).toBeInTheDocument()
+
+    // Simulate the map-engine click callback MapPage wired into createMap
+    // — there's no real MapLibre canvas to click in jsdom. onMapClick
+    // fires the (async) placeWaypointAt without awaiting it itself, so
+    // wait for its effect (the edit panel opening) rather than the call.
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
+
+    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+    expect(screen.queryByText('Tap the map to place a waypoint')).not.toBeInTheDocument()
+    expect(setWaypoints).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ coordinate: { lat: 46.8, lng: -71.2 } })]),
+    )
+
+    const persisted = await db.waypoints.toArray()
+    expect(persisted).toHaveLength(1)
+  })
+
+  it('opens the edit panel for an existing waypoint via onWaypointClick, and deletes it', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    await lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
+    const [waypoint] = await db.waypoints.toArray()
+
+    // Close the auto-opened editor, then reopen via onWaypointClick — as a
+    // real marker click would.
+    await user.click(screen.getByRole('button', { name: 'Close without saving' }))
+    expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
+
+    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
+    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await db.waypoints.toArray()).toEqual([])
+    expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
   })
 })

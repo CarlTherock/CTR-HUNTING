@@ -3,6 +3,39 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 2 — Waypoints & Tracks, slice 2.1: create/edit/delete (2026-08-16)
+
+Real waypoints: tap the map to place one, edit its name/category/notes,
+delete it — all persisted to Dexie immediately, no "unsaved draft"
+concept. Creation happens from the Map page for now; a dedicated
+Waypoints list page (with drag-to-move) is slice 2.2.
+
+### Added
+
+- `src/database/waypointsRepository.ts` — CRUD against the `waypoints`
+  Dexie table that's existed since Phase 0, following
+  `settingsRepository`'s real-offline-read/write pattern
+- `src/features/waypoints/state/waypointsStore.ts` (zustand) — in-memory
+  waypoint list plus `isPlacing`/`editingId` UI state; every mutation
+  writes through to Dexie first
+- `src/features/waypoints/components/WaypointControl.tsx` — the "add
+  waypoint" button; arms placing mode with a visible banner + cancel,
+  never a silent "tap somewhere" state
+- `src/features/waypoints/components/WaypointEditPanel.tsx` — bottom-sheet
+  form (name, category, notes, delete); holds its own draft, only writes
+  through on "Save"
+- `MapProvider`/`MapInstance` gained `onMapClick`, `onWaypointClick` and
+  `setWaypoints()`; `MapLibreProvider` renders an amber teardrop pin per
+  waypoint (diffed by id, not recreated on every render), visually
+  distinct from the round green GPS dot
+
+### Verified
+
+In-browser: placed a waypoint, renamed and saved it, reloaded the page
+(full navigation, not SPA) and confirmed it survived — real IndexedDB
+persistence, not component state. Deleted it and confirmed removal from
+both the map and Dexie. No console errors.
+
 ## LayerManagerPanel: collapse after picking a base layer (2026-08-16)
 
 Mobile UX fix: ten base-layer options left the panel covering most of a

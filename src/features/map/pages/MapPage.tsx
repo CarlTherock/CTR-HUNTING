@@ -8,6 +8,9 @@ import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPane
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
+import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
+import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
+import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 
@@ -21,6 +24,7 @@ export function MapPage() {
   const overlays = useLayersStore((state) => state.overlays)
   const appliedOverlaysRef = useRef(overlays)
   const gpsReading = useGeolocation()
+  const waypoints = useWaypointsStore((state) => state.waypoints)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -43,8 +47,15 @@ export function MapPage() {
       initialBaseLayer,
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
+      onMapClick: (coordinate) => {
+        if (useWaypointsStore.getState().isPlacing) {
+          void useWaypointsStore.getState().placeWaypointAt(coordinate)
+        }
+      },
+      onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
     })
     instanceRef.current = instance
+    void useWaypointsStore.getState().load()
 
     return () => {
       instanceRef.current = null
@@ -79,6 +90,10 @@ export function MapPage() {
       gpsReading.status === 'available' ? gpsReading.value : null,
     )
   }, [gpsReading])
+
+  useEffect(() => {
+    instanceRef.current?.setWaypoints(waypoints)
+  }, [waypoints])
 
   function locate() {
     if (gpsReading.status !== 'available') return
@@ -115,6 +130,8 @@ export function MapPage() {
           <LayerManagerPanel />
           <ViewModeToggle pitch={view.pitch} onChange={setViewMode} />
           <GpsControl reading={gpsReading} onLocate={locate} />
+          <WaypointControl />
+          <WaypointEditPanel />
         </div>
       ) : (
         <EmptyState

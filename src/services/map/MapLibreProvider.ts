@@ -1,5 +1,5 @@
 import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
-import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint } from '@/types'
 import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
 
 /** Real vector layer IDs inside MapTiler's "Outdoor" style, grouped by
@@ -69,6 +69,22 @@ function createUserLocationElement(): HTMLDivElement {
   return el
 }
 
+/** Amber teardrop pin, point-anchored at the coordinate — visually
+ * distinct from the round green "you are here" dot, so the two are never
+ * confused when both are on screen. */
+function createWaypointElement(): HTMLDivElement {
+  const el = document.createElement('div')
+  el.style.width = '22px'
+  el.style.height = '22px'
+  el.style.borderRadius = '50% 50% 50% 0'
+  el.style.background = '#f59e0b'
+  el.style.border = '2px solid white'
+  el.style.transform = 'rotate(-45deg)'
+  el.style.cursor = 'pointer'
+  el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.4)'
+  return el
+}
+
 export interface MapLibreProviderApiKeys {
   /** MapTiler ("outdoor", "satellite"). Get one at
    * https://cloud.maptiler.com/account/keys/ */
@@ -129,6 +145,8 @@ export class MapLibreProvider implements MapProvider {
     initialBaseLayer,
     initialOverlays,
     onViewChange,
+    onMapClick,
+    onWaypointClick,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -174,7 +192,14 @@ export class MapLibreProvider implements MapProvider {
       })
     }
 
+    if (onMapClick) {
+      map.on('click', (e) => {
+        onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      })
+    }
+
     let userMarker: Marker | null = null
+    const waypointMarkers = new Map<string, Marker>()
 
     return {
       setView(view: Partial<MapViewState>) {
@@ -210,8 +235,35 @@ export class MapLibreProvider implements MapProvider {
           userMarker.setLngLat([coordinate.lng, coordinate.lat])
         }
       },
+      setWaypoints(waypoints: Waypoint[]) {
+        const seen = new Set<string>()
+        for (const waypoint of waypoints) {
+          seen.add(waypoint.id)
+          const existing = waypointMarkers.get(waypoint.id)
+          if (existing) {
+            existing.setLngLat([waypoint.coordinate.lng, waypoint.coordinate.lat])
+            continue
+          }
+          const el = createWaypointElement()
+          el.addEventListener('click', (e) => {
+            e.stopPropagation()
+            onWaypointClick?.(waypoint.id)
+          })
+          const marker = new Marker({ element: el, anchor: 'bottom' })
+            .setLngLat([waypoint.coordinate.lng, waypoint.coordinate.lat])
+            .addTo(map)
+          waypointMarkers.set(waypoint.id, marker)
+        }
+        for (const [id, marker] of waypointMarkers) {
+          if (!seen.has(id)) {
+            marker.remove()
+            waypointMarkers.delete(id)
+          }
+        }
+      },
       destroy() {
         userMarker?.remove()
+        for (const marker of waypointMarkers.values()) marker.remove()
         map.remove()
       },
     }

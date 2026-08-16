@@ -1,4 +1,4 @@
-import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint } from '@/types'
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
@@ -14,6 +14,9 @@ export interface MapInstance {
   /** Show/update the device's current GPS position on the map. Pass
    * `null` to remove it (no fix, permission denied, signal lost). */
   setUserLocationMarker(coordinate: Coordinate | null): void
+  /** Replace the set of waypoint markers shown on the map (diffed
+   * internally by id — does not recreate markers that haven't moved). */
+  setWaypoints(waypoints: Waypoint[]): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }
@@ -27,6 +30,11 @@ export interface CreateMapOptions {
   /** Called on every user-driven camera change (pan/zoom/rotate/tilt), so
    * the caller can mirror it into shared state (see `mapStore`). */
   onViewChange?: (view: MapViewState) => void
+  /** Called when the user taps/clicks the base map itself (not a marker
+   * or control) — e.g. to place a new waypoint there. */
+  onMapClick?: (coordinate: Coordinate) => void
+  /** Called when the user taps/clicks an existing waypoint marker. */
+  onWaypointClick?: (waypointId: string) => void
 }
 
 /**
