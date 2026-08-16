@@ -1,6 +1,7 @@
 # Field Terrain Intelligence — Project Specification
 
-**Status:** Phase 0 (Foundation) complete
+**Status:** Phase 0 (Foundation) complete; Phase 1 (Map) in progress — slice
+1.1 (base map) done
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -51,7 +52,7 @@ exists).
 | #   | Phase                  | Goal                                                                                                                                                                                               |
 | --- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0   | **Foundation** ✅      | React + TypeScript + Vite + PWA + Tailwind + ESLint/Prettier + tests + feature-oriented architecture + shell/nav + design system + docs                                                            |
-| 1   | Map                    | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start.                                                          |
+| 1   | Map (in progress)      | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start. Slice 1.1 (base map, pan/zoom) done; 1.2–1.5 pending.    |
 | 2   | Waypoints & Tracks     | Create/edit/move/delete waypoints, categories, notes, photos; GPS track recording; distance/duration/altitude; local save.                                                                         |
 | 3   | Offline                | Area selection, size estimate, download, progress, local storage, storage management, offline status, resync on reconnect.                                                                         |
 | 4   | Terrain 3D             | 3D terrain, rotation/tilt/zoom/pan, orientation, altitude, slope, aspect, contour lines, elevation profile. Same layers/data as 2D.                                                                |
@@ -106,7 +107,8 @@ exists).
 | Routing             | React Router v7                     | ✅ in place (Phase 0)                                              |
 | Local data          | IndexedDB via Dexie                 | ✅ schema in place (Phase 0), feature repositories added per-phase |
 | PWA / offline shell | vite-plugin-pwa (Workbox)           | ✅ in place (Phase 0); advanced tile caching is Phase 3            |
-| Mapping             | MapLibre GL JS (+ Three.js for 3D)  | Planned, Phase 1                                                   |
+| Mapping             | MapLibre GL JS (+ Three.js for 3D)  | ✅ base map in place (Phase 1, slice 1.1); tiles via MapTiler       |
+| Map/layer state     | zustand                             | ✅ in place (Phase 1, slice 1.1)                                    |
 | Tests               | Vitest + Testing Library            | ✅ in place (Phase 0); Playwright e2e planned for Phase 16         |
 | Backend / sync      | TypeScript API + PostgreSQL/PostGIS | Planned, Phase 15                                                  |
 

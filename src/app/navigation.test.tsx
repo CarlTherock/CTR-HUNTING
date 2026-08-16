@@ -26,12 +26,15 @@ function renderAt(initialPath: string) {
 }
 
 describe('navigation', () => {
-  it('renders the Map placeholder, labeled as not yet built, when navigating to /map', async () => {
+  it('navigates to /map and renders the map feature (unavailable state, no API key in tests)', async () => {
     renderAt('/map')
 
     expect(await screen.findByRole('heading', { name: 'Map' })).toBeInTheDocument()
-    expect(screen.getByText('Not built yet')).toBeInTheDocument()
-    expect(screen.getByText(/Phase 1/)).toBeInTheDocument()
+    // No VITE_MAP_TILES_API_KEY in the test environment: this is the real,
+    // explicit "unavailable" state (see src/services/map/index.ts), not a
+    // Phase-0-style placeholder. MapPage.test.tsx covers the configured case
+    // with a mocked provider.
+    expect(screen.getByText('Map unavailable')).toBeInTheDocument()
   })
 
   it('navigates from the dashboard to Waypoints via the sidebar link', async () => {

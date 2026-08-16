@@ -53,7 +53,7 @@ field-terrain-intelligence/
 │   │
 │   ├── features/               One folder per product feature (see below)
 │   │
-│   ├── services/                External API adapters (empty in Phase 0 — see services/README.md)
+│   ├── services/                External API adapters — map/ (Phase 1: MapProvider, MapTilerProvider); see services/README.md
 │   ├── database/                Dexie database + repositories (local persistence)
 │   ├── offline/                 Connectivity/offline primitives (useOnlineStatus)
 │   ├── workers/                 Web Workers for heavy computation (empty in Phase 0)
@@ -85,7 +85,7 @@ rules explicitly forbid.
 | ---------------------------------------- | ----- | ------------------------------------------------------------ |
 | `dashboard/`                             | 0     | Functional — landing page, roadmap status                    |
 | `settings/`                              | 0     | Functional (minimal) — connectivity + local DB check + about |
-| `map/`                                   | 1     | Placeholder page                                             |
+| `map/`                                   | 1     | Functional (slice 1.1) — interactive base map, pan/zoom      |
 | `layers/`                                | 1     | README only (folder up front, no UI yet)                     |
 | `gps/`                                   | 1     | README only                                                  |
 | `waypoints/`                             | 2     | Placeholder page                                             |
@@ -212,7 +212,9 @@ and refactor-safe as the tree grows.
 | No `zustand`/`tanstack-query` yet          | Nothing in Phase 0 needs cross-component client state or server-cache management; adding them now would be an unused dependency. Introduced when a feature (Phase 1 map state, Phase 5 weather fetching) actually needs one. |
 | No `clsx`/`tailwind-merge`                 | `src/utils/cn.ts` (≈15 lines) covers every current need; avoids two dependencies for a problem this small. Revisit if class-conflict resolution becomes actually necessary.                                                  |
 | Tests co-located, not in `tests/`          | Faster to find/maintain per-file; `tests/` (or `e2e/`) is introduced specifically for Phase 16 Playwright suites, where a separate top-level tree is the norm.                                                               |
-| `baseUrl` omitted from `tsconfig.app.json` | The TypeScript toolchain in this environment deprecates `baseUrl` in bundler mode; `paths` alone resolves correctly relative to the tsconfig file.                                                                           |
+| `baseUrl` omitted from `tsconfig.app.json` | The TypeScript toolchain in this environment deprecates `baseUrl` in bundler mode; `paths` alone resolves correctly relative to the tsconfig file. |
+| MapTiler as the map tile provider (Phase 1, slice 1.1) | Free tier is sufficient for development; the "Outdoor" style bundles satellite, topographic and contour rendering in one style URL instead of three separate ones. Its terrain-RGB tiles are reused for elevation in Phase 4 (3D terrain) and Phase 8 (Analytics Engine), avoiding a second elevation provider until one is actually needed. Hidden entirely behind `MapProvider`/`MapTilerProvider` (`src/services/map/`), so swapping providers later touches one file, not feature code.                                                                                                                                    |
+| `zustand` for map viewport state (Phase 1, slice 1.1) | The viewport (center/zoom/pitch/bearing) is ephemeral state read and driven by multiple decoupled components — the map today, and per the roadmap later the layer manager, GPS recenter action, and the Phase 10 timeline cursor that must synchronize map/weather/wind/temporal views. Component state/context doesn't fit that fan-out; a lightweight external store does. This is the point the earlier "no zustand yet" decision (above) said would justify adding it.                                                                           |
 
 ## Known limitations (Phase 0)
 
