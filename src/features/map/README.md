@@ -23,3 +23,10 @@ was picked.
 `state/mapStore.ts` holds the shared viewport (center/zoom/pitch/bearing) in
 zustand — read by the map today, and by whatever else needs to react to or
 drive the camera as later slices/phases are added.
+
+The default view (no GPS fix yet, no waypoint selected) opens at zoom 12
+(town/regional scale), not the original zoom 6 (whole-province scale) —
+per user feedback that the initial map felt too zoomed out to be useful.
+The GPS "recenter on me" button (`features/gps/`) separately zooms further,
+to 16 (`GPS_LOCATE_ZOOM` in `pages/MapPage.tsx`), once a real fix is
+available.

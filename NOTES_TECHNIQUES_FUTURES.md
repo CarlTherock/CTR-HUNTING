@@ -106,6 +106,337 @@ le moment venu.
 
 ---
 
+## Idées d'apps concurrentes (onX Hunt, HuntStand) — 2026-08-16
+
+**Origine :** captures d'écran onX Hunt fournies par l'utilisateur (page
+"What are Waypoints/Area Shapes/Line Distance/Tracking", "3D Hunting
+Maps") + recherche web sur HuntStand. Sources :
+- [onX Hunt — App Features](https://www.onxmaps.com/hunt/app/features)
+- [onX Hunt — Land Ownership Maps & Parcel Viewer](https://www.onxmaps.com/hunt/app/features/land-ownership-maps-parcel-viewer)
+- [HuntStand — Detailed Guide to App Tools](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
+- [HuntStand — Google Play](https://play.google.com/store/apps/details?id=com.huntstand.core)
+
+Trié en deux catégories : ce que notre feuille de route couvre déjà (juste
+des précisions utiles à retenir), et les vraies idées absentes du plan
+actuel.
+
+### Déjà couvert par la feuille de route — précisions à retenir
+- **Prévision d'activité du gibier basée météo/lune** (le "15-Day
+  Whitetail Activity Forecast" de HuntStand) — confirme que Phase 7
+  (données temporelles/lunaires) + Phase 8 (Analytics Engine) + Phase 9
+  (carte d'analyse/scores) sont la bonne décomposition. Rien à changer,
+  juste une validation que l'architecture prévue est la bonne.
+- **Vent en direct + prévision** — Phase 6 existante.
+- **Terrain 3D avec bascule satellite/hybride, hors ligne** — Phases 3 et
+  4 existantes.
+- **Enregistrement de trace (breadcrumbs)** — Phase 2, tranche 2.3
+  (pas commencée). Détails concrets à retenir pour cette tranche :
+  gain/perte d'élévation, vitesse, distance, pause/reprise, et un
+  "trimming" de trace (retirer la fin d'une trace, ex. le trajet en
+  camion après la chasse) — precision utile, pas juste "enregistrer un
+  trajet".
+- **Rayon autour d'un waypoint + vent relatif à ce point précis** — notre
+  Phase 6 (vent) et les waypoints (Phase 2) existent déjà séparément ;
+  l'idée d'un indicateur de vent *relatif à un stand spécifique* (pas
+  juste le vent global sur la carte) est une bonne précision pour quand
+  ces deux pièces se rencontrent.
+
+### Absent de la feuille de route actuelle — vraies nouvelles idées
+- **Limites de propriété + nom du propriétaire** (onX : "Land Ownership
+  Maps & Parcel Viewer" — clique un lot, voit propriétaire/adresse
+  fiscale/superficie). Fonctionnalité réellement absente des 17 phases
+  actuelles. Nécessiterait une source de données cadastrales — **onX/
+  HuntStand sont centrés É-U** ; pour le Québec, l'équivalent serait les
+  données cadastrales ouvertes du Québec (ex. le jeu de données "Cadastre
+  du Québec" sur Données Québec, ou le Rôle d'évaluation foncière
+  municipal) plutôt qu'un fournisseur américain comme Regrid. À
+  positionner comme un nouveau layer (même mécanisme que les overlays
+  Phase 1.4) une fois qu'une vraie source de données québécoise est
+  identifiée et validée — jamais fabriquer cette donnée.
+- **Zones de chasse / unités de gestion de la faune (limites publiques)**
+  — équivalent québécois des "public land / GMU boundaries" d'onX. Fait
+  écho directement aux données MELCC vues dans la toute première capture
+  d'écran de cette conversation (l'appli Domtar "Mirador"). Même
+  remarque : nécessite une vraie source (données ouvertes du Québec /
+  Faune Québec), à valider avant d'implémenter.
+- **Outil de mesure de surface (polygone → acres/hectares)** — utile pour
+  mesurer un food plot ou une parcelle publique. Aucune tranche actuelle
+  ne couvre ça explicitement ; pourrait s'ajouter à Phase 2 (Waypoints &
+  Tracks) comme un outil complémentaire, ou une petite tranche dédiée.
+- **Outil de mesure de distance en ligne droite** (ex. évaluer un couloir
+  de tir) — petit utilitaire, facile à ajouter une fois l'outil de
+  mesure de surface en place (même famille d'interaction : dessiner sur
+  la carte, afficher une mesure).
+- **Synchronisation avec caméras de chasse cellulaires tierces**
+  (Stealth Cam, Muddy — HuntStand importe leurs photos directement).
+  Portée plus large qu'une simple tranche (nécessite l'API de chaque
+  fabricant) — à ne considérer qu'après la Phase 12 (caméra intégrée) et
+  seulement si la demande utilisateur le justifie. Priorité basse.
+
+---
+
+## Recherche compétitive approfondie et vérifiée — 2026-08-16
+
+**Origine :** approfondissement demandé de la section précédente — vérifier
+en détail onX Hunt et explorer d'autres apps/sites, chaque fait confirmé
+via recherche web (pas de mémoire seule), avec sources citées. Recherche
+effectuée par un agent dédié ; toutes les affirmations ci-dessous ont une
+source vérifiée en 2026-08-16.
+
+### onX Hunt — détails vérifiés (au-delà de ce qui était déjà noté)
+- **Hors ligne** : téléchargement à l'avance, GPS en temps réel sans
+  réseau. Payant uniquement.
+  [Source](https://www.onxmaps.com/hunt/app/faq)
+- **Météo/vent** : météo live, prévisions, direction du vent,
+  lever/coucher du soleil, pression barométrique ; "Optimal Wind"
+  configurable **par waypoint** — rejoint notre idée déjà notée de vent
+  relatif à un stand.
+  [Source](https://www.onxmaps.com/hunt/app/features)
+- **Limites de propriété/propriétaire** — confirmé payant (palier
+  Premium+), couverture É-U + partielle Canada seulement.
+  [Source](https://www.onxmaps.com/hunt/app/features/land-ownership-maps-parcel-viewer)
+- **TerrainX** (palier Elite seulement) : angle de pente, aspect, patrons
+  d'élévation, exagération 3D sur bureau.
+  [Source](https://www.onxmaps.com/hunt/elite/map-tools)
+- **Couches complémentaires** : distribution des cultures agricoles,
+  feux de forêt historiques, zones sans routes, sol, angle de pente.
+  [Source](https://www.onxmaps.com/hunt/app/features/aerial-imagery)
+- **Caméras de chasse** : synchronisation + analyse IA automatique des
+  photos ; palier Elite ajoute des alertes ciblées cerf + corrélation
+  vent/heure.
+- **Partage d'équipe hors ligne (pair-à-pair)** : partage de marquages
+  sans aucun réseau, entre appareils de la même plateforme à proximité —
+  mécanisme distinct d'une synchronisation cloud classique.
+  [Source](https://www.onxmaps.com/hunt/app/features/offline-sharing)
+- **Zones publiques au Canada** : oui, mais seulement au palier Elite et
+  seulement C.-B./Alb./Sask. — **pas le Québec**.
+  [Source](https://www.onxmaps.com/hunt/blog/onxmaps-canada-find-out-what-hunt-app-features-currently-apply)
+- **"IA/CoPilot"** : aucun produit nommé "CoPilot" — seule IA réelle est
+  le tri automatique des photos de caméra ; "copilot" n'est que du
+  vocabulaire marketing pour la navigation mains libres.
+- **Prix vérifiés** : Premium 34,99 $/an (1 état), Elite 99,99 $/an ou
+  14,99 $/mois (tout + Canada partiel).
+  [Source](https://www.onxmaps.com/hunt/app/pricing)
+
+### Apps déjà couvertes — approfondissement
+- **HuntStand** : synchronisation caméra limitée à Stealth Cam/Muddy
+  (via GSM Command Pro) — plus étroit que l'approche multi-marques d'onX.
+  Palier Pro (34,99 $/an) ajoute données de parcelle + imagerie mensuelle
+  + hors ligne.
+  [Source](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
+
+### Autres apps découvertes — vraiment pertinentes pour nous
+
+- **iHunter (Canada, app native québécoise/bilingue FR-EN)** — le
+  précédent le plus directement comparable à notre contexte : couvre
+  explicitement le Québec (zones de chasse avec résumés de saison par
+  zone, gros gibier/prédateurs/oiseaux/petit gibier), waypoints,
+  calculateur solaire, vent/météo, cartes hors ligne. Couches propriétaire
+  limitées à Alb./Sask./Man. (pas encore le Québec).
+  [Source](https://www.ihunterapp.com/features/) ·
+  [Google Play — iHunter Québec](https://play.google.com/store/apps/details?id=com.insideoutside.ihunterqb)
+- **BetterHunts (Canada)** — découverte de cette recherche, pas connue
+  avant : cotes de tirage, statistiques de récolte, saisons par unité de
+  gestion de la faune, **toutes sourcées de données gouvernementales
+  publiques** (jamais fabriquées) — exactement notre propre règle de
+  donnée. Couches : coupes forestières, historique de feux, terres
+  publiques/Couronne. Couverture **partielle au Québec** (Alb./Sask./Ont./
+  N.-B. en couverture complète). Précédent concret à étudier si on
+  construit un jour l'équivalent québécois des zones/unités de gestion.
+  [Source](https://www.betterhunts.ca/about)
+- **Spartan Forge (É-U)** — le plus orienté IA du groupe : prédiction de
+  mouvement du cerf par réseau de neurones entraîné sur des données de
+  cerfs collier-GPS ; score de **"Patternability"** (fiabilité de la
+  prédiction du jour, pas juste la prédiction elle-même) — s'arrimerait
+  bien avec notre système `DataConfidence` déjà en place.
+  [Source](https://spartanforge.ai/pages/deer-prediction)
+- **CalTopo (É-U/Canada, planification terrain)** — l'outil le plus
+  rigoureux d'analyse de terrain du groupe : **ombrage de terrain
+  combiné** (élévation + pente + aspect + couvert forestier en une seule
+  couche configurable) — plus flexible qu'un simple outil d'élévation
+  comme TerrainX d'onX. Bonne cible technique pour notre Phase 4 plutôt
+  que de viser seulement l'équivalent d'onX.
+  [Source](https://blog.caltopo.com/2025/02/27/more-lidar-plus-a-better-way-to-visualize-it/)
+- **DeerCast (É-U)** — prévision de mouvement heure par heure sur 14
+  jours ; fonction **"DeerCast Past"** : comparer jusqu'à 5 dates
+  historiques côte à côte pour repérer des patrons. Idée d'interface
+  concrète à retenir pour une future phase d'analytique historique.
+  [Source](https://www.deercast.com/features/)
+- **BaseMap (É-U)** — palier gratuit inclut le partage de position et
+  l'intégration de couches Google Earth. Fonction **SmartMarkers** :
+  capture automatiquement les conditions météo au moment/lieu exact de la
+  création d'un waypoint — petite idée concrète et simple à ajouter à
+  notre Phase 2.
+  [Source](https://huntinglife.com/basemap-review/)
+- **LandTrust (É-U)** — catégorie différente : marché de réservation
+  d'accès à des terres privées de chasse ("Airbnb de la chasse"). Pas un
+  outil de cartographie — mentionné seulement pour mémoire, hors périmètre
+  probable du projet.
+  [Source](https://landtrust.com/)
+- **Gaia GPS / LandGlide** — outils généralistes (plein air / cadastre
+  É-U) confirmant que le hors-ligne à couches multiples et les données de
+  parcelle détaillées sont partout gardées derrière un palier payant —
+  cohérent avec notre propre approche freemium implicite, rien de neuf à
+  en tirer autrement.
+
+### Synthèse — vraies nouvelles idées de cette recherche approfondie
+1. **iHunter et BetterHunts existent déjà comme précédents québécois** —
+   à étudier directement plutôt que d'extrapoler seulement depuis onX/
+   HuntStand, surtout pour la philosophie "données publiques uniquement,
+   jamais fabriquées" de BetterHunts qui rejoint notre propre règle.
+2. **Partage hors ligne pair-à-pair de waypoints/marquages** (onX) —
+   mécanisme distinct de la synchronisation cloud déjà prévue ; vraiment
+   nouveau, pas juste une variante d'UI.
+3. **Ombrage de terrain combiné façon CalTopo** (élévation+pente+aspect+
+   couvert forestier) comme cible pour la Phase 4, plus riche qu'un simple
+   outil d'élévation.
+4. **Score de confiance de prédiction ("Patternability")** — s'intègre
+   naturellement à notre `DataConfidence` existant, pour une future phase
+   d'analytique/prévision (Phase 7-9).
+5. **Capture météo automatique au moment de la création d'un waypoint**
+   (BaseMap SmartMarkers) — petit ajout concret, candidat pour Phase 2.
+6. **Vue de comparaison historique multi-dates** (DeerCast Past) — patron
+   d'interface à retenir pour une future phase d'analytique historique.
+
+Rien de ce qui précède n'est construit maintenant — notes de référence
+uniquement, à reconsidérer phase par phase comme le reste de ce fichier.
+
+---
+
+## Recherche ciblée : waypoints, LiDAR, styles de carte — 2026-08-16
+
+**Origine :** demande de creuser 3 axes précis non couverts en détail par
+les deux rondes précédentes : (1) les catégories/icônes de waypoints
+exactes de chaque app, (2) les couches LiDAR (lesquelles existent
+vraiment, pas juste "imagerie haute résolution"), (3) les noms exacts des
+styles de fond de carte offerts. Chaque fait ci-dessous a une source
+vérifiée par recherche web ; **les points marqués "non vérifié" sont
+explicitement signalés comme tels, jamais présentés comme un fait** — en
+cohérence avec la règle du projet de ne jamais fabriquer de donnée.
+
+### Axe 1 — Catégories/icônes de waypoints
+
+- **onX Hunt** : le site officiel dit "près de 100 icônes" — un chiffre
+  précis de 92 circule ailleurs mais **n'a pas pu être retracé à une
+  source onX elle-même** (non vérifié, à traiter comme rumeur). Aucun
+  regroupement par catégorie nommé n'existe — seulement des exemples par
+  scénario de chasse (traverses de ruisseau, pincements de terrain,
+  fientes, sites de gloussement d'orignal/wapiti, lignes de grattage de
+  cerf). 10 couleurs disponibles pour coder par espèce/année.
+  [Source](https://www.onxmaps.com/hunt/app/features/waypoints)
+- **HuntStand** : **45 icônes**, regroupées en 4 catégories nommées —
+  "Property Attributes" (ex. camp, barrière, danger), "Scouting" (ex.
+  aire de couchage, fientes, grattage, sente, traverse), "Stands" (4
+  icônes de mirador/plateforme) et "Others". Plus 5 types de lignes
+  (routes, sentiers, chemins, clôtures, autre) et 5 types de formes
+  (limites, parcelle agricole, sanctuaire, eau, autre) — distincts des
+  icônes de point. 20+ couleurs.
+  [Source](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
+- **iHunter** : aucun décompte ni catégorie publiés — waypoints
+  supportent icône + photo + description + météo, taille d'icône
+  ajustable, rien de plus trouvé sur la page officielle.
+  [Source](https://www.ihunterapp.com/features/)
+- **BetterHunts** : **n'a pas de système de waypoints du tout** — c'est un
+  outil de cotes de tirage/statistiques/cartes de zones de gestion
+  (WMU), pas une app de repérage. À noter pour corriger toute
+  interprétation antérieure qui aurait pu le classer comme comparable à
+  onX/HuntStand sur ce point précis — sa pertinence pour nous reste
+  la philosophie "données publiques uniquement" notée précédemment, pas
+  les waypoints. [Source](https://www.betterhunts.ca/)
+
+### Axe 2 — Couches LiDAR (vérifié laquelle en a vraiment)
+
+- **onX Hunt** — **confirmé**, palier Elite seulement (99,99 $/an) :
+  relief ombré dérivé du LiDAR — révèle fossés, fonds de ruisseau,
+  vieux chemins forestiers, replats, dépressions invisibles sur
+  topo/satellite. Précision verticale annoncée ~10 cm. Couverture
+  géographique exacte **non publiée** (page vague à ce sujet — non
+  vérifié). Utilisable hors ligne seulement avec Elite.
+  [Source](https://www.onxmaps.com/hunt/app/features/lidar-maps)
+- **CalTopo** — **confirmé**, le plus transparent du groupe : couches
+  "Normal/Enhanced Shaded Relief" + ombrage de pente haute résolution,
+  basées sur le LiDAR USGS 3DEP (+ IfSAR en Alaska). **Carte de
+  couverture interactive publique** montrant précisément où le LiDAR
+  1 m ou mieux est disponible — seule app du groupe à publier ça
+  ouvertement. [Source](https://blog.caltopo.com/2025/02/27/more-lidar-plus-a-better-way-to-visualize-it/)
+- **Spartan Forge** — **confirmé** : "cartes LiDAR entièrement
+  personnalisables" qui retirent la canopée pour montrer le sol nu —
+  drainages, replats, vieux chemins de débardage. Couplé à un outil
+  d'angle de pente. Couverture géographique **non détaillée** (non
+  vérifié, probablement centré É-U).
+  [Source](https://www.rokslide.com/spartan-forge-review/)
+- **Gaia GPS** — **partiellement confirmé** : pas de couche "LiDAR"
+  autonome nommée comme telle — le LiDAR (USGS 3DEP 1 m où disponible)
+  alimente plutôt la couche "Slope Angle" (Premium). Une mention
+  communautaire non officielle évoque une meilleure couverture au
+  Vermont — **page inaccessible pour vérification, à traiter comme
+  anecdotique seulement, pas comme fait**.
+- **HuntStand, iHunter** — **aucune mention de LiDAR** trouvée sur leurs
+  pages officielles.
+- **BetterHunts** — non applicable (pas un outil de terrain/carte).
+
+### Axe 3 — Styles de fond de carte (noms exacts)
+
+- **onX Hunt** : Satellite, Topographic, Hybrid (satellite + courbes),
+  **Leaf-Off Imagery** (Elite, sans feuillage, confirmé disponible dans
+  21 états américains précis — pas le Québec), **Recent Imagery**
+  (Elite, imagerie plus récente que la base), Mode 3D (relief extrudé
+  sur n'importe quel fond).
+  [Source](https://support.onxmaps.com/hc/en-us/articles/360052574531-Basemaps-3D-Mode-and-Imagery-Options)
+- **HuntStand** : annonce "7 fonds de carte différents" mais **ne les
+  nomme pas individuellement** publiquement — seule lacune qu'on n'a pas
+  pu combler. Mentions qualitatives : satellite standard, palier
+  "satellite premium", imagerie satellite mensuelle pour la fraîcheur.
+  Mode 3D séparé aussi présent.
+- **CalTopo** (le plus complet et le mieux nommé — bonne référence pour
+  notre propre sélecteur de couches) : MapBuilder Topo (USGS+OSM+LiDAR),
+  MapBuilder Hybrid, MapBuilder Imagery, MapBuilder Roads, Scanned Topos
+  (cartes topo historiques numérisées), Forest Service FSTopo,
+  OpenStreetMap, NAIP (agricole 1 m É-U), couches quasi temps réel
+  réservées Pro+ (Sentinel hebdo, MODIS quotidien, GOES en direct/
+  thermique), familles de relief ombré (Normal/Enhanced/Terrain
+  Shading multi-angle).
+  [Source](https://training.caltopo.com/all_users/base-layers/layers)
+- **Gaia GPS** : Gaia Topo (fond phare mondial, gratuit), USGS Topo
+  (quads officiels numérisés), Satellite Topo (hybride topo+satellite),
+  MVUM (surcouche routes/sentiers forestiers officiels É-U par
+  saisonnalité — pas un fond de carte en soi), Slope Angle (surcouche
+  LiDAR/DEM). 250+ sources au total avec Premium.
+- **iHunter** : 4 fonds nommés — Route, Topographique, Hybride,
+  Satellite.
+  [Source](https://www.ihunterapp.com/features/)
+
+### Autres points relevés en passant (non approfondis)
+- **onX Hunt** : dépôt de waypoint depuis une montre intelligente (Apple
+  Watch/Pixel Watch) sans sortir le téléphone — axe de développement
+  actif selon les forums, à surveiller.
+- **HuntStand** : couches météo séparées des fonds de carte (radar,
+  précipitations, neige, températures, feux, sécheresse).
+- **CalTopo** : couches quasi temps réel (Sentinel/MODIS/GOES) qu'aucune
+  app spécifiquement chasse n'offre — piste potentielle pour suivi
+  fumée/feux/météo, à garder en tête.
+- **DeerCast** : tous les types de couches (waypoints, parcelles, météo
+  radar, distances, chemins sauvegardés, food plots) regroupés sous un
+  seul bouton "couches" — patron d'UX compact à considérer pour notre
+  propre sélecteur.
+
+### Lacunes de vérification à ne jamais traiter comme des faits
+1. Nombre exact d'icônes onX Hunt (92 non confirmé — "près de 100" est
+   la seule formulation officielle).
+2. Liste individuelle des 45 icônes HuntStand (seuls les 4 noms de
+   groupe + exemples partiels sont publiés).
+3. Nombre/catégories d'icônes iHunter — introuvable.
+4. Noms des "7 fonds de carte" HuntStand — décompte confirmé, noms non
+   publiés.
+5. Couverture LiDAR Gaia GPS par état (mention Vermont non vérifiable).
+6. Palier exact requis par couche CalTopo (seules les couches Google et
+   temps réel sont confirmées Pro+).
+
+Rien de ce qui précède n'est construit maintenant — notes de référence
+uniquement.
+
+---
+
 ## Rejeté après vérification
 
 - **"Mettre en place un système de reprojection dès la Phase 1"**

@@ -3,6 +3,27 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Map: more zoomed-in default view (2026-08-16)
+
+Further user feedback: even with the GPS recenter zoom fix above, the
+map's *initial* view (before any GPS fix or recenter tap) still opened at
+zoom 6 — whole-province scale, not useful to actually look at.
+
+### Changed
+
+- `mapStore.ts` `DEFAULT_VIEW.zoom`: 6 → 12 (town/regional scale), same
+  center coordinate. Doesn't affect `GPS_LOCATE_ZOOM` (still 16, set in
+  the entry above) — this only changes what the map looks like before any
+  location is known.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (64/64), and `build` all pass; no
+test asserted the old default zoom value, so nothing needed updating
+there. Visual check in the Browser pane was not possible this round (no
+map API key in the local `.env`) — this is a single numeric constant with
+no surrounding logic, so the automated checks were treated as sufficient.
+
 ## Waypoints: categories, colors, marker redesign; GPS recenter zoom (2026-08-16)
 
 User feedback after trying slice 2.1: wanted per-waypoint color and more
