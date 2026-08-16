@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Compass } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
-const VISIBLE_MS = 1300
+const VISIBLE_MS = 2600
 const FADE_MS = 450
 
 export interface SplashProps {

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { MapPinOff } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { mapProvider } from '@/services/map'
+import { availableBaseLayers, mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
@@ -25,10 +25,22 @@ export function MapPage() {
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
 
+    // The stored baseLayer (default "outdoor") may belong to a vendor
+    // with no key configured, e.g. only Esri is set up — fall back to
+    // whatever's actually available rather than requesting a style with
+    // an undefined API key.
+    const storedBaseLayer = useLayersStore.getState().baseLayer
+    const initialBaseLayer = availableBaseLayers.includes(storedBaseLayer)
+      ? storedBaseLayer
+      : (availableBaseLayers[0] ?? storedBaseLayer)
+    if (initialBaseLayer !== storedBaseLayer) {
+      useLayersStore.getState().setBaseLayer(initialBaseLayer)
+    }
+
     const instance = mapProvider.createMap({
       container: containerRef.current,
       initialView: view,
-      initialBaseLayer: useLayersStore.getState().baseLayer,
+      initialBaseLayer,
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
     })
@@ -84,7 +96,7 @@ export function MapPage() {
     <div className="flex h-full flex-col gap-6">
       <PageHeader
         title="Map"
-        description="Interactive terrain map — MapTiler Outdoor (satellite, topo, contours)."
+        description="Interactive terrain map — MapTiler and Esri base layers, switchable below."
         actions={
           <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
             {gpsReading.status === 'available'
@@ -108,7 +120,7 @@ export function MapPage() {
         <EmptyState
           icon={<MapPinOff size={28} aria-hidden="true" />}
           title="Map unavailable"
-          description="No VITE_MAP_TILES_API_KEY is configured. Set it in .env to load the map — see .env.example."
+          description="No map API key is configured (VITE_MAP_TILES_API_KEY or VITE_ESRI_API_KEY). Set one in .env — see .env.example."
         />
       )}
     </div>

@@ -3,6 +3,52 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Second map vendor: Esri (2026-08-16)
+
+Eight new base layers from Esri's Basemap Styles v2 service, alongside
+the two existing MapTiler ones — picked for what upcoming phases need
+(terrain/hillshade ahead of Phase 4, light/dark gray canvases for Phase
+8–9 analytics heatmaps, navigation for access routes), not "every style
+Esri has" (the service has 60+; the rest are decorative/thematic skins
+with no use here).
+
+### Changed
+
+- `src/services/map/MapTilerProvider.ts` → **renamed** to
+  `MapLibreProvider.ts`. Both vendors serve MapLibre-compatible style
+  JSON, so the same engine adapter now resolves either vendor's style
+  URL — no second `MapProvider` implementation needed. Takes
+  `{ mapTiler?, esri? }` API keys; either, both, or neither may be set.
+- `src/services/map/index.ts` gained `availableBaseLayers` —
+  `LayerManagerPanel` only ever offers a base layer whose vendor key is
+  actually configured, grouped under a "MapTiler"/"Esri" heading each.
+- `MapPage` corrects the stored `baseLayer` against `availableBaseLayers`
+  right before creating the map, in case only one vendor ends up
+  configured (e.g. Esri but not MapTiler) and the stored default
+  ("outdoor") isn't actually available.
+
+### Added
+
+- `VITE_ESRI_API_KEY` (`.env.example`) — an ArcGIS Location Platform key
+  scoped to a "Public app" with only the "Basemaps" privilege (same
+  reasoning as any key shipped in a client bundle). Free tier: 2M
+  tiles/month, then $0.15/1,000; no charge is possible without a payment
+  method on file.
+- GitHub Actions secret `VITE_ESRI_API_KEY`, wired into
+  `.github/workflows/deploy.yml` alongside the existing MapTiler one.
+
+### Verified
+
+In-browser: every new Esri layer (Topographic, Imagery Hybrid, Imagery,
+Terrain, Hillshade, Light Gray, Dark Gray) renders real tiles with
+correct Esri/Vantor attribution, overlays correctly disable outside
+"Outdoor", no console errors.
+
+### Also in this change
+
+- `Splash.tsx`: visible duration doubled (1300ms → 2600ms; fade-out
+  unchanged at 450ms).
+
 ## Phase 1 — Map, slice 1.5: 2D↔3D scaffold (2026-08-16)
 
 **Phase 1 (Map) is now complete** — all five slices done.

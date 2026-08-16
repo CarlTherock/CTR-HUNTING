@@ -6,8 +6,9 @@ import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
  * overlay. MapTiler doesn't expose trails/hydrography/contours as
  * separate style URLs, so toggling them means hiding/showing layers that
  * already exist in this one style — extracted from the style's own
- * `style.json` (`layers[].id`), not invented. The "Satellite" style has
- * none of these layers; `setOverlayVisible` no-ops there. */
+ * `style.json` (`layers[].id`), not invented. No other base layer
+ * (MapTiler "Satellite", either Esri style) has these layers;
+ * `setOverlayVisible` no-ops there. */
 const OVERLAY_LAYER_IDS: Record<MapOverlayId, string[]> = {
   contours: ['contour_index', 'contour', 'contour_label'],
   hydrography: [
@@ -44,7 +45,7 @@ const OVERLAY_LAYER_IDS: Record<MapOverlayId, string[]> = {
 
 /** Applies one overlay's visibility to whichever of its layers actually
  * exist in the currently-loaded style — silently does nothing for layers
- * that aren't there (e.g. any overlay against the "Satellite" style). */
+ * that aren't there (e.g. any overlay against a non-"Outdoor" style). */
 function applyOverlay(map: MapLibreMap, overlay: MapOverlayId, visible: boolean): void {
   for (const layerId of OVERLAY_LAYER_IDS[overlay]) {
     if (map.getLayer(layerId)) {
@@ -68,29 +69,58 @@ function createUserLocationElement(): HTMLDivElement {
   return el
 }
 
-/** MapTiler style path segment for each base layer. "Outdoor" bundles
- * topo/contours/hydrography/trails into one vector style (free tier);
- * "Satellite" is raster imagery only, no labels — both are real MapTiler
- * products, not a fabricated distinction. */
-const STYLE_PATH: Record<MapBaseLayerId, string> = {
-  outdoor: 'outdoor',
-  satellite: 'satellite',
+export interface MapLibreProviderApiKeys {
+  /** MapTiler ("outdoor", "satellite"). Get one at
+   * https://cloud.maptiler.com/account/keys/ */
+  mapTiler?: string
+  /** Esri (every "esri-*" base layer) — an ArcGIS Location Platform API
+   * key scoped to the "Basemaps" privilege only. Get one at
+   * https://developers.arcgis.com. */
+  esri?: string
+}
+
+/** Esri Basemap Styles v2 style name for each "esri-*" base layer —
+ * https://developers.arcgis.com/rest/basemap-styles/. Picked for what the
+ * roadmap actually needs, not "every style Esri has": topographic/imagery
+ * mirror MapTiler as an alternate vendor; terrain + hillshade give relief
+ * context ahead of Phase 4's real 3D terrain; light-gray/dark-gray are the
+ * standard neutral canvases Phase 8–9's analytics heatmaps get drawn on;
+ * navigation is road-focused for finding access routes. */
+const ESRI_STYLE_NAME: Record<Exclude<MapBaseLayerId, 'outdoor' | 'satellite'>, string> = {
+  'esri-topographic': 'topographic',
+  'esri-imagery': 'imagery',
+  'esri-imagery-standard': 'imagery/standard',
+  'esri-terrain': 'terrain',
+  'esri-hillshade': 'hillshade/light',
+  'esri-light-gray': 'light-gray',
+  'esri-dark-gray': 'dark-gray',
+  'esri-navigation': 'navigation',
 }
 
 /**
- * MapLibre GL JS + MapTiler styles (free tier). This is the only file in
- * the app allowed to import `maplibre-gl` directly — everything else
- * depends on `MapProvider`.
+ * MapLibre GL JS, configured with whichever base-layer vendor(s) have a
+ * key. Both MapTiler and Esri's Basemap Styles v2 service serve
+ * MapLibre-compatible style JSON, so one engine instance covers both —
+ * `setBaseLayer` is always just a style-URL swap regardless of vendor.
+ * This is the only file in the app allowed to import `maplibre-gl`
+ * directly — everything else depends on `MapProvider`.
  */
-export class MapTilerProvider implements MapProvider {
-  private readonly apiKey: string
+export class MapLibreProvider implements MapProvider {
+  private readonly apiKeys: MapLibreProviderApiKeys
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey
+  constructor(apiKeys: MapLibreProviderApiKeys) {
+    this.apiKeys = apiKeys
   }
 
   private styleUrl(layer: MapBaseLayerId): string {
-    return `https://api.maptiler.com/maps/${STYLE_PATH[layer]}/style.json?key=${this.apiKey}`
+    switch (layer) {
+      case 'outdoor':
+        return `https://api.maptiler.com/maps/outdoor/style.json?key=${this.apiKeys.mapTiler}`
+      case 'satellite':
+        return `https://api.maptiler.com/maps/satellite/style.json?key=${this.apiKeys.mapTiler}`
+      default:
+        return `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/${ESRI_STYLE_NAME[layer]}?token=${this.apiKeys.esri}`
+    }
   }
 
   createMap({

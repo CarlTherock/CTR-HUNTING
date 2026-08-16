@@ -28,6 +28,18 @@ vi.mock('@/services/map', () => ({
   get mapProvider() {
     return mockProvider
   },
+  availableBaseLayers: [
+    'outdoor',
+    'satellite',
+    'esri-topographic',
+    'esri-imagery',
+    'esri-imagery-standard',
+    'esri-terrain',
+    'esri-hillshade',
+    'esri-light-gray',
+    'esri-dark-gray',
+    'esri-navigation',
+  ],
 }))
 
 let mockGpsReading: GeolocationReading = {

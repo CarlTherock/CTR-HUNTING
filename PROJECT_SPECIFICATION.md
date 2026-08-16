@@ -107,7 +107,7 @@ exists).
 | Routing             | React Router v7                     | ✅ in place (Phase 0)                                              |
 | Local data          | IndexedDB via Dexie                 | ✅ schema in place (Phase 0), feature repositories added per-phase |
 | PWA / offline shell | vite-plugin-pwa (Workbox)           | ✅ in place (Phase 0); advanced tile caching is Phase 3            |
-| Mapping             | MapLibre GL JS (+ Three.js for 3D)  | ✅ base map in place (Phase 1, slice 1.1); tiles via MapTiler       |
+| Mapping             | MapLibre GL JS (+ Three.js for 3D)  | ✅ base map in place (Phase 1, slice 1.1); tiles via MapTiler and Esri |
 | Map/layer state     | zustand                             | ✅ in place (Phase 1, slice 1.1)                                    |
 | Tests               | Vitest + Testing Library            | ✅ in place (Phase 0); Playwright e2e planned for Phase 16         |
 | Backend / sync      | TypeScript API + PostgreSQL/PostGIS | Planned, Phase 15                                                  |

@@ -15,7 +15,10 @@ Interactive 2D/3D map: pan/zoom, GPS, satellite/topo/trail/hydrography base
 layers, contour lines, layer manager. The map is a central, provider-agnostic
 platform component (per project rules) — no feature couples directly to a
 specific map SDK; `src/services/map/` (`MapProvider` interface,
-`MapTilerProvider` implementation) is that adapter.
+`MapLibreProvider` implementation) is that adapter. `MapLibreProvider`
+serves both MapTiler and Esri base layers through the one MapLibre engine
+— see `features/layers/README.md` for the full layer list and why each
+was picked.
 
 `state/mapStore.ts` holds the shared viewport (center/zoom/pitch/bearing) in
 zustand — read by the map today, and by whatever else needs to react to or

@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { MapTilerProvider } from './MapTilerProvider'
+import { MapLibreProvider } from './MapLibreProvider'
 
 // jsdom has no WebGL, so the real maplibre-gl Map can't initialize — mock
 // it with just enough surface to verify *our* wiring (call order, which
-// layers get touched), which is exactly the kind of bug a fully-mocked
-// MapProvider (see MapPage.test.tsx) can't catch: it never runs this file.
+// layers get touched, which style URL gets requested), which is exactly
+// the kind of bug a fully-mocked MapProvider (see MapPage.test.tsx)
+// can't catch: it never runs this file.
 // vi.mock's factory is hoisted above regular declarations, so the fakes it
 // references must be created via vi.hoisted() instead of plain `class`.
 const { calls, mapInstances, FakeMap, FakeMarker, FakeNavigationControl } = vi.hoisted(() => {
@@ -40,10 +41,12 @@ const { calls, mapInstances, FakeMap, FakeMarker, FakeNavigationControl } = vi.h
   }
 
   class FakeMap {
+    style: string
     handlers: Record<string, (() => void)[]> = {}
     setStyleCalls: string[] = []
     layoutProps: Record<string, string> = {}
-    constructor(_options: unknown) {
+    constructor(options: { style: string }) {
+      this.style = options.style
       mapInstances.push(this)
     }
     addControl() {
@@ -80,6 +83,7 @@ const { calls, mapInstances, FakeMap, FakeMarker, FakeNavigationControl } = vi.h
       /* not under test */
     }
     setStyle(url: string) {
+      this.style = url
       this.setStyleCalls.push(url)
     }
     getLayer(id: string) {
@@ -105,8 +109,9 @@ vi.mock('maplibre-gl', () => ({
   setWorkerUrl: vi.fn(),
 }))
 
-function createTestMap() {
-  const provider = new MapTilerProvider('test-key')
+function createTestMap(
+  provider = new MapLibreProvider({ mapTiler: 'maptiler-test-key', esri: 'esri-test-key' }),
+) {
   return provider.createMap({
     container: document.createElement('div'),
     initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
@@ -115,7 +120,49 @@ function createTestMap() {
   })
 }
 
-describe('MapTilerProvider', () => {
+describe('MapLibreProvider', () => {
+  describe('style URLs', () => {
+    it('resolves MapTiler base layers to MapTiler style URLs', () => {
+      mapInstances.length = 0
+      const provider = new MapLibreProvider({ mapTiler: 'mt-key' })
+      const instance = provider.createMap({
+        container: document.createElement('div'),
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'satellite',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(mapInstances[0].style).toBe(
+        'https://api.maptiler.com/maps/satellite/style.json?key=mt-key',
+      )
+
+      instance.setBaseLayer('outdoor')
+      expect(mapInstances[0].setStyleCalls.at(-1)).toBe(
+        'https://api.maptiler.com/maps/outdoor/style.json?key=mt-key',
+      )
+    })
+
+    it('resolves Esri base layers to the Basemap Styles v2 endpoint with the right style name', () => {
+      mapInstances.length = 0
+      const provider = new MapLibreProvider({ esri: 'esri-key' })
+      const instance = provider.createMap({
+        container: document.createElement('div'),
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'esri-topographic',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(mapInstances[0].style).toBe(
+        'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/topographic?token=esri-key',
+      )
+
+      instance.setBaseLayer('esri-hillshade')
+      expect(mapInstances[0].setStyleCalls.at(-1)).toBe(
+        'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/hillshade/light?token=esri-key',
+      )
+    })
+  })
+
   it('positions a new user-location marker before adding it to the map', () => {
     calls.length = 0
     const instance = createTestMap()

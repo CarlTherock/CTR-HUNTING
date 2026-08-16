@@ -23,7 +23,7 @@ describe('Splash', () => {
     render(<Splash onDone={onDone} />)
 
     act(() => {
-      vi.advanceTimersByTime(1300)
+      vi.advanceTimersByTime(2600)
     })
     expect(onDone).not.toHaveBeenCalled()
 
