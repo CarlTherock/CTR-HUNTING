@@ -3,6 +3,58 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 2 — Waypoints & Tracks, slices 2.2 & 2.3 (2026-08-16)
+
+Dedicated Waypoints & Tracks list page, drag-to-move for waypoints, and
+GPS track recording. Creation still only happens from the Map page (a
+waypoint needs a tap position, a track needs live GPS) — this is
+read/edit/delete for waypoints plus the full record/save/delete flow for
+tracks.
+
+### Added
+
+- `pages/WaypointsPage.tsx`: real list of every saved waypoint (icon,
+  color ring, category, coordinates — tap to open the same
+  `WaypointEditPanel` the Map page uses) and every recorded track
+  (distance, duration, date, delete). No longer a `PhasePlaceholder`.
+- `categories.ts`: `CATEGORY_OPTIONS`/`COLOR_OPTIONS`/`CATEGORY_LABEL`/
+  `CATEGORY_ICON` extracted out of `WaypointEditPanel` so the list page
+  can show the same icon/label per category without duplicating the
+  table.
+- Drag-to-move: waypoint markers are now draggable; dropping one calls
+  the new `onWaypointDragEnd` (`MapProvider.ts`), wired straight into
+  `waypointsStore.updateWaypoint(id, { coordinate })` — a drag is
+  persisted like any other edit, no separate confirm step.
+- `state/tracksStore.ts` + `database/tracksRepository.ts`: GPS track
+  recording — start/pause/resume/stop, live distance (Haversine,
+  `src/utils/geo.ts`) and duration. A track is persisted **incrementally**
+  (empty record on start, re-written on every accepted GPS sample), not
+  once at the end, so a crash mid-recording loses at most the last
+  sample. Samples under 5 m from the last point are dropped as GPS
+  jitter, not real movement.
+- `components/TrackRecorderControl.tsx`: floating record/pause/resume/
+  stop control with a live elapsed-time + distance readout.
+- `MapInstance.setTrackPreview()` (`MapProvider.ts`, `MapLibreProvider.ts`):
+  draws the in-progress track as a live blue line on the map while
+  recording, re-added after every base-layer switch (`setStyle()` wipes
+  custom sources/layers, same fix pattern the overlay layers already
+  use).
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (89/89 — 24 new tests across
+`geo.test.ts`, `tracksRepository.test.ts`, `tracksStore.test.ts`,
+`MapLibreProvider.test.ts` and `MapPage.test.tsx`), and `build` all pass.
+In-browser: seeded a waypoint and a track directly into the local Dexie
+database (no map API key available locally) and confirmed the list page
+renders both correctly, tapping a waypoint opens its editor pre-filled,
+and deleting a track removes it and restores the empty state. Drag-to-move
+and the live track-recording map preview could **not** be visually
+verified this round — both need a real map (API key), which the local
+`.env` doesn't have; their wiring is covered by the provider-level tests
+in `MapLibreProvider.test.ts` and the mocked-provider tests in
+`MapPage.test.tsx` instead.
+
 ## Map: more zoomed-in default view (2026-08-16)
 
 Further user feedback: even with the GPS recenter zoom fix above, the

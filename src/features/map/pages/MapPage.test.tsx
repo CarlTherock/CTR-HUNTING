@@ -5,6 +5,7 @@ import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { useMapStore } from '../state/mapStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
+import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -18,10 +19,19 @@ const setOverlayVisible = vi.fn()
 const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
+const setTrackPreview = vi.fn()
 let lastCreateMapOptions: CreateMapOptions | undefined
 const createMap = vi.fn((options: CreateMapOptions) => {
   lastCreateMapOptions = options
-  return { setView, setBaseLayer, setOverlayVisible, setUserLocationMarker, setWaypoints, destroy }
+  return {
+    setView,
+    setBaseLayer,
+    setOverlayVisible,
+    setUserLocationMarker,
+    setWaypoints,
+    setTrackPreview,
+    destroy,
+  }
 })
 
 let mockProvider: { createMap: typeof createMap } | null = { createMap }
@@ -65,7 +75,17 @@ afterEach(async () => {
     view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 6, pitch: 0, bearing: 0 },
   })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
+  useTracksStore.setState({
+    tracks: [],
+    loaded: false,
+    status: 'idle',
+    recordingId: null,
+    recordingStartedAt: null,
+    points: [],
+    distanceMeters: 0,
+  })
   await db.waypoints.clear()
+  await db.tracks.clear()
   lastCreateMapOptions = undefined
 })
 
@@ -212,5 +232,55 @@ describe('MapPage', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(await db.waypoints.toArray()).toEqual([])
     expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
+  })
+
+  it('persists a waypoint drag via onWaypointDragEnd (drag-to-move)', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
+    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+    const [waypoint] = await db.waypoints.toArray()
+
+    lastCreateMapOptions?.onWaypointDragEnd?.(waypoint.id, { lat: 47.1, lng: -72.5 })
+
+    // updateWaypoint is async — wait for the persisted write rather than
+    // asserting immediately after the synchronous callback.
+    await vi.waitFor(async () => {
+      const [reloaded] = await db.waypoints.toArray()
+      expect(reloaded.coordinate).toEqual({ lat: 47.1, lng: -72.5 })
+    })
+  })
+
+  it('starts a GPS track recording and mirrors the live preview onto the map', async () => {
+    const user = userEvent.setup()
+    mockGpsReading = {
+      status: 'available',
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5 },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Record a GPS track' }))
+    expect(screen.getByText('● Recording')).toBeInTheDocument()
+
+    // The GPS effect (already firing on mount, since mockGpsReading is
+    // 'available' from the start) feeds the recording — confirm the map
+    // gets the live line, not just the store.
+    expect(setTrackPreview).toHaveBeenLastCalledWith([
+      expect.objectContaining({ lat: 46.8, lng: -71.2 }),
+    ])
+  })
+
+  it('clears the map track preview once recording stops', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Record a GPS track' }))
+    await user.click(screen.getByRole('button', { name: 'Stop and save track' }))
+
+    expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+    expect(screen.getByRole('button', { name: 'Record a GPS track' })).toBeInTheDocument()
   })
 })

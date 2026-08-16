@@ -30,3 +30,10 @@ per user feedback that the initial map felt too zoomed out to be useful.
 The GPS "recenter on me" button (`features/gps/`) separately zooms further,
 to 16 (`GPS_LOCATE_ZOOM` in `pages/MapPage.tsx`), once a real fix is
 available.
+
+`MapPage` also hosts two `features/waypoints/` controls that need direct
+map wiring, not just shared state: waypoint markers are draggable
+(`onWaypointDragEnd` in `CreateMapOptions`) for drag-to-move, and
+`MapInstance.setTrackPreview()` draws the in-progress GPS track as a live
+line while `TrackRecorderControl` is recording — see
+`features/waypoints/README.md` for both.

@@ -8,8 +8,10 @@ import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPane
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
+import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
 import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
+import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
 import { ViewModeToggle } from '../components/ViewModeToggle'
@@ -31,6 +33,8 @@ export function MapPage() {
   const appliedOverlaysRef = useRef(overlays)
   const gpsReading = useGeolocation()
   const waypoints = useWaypointsStore((state) => state.waypoints)
+  const trackStatus = useTracksStore((state) => state.status)
+  const trackPoints = useTracksStore((state) => state.points)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -59,9 +63,13 @@ export function MapPage() {
         }
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
+      onWaypointDragEnd: (id, coordinate) => {
+        void useWaypointsStore.getState().updateWaypoint(id, { coordinate })
+      },
     })
     instanceRef.current = instance
     void useWaypointsStore.getState().load()
+    void useTracksStore.getState().load()
 
     return () => {
       instanceRef.current = null
@@ -95,11 +103,22 @@ export function MapPage() {
     instanceRef.current?.setUserLocationMarker(
       gpsReading.status === 'available' ? gpsReading.value : null,
     )
-  }, [gpsReading])
+    // `trackStatus` is a dependency (not just `gpsReading`) so the very
+    // first point is captured the moment recording starts, rather than
+    // waiting for the next GPS update — which, if the device hasn't
+    // physically moved, might not come for a while.
+    if (gpsReading.status === 'available' && trackStatus === 'recording') {
+      useTracksStore.getState().addPoint(gpsReading.value)
+    }
+  }, [gpsReading, trackStatus])
 
   useEffect(() => {
     instanceRef.current?.setWaypoints(waypoints)
   }, [waypoints])
+
+  useEffect(() => {
+    instanceRef.current?.setTrackPreview(trackStatus === 'idle' ? null : trackPoints)
+  }, [trackPoints, trackStatus])
 
   function locate() {
     if (gpsReading.status !== 'available') return
@@ -143,6 +162,7 @@ export function MapPage() {
           <GpsControl reading={gpsReading} onLocate={locate} />
           <WaypointControl />
           <WaypointEditPanel />
+          <TrackRecorderControl />
         </div>
       ) : (
         <EmptyState

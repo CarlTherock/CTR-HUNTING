@@ -22,14 +22,20 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
     class FakeMarker {
       lngLat: [number, number] | undefined
       element: HTMLElement | undefined
-      constructor(options?: { element?: HTMLElement }) {
+      draggable: boolean | undefined
+      handlers: Record<string, (() => void)[]> = {}
+      constructor(options?: { element?: HTMLElement; draggable?: boolean }) {
         this.element = options?.element
+        this.draggable = options?.draggable
         markerInstances.push(this)
       }
       setLngLat(lngLat: [number, number]) {
         calls.push('setLngLat')
         this.lngLat = lngLat
         return this
+      }
+      getLngLat() {
+        return { lng: this.lngLat?.[0] ?? 0, lat: this.lngLat?.[1] ?? 0 }
       }
       getElement() {
         return this.element
@@ -43,6 +49,13 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
         }
         return this
       }
+      on(event: string, handler: () => void) {
+        ;(this.handlers[event] ??= []).push(handler)
+        return this
+      }
+      fire(event: string) {
+        for (const handler of this.handlers[event] ?? []) handler()
+      }
       remove() {
         calls.push('remove')
         return this
@@ -54,12 +67,30 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
       handlers: Record<string, ((...args: never[]) => void)[]> = {}
       setStyleCalls: string[] = []
       layoutProps: Record<string, string> = {}
+      sources: Record<string, { data: unknown; setDataCalls: unknown[] }> = {}
+      layerIds: string[] = []
       constructor(options: { style: string }) {
         this.style = options.style
         mapInstances.push(this)
       }
       addControl() {
         /* not under test */
+      }
+      addSource(id: string, source: { data: unknown }) {
+        this.sources[id] = { data: source.data, setDataCalls: [] }
+      }
+      getSource(id: string) {
+        const source = this.sources[id]
+        if (!source) return undefined
+        return {
+          setData: (data: unknown) => {
+            source.data = data
+            source.setDataCalls.push(data)
+          },
+        }
+      }
+      addLayer(layer: { id: string }) {
+        this.layerIds.push(layer.id)
       }
       on(event: string, handler: (...args: never[]) => void) {
         ;(this.handlers[event] ??= []).push(handler)
@@ -318,6 +349,92 @@ describe('MapLibreProvider', () => {
 
       expect(onWaypointClick).toHaveBeenCalledWith('a')
       expect(onMapClick).not.toHaveBeenCalled()
+    })
+
+    it('creates waypoint markers as draggable and reports the drop position via onWaypointDragEnd', () => {
+      markerInstances.length = 0
+      const onWaypointDragEnd = vi.fn()
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container: document.createElement('div'),
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+        onWaypointDragEnd,
+      })
+
+      instance.setWaypoints([waypointA])
+      expect(markerInstances[0].draggable).toBe(true)
+
+      markerInstances[0].setLngLat([9, 8]) // simulates the drag moving the marker
+      markerInstances[0].fire('dragend')
+
+      expect(onWaypointDragEnd).toHaveBeenCalledWith('a', { lat: 8, lng: 9 })
+    })
+  })
+
+  describe('track preview', () => {
+    it('adds the live track line layer once the style has loaded', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('track-preview-line')
+      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+
+      // setTrackPreview before the style loads would find no source yet —
+      // guard against a crash in that ordering.
+      expect(() => instance.setTrackPreview([{ lat: 1, lng: 1 }])).not.toThrow()
+    })
+
+    it('draws a line once at least two points are recorded, and clears it when told to', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setTrackPreview([{ lat: 46.8, lng: -71.2 }])
+      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+
+      instance.setTrackPreview([
+        { lat: 46.8, lng: -71.2 },
+        { lat: 46.801, lng: -71.2 },
+      ])
+      expect(map.sources['track-preview'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [-71.2, 46.8],
+                [-71.2, 46.801],
+              ],
+            },
+          },
+        ],
+      })
+
+      instance.setTrackPreview(null)
+      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+    })
+
+    it('re-adds the track preview layer after a base layer switch reloads the style', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setBaseLayer('satellite')
+      map.layerIds = []
+      map.sources = {}
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('track-preview-line')
     })
   })
 })

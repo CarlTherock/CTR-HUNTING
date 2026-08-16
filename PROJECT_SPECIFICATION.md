@@ -2,7 +2,9 @@
 
 **Status:** Phase 0 (Foundation) complete; Phase 1 (Map) complete — all
 five slices (1.1–1.5) done; Phase 2 (Waypoints & Tracks) in progress —
-slice 2.1 (create/edit/delete, categories, notes, local save) done
+slices 2.1 (create/edit/delete, categories, notes, local save), 2.2 (list
+page, drag-to-move) and 2.3 (GPS track recording) done; 2.4 (waypoint
+photos) pending
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -54,7 +56,7 @@ exists).
 | --- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0   | **Foundation** ✅      | React + TypeScript + Vite + PWA + Tailwind + ESLint/Prettier + tests + feature-oriented architecture + shell/nav + design system + docs                                                            |
 | 1   | Map ✅                 | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start. All slices done: 1.1 base map, 1.2 base layer switcher, 1.3 live GPS, 1.4 overlay layers, 1.5 2D↔3D camera scaffold (elevation exaggeration is Phase 4). |
-| 2   | Waypoints & Tracks (in progress) | Create/edit/move/delete waypoints, categories, notes, photos; GPS track recording; distance/duration/altitude; local save. Slice 2.1 (create/edit/delete, categories, notes, local save) done from the Map page; 2.2 (list page, drag-to-move), 2.3 (track recording) and 2.4 (photos) pending. |
+| 2   | Waypoints & Tracks (in progress) | Create/edit/move/delete waypoints, categories, notes, photos; GPS track recording; distance/duration/altitude; local save. Slices 2.1 (create/edit/delete, categories, notes, local save), 2.2 (dedicated list page, drag-to-move) and 2.3 (GPS track recording — start/pause/resume/stop, live distance/duration, incremental persistence) done; 2.4 (waypoint photos) pending. |
 | 3   | Offline                | Area selection, size estimate, download, progress, local storage, storage management, offline status, resync on reconnect.                                                                         |
 | 4   | Terrain 3D             | 3D terrain, rotation/tilt/zoom/pan, orientation, altitude, slope, aspect, contour lines, elevation profile. Same layers/data as 2D.                                                                |
 | 5   | Weather                | Temperature, humidity, pressure, precipitation, cloud cover, visibility, wind, gusts, hourly forecast. Provider must be swappable.                                                                 |

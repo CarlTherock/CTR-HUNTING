@@ -1,60 +1,10 @@
 import { useState } from 'react'
-import {
-  Camera,
-  Car,
-  DoorOpen,
-  Droplet,
-  Footprints,
-  MapPin,
-  Moon,
-  Save,
-  Signpost,
-  Star,
-  Target,
-  Tent,
-  TreePine,
-  TriangleAlert,
-  Trash2,
-  Wheat,
-  X,
-} from 'lucide-react'
+import { Save, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/utils/cn'
 import type { WaypointCategory, WaypointColor } from '@/types'
+import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR } from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
-
-// Icons mirror MapLibreProvider's CATEGORY_ICON_INNER exactly (same
-// lucide icon per category) so the picker and the actual map marker
-// never show two different symbols for the same category.
-const CATEGORY_OPTIONS: { value: WaypointCategory; label: string; Icon: typeof MapPin }[] = [
-  { value: 'general', label: 'General', Icon: MapPin },
-  { value: 'stand_blind', label: 'Stand / blind', Icon: TreePine },
-  { value: 'trail_camera', label: 'Trail camera', Icon: Camera },
-  { value: 'food_plot', label: 'Food plot', Icon: Wheat },
-  { value: 'water', label: 'Water', Icon: Droplet },
-  { value: 'bedding_area', label: 'Bedding area', Icon: Moon },
-  { value: 'game_sign', label: 'Game sign', Icon: Footprints },
-  { value: 'kill_site', label: 'Kill site', Icon: Target },
-  { value: 'trailhead', label: 'Trailhead', Icon: Signpost },
-  { value: 'parking', label: 'Parking', Icon: Car },
-  { value: 'campsite', label: 'Campsite', Icon: Tent },
-  { value: 'hazard', label: 'Hazard', Icon: TriangleAlert },
-  { value: 'gate', label: 'Gate', Icon: DoorOpen },
-  { value: 'custom', label: 'Custom', Icon: Star },
-]
-
-const COLOR_OPTIONS: { value: WaypointColor; label: string }[] = [
-  { value: '#f59e0b', label: 'Amber' },
-  { value: '#ef4444', label: 'Red' },
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#22c55e', label: 'Green' },
-  { value: '#a855f7', label: 'Purple' },
-  { value: '#eab308', label: 'Yellow' },
-  { value: '#ec4899', label: 'Pink' },
-  { value: '#64748b', label: 'Slate' },
-]
-
-const DEFAULT_COLOR: WaypointColor = '#f59e0b'
 
 /** Bottom-sheet form for a waypoint's name/category/color/notes, opened
  * either right after placing a new one or by tapping an existing marker.

@@ -1,3 +1,4 @@
+import type { GeoJSONSource } from 'maplibre-gl'
 import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
 import type {
   Coordinate,
@@ -140,6 +141,29 @@ function renderWaypointElement(el: HTMLDivElement, waypoint: Waypoint): void {
   el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`
 }
 
+const TRACK_PREVIEW_SOURCE_ID = 'track-preview'
+const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
+
+/** A LineString needs at least 2 positions to be valid GeoJSON — fewer
+ * than that (recording just started, or not recording) renders as an
+ * empty FeatureCollection instead of an invalid geometry. */
+function trackPreviewGeoJson(points: Coordinate[] | null) {
+  const coordinates = (points ?? []).map((p) => [p.lng, p.lat])
+  return {
+    type: 'FeatureCollection' as const,
+    features:
+      coordinates.length >= 2
+        ? [
+            {
+              type: 'Feature' as const,
+              properties: {},
+              geometry: { type: 'LineString' as const, coordinates },
+            },
+          ]
+        : [],
+  }
+}
+
 export interface MapLibreProviderApiKeys {
   /** MapTiler ("outdoor", "satellite"). Get one at
    * https://cloud.maptiler.com/account/keys/ */
@@ -202,6 +226,7 @@ export class MapLibreProvider implements MapProvider {
     onViewChange,
     onMapClick,
     onWaypointClick,
+    onWaypointDragEnd,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -229,10 +254,25 @@ export class MapLibreProvider implements MapProvider {
     // subsequent setStyle() from setBaseLayer, which discards all prior
     // per-layer visibility since it's a fresh style parse.
     const overlayState: Record<MapOverlayId, boolean> = { ...initialOverlays }
+    let trackPreviewPoints: Coordinate[] | null = null
     map.on('style.load', () => {
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
         applyOverlay(map, overlay, overlayState[overlay])
       }
+      // setStyle() (base layer switch) discards custom sources/layers too
+      // — re-add the track preview source/layer every time, seeded with
+      // whatever's currently being recorded (or nothing).
+      map.addSource(TRACK_PREVIEW_SOURCE_ID, {
+        type: 'geojson',
+        data: trackPreviewGeoJson(trackPreviewPoints),
+      })
+      map.addLayer({
+        id: TRACK_PREVIEW_LAYER_ID,
+        type: 'line',
+        source: TRACK_PREVIEW_SOURCE_ID,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#3b82f6', 'line-width': 4 },
+      })
     })
 
     if (onViewChange) {
@@ -308,9 +348,15 @@ export class MapLibreProvider implements MapProvider {
             e.stopPropagation()
             onWaypointClick?.(waypoint.id)
           })
-          const marker = new Marker({ element: el, anchor: 'center' })
+          const marker = new Marker({ element: el, anchor: 'center', draggable: true })
             .setLngLat([waypoint.coordinate.lng, waypoint.coordinate.lat])
             .addTo(map)
+          if (onWaypointDragEnd) {
+            marker.on('dragend', () => {
+              const lngLat = marker.getLngLat()
+              onWaypointDragEnd(waypoint.id, { lat: lngLat.lat, lng: lngLat.lng })
+            })
+          }
           waypointMarkers.set(waypoint.id, marker)
         }
         for (const [id, marker] of waypointMarkers) {
@@ -319,6 +365,11 @@ export class MapLibreProvider implements MapProvider {
             waypointMarkers.delete(id)
           }
         }
+      },
+      setTrackPreview(points: Coordinate[] | null) {
+        trackPreviewPoints = points
+        const source = map.getSource(TRACK_PREVIEW_SOURCE_ID) as GeoJSONSource | undefined
+        source?.setData(trackPreviewGeoJson(points))
       },
       destroy() {
         userMarker?.remove()

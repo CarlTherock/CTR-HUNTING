@@ -17,6 +17,9 @@ export interface MapInstance {
   /** Replace the set of waypoint markers shown on the map (diffed
    * internally by id — does not recreate markers that haven't moved). */
   setWaypoints(waypoints: Waypoint[]): void
+  /** Draws (or updates) the in-progress GPS track as a line while
+   * recording. Pass `null` (or fewer than 2 points) to clear it. */
+  setTrackPreview(points: Coordinate[] | null): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }
@@ -35,6 +38,10 @@ export interface CreateMapOptions {
   onMapClick?: (coordinate: Coordinate) => void
   /** Called when the user taps/clicks an existing waypoint marker. */
   onWaypointClick?: (waypointId: string) => void
+  /** Called when the user finishes dragging a waypoint marker to a new
+   * position (drag-to-move) — the caller is responsible for persisting
+   * it; the marker's on-screen position already reflects the drop point. */
+  onWaypointDragEnd?: (waypointId: string, coordinate: Coordinate) => void
 }
 
 /**

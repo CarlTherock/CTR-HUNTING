@@ -27,7 +27,13 @@ interface WaypointsState {
   closeEdit: () => void
   updateWaypoint: (
     id: string,
-    patch: Partial<{ name: string; category: WaypointCategory; color: WaypointColor; notes: string }>,
+    patch: Partial<{
+      name: string
+      category: WaypointCategory
+      color: WaypointColor
+      notes: string
+      coordinate: Coordinate
+    }>,
   ) => Promise<void>
   deleteWaypoint: (id: string) => Promise<void>
 }
