@@ -14,6 +14,11 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
   workflow); local dev/build stay at `/`. Fixes the previously-broken
   deployment, which served the raw `index.html` with root-relative asset
   paths that 404'd under the project's GitHub Pages subpath.
+- `src/app/routes.tsx`: `createBrowserRouter` now takes
+  `{ basename: import.meta.env.BASE_URL }`. Found after the first deploy:
+  assets loaded correctly but every route 404'd, because React Router
+  didn't know requests were arriving under `/CTR-HUNTING/` and only ever
+  matched routes against the bare `/`.
 
 ## Phase 1 — Map, slice 1.1: base map (2026-08-15)
 
