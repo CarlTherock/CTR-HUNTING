@@ -52,6 +52,24 @@ describe('waypointsStore', () => {
     expect(persisted.id).toBe(state.waypoints[0].id)
   })
 
+  it('clears isPlacing synchronously, so a near-simultaneous second tap (guarded by isPlacing, the way MapPage wires onMapClick) never creates a duplicate waypoint from one tap', async () => {
+    useWaypointsStore.getState().startPlacing()
+
+    // Mirrors MapPage's onMapClick: check isPlacing, then call
+    // placeWaypointAt. Both "clicks" fire before either await resolves —
+    // exactly the sequence a device can produce for one physical tap.
+    const maybePlace = () => {
+      if (useWaypointsStore.getState().isPlacing) {
+        return useWaypointsStore.getState().placeWaypointAt({ lat: 46.8, lng: -71.2 })
+      }
+      return undefined
+    }
+    await Promise.all([maybePlace(), maybePlace()])
+
+    expect(useWaypointsStore.getState().waypoints).toHaveLength(1)
+    expect(await db.waypoints.count()).toBe(1)
+  })
+
   it('updateWaypoint writes through to Dexie and updates state', async () => {
     await useWaypointsStore.getState().placeWaypointAt({ lat: 46.8, lng: -71.2 })
     const id = useWaypointsStore.getState().waypoints[0].id

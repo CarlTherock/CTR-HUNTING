@@ -8,7 +8,9 @@ export interface CreateWaypointInput {
   notes?: string
 }
 
-export type UpdateWaypointInput = Partial<Pick<Waypoint, 'name' | 'category' | 'notes' | 'coordinate'>>
+export type UpdateWaypointInput = Partial<
+  Pick<Waypoint, 'name' | 'category' | 'color' | 'notes' | 'coordinate'>
+>
 
 /** Waypoint CRUD against the local Dexie database — real offline
  * read/write, no mocking, matching `settingsRepository`'s pattern. */

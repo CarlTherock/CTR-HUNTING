@@ -3,6 +3,48 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Waypoints: categories, colors, marker redesign; GPS recenter zoom (2026-08-16)
+
+User feedback after trying slice 2.1: wanted per-waypoint color and more
+precise categories shown on the map (referencing onX Hunt/HuntStand-style
+markers), and GPS recenter left the view too zoomed out to be useful.
+
+### Changed
+
+- `WaypointCategory` expanded from 9 generic values to 14
+  hunting-specific ones (stand/blind, trail camera, food plot, water,
+  bedding area, game sign, kill site, trailhead, parking, campsite,
+  hazard, gate, custom, general), each with its own icon
+- Added `WaypointColor` — a fixed 8-color preset per waypoint
+- `WaypointEditPanel`: category is now an icon grid (not a plain
+  `<select>`) and color a swatch picker
+- Map markers redesigned: white circle + black category icon inside a
+  colored ring (was a plain amber teardrop), `anchor: 'center'`. Editing
+  an existing waypoint now visibly updates its marker on the map, not
+  just its row in the (not yet built) list page — `setWaypoints()` was
+  only diffing position before, not category/color
+- GPS recenter (`GpsControl` → `MapPage.locate()`) now also zooms to at
+  least 16 (never zooms *out*) — before, it only panned, which could
+  leave the view too far out to be useful in the field
+
+### Fixed
+
+- Race condition in `waypointsStore.placeWaypointAt`: `isPlacing` was
+  only cleared *after* the async Dexie write completed, so two map
+  clicks landing before that write resolved (found while testing — two
+  events dispatched for what was meant to be one click) both passed the
+  "is placing" guard and created two waypoints from one tap. Now cleared
+  synchronously before the first `await`, so a second near-simultaneous
+  click reads `isPlacing: false` immediately.
+
+### Verified
+
+In-browser: category grid and color swatches render and select
+correctly; saved marker shows the right icon/ring color; the earlier
+duplicate-waypoint bug reproduced reliably with a
+mousedown+mouseup+click dispatch and is gone after the fix (single click
+→ single waypoint, confirmed via direct IndexedDB read).
+
 ## Phase 2 — Waypoints & Tracks, slice 2.1: create/edit/delete (2026-08-16)
 
 Real waypoints: tap the map to place one, edit its name/category/notes,

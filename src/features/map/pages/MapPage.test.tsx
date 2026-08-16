@@ -126,7 +126,9 @@ describe('MapPage', () => {
     expect(locateButton).toBeEnabled()
 
     await user.click(locateButton)
-    expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 } })
+    // Recenter also zooms in to a useful field scale (never out) — the
+    // fixture's default viewport zoom (6) is well below that floor.
+    expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 }, zoom: 16 })
   })
 
   it('toggles an overlay via the layer manager panel', async () => {

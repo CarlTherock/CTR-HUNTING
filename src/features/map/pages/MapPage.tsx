@@ -14,6 +14,12 @@ import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
 import { ViewModeToggle } from '../components/ViewModeToggle'
 
+/** Field/street scale — close enough to make out individual trails and
+ * terrain features after tapping "recenter on me", per user feedback
+ * that the previous recenter (pan only, no zoom change) left the view
+ * too far out to actually be useful. */
+const GPS_LOCATE_ZOOM = 16
+
 export function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<MapInstance | null>(null)
@@ -98,8 +104,13 @@ export function MapPage() {
   function locate() {
     if (gpsReading.status !== 'available') return
     const coordinate = gpsReading.value
-    setView({ center: { lat: coordinate.lat, lng: coordinate.lng } })
-    instanceRef.current?.setView({ center: { lat: coordinate.lat, lng: coordinate.lng } })
+    // Recentering should actually bring the user's position into view at
+    // a useful field scale — only zoom *in* to it (never out, in case
+    // they'd already zoomed in further than this on purpose).
+    const zoom = Math.max(view.zoom, GPS_LOCATE_ZOOM)
+    const nextView = { center: { lat: coordinate.lat, lng: coordinate.lng }, zoom }
+    setView(nextView)
+    instanceRef.current?.setView(nextView)
   }
 
   function setViewMode(pitch: number, bearing: number) {

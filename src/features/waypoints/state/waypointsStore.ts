@@ -5,7 +5,7 @@ import {
   listWaypoints,
   updateWaypoint as updateWaypointRecord,
 } from '@/database/waypointsRepository'
-import type { Coordinate, Waypoint, WaypointCategory } from '@/types'
+import type { Coordinate, Waypoint, WaypointCategory, WaypointColor } from '@/types'
 
 interface WaypointsState {
   waypoints: Waypoint[]
@@ -27,7 +27,7 @@ interface WaypointsState {
   closeEdit: () => void
   updateWaypoint: (
     id: string,
-    patch: Partial<{ name: string; category: WaypointCategory; notes: string }>,
+    patch: Partial<{ name: string; category: WaypointCategory; color: WaypointColor; notes: string }>,
   ) => Promise<void>
   deleteWaypoint: (id: string) => Promise<void>
 }
@@ -50,6 +50,13 @@ export const useWaypointsStore = create<WaypointsState>((set) => ({
   cancelPlacing: () => set({ isPlacing: false }),
 
   placeWaypointAt: async (coordinate) => {
+    // Cleared synchronously, before the `await` below yields — so a
+    // second click that lands before this one finishes persisting (e.g.
+    // a device sending both a mousedown/mouseup-derived click and a
+    // separate touch-derived click for one physical tap) reads
+    // `isPlacing: false` immediately and never creates a duplicate
+    // waypoint from the same tap.
+    set({ isPlacing: false })
     const waypoint = await createWaypoint({
       name: `Waypoint ${nextDefaultNumber++}`,
       coordinate,
@@ -57,7 +64,6 @@ export const useWaypointsStore = create<WaypointsState>((set) => ({
     })
     set((state) => ({
       waypoints: [...state.waypoints, waypoint],
-      isPlacing: false,
       editingId: waypoint.id,
     }))
   },

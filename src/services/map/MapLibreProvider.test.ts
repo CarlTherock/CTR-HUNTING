@@ -31,6 +31,9 @@ const { calls, mapInstances, markerInstances, FakeMap, FakeMarker, FakeNavigatio
         this.lngLat = lngLat
         return this
       }
+      getElement() {
+        return this.element
+      }
       addTo() {
         calls.push('addTo')
         // Mirrors the real bug: MapLibre's Marker.addTo() immediately reads
