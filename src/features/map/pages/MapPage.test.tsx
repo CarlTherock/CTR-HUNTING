@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
+import { useMapStore } from '../state/mapStore'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 // jsdom has no WebGL context, so MapLibre GL JS cannot run in tests — the
@@ -45,6 +46,9 @@ afterEach(() => {
   useLayersStore.setState({
     baseLayer: 'outdoor',
     overlays: { trails: true, hydrography: true, contours: true },
+  })
+  useMapStore.setState({
+    view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 6, pitch: 0, bearing: 0 },
   })
 })
 
@@ -128,5 +132,22 @@ describe('MapPage', () => {
     expect(screen.getByRole('checkbox', { name: 'Contour lines' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'Trails' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'Hydrography' })).toBeDisabled()
+  })
+
+  it('switches to the 3D camera preset and back without recreating the map', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    const button3D = screen.getByRole('button', { name: '3D' })
+    const button2D = screen.getByRole('button', { name: '2D' })
+    expect(button2D).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(button3D)
+    expect(setView).toHaveBeenCalledWith({ pitch: 60, bearing: -20 })
+    expect(button3D).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(button2D)
+    expect(setView).toHaveBeenCalledWith({ pitch: 0, bearing: 0 })
+    expect(createMap).toHaveBeenCalledOnce()
   })
 })

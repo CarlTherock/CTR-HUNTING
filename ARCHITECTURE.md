@@ -85,7 +85,7 @@ rules explicitly forbid.
 | ---------------------------------------- | ----- | ------------------------------------------------------------ |
 | `dashboard/`                             | 0     | Functional — landing page, roadmap status                    |
 | `settings/`                              | 0     | Functional (minimal) — connectivity + local DB check + about |
-| `map/`                                   | 1     | Functional (slice 1.1) — interactive base map, pan/zoom      |
+| `map/`                                   | 1     | Functional (all slices) — base map, GPS, layers, 2D↔3D toggle |
 | `layers/`                                | 1     | Functional (slices 1.2, 1.4) — base layer switcher + overlay toggles |
 | `gps/`                                   | 1     | Functional (slice 1.3) — live position via Geolocation API   |
 | `waypoints/`                             | 2     | Placeholder page                                             |

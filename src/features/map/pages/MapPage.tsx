@@ -9,6 +9,7 @@ import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '../state/mapStore'
+import { ViewModeToggle } from '../components/ViewModeToggle'
 
 export function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,6 +75,11 @@ export function MapPage() {
     instanceRef.current?.setView({ center: { lat: coordinate.lat, lng: coordinate.lng } })
   }
 
+  function setViewMode(pitch: number, bearing: number) {
+    setView({ pitch, bearing })
+    instanceRef.current?.setView({ pitch, bearing })
+  }
+
   return (
     <div className="flex h-full flex-col gap-6">
       <PageHeader
@@ -95,6 +101,7 @@ export function MapPage() {
             data-testid="map-container"
           />
           <LayerManagerPanel />
+          <ViewModeToggle pitch={view.pitch} onChange={setViewMode} />
           <GpsControl reading={gpsReading} onLocate={locate} />
         </div>
       ) : (

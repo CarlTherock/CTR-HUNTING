@@ -1,7 +1,7 @@
 # Field Terrain Intelligence — Project Specification
 
-**Status:** Phase 0 (Foundation) complete; Phase 1 (Map) in progress — slice
-1.1 (base map) done
+**Status:** Phase 0 (Foundation) complete; Phase 1 (Map) complete — all
+five slices (1.1–1.5) done
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -52,7 +52,7 @@ exists).
 | #   | Phase                  | Goal                                                                                                                                                                                               |
 | --- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0   | **Foundation** ✅      | React + TypeScript + Vite + PWA + Tailwind + ESLint/Prettier + tests + feature-oriented architecture + shell/nav + design system + docs                                                            |
-| 1   | Map (in progress)      | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start. Slices 1.1 (base map), 1.2 (base layer switcher), 1.3 (live GPS) and 1.4 (overlay layers) done; 1.5 (2D↔3D scaffold) pending. |
+| 1   | Map ✅                 | Interactive 2D map, zoom/pan, GPS, satellite/topo/trail/hydrography layers, contour lines, layer manager. Prepare 2D ↔ 3D from the start. All slices done: 1.1 base map, 1.2 base layer switcher, 1.3 live GPS, 1.4 overlay layers, 1.5 2D↔3D camera scaffold (elevation exaggeration is Phase 4). |
 | 2   | Waypoints & Tracks     | Create/edit/move/delete waypoints, categories, notes, photos; GPS track recording; distance/duration/altitude; local save.                                                                         |
 | 3   | Offline                | Area selection, size estimate, download, progress, local storage, storage management, offline status, resync on reconnect.                                                                         |
 | 4   | Terrain 3D             | 3D terrain, rotation/tilt/zoom/pan, orientation, altitude, slope, aspect, contour lines, elevation profile. Same layers/data as 2D.                                                                |

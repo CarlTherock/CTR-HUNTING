@@ -3,6 +3,32 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 1 — Map, slice 1.5: 2D↔3D scaffold (2026-08-16)
+
+**Phase 1 (Map) is now complete** — all five slices done.
+
+Camera toggle between a flat top-down view and a tilted perspective.
+`MapViewState.pitch`/`bearing` were modeled in from slice 1.1 specifically
+for this, so no shape change was needed — the toggle is a thin UI layer
+over the `MapInstance.setView()` that's existed since then. No elevation
+exaggeration: that needs real terrain data and MapLibre's `setTerrain`,
+which is Phase 4 ("same layers/data as 2D" per the spec) — this scaffold
+is what that phase builds on, not a preview of it.
+
+### Added
+
+- `src/features/map/components/ViewModeToggle.tsx` — 2D/3D button group;
+  derives its active state from the current `pitch` (never owns separate
+  mode state, so it can't drift out of sync with a pitch set another way,
+  e.g. drag-rotate)
+- 3D preset: pitch 60°, bearing -20°
+
+### Known limitations
+
+- No terrain elevation — Phase 4
+- View mode isn't persisted across sessions (same limitation as the rest
+  of the viewport since slice 1.1)
+
 ## App shell: branding + splash screen (2026-08-16)
 
 Display brand is now "CTR Hunting" (primary) with "Field Terrain

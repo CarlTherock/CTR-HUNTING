@@ -1,8 +1,15 @@
 # features/map
 
-**Status:** Phase 1, slice 1.1 done — interactive base map (pan/zoom) via
-MapTiler "Outdoor". Layer manager (1.2), live GPS (1.3), additional layers
-(1.4) and the 2D↔3D scaffold (1.5) are separate, not-yet-implemented slices.
+**Status:** Phase 1 complete — all five slices done: base map (1.1), layer
+manager (1.2, in `features/layers/`), live GPS (1.3, in `features/gps/`),
+additional overlay layers (1.4) and the 2D↔3D scaffold (1.5,
+`components/ViewModeToggle.tsx`).
+
+The 2D↔3D toggle only tilts/rotates the camera (`MapViewState.pitch`/
+`bearing`, modeled in since slice 1.1) — there's no elevation exaggeration
+yet. Real terrain data + MapLibre's `setTerrain` is Phase 4 ("same
+layers/data as 2D" per the spec); this scaffold is what that phase plugs
+into, not a preview of it.
 
 Interactive 2D/3D map: pan/zoom, GPS, satellite/topo/trail/hydrography base
 layers, contour lines, layer manager. The map is a central, provider-agnostic
