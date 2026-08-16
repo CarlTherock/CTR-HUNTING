@@ -19,6 +19,18 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
   assets loaded correctly but every route 404'd, because React Router
   didn't know requests were arriving under `/CTR-HUNTING/` and only ever
   matched routes against the bare `/`.
+- Routing fixed, but the map itself was still blank on the live deploy.
+  Root cause: MapLibre's worker script (`maplibre-gl-worker.mjs`) imports a
+  sibling chunk (`maplibre-gl-shared.mjs`) via a relative path; the `?url`
+  import used to fix dev mode copies the worker but not that sibling, so
+  it 404'd as soon as the worker tried to load it. Fixed by adding
+  `vite-plugin-static-copy` to copy both files, unhashed and side by side,
+  to `maplibre/` in the build output (dev and prod), and pointing
+  `setWorkerUrl()` there via `import.meta.env.BASE_URL`. Moved that call
+  from module scope into `createMap()` — at module scope it was an
+  unconditional side effect that defeated the dead-code elimination
+  documented above (an unconfigured app was shipping ~1 MB of unused
+  MapLibre code before this fix).
 
 ## Phase 1 — Map, slice 1.1: base map (2026-08-15)
 

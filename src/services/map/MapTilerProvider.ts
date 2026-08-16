@@ -1,4 +1,4 @@
-import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl'
+import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
 import type { MapViewState } from '@/types'
 import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
 
@@ -19,6 +19,17 @@ export class MapTilerProvider implements MapProvider {
   }
 
   createMap({ container, initialView, onViewChange }: CreateMapOptions): MapInstance {
+    // MapLibre resolves its worker script at runtime rather than via a
+    // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
+    // bundle automatically, so it silently 404s unless we point it there
+    // ourselves. `vite.config.ts` copies the worker (and the sibling chunk
+    // it imports) to `maplibre/` in the output, unhashed, under
+    // `BASE_URL` — matching where they're actually served, in dev and in
+    // the GitHub Pages build. Called here (not at module scope) so an app
+    // with no configured provider never pays for maplibre-gl at all — see
+    // `services/map/index.ts`.
+    setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`)
+
     const map = new MapLibreMap({
       container,
       style: this.styleUrl,

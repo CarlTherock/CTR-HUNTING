@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 // GitHub Pages serves this project from https://carltherock.github.io/CTR-HUNTING/,
 // a subpath — production assets must be built with that base, but the local
@@ -30,6 +31,26 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // MapLibre's worker (maplibre-gl-worker.mjs) imports a sibling chunk
+    // (maplibre-gl-shared.mjs) via a relative path. Vite's `?url` asset
+    // import copies a referenced file but doesn't follow *its* internal
+    // imports, so that sibling 404s unless copied alongside it with its
+    // original name intact — which is what this does, in both dev and
+    // build. See `setWorkerUrl` call in MapTilerProvider.ts.
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs',
+          dest: 'maplibre',
+          rename: { stripBase: true },
+        },
+        {
+          src: 'node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs',
+          dest: 'maplibre',
+          rename: { stripBase: true },
+        },
+      ],
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],

@@ -50,6 +50,7 @@
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.0",
     "vite-plugin-pwa": "^1.3.0",
+    "vite-plugin-static-copy": "^4.1.1",
     "vitest": "^4.1.10"
   },
   "description": "Offline-first PWA for terrain mapping, navigation, environmental awareness and field analysis."
