@@ -167,10 +167,18 @@ export class MapTilerProvider implements MapProvider {
           return
         }
         if (!userMarker) {
-          userMarker = new Marker({ element: createUserLocationElement() })
+          // Marker.addTo() immediately positions itself from `_lngLat`, so
+          // it must be set *before* adding — adding first crashes reading
+          // `.lng` off the not-yet-set position (only masked in dev/test
+          // because there, no fix ever arrives and this branch never ran).
+          userMarker = new Marker({ element: createUserLocationElement() }).setLngLat([
+            coordinate.lng,
+            coordinate.lat,
+          ])
           userMarker.addTo(map)
+        } else {
+          userMarker.setLngLat([coordinate.lng, coordinate.lat])
         }
-        userMarker.setLngLat([coordinate.lng, coordinate.lat])
       },
       destroy() {
         userMarker?.remove()

@@ -3,6 +3,27 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Fix: crash on a real GPS fix (2026-08-15)
+
+Reported by the user on both desktop and mobile, on the live deploy: the
+Map page crashed ("Cannot read properties of undefined (reading 'lng')")
+the moment a real GPS position arrived — present since slice 1.3, never
+caught before because neither the automated tests nor manual browser
+verification ever exercised a *real* fix (the test browser has no GPS, so
+the marker-creation branch of `setUserLocationMarker` never ran until a
+real device tried it).
+
+- `MapTilerProvider.setUserLocationMarker()`: MapLibre's `Marker.addTo()`
+  immediately reads `this._lngLat.lng` to position itself — it was being
+  called before `setLngLat()`, on a brand-new marker with no position set
+  yet. Fixed by positioning the marker before adding it.
+- Added `src/services/map/MapTilerProvider.test.ts` (previously no test
+  exercised this file's actual logic — `MapPage.test.tsx` mocks the whole
+  adapter). Confirmed the new test fails with the exact same error against
+  the old code, and passes against the fix.
+- Verified against a simulated real GPS fix in-browser (no such fixture
+  existed before), across a base layer switch too.
+
 ## Phase 1 — Map, slice 1.4: overlay layers (2026-08-15)
 
 Independently-toggleable overlays on top of the Outdoor base layer:
