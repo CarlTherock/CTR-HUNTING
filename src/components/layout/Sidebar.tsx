@@ -12,8 +12,8 @@ export function Sidebar() {
       <div className="border-surface-800 flex items-center gap-2 border-b px-5 py-5">
         <Compass className="text-brand-400" size={22} aria-hidden="true" />
         <div className="leading-tight">
-          <p className="text-ink-100 text-sm font-semibold">Field Terrain</p>
-          <p className="text-ink-500 text-xs">Intelligence</p>
+          <p className="text-ink-100 text-sm font-semibold tracking-wide">CTR HUNTING</p>
+          <p className="text-ink-500 text-xs">Field Terrain Intelligence</p>
         </div>
       </div>
 

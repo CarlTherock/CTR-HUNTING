@@ -40,8 +40,8 @@ export function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Field Terrain Intelligence"
-        description="Offline-first terrain mapping, navigation and field intelligence."
+        title="CTR Hunting"
+        description="Field Terrain Intelligence — offline-first terrain mapping, navigation and field intelligence."
       />
 
       <Card>

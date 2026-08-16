@@ -55,8 +55,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Field Terrain Intelligence',
-        short_name: 'FTI',
+        name: 'CTR Hunting — Field Terrain Intelligence',
+        short_name: 'CTR Hunting',
         description:
           'Offline-first terrain mapping, navigation and field intelligence platform.',
         theme_color: '#0f172a',

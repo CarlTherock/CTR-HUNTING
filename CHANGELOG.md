@@ -3,6 +3,34 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## App shell: branding + splash screen (2026-08-16)
+
+Display brand is now "CTR Hunting" (primary) with "Field Terrain
+Intelligence" as tagline — applied consistently across the sidebar brand
+mark, mobile top bar, dashboard title, browser tab title, and the PWA's
+installed name. `PROJECT_SPECIFICATION.md`/`ARCHITECTURE.md` keep "Field
+Terrain Intelligence" as the product's technical/spec name; this only
+changes what's user-visible.
+
+### Added
+
+- `src/components/layout/Splash.tsx` — branded opening screen (compass
+  mark, animated entrance, progress sweep) shown once per cold launch,
+  **only** when running standalone/installed (`display-mode: standalone`
+  or iOS's `navigator.standalone`) — never on an ordinary browser tab, so
+  it doesn't add a delay to normal web/dev use. `App.tsx` renders it as
+  an overlay on top of the already-mounted app, not blocking anything.
+- Custom entrance keyframes (`splash-icon`, `splash-text`,
+  `splash-sweep`) in `src/index.css`.
+
+### Changed
+
+- `vite.config.ts`: PWA manifest `name`/`short_name` → "CTR Hunting —
+  Field Terrain Intelligence" / "CTR Hunting" (shown under the icon on a
+  phone's home screen after install)
+- `index.html` `<title>` → "CTR Hunting"
+- `Sidebar`, `TopBar`, `DashboardPage`: brand text updated to match
+
 ## Fix: crash on a real GPS fix (2026-08-15)
 
 Reported by the user on both desktop and mobile, on the live deploy: the
