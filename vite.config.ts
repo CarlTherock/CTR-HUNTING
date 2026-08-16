@@ -12,6 +12,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    // MapLibre GL JS ships its own web worker loaded via a dynamic import
+    // Vite's esbuild-based dep optimizer can't pre-bundle correctly (it
+    // fails to resolve `maplibre-gl-worker.mjs` from the optimized deps
+    // cache in dev mode). Excluding it makes Vite serve the package as-is,
+    // which resolves the worker correctly. Production builds (Rollup) are
+    // unaffected — this only changes dev-server behavior.
+    exclude: ['maplibre-gl'],
+  },
   plugins: [
     react(),
     tailwindcss(),

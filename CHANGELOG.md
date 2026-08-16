@@ -26,6 +26,16 @@ layer manager, GPS, additional layers, or 2D/3D scaffold yet (slices
   explicit "Map unavailable" state (not a broken map) when it isn't
 - `VITE_MAP_TILES_API_KEY` documented in `.env.example`
 
+### Fixed
+
+- `vite.config.ts`: excluded `maplibre-gl` from the dev-server dependency
+  optimizer — its web worker isn't pre-bundled correctly by Vite's esbuild
+  optimizer in dev mode (`maplibre-gl-worker.mjs` fails to resolve), which
+  left the map blank with no console error. Production builds (Rollup)
+  were never affected. Found by manually verifying the map in a browser
+  with a real MapTiler key, not by the automated test suite (which mocks
+  the map engine) — a reminder that "tests pass" isn't "the feature works."
+
 ### Known limitations
 
 - No layer manager, live GPS, trail/hydrography/contour layers, or 3D yet —
@@ -33,6 +43,10 @@ layer manager, GPS, additional layers, or 2D/3D scaffold yet (slices
 - Requires a real MapTiler API key in `.env` to render tiles; without one,
   the page shows the unavailable state by design (never fabricated data)
 - Viewport is not yet persisted across sessions
+- Production bundle with a real map key exceeds Vite's 500 KB chunk-size
+  warning (~1.3 MB, MapLibre GL JS dominates); route-based code-splitting
+  is deferred until more features exist to split around, per the existing
+  Phase 0 bundle-size decision
 
 ## Phase 0 — Foundation (2026-08-15)
 
