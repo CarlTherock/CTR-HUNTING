@@ -3,6 +3,46 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Layout: fixed-height app shell (mobile GPS button was off-screen) (2026-08-16)
+
+User feedback: on mobile, the Map page's "recenter on me" button was
+below the fold, and trying to scroll the page up to reach it instead
+panned the map (the touch landed on the map canvas, which owns that
+gesture).
+
+### Root cause
+
+`AppShell`'s root was `min-h-dvh`, not `h-dvh` — a min-height lets the
+whole page grow taller than the viewport to fit its content, which
+defeats `<main>`'s own `overflow-y-auto` (nothing to scroll *within* once
+the outer page already grew to match) and left the Map page's `h-full`
+map container without a real bound to size against — it fell back to
+`min-h-[60vh]`, which combined with the header/nav chrome could push
+floating controls below the fold.
+
+### Changed
+
+- `AppShell.tsx`: root `min-h-dvh` → `h-dvh` (fixed) — the page itself
+  never exceeds the viewport now; `<main>` scrolls internally for pages
+  with more content than fits (confirmed still works on Dashboard), and
+  the Map page's map container gets a real bounded height to fill.
+- `MapPage.tsx`: dropped the "Interactive terrain map — MapTiler and Esri
+  base layers, switchable below." description line and tightened the
+  page's vertical gap (`gap-6` → `gap-3`) — extra room reclaimed for the
+  map itself, per user feedback that it was eating into limited mobile
+  screen space for a sentence that added little.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (89/89) and `build` all pass.
+In-browser at a 375×812 mobile viewport: confirmed `document.documentElement.scrollHeight`
+now equals `window.innerHeight` (no more page-level overflow) on the Map
+page, and that the Dashboard page (long content) still scrolls correctly
+*inside* `<main>` rather than the whole page. Could not visually confirm
+the GPS button's exact on-screen position with a live map (no API key in
+the local `.env`) — the underlying page-scroll bug is fixed regardless of
+that, since it was a layout issue independent of the map itself.
+
 ## Phase 2 — Waypoints & Tracks, slices 2.2 & 2.3 (2026-08-16)
 
 Dedicated Waypoints & Tracks list page, drag-to-move for waypoints, and

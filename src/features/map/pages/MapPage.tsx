@@ -138,10 +138,9 @@ export function MapPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-6">
+    <div className="flex h-full flex-col gap-3">
       <PageHeader
         title="Map"
-        description="Interactive terrain map — MapTiler and Esri base layers, switchable below."
         actions={
           <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
             {gpsReading.status === 'available'
