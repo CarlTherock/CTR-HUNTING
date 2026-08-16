@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { deletePhotosForWaypoint } from '@/database/photosRepository'
 import {
   createWaypoint,
   deleteWaypoint as deleteWaypointRecord,
@@ -33,6 +34,7 @@ interface WaypointsState {
       color: WaypointColor
       notes: string
       coordinate: Coordinate
+      photoIds: string[]
     }>,
   ) => Promise<void>
   deleteWaypoint: (id: string) => Promise<void>
@@ -88,6 +90,9 @@ export const useWaypointsStore = create<WaypointsState>((set) => ({
 
   deleteWaypoint: async (id) => {
     await deleteWaypointRecord(id)
+    // Photos reference their waypoint but nothing references the photos
+    // back — without this they'd be orphaned in Dexie forever.
+    await deletePhotosForWaypoint(id)
     set((state) => ({
       waypoints: state.waypoints.filter((w) => w.id !== id),
       editingId: state.editingId === id ? null : state.editingId,

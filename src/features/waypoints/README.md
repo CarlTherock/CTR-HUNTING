@@ -1,9 +1,9 @@
 # features/waypoints
 
-**Status:** Phase 2, slices 2.1–2.3 done — create/edit/delete/drag-to-move
-waypoints, categories, notes, a dedicated list page, and GPS track
-recording, all with real local persistence. Slice 2.4 (waypoint photos)
-is not started.
+**Status:** Phase 2 complete — all four slices done: create/edit/delete/
+drag-to-move waypoints (2.1/2.2), categories, notes, a dedicated list
+page, GPS track recording (2.3), and waypoint photos (2.4), all with
+real local persistence.
 
 Waypoint/track *creation* still only happens from the Map page — a
 waypoint needs a tap-on-map position (`components/WaypointControl.tsx`
@@ -91,3 +91,32 @@ Not built yet (noted, not implemented): trimming a track after the fact
 (non-active) track back onto the map — both flagged as follow-ups in
 `NOTES_TECHNIQUES_FUTURES.md` from the onX Hunt/HuntStand research, not
 required for this slice.
+
+## Waypoint photos (slice 2.4)
+
+`components/WaypointPhotos.tsx`, rendered inside `WaypointEditPanel`.
+`src/database/photosRepository.ts` (Dexie `photos` table, added via a
+`db.version(2).stores(...)` bump in `db.ts`) stores each photo as a real
+`Blob` — not a base64 data URL, smaller on disk and no encode/decode
+round-trip for something already binary. A photo's `<img>` is shown via
+`URL.createObjectURL(photo.blob)`, created/revoked alongside whatever
+loads or changes the photo list (the initial Dexie load, `handleFileChange`,
+`handleDelete`) rather than through a second effect purely deriving from
+state — see `WaypointPhotos.tsx`'s comments for why: React's rules
+discourage a synchronous `setState` call in an effect body outside a
+subscription callback, which a naive "recompute all object URLs whenever
+`photos` changes" effect would be.
+
+Adding a photo is a plain `<input type="file" accept="image/*"
+capture="environment">` — it delegates entirely to the device's own
+camera/gallery picker. This is **not** Phase 12's camera tool (live
+preview, zoom, exposure, filters); slice 2.4 only needs to attach an
+already-taken photo to a waypoint, matching "don't build ahead of the
+roadmap."
+
+`Waypoint.photoIds` (`src/types/geo.ts`) stays in sync with the `photos`
+table so `WaypointsPage`'s list can show a photo count per waypoint
+without querying the photos table at all — just `photoIds.length`.
+Deleting a waypoint (`waypointsStore.deleteWaypoint`) also deletes its
+photos (`deletePhotosForWaypoint`) — without that they'd be orphaned in
+Dexie forever, since nothing else references them.

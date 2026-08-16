@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn'
 import type { WaypointCategory, WaypointColor } from '@/types'
 import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR } from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
+import { WaypointPhotos } from './WaypointPhotos'
 
 /** Bottom-sheet form for a waypoint's name/category/color/notes, opened
  * either right after placing a new one or by tapping an existing marker.
@@ -136,6 +137,8 @@ export function WaypointEditPanel() {
               className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 resize-none rounded-md border px-2.5 py-1.5 text-sm outline-none focus-visible:outline-2"
             />
           </label>
+
+          <WaypointPhotos waypointId={editingId} photoIds={waypoint.photoIds ?? []} />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">

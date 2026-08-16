@@ -20,7 +20,7 @@ type PhaseStatus = 'done' | 'in-progress' | 'pending'
 const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
   { phase: 0, label: 'Foundation', status: 'done' },
   { phase: 1, label: 'Map', status: 'done' },
-  { phase: 2, label: 'Waypoints & Tracks', status: 'in-progress' },
+  { phase: 2, label: 'Waypoints & Tracks', status: 'done' },
   { phase: 3, label: 'Offline', status: 'pending' },
   { phase: 4, label: 'Terrain 3D', status: 'pending' },
   { phase: 5, label: 'Weather', status: 'pending' },

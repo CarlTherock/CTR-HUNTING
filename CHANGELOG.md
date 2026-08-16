@@ -3,6 +3,42 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 2 — Waypoints & Tracks, slice 2.4: waypoint photos (2026-08-16)
+
+Phase 2 is now complete. Waypoints can have photos attached, viewed, and
+removed from `WaypointEditPanel`.
+
+### Added
+
+- `types/photo.ts` (`Photo`) + `database/photosRepository.ts`: photo CRUD
+  against a new Dexie `photos` table (`db.ts` bumped to
+  `version(2)` — only the changed/new store needs listing, Dexie carries
+  over the rest unchanged). Photos are stored as real `Blob`s, not base64
+  data URLs.
+- `components/WaypointPhotos.tsx`: photo grid + "add photo" tile, rendered
+  inside `WaypointEditPanel`. Adding a photo is a plain `<input
+  type="file" accept="image/*" capture="environment">` — delegates
+  entirely to the device's camera/gallery picker. This is **not** Phase
+  12's camera tool (live preview, filters, exposure); slice 2.4 only
+  attaches an already-taken photo, per "don't build ahead of the
+  roadmap."
+- `Waypoint.photoIds` now writes through on add/delete, so
+  `WaypointsPage`'s list can show a photo count per waypoint (camera icon
+  + count) without querying the photos table.
+- Deleting a waypoint (`waypointsStore.deleteWaypoint`) now also deletes
+  its photos (`deletePhotosForWaypoint`) — otherwise they'd be orphaned
+  in Dexie forever.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (94/94 — 5 new
+`photosRepository.test.ts` tests) and `build` all pass. In-browser:
+seeded a waypoint, attached a real 1×1 PNG through the file input (no
+camera in this environment), confirmed the thumbnail rendered via a
+`blob:` object URL (`naturalWidth: 1`, `complete: true`), confirmed the
+list page's photo-count badge appeared, deleted the photo and confirmed
+the Dexie `photos` table emptied.
+
 ## Dashboard: roadmap status caught up to actual progress (2026-08-16)
 
 `DashboardPage`'s roadmap list and "current phase" badge had never been

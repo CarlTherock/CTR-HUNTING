@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapPinned, Route, Trash2 } from 'lucide-react'
+import { Camera, MapPinned, Route, Trash2 } from 'lucide-react'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
 import { CATEGORY_ICON, CATEGORY_LABEL, DEFAULT_WAYPOINT_COLOR } from '../categories'
@@ -71,6 +71,7 @@ export function WaypointsPage() {
             {waypoints.map((waypoint) => {
               const Icon = CATEGORY_ICON[waypoint.category] ?? CATEGORY_ICON.general
               const color = waypoint.color ?? DEFAULT_WAYPOINT_COLOR
+              const photoCount = waypoint.photoIds?.length ?? 0
               return (
                 <Card key={waypoint.id} className="p-0">
                   <button
@@ -88,9 +89,15 @@ export function WaypointsPage() {
                       <span className="text-ink-100 block truncate text-sm font-medium">
                         {waypoint.name}
                       </span>
-                      <span className="text-ink-500 block truncate text-xs">
+                      <span className="text-ink-500 flex items-center gap-1 truncate text-xs">
                         {CATEGORY_LABEL[waypoint.category]} ·{' '}
                         {formatCoordinate(waypoint.coordinate.lat, waypoint.coordinate.lng)}
+                        {photoCount > 0 && (
+                          <span className="ml-1 inline-flex items-center gap-0.5">
+                            <Camera size={11} aria-hidden="true" />
+                            {photoCount}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>

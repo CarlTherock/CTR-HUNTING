@@ -230,8 +230,15 @@ describe('MapPage', () => {
     expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Delete' }))
-    expect(await db.waypoints.toArray()).toEqual([])
-    expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
+    await vi.waitFor(async () => {
+      expect(await db.waypoints.toArray()).toEqual([])
+    })
+    // deleteWaypoint now also awaits deletePhotosForWaypoint before
+    // clearing editingId, one more microtask hop than the Dexie write
+    // alone — wait for the effect rather than asserting immediately.
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
+    })
   })
 
   it('persists a waypoint drag via onWaypointDragEnd (drag-to-move)', async () => {

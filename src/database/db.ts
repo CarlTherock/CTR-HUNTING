@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Waypoint, Track, Observation } from '@/types'
+import type { Waypoint, Track, Observation, Photo } from '@/types'
 
 /**
  * Local-first persistence layer (IndexedDB via Dexie).
@@ -35,6 +35,8 @@ export class FieldTerrainDatabase extends Dexie {
   settings!: EntityTable<SettingRecord, 'key'>
   /** Pending changes to push once connectivity returns (Phase 15 — Sync). */
   syncQueue!: EntityTable<SyncQueueRecord, 'id'>
+  /** Waypoint photos (Phase 2, slice 2.4). Blobs, not data URLs. */
+  photos!: EntityTable<Photo, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -45,6 +47,12 @@ export class FieldTerrainDatabase extends Dexie {
       observations: 'id, waypointId, timestamp',
       settings: 'key',
       syncQueue: 'id, entity, entityId, queuedAt',
+    })
+
+    // Only the new/changed store needs listing — Dexie carries over
+    // unlisted stores from the previous version unchanged.
+    this.version(2).stores({
+      photos: 'id, waypointId, createdAt',
     })
   }
 }
