@@ -1,4 +1,5 @@
-import { Layers as LayersIcon } from 'lucide-react'
+import { useState } from 'react'
+import { Layers as LayersIcon, X } from 'lucide-react'
 import { availableBaseLayers } from '@/services/map'
 import type { MapBaseLayerOption, MapOverlayOption } from '@/types'
 import { cn } from '@/utils/cn'
@@ -31,8 +32,15 @@ const OVERLAYS: MapOverlayOption[] = [
  * `services/map/index.ts`), plus overlay toggles (slice 1.4). Overlays
  * only exist inside MapTiler's "Outdoor" style — every other base layer
  * (MapTiler "Satellite", any Esri style) has no equivalent layers to show
- * or hide — so they're disabled rather than silently doing nothing. */
+ * or hide — so they're disabled rather than silently doing nothing.
+ *
+ * Collapses to a small icon button once a base layer is picked, so the
+ * (now fairly tall, 10-option) list doesn't keep covering most of the
+ * map on a phone screen — reopen it to change layers again. Overlays
+ * don't collapse it: those are more of a "flip a few, one at a time"
+ * action than a single choice. */
 export function LayerManagerPanel() {
+  const [isOpen, setIsOpen] = useState(true)
   const baseLayer = useLayersStore((state) => state.baseLayer)
   const setBaseLayer = useLayersStore((state) => state.setBaseLayer)
   const overlays = useLayersStore((state) => state.overlays)
@@ -42,11 +50,41 @@ export function LayerManagerPanel() {
   const mapTilerOptions = MAPTILER_LAYERS.filter((o) => availableBaseLayers.includes(o.id))
   const esriOptions = ESRI_LAYERS.filter((o) => availableBaseLayers.includes(o.id))
 
+  function selectBaseLayer(id: MapBaseLayerOption['id']) {
+    setBaseLayer(id)
+    setIsOpen(false)
+  }
+
+  if (!isOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        title="Choose base layer"
+        aria-label="Choose base layer"
+        className="border-surface-600 bg-surface-900/90 text-ink-300 hover:text-brand-400 absolute top-3 left-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
+      >
+        <LayersIcon size={18} aria-hidden="true" />
+      </button>
+    )
+  }
+
   return (
     <div className="border-surface-600 bg-surface-900/90 absolute top-3 left-3 z-10 max-h-[75vh] w-44 overflow-y-auto rounded-lg border p-2 shadow-lg backdrop-blur-sm">
-      <div className="text-ink-500 mb-1.5 flex items-center gap-1.5 px-1 text-xs font-semibold">
-        <LayersIcon size={14} aria-hidden="true" />
-        Base layer
+      <div className="mb-1.5 flex items-center justify-between gap-1.5 px-1">
+        <div className="text-ink-500 flex items-center gap-1.5 text-xs font-semibold">
+          <LayersIcon size={14} aria-hidden="true" />
+          Base layer
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          title="Close"
+          aria-label="Close base layer panel"
+          className="text-ink-500 hover:text-ink-100"
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
       </div>
       <div role="radiogroup" aria-label="Base layer" className="flex flex-col gap-2.5">
         {mapTilerOptions.length > 0 && (
@@ -54,7 +92,7 @@ export function LayerManagerPanel() {
             title="MapTiler"
             options={mapTilerOptions}
             active={baseLayer}
-            onSelect={setBaseLayer}
+            onSelect={selectBaseLayer}
           />
         )}
         {esriOptions.length > 0 && (
@@ -62,7 +100,7 @@ export function LayerManagerPanel() {
             title="Esri"
             options={esriOptions}
             active={baseLayer}
-            onSelect={setBaseLayer}
+            onSelect={selectBaseLayer}
           />
         )}
       </div>

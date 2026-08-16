@@ -52,4 +52,29 @@ describe('LayerManagerPanel', () => {
     await user.click(screen.getByRole('radio', { name: 'Terrain' }))
     expect(useLayersStore.getState().baseLayer).toBe('esri-terrain')
   })
+
+  it('collapses to a reopen button after picking a base layer, so it stops covering the map', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(<LayerManagerPanel />)
+
+    await user.click(screen.getByRole('radio', { name: 'Satellite' }))
+
+    expect(screen.queryByRole('radio', { name: 'Satellite' })).not.toBeInTheDocument()
+    const reopenButton = screen.getByRole('button', { name: 'Choose base layer' })
+    expect(reopenButton).toBeInTheDocument()
+
+    await user.click(reopenButton)
+    expect(screen.getByRole('radio', { name: 'Satellite' })).toBeInTheDocument()
+  })
+
+  it('does not collapse when toggling an overlay', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(<LayerManagerPanel />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Trails' }))
+
+    expect(screen.getByRole('radio', { name: 'Satellite' })).toBeInTheDocument()
+  })
 })

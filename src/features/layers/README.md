@@ -12,6 +12,11 @@ configured (`availableBaseLayers`, `src/services/map/`). Switching the
 base layer calls `MapInstance.setBaseLayer()`, toggling an overlay calls
 `setOverlayVisible()` — neither recreates the map.
 
+The panel collapses to a small icon button as soon as a base layer is
+picked (ten options is a lot to leave covering a phone screen) — tap it
+to reopen. Toggling an overlay does *not* collapse it, since that's more
+of a "flip a few, one at a time" action than a single choice.
+
 ## Base layers
 
 Ten base layers across two vendors, picked for what the app actually

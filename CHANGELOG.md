@@ -3,6 +3,14 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## LayerManagerPanel: collapse after picking a base layer (2026-08-16)
+
+Mobile UX fix: ten base-layer options left the panel covering most of a
+phone screen after choosing one, with no way to see the map. It now
+collapses to a small icon button as soon as a base layer is picked;
+tapping the icon reopens it. Toggling an overlay does not collapse it —
+that's a "flip a few, one at a time" action, not a single choice.
+
 ## Second map vendor: Esri (2026-08-16)
 
 Eight new base layers from Esri's Basemap Styles v2 service, alongside
