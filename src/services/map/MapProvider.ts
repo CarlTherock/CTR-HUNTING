@@ -1,4 +1,4 @@
-import type { Coordinate, MapBaseLayerId, MapViewState } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState } from '@/types'
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
@@ -8,6 +8,9 @@ export interface MapInstance {
   setView(view: Partial<MapViewState>): void
   /** Swap the active base style (e.g. Outdoor → Satellite). */
   setBaseLayer(layer: MapBaseLayerId): void
+  /** Show or hide an overlay. A no-op if the current base layer has no
+   * matching layers (e.g. overlays have no effect on "Satellite"). */
+  setOverlayVisible(overlay: MapOverlayId, visible: boolean): void
   /** Show/update the device's current GPS position on the map. Pass
    * `null` to remove it (no fix, permission denied, signal lost). */
   setUserLocationMarker(coordinate: Coordinate | null): void
@@ -20,6 +23,7 @@ export interface CreateMapOptions {
   container: HTMLElement
   initialView: MapViewState
   initialBaseLayer: MapBaseLayerId
+  initialOverlays: Record<MapOverlayId, boolean>
   /** Called on every user-driven camera change (pan/zoom/rotate/tilt), so
    * the caller can mirror it into shared state (see `mapStore`). */
   onViewChange?: (view: MapViewState) => void

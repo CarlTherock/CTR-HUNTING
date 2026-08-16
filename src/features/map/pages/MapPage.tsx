@@ -17,6 +17,8 @@ export function MapPage() {
   const setView = useMapStore((state) => state.setView)
   const baseLayer = useLayersStore((state) => state.baseLayer)
   const appliedBaseLayerRef = useRef(baseLayer)
+  const overlays = useLayersStore((state) => state.overlays)
+  const appliedOverlaysRef = useRef(overlays)
   const gpsReading = useGeolocation()
 
   useEffect(() => {
@@ -26,6 +28,7 @@ export function MapPage() {
       container: containerRef.current,
       initialView: view,
       initialBaseLayer: useLayersStore.getState().baseLayer,
+      initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
     })
     instanceRef.current = instance
@@ -46,6 +49,17 @@ export function MapPage() {
     appliedBaseLayerRef.current = baseLayer
     instanceRef.current?.setBaseLayer(baseLayer)
   }, [baseLayer])
+
+  useEffect(() => {
+    if (appliedOverlaysRef.current === overlays) return
+    const previous = appliedOverlaysRef.current
+    appliedOverlaysRef.current = overlays
+    for (const id of Object.keys(overlays) as (keyof typeof overlays)[]) {
+      if (overlays[id] !== previous[id]) {
+        instanceRef.current?.setOverlayVisible(id, overlays[id])
+      }
+    }
+  }, [overlays])
 
   useEffect(() => {
     instanceRef.current?.setUserLocationMarker(

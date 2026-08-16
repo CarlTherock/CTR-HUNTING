@@ -1,6 +1,57 @@
 import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
-import type { Coordinate, MapBaseLayerId, MapViewState } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState } from '@/types'
 import type { CreateMapOptions, MapInstance, MapProvider } from './MapProvider'
+
+/** Real vector layer IDs inside MapTiler's "Outdoor" style, grouped by
+ * overlay. MapTiler doesn't expose trails/hydrography/contours as
+ * separate style URLs, so toggling them means hiding/showing layers that
+ * already exist in this one style — extracted from the style's own
+ * `style.json` (`layers[].id`), not invented. The "Satellite" style has
+ * none of these layers; `setOverlayVisible` no-ops there. */
+const OVERLAY_LAYER_IDS: Record<MapOverlayId, string[]> = {
+  contours: ['contour_index', 'contour', 'contour_label'],
+  hydrography: [
+    'water',
+    'water_intermittent',
+    'waterway_tunnel',
+    'waterway_river',
+    'waterway_river_intermittent',
+    'waterway_other',
+    'waterway_other_intermittent',
+    'water_name_line',
+    'water_name_point',
+    'water_name_way',
+    'outdoor_poi_waterfall',
+    'outdoor_poi_drinking_water',
+  ],
+  trails: [
+    'tunnel_road_path',
+    'road_path_casing',
+    'road_path',
+    'road_label_track',
+    'trail_longdistance_casing',
+    'trail_longdistance',
+    ...(
+      ['yellow', 'green', 'blue', 'brown', 'black', 'purple', 'orange', 'red'] as const
+    ).flatMap((color) => [
+      `trail_${color}_casing`,
+      `trail_${color}_casing_extra`,
+      `trail_${color}`,
+      `trail_${color}_extra`,
+    ]),
+  ],
+}
+
+/** Applies one overlay's visibility to whichever of its layers actually
+ * exist in the currently-loaded style — silently does nothing for layers
+ * that aren't there (e.g. any overlay against the "Satellite" style). */
+function applyOverlay(map: MapLibreMap, overlay: MapOverlayId, visible: boolean): void {
+  for (const layerId of OVERLAY_LAYER_IDS[overlay]) {
+    if (map.getLayer(layerId)) {
+      map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
+    }
+  }
+}
 
 /** Small blue dot + white ring, the near-universal "you are here" marker
  * convention — distinct from the teardrop pins waypoints use (Phase 2), so
@@ -46,6 +97,7 @@ export class MapTilerProvider implements MapProvider {
     container,
     initialView,
     initialBaseLayer,
+    initialOverlays,
     onViewChange,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
@@ -70,6 +122,16 @@ export class MapTilerProvider implements MapProvider {
 
     map.addControl(new NavigationControl(), 'top-right')
 
+    // Re-applied on every style load — including the first one, and every
+    // subsequent setStyle() from setBaseLayer, which discards all prior
+    // per-layer visibility since it's a fresh style parse.
+    const overlayState: Record<MapOverlayId, boolean> = { ...initialOverlays }
+    map.on('style.load', () => {
+      for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
+        applyOverlay(map, overlay, overlayState[overlay])
+      }
+    })
+
     if (onViewChange) {
       map.on('moveend', () => {
         const center = map.getCenter()
@@ -93,6 +155,10 @@ export class MapTilerProvider implements MapProvider {
       },
       setBaseLayer: (layer: MapBaseLayerId) => {
         map.setStyle(this.styleUrl(layer))
+      },
+      setOverlayVisible(overlay: MapOverlayId, visible: boolean) {
+        overlayState[overlay] = visible
+        applyOverlay(map, overlay, visible)
       },
       setUserLocationMarker(coordinate: Coordinate | null) {
         if (!coordinate) {

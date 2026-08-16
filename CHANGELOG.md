@@ -3,6 +3,35 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 1 — Map, slice 1.4: overlay layers (2026-08-15)
+
+Independently-toggleable overlays on top of the Outdoor base layer:
+trails, hydrography, contour lines. Per-layer opacity is not built yet.
+Slice 1.5 (2D↔3D scaffold) is the only remaining Phase 1 slice.
+
+### Added
+
+- `MapProvider`/`MapInstance` gained `initialOverlays` and
+  `setOverlayVisible()`
+- `MapTilerProvider`'s `OVERLAY_LAYER_IDS` maps each overlay to the real
+  vector layer IDs already inside MapTiler's "Outdoor" style (extracted
+  from its `style.json`, not invented) and toggles their `visibility`
+  layout property; re-applied on every `style.load` since `setStyle()`
+  (base layer switching) discards per-layer overrides on a fresh style
+  parse
+- `layersStore` gained `overlays` (all on by default, matching the
+  pre-1.4 appearance) and `toggleOverlay()`
+- `LayerManagerPanel` gained an overlay checkbox section
+
+### Known limitations
+
+- Overlays only affect the "Outdoor" base layer — MapTiler's "Satellite"
+  style has no equivalent layers, so the panel disables the checkboxes
+  rather than let them silently do nothing while Satellite is active
+- No per-layer opacity control
+- Overlay/base layer selection is not persisted across sessions (same
+  limitation as the viewport since slice 1.1)
+
 ## Phase 1 — Map, slice 1.3: live GPS (2026-08-15)
 
 Real device position via the browser Geolocation API — a marker on the

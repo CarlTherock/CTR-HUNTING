@@ -18,3 +18,15 @@ export interface MapBaseLayerOption {
   id: MapBaseLayerId
   label: string
 }
+
+/** An independently-toggleable overlay (slice 1.4). These are real vector
+ * layers already present inside the "Outdoor" base style (MapTiler doesn't
+ * expose them as separate style URLs), so they only have an effect while
+ * that base layer is active — the "Satellite" style has no equivalent
+ * layers to show or hide. */
+export type MapOverlayId = 'trails' | 'hydrography' | 'contours'
+
+export interface MapOverlayOption {
+  id: MapOverlayId
+  label: string
+}

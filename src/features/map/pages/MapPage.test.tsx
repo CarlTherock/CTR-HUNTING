@@ -10,9 +10,16 @@ import type { GeolocationReading } from '@/features/gps/useGeolocation'
 // never need to know that; we mock the adapter, not the map engine.
 const destroy = vi.fn()
 const setBaseLayer = vi.fn()
+const setOverlayVisible = vi.fn()
 const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
-const createMap = vi.fn(() => ({ setView, setBaseLayer, setUserLocationMarker, destroy }))
+const createMap = vi.fn(() => ({
+  setView,
+  setBaseLayer,
+  setOverlayVisible,
+  setUserLocationMarker,
+  destroy,
+}))
 
 let mockProvider: { createMap: typeof createMap } | null = { createMap }
 
@@ -35,7 +42,10 @@ afterEach(() => {
   vi.clearAllMocks()
   mockProvider = { createMap }
   mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
-  useLayersStore.setState({ baseLayer: 'outdoor' })
+  useLayersStore.setState({
+    baseLayer: 'outdoor',
+    overlays: { trails: true, hydrography: true, contours: true },
+  })
 })
 
 describe('MapPage', () => {
@@ -96,5 +106,27 @@ describe('MapPage', () => {
 
     await user.click(locateButton)
     expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 } })
+  })
+
+  it('toggles an overlay via the layer manager panel', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    const contoursToggle = screen.getByRole('checkbox', { name: 'Contour lines' })
+    expect(contoursToggle).toBeEnabled()
+
+    await user.click(contoursToggle)
+
+    expect(setOverlayVisible).toHaveBeenCalledOnce()
+    expect(setOverlayVisible).toHaveBeenCalledWith('contours', false)
+  })
+
+  it('disables overlay toggles while the Satellite base layer is active', () => {
+    useLayersStore.setState({ baseLayer: 'satellite' })
+    render(<MapPage />)
+
+    expect(screen.getByRole('checkbox', { name: 'Contour lines' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Trails' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Hydrography' })).toBeDisabled()
   })
 })
