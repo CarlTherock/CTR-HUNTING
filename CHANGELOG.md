@@ -3,6 +3,35 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Dashboard: roadmap status caught up to actual progress (2026-08-16)
+
+`DashboardPage`'s roadmap list and "current phase" badge had never been
+updated since Phase 0 — Phase 1 (Map) and the in-progress Phase 2
+(Waypoints & Tracks) both still showed as not-started, silently stale
+against `PROJECT_SPECIFICATION.md`'s phase table (the actual source of
+truth) since neither is generated from the other.
+
+### Changed
+
+- `ROADMAP` entries now carry a `status` (`'done' | 'in-progress' |
+  'pending'`) instead of a plain boolean — phases 0 and 1 marked `done`,
+  phase 2 `in-progress`, matching `PROJECT_SPECIFICATION.md`.
+- Roadmap list: a third visual state (amber dot icon + amber text) for
+  `in-progress`, distinct from the green checkmark (`done`) and gray
+  circle (`pending`) it already had.
+- The "Status" card's phase badge is now derived from `ROADMAP` (first
+  non-`done` phase) instead of hardcoded to "Phase 0 — Foundation" —
+  correct automatically as phases complete, not just this once.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (89/89 — updated `App.test.tsx`'s
+assertion, which was pinned to the old hardcoded "Phase 0" badge text)
+and `build` all pass. In-browser at a mobile viewport: confirmed the
+Status badge reads "Phase 2 — Waypoints & Tracks (in progress)" and the
+roadmap list shows phases 0–1 checked, phase 2 with the amber
+in-progress marker, and 3–17 still pending.
+
 ## Layout: fixed-height app shell (mobile GPS button was off-screen) (2026-08-16)
 
 User feedback: on mobile, the Map page's "recenter on me" button was

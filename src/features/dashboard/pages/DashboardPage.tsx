@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Circle } from 'lucide-react'
+import { CheckCircle2, Circle, CircleDot } from 'lucide-react'
 import { navItems } from '@/app/navigation'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import {
@@ -12,26 +12,33 @@ import {
   Badge,
 } from '@/components/ui'
 
-const ROADMAP = [
-  { phase: 0, label: 'Foundation', done: true },
-  { phase: 1, label: 'Map', done: false },
-  { phase: 2, label: 'Waypoints & Tracks', done: false },
-  { phase: 3, label: 'Offline', done: false },
-  { phase: 4, label: 'Terrain 3D', done: false },
-  { phase: 5, label: 'Weather', done: false },
-  { phase: 6, label: 'Wind', done: false },
-  { phase: 7, label: 'Temporal Data', done: false },
-  { phase: 8, label: 'Analytics Engine', done: false },
-  { phase: 9, label: 'Analysis Map', done: false },
-  { phase: 10, label: 'Advanced Charts', done: false },
-  { phase: 11, label: 'Field Mode', done: false },
-  { phase: 12, label: 'Camera', done: false },
-  { phase: 13, label: 'Journal', done: false },
-  { phase: 14, label: 'AI & Assistant', done: false },
-  { phase: 15, label: 'Synchronization', done: false },
-  { phase: 16, label: 'Testing & Optimization', done: false },
-  { phase: 17, label: 'Commercial Release', done: false },
+type PhaseStatus = 'done' | 'in-progress' | 'pending'
+
+/** Kept in sync with `PROJECT_SPECIFICATION.md`'s phase table by hand —
+ * that file (not this one) is the authoritative source; this is just its
+ * status mirrored into the UI. Update both together. */
+const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
+  { phase: 0, label: 'Foundation', status: 'done' },
+  { phase: 1, label: 'Map', status: 'done' },
+  { phase: 2, label: 'Waypoints & Tracks', status: 'in-progress' },
+  { phase: 3, label: 'Offline', status: 'pending' },
+  { phase: 4, label: 'Terrain 3D', status: 'pending' },
+  { phase: 5, label: 'Weather', status: 'pending' },
+  { phase: 6, label: 'Wind', status: 'pending' },
+  { phase: 7, label: 'Temporal Data', status: 'pending' },
+  { phase: 8, label: 'Analytics Engine', status: 'pending' },
+  { phase: 9, label: 'Analysis Map', status: 'pending' },
+  { phase: 10, label: 'Advanced Charts', status: 'pending' },
+  { phase: 11, label: 'Field Mode', status: 'pending' },
+  { phase: 12, label: 'Camera', status: 'pending' },
+  { phase: 13, label: 'Journal', status: 'pending' },
+  { phase: 14, label: 'AI & Assistant', status: 'pending' },
+  { phase: 15, label: 'Synchronization', status: 'pending' },
+  { phase: 16, label: 'Testing & Optimization', status: 'pending' },
+  { phase: 17, label: 'Commercial Release', status: 'pending' },
 ]
+
+const currentPhase = ROADMAP.find((p) => p.status !== 'done') ?? ROADMAP[ROADMAP.length - 1]
 
 export function DashboardPage() {
   const isOnline = useOnlineStatus()
@@ -53,7 +60,10 @@ export function DashboardPage() {
           <Badge variant={isOnline ? 'success' : 'warning'}>
             {isOnline ? 'Online' : 'Offline — app remains usable'}
           </Badge>
-          <Badge variant="brand">Phase 0 — Foundation</Badge>
+          <Badge variant="brand">
+            Phase {currentPhase.phase} — {currentPhase.label}
+            {currentPhase.status === 'in-progress' ? ' (in progress)' : ''}
+          </Badge>
         </CardContent>
       </Card>
 
@@ -80,13 +90,26 @@ export function DashboardPage() {
           <CardContent className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
             {ROADMAP.map((item) => (
               <div key={item.phase} className="flex items-center gap-2 text-sm">
-                {item.done ? (
+                {item.status === 'done' && (
                   <CheckCircle2 size={16} className="text-brand-400 shrink-0" />
-                ) : (
+                )}
+                {item.status === 'in-progress' && (
+                  <CircleDot size={16} className="text-status-warning shrink-0" />
+                )}
+                {item.status === 'pending' && (
                   <Circle size={16} className="text-ink-700 shrink-0" />
                 )}
-                <span className={item.done ? 'text-ink-100' : 'text-ink-500'}>
+                <span
+                  className={
+                    item.status === 'done'
+                      ? 'text-ink-100'
+                      : item.status === 'in-progress'
+                        ? 'text-status-warning'
+                        : 'text-ink-500'
+                  }
+                >
                   {item.phase}. {item.label}
+                  {item.status === 'in-progress' ? ' (in progress)' : ''}
                 </span>
               </div>
             ))}
