@@ -85,12 +85,15 @@ const {
       sources: Record<string, { data: unknown; setDataCalls: unknown[] }> = {}
       layerIds: string[] = []
       transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+      maxPitch?: number | null
       constructor(options: {
         style: string
         transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+        maxPitch?: number | null
       }) {
         this.style = options.style
         this.transformRequest = options.transformRequest
+        this.maxPitch = options.maxPitch
         mapInstances.push(this)
       }
       addControl() {
@@ -218,6 +221,12 @@ function createTestMap(
 }
 
 describe('MapLibreProvider', () => {
+  it('raises maxPitch above MapLibre\'s 60° default so 3D can reach a near-eye-level tilt', () => {
+    mapInstances.length = 0
+    createTestMap()
+    expect(mapInstances[0].maxPitch).toBe(85)
+  })
+
   describe('style URLs', () => {
     it('resolves MapTiler base layers to MapTiler style URLs', () => {
       mapInstances.length = 0

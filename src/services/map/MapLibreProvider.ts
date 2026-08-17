@@ -382,6 +382,14 @@ export class MapLibreProvider implements MapProvider {
       pitch: initialView.pitch,
       bearing: initialView.bearing,
       transformRequest: transformTileRequest,
+      // MapLibre's own default maxPitch is 60° — a moderate tilt, not
+      // close enough to the horizon to feel like standing at eye level
+      // looking at terrain ahead. 85° is the ceiling MapLibre's own docs
+      // describe for the initial `pitch` option (0–85); going further
+      // toward 90 is what their docs flag as "experimental" and prone to
+      // rendering issues, so 85 is the real, supported maximum, not an
+      // arbitrary guess.
+      maxPitch: 85,
     })
 
     map.addControl(new NavigationControl(), 'top-right')

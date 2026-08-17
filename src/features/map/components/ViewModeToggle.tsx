@@ -3,8 +3,12 @@ import { cn } from '@/utils/cn'
 
 /** Camera preset for the "3D" mode — tilts/rotates the flat map, and (as
  * of Phase 4) also drapes real elevation relief under it via
- * `MapInstance.setTerrainEnabled()`, wired in `MapPage.setViewMode`. */
-export const THREE_D_PITCH = 60
+ * `MapInstance.setTerrainEnabled()`, wired in `MapPage.setViewMode`. 80°
+ * (not MapLibre's old 60° default cap — see `MapLibreProvider.ts`'s
+ * `maxPitch: 85`) reads as standing at eye level looking at the terrain
+ * ahead, rather than a moderate bird's-eye tilt, per user feedback. The
+ * user can still drag-tilt further, up to the 85° the map now allows. */
+export const THREE_D_PITCH = 80
 export const THREE_D_BEARING = -20
 
 const MAX_EXAGGERATION = 10

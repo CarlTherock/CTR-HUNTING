@@ -215,7 +215,7 @@ describe('MapPage', () => {
     expect(button2D).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(button3D)
-    expect(setView).toHaveBeenCalledWith({ pitch: 60, bearing: -20 })
+    expect(setView).toHaveBeenCalledWith({ pitch: 80, bearing: -20 })
     expect(button3D).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(button2D)

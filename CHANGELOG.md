@@ -3,6 +3,39 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Fix: 3D pitch capped at a bird's-eye tilt, not eye level (2026-08-17)
+
+User feedback: 3D mode felt limited — they wanted to tilt far enough to
+feel like standing at eye level looking at a mountain ahead, not a
+moderate downward-angled view.
+
+### Root cause
+
+MapLibre's own default `maxPitch` is 60° when not explicitly set — this
+app never set it, so 60° (also the old `THREE_D_PITCH` preset) was
+literally the hard ceiling for both the preset button *and* manual
+drag-tilt gestures. Confirmed directly against MapLibre's installed type
+definitions, not assumed.
+
+### Changed
+
+- `MapLibreProvider.ts`: `maxPitch: 85` set explicitly on the map — the
+  real ceiling MapLibre's own docs describe for the `pitch` option (0–85)
+  before flagging higher values as "experimental."
+- `ViewModeToggle.tsx`: `THREE_D_PITCH` 60° → 80° — near-horizon, eye-level
+  framing. Users can still drag-tilt further, up to the new 85° ceiling.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (189/189 — 1 new
+`MapLibreProvider.test.ts` test asserting `maxPitch` is actually passed
+to the map, plus an updated `MapPage.test.tsx` assertion for the new
+preset pitch) and `build` all pass. Visual confirmation on a live map
+wasn't possible this round (no map API key in the local `.env`) — the
+fix is a straightforward constructor-option/constant change, verified
+directly against MapLibre's real, installed type definitions rather than
+assumed from memory.
+
 ## Phase 5 — Weather, complete (2026-08-17)
 
 Current conditions, 24h hourly forecast, and an offline cache fallback,

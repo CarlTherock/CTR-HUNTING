@@ -65,7 +65,13 @@ wired from `MapPage`:
   under any base layer.
 - **Orientation** — the existing `NavigationControl` (compass + pan)
   already handles rotate/tilt gestures; `ViewModeToggle`'s "2D" button
-  doubles as a bearing-reset (`onChange(0, 0)`).
+  doubles as a bearing-reset (`onChange(0, 0)`). The 3D preset pitch is
+  80° (not MapLibre's 60° *default* `maxPitch`, which was silently
+  capping how far users could manually drag-tilt too) — `maxPitch: 85` is
+  now set explicitly on the map, the real ceiling MapLibre's own docs
+  describe for the `pitch` option before flagging values as
+  "experimental." 80° reads as standing at eye level looking at the
+  terrain ahead, not a moderate bird's-eye tilt, per user feedback.
 - **Altitude/slope/aspect** — `components/TerrainInfoControl.tsx`: arm,
   tap the map once, get a real `queryElevation` reading plus a
   slope/aspect estimate from `terrainQuery.sampleSlopeAspect()` (4
