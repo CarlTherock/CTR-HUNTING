@@ -18,9 +18,9 @@ describe('mapStore', () => {
     expect(after.center).toEqual(before.center)
   })
 
-  it('clamps terrainExaggeration to [1, 3]', () => {
-    useMapStore.getState().setTerrainExaggeration(10)
-    expect(useMapStore.getState().terrainExaggeration).toBe(3)
+  it('clamps terrainExaggeration to [1, 10]', () => {
+    useMapStore.getState().setTerrainExaggeration(20)
+    expect(useMapStore.getState().terrainExaggeration).toBe(10)
 
     useMapStore.getState().setTerrainExaggeration(0)
     expect(useMapStore.getState().terrainExaggeration).toBe(1)

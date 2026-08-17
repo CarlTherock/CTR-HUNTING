@@ -85,7 +85,7 @@ afterEach(async () => {
   })
   useMapStore.setState({
     view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 6, pitch: 0, bearing: 0 },
-    terrainExaggeration: 1.5,
+    terrainExaggeration: 2,
   })
   useTerrainToolsStore.setState({
     mode: 'idle',
@@ -226,10 +226,10 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     await user.click(screen.getByRole('button', { name: '3D' }))
-    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 1.5)
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 2)
 
     await user.click(screen.getByRole('button', { name: '2D' }))
-    expect(setTerrainEnabled).toHaveBeenLastCalledWith(false, 1.5)
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(false, 2)
   })
 
   it('the exaggeration stepper only appears in 3D, and updates the engine live', async () => {
@@ -241,8 +241,8 @@ describe('MapPage', () => {
     await user.click(screen.getByRole('button', { name: '3D' }))
     await user.click(screen.getByRole('button', { name: 'More terrain exaggeration' }))
 
-    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 2)
-    expect(screen.getByText('2.0×')).toBeInTheDocument()
+    expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 3)
+    expect(screen.getByText('3×')).toBeInTheDocument()
   })
 
   it('queries elevation/slope/aspect at a tapped point via the terrain info tool', async () => {

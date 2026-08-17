@@ -13,10 +13,10 @@ const DEFAULT_VIEW: MapViewState = {
   bearing: 0,
 }
 
-/** 1 = true scale, matches the "flatter" end of what real terrain
- * relief looks like at typical zoom; higher values exaggerate relief so
- * subtle terrain features actually read as terrain on screen. */
-const DEFAULT_TERRAIN_EXAGGERATION = 1.5
+/** 1 = true scale; higher values exaggerate relief so subtle terrain
+ * features actually read as terrain on screen. Whole-number steps up to
+ * 10, per user feedback that 1–3 was too narrow a range to be useful. */
+const DEFAULT_TERRAIN_EXAGGERATION = 2
 
 interface MapState {
   view: MapViewState
@@ -42,5 +42,5 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   terrainExaggeration: DEFAULT_TERRAIN_EXAGGERATION,
   setTerrainExaggeration: (exaggeration) =>
-    set({ terrainExaggeration: Math.max(1, Math.min(3, exaggeration)) }),
+    set({ terrainExaggeration: Math.max(1, Math.min(10, exaggeration)) }),
 }))

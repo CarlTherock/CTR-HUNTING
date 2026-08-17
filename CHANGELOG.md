@@ -3,6 +3,37 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Fix: terrain exaggeration stepper unreachable in 3D mode (2026-08-17)
+
+User feedback: switching to 3D made the exaggeration stepper land
+underneath `WaypointControl`'s "+" button (both near `top-44 right-3`),
+so it couldn't be tapped. Also requested a wider exaggeration range.
+
+### Changed
+
+- `ViewModeToggle.tsx`: the stepper used to stack *below* the 2D/3D
+  toggle inside the same absolutely-positioned wrapper — harmless height
+  in 2D, but in 3D it grew the wrapper down into the next fixed-position
+  control below it. Now laid out as a single row (stepper beside the
+  toggle, not under it), so its height never changes and it can't drift
+  into another control regardless of mode.
+- Exaggeration range: 1–3 (0.5 steps) → **1–10 (whole-number steps)**,
+  per request. Default bumped from 1.5 to 2 to match the new integer
+  stepping.
+- `mapStore.ts`: `setTerrainExaggeration` clamps to `[1, 10]`.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (169/169 — updated
+`mapStore.test.ts`'s clamp-range assertion and `MapPage.test.tsx`'s
+exaggeration-stepper assertions for the new default/step) and `build`
+all pass. Visual confirmation of the fixed layout on a live map wasn't
+possible this round (no map API key in the local `.env`) — the fix
+itself is a pure layout change (stacking → single row), verified by the
+same pixel-math reasoning that found the bug: the toggle row's height at
+`top-32` now stays constant whether or not the stepper is showing, so it
+can never reach into `WaypointControl`'s `top-44` slot.
+
 ## Phase 4 — Terrain 3D, complete (2026-08-16)
 
 Real elevation relief in 3D mode, altitude/slope/aspect point queries,
