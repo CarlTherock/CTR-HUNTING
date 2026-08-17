@@ -1,4 +1,12 @@
-import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint, WindField } from '@/types'
+import type {
+  Coordinate,
+  MapBaseLayerId,
+  MapOverlayId,
+  MapViewState,
+  WeatherMapLayer,
+  Waypoint,
+  WindField,
+} from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 
 export interface DownloadAreaProgress {
@@ -63,16 +71,23 @@ export interface MapInstance {
    * measurement never interferes with an in-progress GPS track. */
   setMeasurePath(points: Coordinate[] | null): void
   /**
-   * Renders (Phase 6) or clears (`null`) an animated wind "flow field" —
-   * particles drifting along real wind vectors, each sampled from the
-   * *nearest* real grid point in `field` (never interpolated/fabricated
-   * between samples). `hourOffset` selects which hourly sample to use
-   * (0 = soonest), for the interactive timeline. The animation's time
-   * scale is deliberately exaggerated for visual legibility — see
-   * `utils/windField.ts`'s `advancePosition` — but direction and
-   * relative speed are always real data.
+   * Renders (Phase 6) or clears (`null`) the Windy-style weather map
+   * layer: `'wind'` draws an animated particle flow field (each particle
+   * sampled from the *nearest* real grid point in `field`, never
+   * interpolated/fabricated between samples, colored by local speed);
+   * `'temperature' | 'precipitation' | 'clouds'` instead draw a smooth
+   * color-graded overlay across the same real grid (`utils/
+   * weatherMapColors.ts`'s calibrated per-layer color scale — the colors
+   * are a stylistic choice, the underlying values are always real
+   * Open-Meteo readings). `hourOffset` selects which hourly sample to use
+   * (0 = soonest), for the interactive timeline; switching `layer` alone
+   * never needs a re-fetch since every layer rides the same batched grid
+   * response. The wind particle animation's time scale is deliberately
+   * exaggerated for visual legibility — see `utils/windField.ts`'s
+   * `advancePosition` — but direction and relative speed are always real
+   * data.
    */
-  setWindField(field: WindField | null, hourOffset: number): void
+  setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

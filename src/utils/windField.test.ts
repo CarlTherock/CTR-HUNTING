@@ -8,15 +8,47 @@ const FIELD: WindField = {
     {
       coordinate: { lat: 46.8, lng: -71.2 },
       hourly: [
-        { time: '2026-08-17T10:00', directionDegrees: 0, speedKmh: 10, gustsKmh: 15 },
-        { time: '2026-08-17T11:00', directionDegrees: 90, speedKmh: 20, gustsKmh: 30 },
+        {
+          time: '2026-08-17T10:00',
+          directionDegrees: 0,
+          speedKmh: 10,
+          gustsKmh: 15,
+          temperatureCelsius: 18,
+          precipitationMm: 0,
+          cloudCoverPercent: 20,
+        },
+        {
+          time: '2026-08-17T11:00',
+          directionDegrees: 90,
+          speedKmh: 20,
+          gustsKmh: 30,
+          temperatureCelsius: 19,
+          precipitationMm: 1.2,
+          cloudCoverPercent: 60,
+        },
       ],
     },
     {
       coordinate: { lat: 47.5, lng: -70.0 },
       hourly: [
-        { time: '2026-08-17T10:00', directionDegrees: 180, speedKmh: 5, gustsKmh: 8 },
-        { time: '2026-08-17T11:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 18 },
+        {
+          time: '2026-08-17T10:00',
+          directionDegrees: 180,
+          speedKmh: 5,
+          gustsKmh: 8,
+          temperatureCelsius: 15,
+          precipitationMm: 0,
+          cloudCoverPercent: 10,
+        },
+        {
+          time: '2026-08-17T11:00',
+          directionDegrees: 270,
+          speedKmh: 12,
+          gustsKmh: 18,
+          temperatureCelsius: 16,
+          precipitationMm: 0,
+          cloudCoverPercent: 25,
+        },
       ],
     },
   ],
@@ -46,6 +78,9 @@ describe('windAt', () => {
       directionDegrees: 90,
       speedKmh: 20,
       gustsKmh: 30,
+      temperatureCelsius: 19,
+      precipitationMm: 1.2,
+      cloudCoverPercent: 60,
     })
   })
 

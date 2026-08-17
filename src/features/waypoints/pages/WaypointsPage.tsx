@@ -4,6 +4,7 @@ import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
 import { CATEGORY_ICON, CATEGORY_LABEL, DEFAULT_WAYPOINT_COLOR } from '../categories'
 import { WaypointEditPanel } from '../components/WaypointEditPanel'
+import { WindComparisonPanel } from '../components/WindComparisonPanel'
 import { useTracksStore } from '../state/tracksStore'
 import { useWaypointsStore } from '../state/waypointsStore'
 import type { Track } from '@/types'
@@ -54,6 +55,8 @@ export function WaypointsPage() {
         title="Waypoints & Tracks"
         description="Every saved marker and recorded GPS track. Create new ones from the Map page."
       />
+
+      <WindComparisonPanel />
 
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">

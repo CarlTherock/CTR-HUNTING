@@ -591,7 +591,17 @@ describe('MapLibreProvider', () => {
       samples: [
         {
           coordinate: { lat: 0, lng: 0 },
-          hourly: [{ time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 20 }],
+          hourly: [
+            {
+              time: '2026-08-17T10:00',
+              directionDegrees: 270,
+              speedKmh: 12,
+              gustsKmh: 20,
+              temperatureCelsius: 18,
+              precipitationMm: 0.5,
+              cloudCoverPercent: 40,
+            },
+          ],
         },
       ],
     }
@@ -619,9 +629,24 @@ describe('MapLibreProvider', () => {
         initialOverlays: { trails: true, hydrography: true, contours: true },
       })
 
-      expect(() => instance.setWindField(FIELD, 0)).not.toThrow()
-      expect(() => instance.setWindField(FIELD, 1)).not.toThrow()
-      expect(() => instance.setWindField(null, 0)).not.toThrow()
+      expect(() => instance.setWindField(FIELD, 0, 'wind')).not.toThrow()
+      expect(() => instance.setWindField(FIELD, 1, 'wind')).not.toThrow()
+      expect(() => instance.setWindField(null, 0, 'wind')).not.toThrow()
+    })
+
+    it('setWindField does not throw for any non-wind layer (temperature/precipitation/clouds)', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(() => instance.setWindField(FIELD, 0, 'temperature')).not.toThrow()
+      expect(() => instance.setWindField(FIELD, 0, 'precipitation')).not.toThrow()
+      expect(() => instance.setWindField(FIELD, 0, 'clouds')).not.toThrow()
     })
 
     it('removes the canvas overlay on destroy', () => {
@@ -634,7 +659,7 @@ describe('MapLibreProvider', () => {
         initialOverlays: { trails: true, hydrography: true, contours: true },
       })
 
-      instance.setWindField(FIELD, 0)
+      instance.setWindField(FIELD, 0, 'wind')
       instance.destroy()
 
       expect(container.querySelector('canvas')).toBeNull()

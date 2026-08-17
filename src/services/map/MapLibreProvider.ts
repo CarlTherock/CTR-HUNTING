@@ -6,12 +6,14 @@ import type {
   MapBaseLayerId,
   MapOverlayId,
   MapViewState,
+  WeatherMapLayer,
   Waypoint,
   WaypointCategory,
   WindField,
 } from '@/types'
 import { tileCenterLngLat, tileRangeForBounds, tilesForRange } from '@/utils/tiles'
 import type { LngLatBounds } from '@/utils/tiles'
+import { weatherLayerColor, valueForLayer } from '@/utils/weatherMapColors'
 import { advancePosition, windAt } from '@/utils/windField'
 import type { CreateMapOptions, DownloadAreaProgress, MapInstance, MapProvider } from './MapProvider'
 
@@ -234,16 +236,51 @@ function randomPointInBounds(map: MapLibreMap): Coordinate {
   }
 }
 
+/** Draws a smooth color-graded overlay for a non-wind layer (temperature/
+ * precipitation/clouds) — Windy's signature calibrated-color-scale map,
+ * confirmed live at windy.com/colors. Each real grid sample gets a soft
+ * radial blob (never a fabricated interpolated grid — just visually
+ * blended real values), sized to roughly cover the gap between samples
+ * so the field reads as continuous rather than as isolated dots. */
+function drawWeatherOverlay(
+  ctx: CanvasRenderingContext2D,
+  map: MapLibreMap,
+  field: WindField,
+  hourOffset: number,
+  layer: Exclude<WeatherMapLayer, 'wind'>,
+  width: number,
+  height: number,
+) {
+  const sampleCount = field.samples.length
+  if (sampleCount === 0) return
+  const radius = Math.max(60, (Math.min(width, height) / Math.sqrt(sampleCount)) * 0.95)
+
+  for (const sample of field.samples) {
+    const reading = sample.hourly[hourOffset]
+    if (!reading) continue
+    const value = valueForLayer(layer, reading)
+    const screen = map.project([sample.coordinate.lng, sample.coordinate.lat])
+    const gradient = ctx.createRadialGradient(screen.x, screen.y, 0, screen.x, screen.y, radius)
+    gradient.addColorStop(0, weatherLayerColor(layer, value, 0.55))
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = gradient
+    ctx.beginPath()
+    ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
 /**
  * Owns a `<canvas>` overlaid on the map container and a
- * `requestAnimationFrame` loop drawing an animated wind "flow field" on
- * it (Phase 6) — a plain 2D canvas, not a MapLibre GeoJSON layer, since
- * particle trails need per-frame screen-space redraws a style layer
- * isn't suited for. `map.project()` reprojects every particle every
- * frame, so pan/zoom/rotate need no extra bookkeeping to stay correct.
- * Each particle's wind vector is the *nearest real grid sample*
- * (`utils/windField.ts`'s `windAt`) — never interpolated/fabricated
- * between samples.
+ * `requestAnimationFrame` loop drawing the active Windy-style weather
+ * layer on it (Phase 6) — a plain 2D canvas, not a MapLibre GeoJSON
+ * layer, since both the particle trails and the pan/zoom-reactive color
+ * overlay need per-frame screen-space redraws a style layer isn't suited
+ * for. `map.project()` reprojects every point every frame, so pan/zoom/
+ * rotate need no extra bookkeeping to stay correct. Every value drawn —
+ * particle vectors or overlay colors — comes from the *nearest real grid
+ * sample* (`utils/windField.ts`'s `windAt`) — never interpolated/
+ * fabricated between samples.
  */
 function createWindLayer(map: MapLibreMap, container: HTMLElement) {
   const canvas = document.createElement('canvas')
@@ -254,6 +291,7 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
 
   let field: WindField | null = null
   let hourOffset = 0
+  let layer: WeatherMapLayer = 'wind'
   let particles: WindParticle[] = []
   let animationFrame: number | null = null
 
@@ -279,7 +317,13 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
     if (!ctx) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, width, height)
-    ctx.strokeStyle = 'rgba(96, 165, 250, 0.75)'
+
+    if (layer !== 'wind') {
+      drawWeatherOverlay(ctx, map, field, hourOffset, layer, width, height)
+      animationFrame = requestAnimationFrame(step)
+      return
+    }
+
     ctx.lineWidth = 1.5
     ctx.lineCap = 'round'
 
@@ -289,6 +333,10 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
       if (wind) {
         const nextPos = advancePosition(particle.pos, wind, 1 / 60, WIND_SPEED_SCALE)
         const screenEnd = map.project([nextPos.lng, nextPos.lat])
+        // Colored by local speed — Windy's own convention (blue calm →
+        // red gale) — so the flow field reads at a glance, not just from
+        // trail motion alone.
+        ctx.strokeStyle = weatherLayerColor('wind', wind.speedKmh, 0.85)
         ctx.beginPath()
         ctx.moveTo(screenStart.x, screenStart.y)
         ctx.lineTo(screenEnd.x, screenEnd.y)
@@ -313,9 +361,10 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
   }
 
   return {
-    setField(newField: WindField | null, newHourOffset: number) {
+    setField(newField: WindField | null, newHourOffset: number, newLayer: WeatherMapLayer) {
       field = newField
       hourOffset = newHourOffset
+      layer = newLayer
       if (field && animationFrame === null) {
         reset()
         animationFrame = requestAnimationFrame(step)
@@ -686,8 +735,8 @@ export class MapLibreProvider implements MapProvider {
         const source = map.getSource(MEASURE_SOURCE_ID) as GeoJSONSource | undefined
         source?.setData(measurePathGeoJson(points))
       },
-      setWindField(field: WindField | null, hourOffset: number) {
-        windLayer.setField(field, hourOffset)
+      setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer) {
+        windLayer.setField(field, hourOffset, layer)
       },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         terrainEnabled = enabled

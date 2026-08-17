@@ -131,3 +131,9 @@ the live reading nearest that waypoint and a green/red badge for whether
 it currently matches. See `features/wind/README.md` for the full design
 (it's owned there since it's fundamentally a wind feature, just edited
 from this panel).
+
+`components/WindComparisonPanel.tsx` (shown on `WaypointsPage`, above the
+waypoint list) extends this into a side-by-side view across *every*
+waypoint with a saved preference at once — modeled on onX Hunt's own
+"Wind Comparisons Tool" (verified via research). See
+`features/wind/README.md` for the full design.

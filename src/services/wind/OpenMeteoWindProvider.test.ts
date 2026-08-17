@@ -10,6 +10,9 @@ const FAKE_LOCATION = {
     wind_speed_10m: [12.3, 14.0],
     wind_direction_10m: [270, 280],
     wind_gusts_10m: [21.1, 23.5],
+    temperature_2m: [18.5, 19.1],
+    precipitation: [0, 0.2],
+    cloud_cover: [40, 55],
   },
 }
 
@@ -45,6 +48,8 @@ describe('OpenMeteoWindProvider', () => {
       expect(lat).toBeLessThan(BOUNDS.north)
     }
     expect(requested.searchParams.get('hourly')).toContain('wind_direction_10m')
+    expect(requested.searchParams.get('hourly')).toContain('temperature_2m')
+    expect(requested.searchParams.get('hourly')).toContain('cloud_cover')
   })
 
   it('maps each grid point to its own real sample with matching coordinates', async () => {
@@ -57,8 +62,24 @@ describe('OpenMeteoWindProvider', () => {
     expect(field.samples).toHaveLength(4)
     expect(field.timezone).toBe('America/Toronto')
     expect(field.samples[0].hourly).toEqual([
-      { time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12.3, gustsKmh: 21.1 },
-      { time: '2026-08-17T11:00', directionDegrees: 280, speedKmh: 14.0, gustsKmh: 23.5 },
+      {
+        time: '2026-08-17T10:00',
+        directionDegrees: 270,
+        speedKmh: 12.3,
+        gustsKmh: 21.1,
+        temperatureCelsius: 18.5,
+        precipitationMm: 0,
+        cloudCoverPercent: 40,
+      },
+      {
+        time: '2026-08-17T11:00',
+        directionDegrees: 280,
+        speedKmh: 14.0,
+        gustsKmh: 23.5,
+        temperatureCelsius: 19.1,
+        precipitationMm: 0.2,
+        cloudCoverPercent: 55,
+      },
     ])
   })
 

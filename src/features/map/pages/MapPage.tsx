@@ -51,6 +51,7 @@ export function MapPage() {
   const windEnabled = useWindStore((state) => state.enabled)
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
+  const windActiveLayer = useWindStore((state) => state.activeLayer)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -159,8 +160,8 @@ export function MapPage() {
   }, [profilePoints])
 
   useEffect(() => {
-    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset)
-  }, [windEnabled, windField, windHourOffset])
+    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset, windActiveLayer)
+  }, [windEnabled, windField, windHourOffset, windActiveLayer])
 
   function locate() {
     if (gpsReading.status !== 'available') return

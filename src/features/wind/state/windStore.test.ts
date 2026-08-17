@@ -15,8 +15,24 @@ const FIELD: WindField = {
     {
       coordinate: { lat: 46.8, lng: -71.2 },
       hourly: [
-        { time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 20 },
-        { time: '2026-08-17T11:00', directionDegrees: 280, speedKmh: 14, gustsKmh: 22 },
+        {
+          time: '2026-08-17T10:00',
+          directionDegrees: 270,
+          speedKmh: 12,
+          gustsKmh: 20,
+          temperatureCelsius: 18,
+          precipitationMm: 0,
+          cloudCoverPercent: 30,
+        },
+        {
+          time: '2026-08-17T11:00',
+          directionDegrees: 280,
+          speedKmh: 14,
+          gustsKmh: 22,
+          temperatureCelsius: 19,
+          precipitationMm: 0.1,
+          cloudCoverPercent: 40,
+        },
       ],
     },
   ],
@@ -30,6 +46,7 @@ afterEach(() => {
     errorReason: null,
     enabled: false,
     selectedHourOffset: 0,
+    activeLayer: 'wind',
   })
 })
 
@@ -105,6 +122,17 @@ describe('windStore', () => {
       directionDegrees: 280,
       speedKmh: 14,
       gustsKmh: 22,
+      temperatureCelsius: 19,
+      precipitationMm: 0.1,
+      cloudCoverPercent: 40,
     })
+  })
+
+  it('setActiveLayer switches which weather layer is rendered, defaulting to wind', () => {
+    expect(useWindStore.getState().activeLayer).toBe('wind')
+
+    useWindStore.getState().setActiveLayer('temperature')
+
+    expect(useWindStore.getState().activeLayer).toBe('temperature')
   })
 })

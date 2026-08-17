@@ -13,7 +13,19 @@ export interface WindReading {
 
 export interface WindHourlyReading extends WindReading {
   time: string // ISO 8601
+  /** Fetched from the same batched grid call as wind (Open-Meteo's
+   * `temperature_2m`/`precipitation`/`cloud_cover` — the same parameter
+   * names already verified live in Phase 5's weather work), so switching
+   * the map's active layer (wind/temperature/precipitation/clouds, see
+   * `features/wind/state/windStore.ts`) never needs a second fetch. */
+  temperatureCelsius: number
+  precipitationMm: number
+  cloudCoverPercent: number
 }
+
+/** The map layers the Windy-style layer switcher can render — see
+ * `MapLibreProvider.ts`'s `createWindLayer()`. */
+export type WeatherMapLayer = 'wind' | 'temperature' | 'precipitation' | 'clouds'
 
 /** One real sampled grid point — never a fabricated/interpolated value,
  * always a genuine Open-Meteo reading for that exact coordinate. */

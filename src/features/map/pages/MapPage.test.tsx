@@ -76,7 +76,17 @@ const fetchWindField = vi.fn().mockResolvedValue({
   samples: [
     {
       coordinate: { lat: 46.8139, lng: -71.208 },
-      hourly: [{ time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 20 }],
+      hourly: [
+        {
+          time: '2026-08-17T10:00',
+          directionDegrees: 270,
+          speedKmh: 12,
+          gustsKmh: 20,
+          temperatureCelsius: 18,
+          precipitationMm: 0,
+          cloudCoverPercent: 40,
+        },
+      ],
     },
   ],
 })
@@ -505,11 +515,30 @@ describe('MapPage', () => {
       expect(setWindField).toHaveBeenLastCalledWith(
         expect.objectContaining({ timezone: 'America/Toronto' }),
         0,
+        'wind',
       )
     })
     expect(await screen.findByText(/km\/h from/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
-    expect(setWindField).toHaveBeenLastCalledWith(null, 0)
+    expect(setWindField).toHaveBeenLastCalledWith(null, 0, 'wind')
+  })
+
+  it('switching the weather map layer re-renders instantly with no re-fetch, since every layer rides the same fetched grid', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    await vi.waitFor(() => {
+      expect(setWindField).toHaveBeenLastCalledWith(expect.anything(), 0, 'wind')
+    })
+    fetchWindField.mockClear()
+
+    await user.click(screen.getByRole('tab', { name: 'Temperature' }))
+
+    expect(fetchWindField).not.toHaveBeenCalled()
+    await vi.waitFor(() => {
+      expect(setWindField).toHaveBeenLastCalledWith(expect.anything(), 0, 'temperature')
+    })
   })
 })

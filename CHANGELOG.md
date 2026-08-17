@@ -3,6 +3,54 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 5/6 upgrade — Windy-style weather map + onX Hunt wind comparison (2026-08-17)
+
+User feedback after Phase 6 shipped: not satisfied with the wind/weather
+map, wanted it to match the best hunting apps (onX Hunt, HuntStand,
+iHunt/HuntScout) and weather apps (AccuWeather, Windy) — specifically
+their map layers.
+
+### Research (live, before writing any code)
+
+- Windy.com's community docs/settings confirmed its actual convention: a
+  **calibrated, customizable color scale per layer**, with particle trail
+  length proportional to speed — this app didn't have colored layers at
+  all before this change, only particle motion.
+- onX Hunt's own feature pages confirmed a specific differentiator beyond
+  a single-waypoint badge: a **"Wind Comparisons Tool"** — "compare wind
+  forecasts at multiple different Waypoints in a central location with a
+  quick side-by-side view."
+
+### Changed
+
+- `services/wind/OpenMeteoWindProvider.ts`: the same batched grid request
+  now also asks for `temperature_2m`, `precipitation`, `cloud_cover`
+  (same real parameter names already verified for Phase 5's weather) —
+  one fetch now backs four map layers, not one.
+- `utils/weatherMapColors.ts` (new): a real multi-stop color scale per
+  layer, a legend gradient, and the value-per-layer mapping.
+- `MapLibreProvider.ts`'s wind canvas now renders any of
+  `wind | temperature | precipitation | clouds`: wind keeps its particle
+  animation (now colored by local speed, Windy's own blue→red
+  convention); the other three draw a smooth color-graded overlay from
+  the same real grid samples.
+- `WindLayerControl.tsx`: added a Windy-style layer-switcher tab row and
+  a legend bar; switching layers is instant (no re-fetch — every layer
+  rides the one already-fetched grid).
+- `features/waypoints/components/WindComparisonPanel.tsx` (new): a
+  side-by-side wind check across every waypoint with a saved "optimal
+  wind" preference, shown on `WaypointsPage` — onX Hunt's "Wind
+  Comparisons Tool," reusing the same shared field, no separate fetch.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (231/231 across 34 files — new
+`weatherMapColors.test.ts`, `WindComparisonPanel.test.tsx`, extended
+`windField`/`OpenMeteoWindProvider`/`windStore`/`MapLibreProvider`/
+`MapPage` tests for the new layers and comparison panel) and `build` all
+pass. Rendered layer colors/overlays not verified live (no map API key in
+this environment) — same caveat as the rest of Phase 6.
+
 ## Phase 6 — Wind, complete (2026-08-17)
 
 Dedicated wind engine: animated particle flow-field on the map, live

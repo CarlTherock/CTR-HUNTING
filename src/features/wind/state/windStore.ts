@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { windProvider } from '@/services/wind'
 import { windAt as windAtSample } from '@/utils/windField'
 import type { LngLatBounds } from '@/utils/tiles'
-import type { Coordinate, WindField, WindHourlyReading } from '@/types'
+import type { Coordinate, WeatherMapLayer, WindField, WindHourlyReading } from '@/types'
 
 export type WindLayerStatus = 'idle' | 'loading' | 'available' | 'error'
 
@@ -23,10 +23,17 @@ interface WindState {
   enabled: boolean
   /** Hourly index the timeline scrubber is on, 0 = soonest. */
   selectedHourOffset: number
+  /** Which Windy-style layer the map canvas renders — switching this
+   * never re-fetches: temperature/precipitation/cloud cover already ride
+   * along on the same batched grid request as wind (see
+   * `OpenMeteoWindProvider`), so every layer is instantly available once
+   * one fetch has landed. */
+  activeLayer: WeatherMapLayer
 
   toggle: (bounds: LngLatBounds) => void
   fetch: (bounds: LngLatBounds) => Promise<void>
   setSelectedHourOffset: (offset: number) => void
+  setActiveLayer: (layer: WeatherMapLayer) => void
   /** Real wind reading nearest `coordinate` at the currently scrubbed
    * hour — `null` if no field is loaded, never a guess. */
   windAt: (coordinate: Coordinate) => WindHourlyReading | null
@@ -38,6 +45,7 @@ export const useWindStore = create<WindState>((set, get) => ({
   errorReason: null,
   enabled: false,
   selectedHourOffset: 0,
+  activeLayer: 'wind',
 
   toggle: (bounds) => {
     const { enabled, field } = get()
@@ -60,6 +68,8 @@ export const useWindStore = create<WindState>((set, get) => ({
   },
 
   setSelectedHourOffset: (offset) => set({ selectedHourOffset: Math.max(0, Math.min(23, offset)) }),
+
+  setActiveLayer: (layer) => set({ activeLayer: layer }),
 
   windAt: (coordinate) => {
     const { field, selectedHourOffset } = get()

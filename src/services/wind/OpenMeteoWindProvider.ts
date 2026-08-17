@@ -9,7 +9,19 @@ const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 // convention. Requesting comma-separated latitude/longitude lists is a
 // real, documented batch feature — confirmed with a live multi-location
 // test call, not assumed — and returns one array entry per location.
-const WIND_PARAMS = ['wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m'].join(',')
+// temperature_2m/precipitation/cloud_cover are the same real parameter
+// names already verified live for Phase 5's weather feature — requesting
+// them in this same batched grid call (rather than a second fetch) is
+// what lets the map's layer switcher (wind/temperature/precipitation/
+// clouds) flip layers instantly with no extra network round trip.
+const WIND_PARAMS = [
+  'wind_speed_10m',
+  'wind_direction_10m',
+  'wind_gusts_10m',
+  'temperature_2m',
+  'precipitation',
+  'cloud_cover',
+].join(',')
 
 /** Evenly spaced `gridSize` × `gridSize` cell-center points covering
  * `bounds` — the real coordinates every wind sample is actually fetched
@@ -33,6 +45,9 @@ interface OpenMeteoLocation {
     wind_speed_10m: number[]
     wind_direction_10m: number[]
     wind_gusts_10m: number[]
+    temperature_2m: number[]
+    precipitation: number[]
+    cloud_cover: number[]
   }
 }
 
@@ -73,6 +88,9 @@ export class OpenMeteoWindProvider implements WindProvider {
         directionDegrees: location.hourly.wind_direction_10m[h],
         speedKmh: location.hourly.wind_speed_10m[h],
         gustsKmh: location.hourly.wind_gusts_10m[h],
+        temperatureCelsius: location.hourly.temperature_2m[h],
+        precipitationMm: location.hourly.precipitation[h],
+        cloudCoverPercent: location.hourly.cloud_cover[h],
       })),
     }))
 
