@@ -45,6 +45,7 @@ export function MapPage() {
   const waypoints = useWaypointsStore((state) => state.waypoints)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
+  const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -143,6 +144,14 @@ export function MapPage() {
   useEffect(() => {
     instanceRef.current?.setTrackPreview(trackStatus === 'idle' ? null : trackPoints)
   }, [trackPoints, trackStatus])
+
+  useEffect(() => {
+    // Shows each tapped point immediately (a dot) and, once there are 2+,
+    // the connecting line — kept visible after "Done" too (until the
+    // profile panel is closed/discarded, which clears `profilePoints`),
+    // so the chart's numbers stay visually tied to the path they describe.
+    instanceRef.current?.setMeasurePath(profilePoints.length > 0 ? profilePoints : null)
+  }, [profilePoints])
 
   function locate() {
     if (gpsReading.status !== 'available') return

@@ -3,6 +3,36 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Elevation profile: show points/line on the map while measuring (2026-08-17)
+
+User feedback: tapping points for an elevation profile gave no visual
+feedback on the map itself — nothing showed where a point landed, or
+what path the eventual chart would describe.
+
+### Added
+
+- `MapInstance.setMeasurePath(points)` (`MapProvider.ts`,
+  `MapLibreProvider.ts`): draws a dot for every tapped point immediately,
+  plus a dashed connecting line once there are 2 or more — works for any
+  number of points, not just 2. Its own dedicated GeoJSON source/layers
+  (`measure-path`, re-added on every style reload like the other custom
+  sources), kept independent of `setTrackPreview()` so an elevation
+  measurement and a GPS recording never draw over or clear each other.
+- `MapPage`: a new effect syncs `terrainToolsStore.profilePoints` to
+  `setMeasurePath()` — points and the line appear as they're tapped, and
+  stay visible after "Done" until the chart panel is discarded (so the
+  numbers in the chart stay visually tied to the path on the map).
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (175/175 — 6 new
+`MapLibreProvider.test.ts` tests for the new source/layers, 1 new
+`MapPage.test.tsx` integration test for live point-by-point updates) and
+`build` all pass. Visual confirmation on a live map wasn't possible this
+round (no map API key in the local `.env`) — the GeoJSON the source
+receives at each step (point-only, then point+line, then cleared) is
+asserted directly in `MapLibreProvider.test.ts` instead.
+
 ## Fix: terrain exaggeration stepper unreachable in 3D mode (2026-08-17)
 
 User feedback: switching to 3D made the exaggeration stepper land

@@ -50,8 +50,11 @@ wired from `MapPage`:
 
 - **Real elevation relief** — `ViewModeToggle`'s 3D button now calls
   `setTerrainEnabled(true, exaggeration)` (and `false` back in 2D), with
-  an exaggeration stepper (1×–3×, `mapStore.terrainExaggeration`) shown
-  only in 3D. The DEM source is AWS's public **Terrarium** elevation
+  an exaggeration stepper (1×–10×, whole-number steps,
+  `mapStore.terrainExaggeration`) shown only in 3D — laid out *beside*
+  the 2D/3D buttons in one row, not stacked below them (stacking used to
+  grow the control down into `WaypointControl`'s button in 3D mode). The
+  DEM source is AWS's public **Terrarium** elevation
   tiles (`s3.amazonaws.com/elevation-tiles-prod/terrarium/…`) — not
   MapTiler's `terrain-rgb-v2`, whose RGB-decoding convention couldn't be
   verified from live documentation in this session (no API key to
@@ -73,7 +76,12 @@ wired from `MapPage`:
   tap multiple points, "Done" samples elevation along the whole path
   (`terrainQuery.sampleElevationProfile()`) and renders a hand-rolled
   inline SVG line chart — no charting library added just for this; that's
-  a Phase 10 (Advanced Charts) decision, not this slice's to make.
+  a Phase 10 (Advanced Charts) decision, not this slice's to make. Each
+  tapped point is drawn on the map immediately (`MapInstance
+  .setMeasurePath()`, its own dot+line source — independent of
+  `setTrackPreview()` so a GPS recording and a measurement never
+  interfere with each other), and the connecting line/dots stay visible
+  after "Done" too, until the chart panel is discarded.
 
 **Not verified live** (no map API key in this environment): the actual
 rendered 3D relief, and whether AWS's Terrarium tiles resolve/render

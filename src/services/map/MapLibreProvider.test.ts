@@ -494,6 +494,88 @@ describe('MapLibreProvider', () => {
     })
   })
 
+  describe('measure path (elevation profile, Phase 4)', () => {
+    it('adds a point layer and a line layer once the style has loaded', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('measure-path-points')
+      expect(map.layerIds).toContain('measure-path-line')
+      expect(map.sources['measure-path'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(() => instance.setMeasurePath([{ lat: 1, lng: 1 }])).not.toThrow()
+    })
+
+    it('shows a point as soon as it is set, before any line is possible', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasurePath([{ lat: 46.8, lng: -71.2 }])
+
+      expect(map.sources['measure-path'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Point', coordinates: [-71.2, 46.8] },
+          },
+        ],
+      })
+    })
+
+    it('adds a connecting line once there are 2+ points, alongside the point dots', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasurePath([
+        { lat: 46.8, lng: -71.2 },
+        { lat: 46.81, lng: -71.2 },
+        { lat: 46.81, lng: -71.19 },
+      ])
+
+      const data = map.sources['measure-path'].data as { features: { geometry: { type: string } }[] }
+      expect(data.features.filter((f) => f.geometry.type === 'Point')).toHaveLength(3)
+      expect(data.features.filter((f) => f.geometry.type === 'LineString')).toHaveLength(1)
+    })
+
+    it('clears both points and line when set to null', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasurePath([
+        { lat: 46.8, lng: -71.2 },
+        { lat: 46.81, lng: -71.2 },
+      ])
+      instance.setMeasurePath(null)
+
+      expect(map.sources['measure-path'].data).toEqual({ type: 'FeatureCollection', features: [] })
+    })
+
+    it('re-adds the measure path layers after a base layer switch reloads the style', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setBaseLayer('satellite')
+      map.layerIds = []
+      map.sources = {}
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('measure-path-points')
+      expect(map.layerIds).toContain('measure-path-line')
+    })
+  })
+
   describe('terrain (Phase 4)', () => {
     it('does not enable terrain by default', () => {
       mapInstances.length = 0

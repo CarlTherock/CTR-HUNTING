@@ -55,6 +55,13 @@ export interface MapInstance {
    * `null` if terrain is off or that tile hasn't loaded yet — never
    * guessed/interpolated when unavailable. */
   queryElevation(coordinate: Coordinate): number | null
+  /** Draws each point of an in-progress elevation-profile measurement as
+   * a dot (so the user can see exactly where they tapped), plus a
+   * connecting line once there are 2 or more — works for any number of
+   * points. Pass `null` (or an empty array) to clear. Its own dedicated
+   * source/layers, independent of `setTrackPreview`, so drawing a
+   * measurement never interferes with an in-progress GPS track. */
+  setMeasurePath(points: Coordinate[] | null): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }
