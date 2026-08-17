@@ -1,11 +1,19 @@
 import { useState } from 'react'
-import { Save, Trash2, X } from 'lucide-react'
+import { Save, Trash2, Wind, X } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { useWindStore } from '@/features/wind/state/windStore'
 import { cn } from '@/utils/cn'
+import { compassLabel } from '@/utils/terrain'
+import { isOptimalWind } from '@/utils/windField'
 import type { WaypointCategory, WaypointColor } from '@/types'
 import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR } from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
 import { WaypointPhotos } from './WaypointPhotos'
+
+/** The 8 compass octants a hunter can mark as "good wind" for a spot —
+ * matches `octantOf()` in `utils/windField.ts`, which snaps any live
+ * reading to the nearest of these same 8 values before comparing. */
+const OCTANTS = [0, 45, 90, 135, 180, 225, 270, 315]
 
 /** Bottom-sheet form for a waypoint's name/category/color/notes, opened
  * either right after placing a new one or by tapping an existing marker.
@@ -25,7 +33,14 @@ export function WaypointEditPanel() {
   const [category, setCategory] = useState<WaypointCategory>(waypoint?.category ?? 'general')
   const [color, setColor] = useState<WaypointColor>(waypoint?.color ?? DEFAULT_COLOR)
   const [notes, setNotes] = useState(waypoint?.notes ?? '')
+  const [optimalWindDirections, setOptimalWindDirections] = useState<number[]>(
+    waypoint?.optimalWindDirections ?? [],
+  )
   const [openedFor, setOpenedFor] = useState(editingId)
+
+  const windAt = useWindStore((state) => state.windAt)
+  const windEnabled = useWindStore((state) => state.enabled)
+  const currentWind = windEnabled && waypoint ? windAt(waypoint.coordinate) : null
 
   // Re-seed the draft when a different waypoint is opened (including the
   // very first open) — but not on every store update, or edits in
@@ -36,13 +51,26 @@ export function WaypointEditPanel() {
     setCategory(waypoint?.category ?? 'general')
     setColor(waypoint?.color ?? DEFAULT_COLOR)
     setNotes(waypoint?.notes ?? '')
+    setOptimalWindDirections(waypoint?.optimalWindDirections ?? [])
   }
 
   if (!editingId || !waypoint) return null
 
+  function toggleOctant(octant: number) {
+    setOptimalWindDirections((current) =>
+      current.includes(octant) ? current.filter((o) => o !== octant) : [...current, octant],
+    )
+  }
+
   function handleSave() {
     if (!editingId) return
-    void updateWaypoint(editingId, { name: name.trim() || 'Waypoint', category, color, notes })
+    void updateWaypoint(editingId, {
+      name: name.trim() || 'Waypoint',
+      category,
+      color,
+      notes,
+      optimalWindDirections,
+    })
     closeEdit()
   }
 
@@ -137,6 +165,51 @@ export function WaypointEditPanel() {
               className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 resize-none rounded-md border px-2.5 py-1.5 text-sm outline-none focus-visible:outline-2"
             />
           </label>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-ink-500 text-xs font-medium">
+                Optimal wind (blowing from)
+              </span>
+              {currentWind && (
+                <span
+                  className={cn(
+                    'flex items-center gap-1 text-[10px] font-medium',
+                    isOptimalWind(currentWind.directionDegrees, optimalWindDirections)
+                      ? 'text-status-success'
+                      : optimalWindDirections.length > 0
+                        ? 'text-status-danger'
+                        : 'text-ink-500',
+                  )}
+                >
+                  <Wind size={11} aria-hidden="true" />
+                  {compassLabel(currentWind.directionDegrees)} now
+                </span>
+              )}
+            </div>
+            <div
+              role="group"
+              aria-label="Optimal wind directions"
+              className="mt-1.5 grid grid-cols-4 gap-1.5"
+            >
+              {OCTANTS.map((octant) => (
+                <button
+                  key={octant}
+                  type="button"
+                  aria-pressed={optimalWindDirections.includes(octant)}
+                  onClick={() => toggleOctant(octant)}
+                  className={cn(
+                    'rounded-md px-1 py-1.5 text-center text-xs font-medium transition-colors',
+                    optimalWindDirections.includes(octant)
+                      ? 'bg-brand-500/15 text-brand-400'
+                      : 'text-ink-300 hover:bg-surface-800',
+                  )}
+                >
+                  {compassLabel(octant)}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <WaypointPhotos waypointId={editingId} photoIds={waypoint.photoIds ?? []} />
         </div>

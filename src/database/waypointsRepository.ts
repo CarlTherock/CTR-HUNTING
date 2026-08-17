@@ -9,7 +9,10 @@ export interface CreateWaypointInput {
 }
 
 export type UpdateWaypointInput = Partial<
-  Pick<Waypoint, 'name' | 'category' | 'color' | 'notes' | 'coordinate' | 'photoIds'>
+  Pick<
+    Waypoint,
+    'name' | 'category' | 'color' | 'notes' | 'coordinate' | 'photoIds' | 'optimalWindDirections'
+  >
 >
 
 /** Waypoint CRUD against the local Dexie database — real offline

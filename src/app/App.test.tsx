@@ -11,7 +11,7 @@ describe('App startup', () => {
 
     // Dashboard is the index route.
     expect(await screen.findByRole('heading', { name: 'CTR Hunting' })).toBeInTheDocument()
-    expect(screen.getByText(/Phase 6 — Wind/i)).toBeInTheDocument()
+    expect(screen.getByText(/Phase 7 — Temporal Data/i)).toBeInTheDocument()
   })
 
   it('lists every roadmap phase with phase 0 marked done', async () => {

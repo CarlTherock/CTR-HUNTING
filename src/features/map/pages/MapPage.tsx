@@ -10,6 +10,8 @@ import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { WindLayerControl } from '@/features/wind/components/WindLayerControl'
+import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
@@ -46,6 +48,9 @@ export function MapPage() {
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
+  const windEnabled = useWindStore((state) => state.enabled)
+  const windField = useWindStore((state) => state.field)
+  const windHourOffset = useWindStore((state) => state.selectedHourOffset)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -153,6 +158,10 @@ export function MapPage() {
     instanceRef.current?.setMeasurePath(profilePoints.length > 0 ? profilePoints : null)
   }, [profilePoints])
 
+  useEffect(() => {
+    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset)
+  }, [windEnabled, windField, windHourOffset])
+
   function locate() {
     if (gpsReading.status !== 'available') return
     const coordinate = gpsReading.value
@@ -223,6 +232,10 @@ export function MapPage() {
           <TerrainInfoControl />
           <ElevationProfileControl
             queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
+          />
+          <WindLayerControl
+            getBounds={() => instanceRef.current?.getBounds() ?? null}
+            referenceCoordinate={view.center}
           />
         </div>
       ) : (

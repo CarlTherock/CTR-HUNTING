@@ -8,6 +8,7 @@ import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
+import { useWindStore } from '@/features/wind/state/windStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -23,6 +24,7 @@ const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
+const setWindField = vi.fn()
 const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
@@ -40,6 +42,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setWaypoints,
     setTrackPreview,
     setMeasurePath,
+    setWindField,
     setTerrainEnabled,
     queryElevation,
     getBounds,
@@ -68,6 +71,19 @@ vi.mock('@/services/map', () => ({
   ],
 }))
 
+const fetchWindField = vi.fn().mockResolvedValue({
+  timezone: 'America/Toronto',
+  samples: [
+    {
+      coordinate: { lat: 46.8139, lng: -71.208 },
+      hourly: [{ time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 20 }],
+    },
+  ],
+})
+vi.mock('@/services/wind', () => ({
+  windProvider: { fetchWindField: (...args: unknown[]) => fetchWindField(...args) },
+}))
+
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
@@ -94,6 +110,13 @@ afterEach(async () => {
     queryResult: null,
     profilePoints: [],
     profileData: null,
+  })
+  useWindStore.setState({
+    status: 'idle',
+    field: null,
+    errorReason: null,
+    enabled: false,
+    selectedHourOffset: 0,
   })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
@@ -372,6 +395,34 @@ describe('MapPage', () => {
     })
   })
 
+  it('saves per-waypoint optimal wind octants and flags whether the live wind matches', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
+    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+
+    // Turn the wind layer on so the live reading (mocked to blow from
+    // 270°/W) is available for the "matches now" badge.
+    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    await screen.findByText(/km\/h from/)
+
+    // Mark north as optimal — the live wind (W) should read as a mismatch.
+    await user.click(screen.getByRole('button', { name: 'N' }))
+    expect(await screen.findByText('W now')).toHaveClass('text-status-danger')
+
+    // Mark west too — now the live wind matches.
+    await user.click(screen.getByRole('button', { name: 'W' }))
+    expect(await screen.findByText('W now')).toHaveClass('text-status-success')
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(async () => {
+      const [waypoint] = await db.waypoints.toArray()
+      expect(waypoint.optimalWindDirections).toEqual(expect.arrayContaining([0, 270]))
+    })
+  })
+
   it('starts a GPS track recording and mirrors the live preview onto the map', async () => {
     const user = userEvent.setup()
     mockGpsReading = {
@@ -400,7 +451,13 @@ describe('MapPage', () => {
     await user.click(screen.getByRole('button', { name: 'Record a GPS track' }))
     await user.click(screen.getByRole('button', { name: 'Stop and save track' }))
 
-    expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+    // stop() awaits a fake-IndexedDB write before its state update lands —
+    // userEvent's click only flushes React's own microtasks, not the
+    // IndexedDB transaction-complete callback, so the final store update
+    // (and the setTrackPreview(null) it triggers) can lag behind the click.
+    await vi.waitFor(() => {
+      expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+    })
     expect(screen.getByRole('button', { name: 'Record a GPS track' })).toBeInTheDocument()
   })
 
@@ -432,5 +489,27 @@ describe('MapPage', () => {
     })
     const [persisted] = await db.offlineAreas.toArray()
     expect(persisted.tilesDownloaded).toBe(4)
+  })
+
+  it('toggling the wind layer fetches a real field and animates it on the map; toggling off clears it', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+
+    expect(fetchWindField).toHaveBeenCalledWith(
+      { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
+      5,
+    )
+    await vi.waitFor(() => {
+      expect(setWindField).toHaveBeenLastCalledWith(
+        expect.objectContaining({ timezone: 'America/Toronto' }),
+        0,
+      )
+    })
+    expect(await screen.findByText(/km\/h from/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    expect(setWindField).toHaveBeenLastCalledWith(null, 0)
   })
 })

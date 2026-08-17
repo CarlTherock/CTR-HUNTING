@@ -22,6 +22,7 @@ function fakeMapInstance(
     setWaypoints: vi.fn(),
     setTrackPreview: vi.fn(),
     setMeasurePath: vi.fn(),
+    setWindField: vi.fn(),
     setTerrainEnabled: vi.fn(),
     queryElevation: vi.fn().mockReturnValue(null),
     getBounds: vi.fn().mockReturnValue(BOUNDS),

@@ -120,3 +120,14 @@ without querying the photos table at all — just `photoIds.length`.
 Deleting a waypoint (`waypointsStore.deleteWaypoint`) also deletes its
 photos (`deletePhotosForWaypoint`) — without that they'd be orphaned in
 Dexie forever, since nothing else references them.
+
+## Optimal wind (Phase 6)
+
+`Waypoint.optimalWindDirections` — an 8-octant picker in
+`WaypointEditPanel.tsx`, right below Notes — lets a hunter mark which
+compass directions the wind should blow *from* for a spot to be worth
+sitting. While `features/wind/`'s flow-field layer is on, the panel shows
+the live reading nearest that waypoint and a green/red badge for whether
+it currently matches. See `features/wind/README.md` for the full design
+(it's owned there since it's fundamentally a wind feature, just edited
+from this panel).

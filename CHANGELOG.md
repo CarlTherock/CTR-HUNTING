@@ -3,6 +3,78 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 6 — Wind, complete (2026-08-17)
+
+Dedicated wind engine: animated particle flow-field on the map, live
+direction/speed/gusts, a 24h interactive timeline, and a per-waypoint
+"Optimal Wind" feature that goes beyond the base spec — built per the
+project's own competitive research (`NOTES_TECHNIQUES_FUTURES.md`), which
+had already flagged onX Hunt's "Optimal Wind" concept and recommended a
+lightweight particle flow-field over a physics engine.
+
+### Provider
+
+`src/services/wind/` (`WindProvider` interface, `OpenMeteoWindProvider`
+implementation) — Open-Meteo again (same keyless, free provider as
+Phase 5's weather), but fetching a **grid** of points in one batched
+request instead of a single location. Verified live before writing any
+code: Open-Meteo supports comma-joined `latitude=`/`longitude=` lists in
+one call, returning a top-level JSON array (one object per location); a
+single-location request instead returns a bare object, so the response is
+normalized with `Array.isArray(data) ? data : [data]`. Real verified
+parameters: `wind_speed_10m`, `wind_direction_10m` (0–360°, meteorological
+"from" convention), `wind_gusts_10m`.
+
+### Flow-field animation
+
+- `utils/windField.ts` (pure, framework-agnostic, 12 tests):
+  `nearestSample()` picks the real grid sample closest to a coordinate
+  (never interpolated between samples), `windAt()` looks it up at a given
+  hour offset, `advancePosition()` moves a particle along a real wind
+  vector for a timestep, `octantOf()`/`isOptimalWind()` back the
+  per-waypoint feature below.
+- `MapLibreProvider.ts` owns the entire animation inside a plain
+  `<canvas>` absolutely positioned over the map container (not a GL
+  custom layer) — particle positions are real lat/lng, reprojected to
+  screen pixels every frame via `map.project()`, so pan/zoom/rotate need
+  no extra bookkeeping. `MapProvider.setWindField(field, hourOffset)` is
+  the only surface feature code touches. Particle speed is deliberately
+  exaggerated for visual legibility — explicitly documented as not
+  physically accurate, matching the project's own prior design note.
+
+### UI
+
+`features/wind/state/windStore.ts` mirrors `weatherStore`'s "don't hammer
+the API" pattern — fetches only on first enable or an explicit refresh,
+never automatically on pan/zoom; toggling off keeps the field cached in
+memory. `components/WindLayerControl.tsx`: a floating toggle + bottom
+sheet with live speed/gusts/direction (a rotated compass icon +
+`compassLabel()`, reused from `utils/terrain.ts`) and a 24h range-slider
+timeline that re-reads the same fetched field at a different hour offset,
+no re-fetch per scrub.
+
+### Optimal Wind (per waypoint, beyond the base spec)
+
+`Waypoint.optimalWindDirections` — an 8-octant picker added to
+`WaypointEditPanel.tsx` — lets a hunter mark which compass directions the
+wind should blow *from* for a spot to be worth sitting. While the wind
+layer is on, the panel shows the live reading nearest that waypoint and a
+green "matches" / red "mismatch" badge against the saved octants, so a
+hunter can check before walking in whether today's wind actually favors a
+stand.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (216/216 across 32 files — new
+`windField.test.ts`, `OpenMeteoWindProvider.test.ts`, `windStore.test.ts`,
+`MapLibreProvider.test.ts` wind-layer tests, and `MapPage.test.tsx`
+integration tests for the toggle/fetch/timeline and the optimal-wind
+picker) and `build` all pass. The particle animation's actual rendering
+on a live map canvas wasn't visually verified (no map API key in this
+environment) — same caveat as the other map-dependent visuals from
+Phases 3/4; the underlying math and store/UI wiring are fully tested
+instead.
+
 ## Fix: 3D pitch capped at a bird's-eye tilt, not eye level (2026-08-17)
 
 User feedback: 3D mode felt limited — they wanted to tilt far enough to

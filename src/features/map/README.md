@@ -1,8 +1,10 @@
 # features/map
 
-**Status:** Phase 1 complete (all five slices) and Phase 4 (Terrain 3D)
+**Status:** Phase 1 complete (all five slices), Phase 4 (Terrain 3D)
 complete — real elevation relief, orientation, altitude/slope/aspect, and
-elevation profile.
+elevation profile — and Phase 6 (Wind) complete, hosting
+`features/wind/`'s flow-field control. See `features/wind/README.md` for
+the wind engine itself.
 
 The 2D↔3D toggle (`components/ViewModeToggle.tsx`, scaffolded in slice
 1.5 as pitch/bearing only) now also drapes real elevation relief under
@@ -94,3 +96,14 @@ rendered 3D relief, and whether AWS's Terrarium tiles resolve/render
 correctly end-to-end. The wiring (source re-added on every style reload,
 `setTerrain`/`queryTerrainElevation` calls, all pure math in
 `utils/terrain.ts`/`terrainQuery.ts`) is unit-tested instead.
+
+## Wind (Phase 6)
+
+`MapInstance.setWindField(field, hourOffset)` (`MapProvider.ts`) owns an
+animated particle flow-field, entirely self-contained inside
+`MapLibreProvider.ts` — a plain `<canvas>` absolutely positioned over the
+map container (not a GL custom layer), redrawn every frame via
+`requestAnimationFrame`. Particle positions are real lat/lng, reprojected
+to screen pixels each frame with `map.project()`, so pan/zoom/rotate need
+no extra bookkeeping. See `features/wind/README.md` for the data layer,
+UI, and the "Optimal Wind" per-waypoint feature it also introduced.

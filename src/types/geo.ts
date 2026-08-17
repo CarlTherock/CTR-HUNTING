@@ -58,6 +58,13 @@ export interface Waypoint {
   color?: WaypointColor
   notes?: string
   photoIds?: string[]
+  /** Compass octants (0/45/90/…/315 — the direction wind is blowing
+   * *from*) the hunter considers good wind for this spot, e.g. "wind
+   * from the north or northeast keeps my scent off the trail I expect
+   * deer to use." Matches onX Hunt's per-waypoint "Optimal Wind" concept
+   * (verified via competitive research, see NOTES_TECHNIQUES_FUTURES.md).
+   * Undefined/empty means "no preference set," not "any wind is bad." */
+  optimalWindDirections?: number[]
   createdAt: string // ISO 8601
   updatedAt: string // ISO 8601
 }

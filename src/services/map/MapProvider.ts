@@ -1,4 +1,4 @@
-import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint } from '@/types'
+import type { Coordinate, MapBaseLayerId, MapOverlayId, MapViewState, Waypoint, WindField } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 
 export interface DownloadAreaProgress {
@@ -62,6 +62,17 @@ export interface MapInstance {
    * source/layers, independent of `setTrackPreview`, so drawing a
    * measurement never interferes with an in-progress GPS track. */
   setMeasurePath(points: Coordinate[] | null): void
+  /**
+   * Renders (Phase 6) or clears (`null`) an animated wind "flow field" —
+   * particles drifting along real wind vectors, each sampled from the
+   * *nearest* real grid point in `field` (never interpolated/fabricated
+   * between samples). `hourOffset` selects which hourly sample to use
+   * (0 = soonest), for the interactive timeline. The animation's time
+   * scale is deliberately exaggerated for visual legibility — see
+   * `utils/windField.ts`'s `advancePosition` — but direction and
+   * relative speed are always real data.
+   */
+  setWindField(field: WindField | null, hourOffset: number): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

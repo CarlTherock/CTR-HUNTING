@@ -8,9 +8,11 @@ import type {
   MapViewState,
   Waypoint,
   WaypointCategory,
+  WindField,
 } from '@/types'
 import { tileCenterLngLat, tileRangeForBounds, tilesForRange } from '@/utils/tiles'
 import type { LngLatBounds } from '@/utils/tiles'
+import { advancePosition, windAt } from '@/utils/windField'
 import type { CreateMapOptions, DownloadAreaProgress, MapInstance, MapProvider } from './MapProvider'
 
 /** Real vector layer IDs inside MapTiler's "Outdoor" style, grouped by
@@ -210,6 +212,127 @@ function measurePathGeoJson(points: Coordinate[] | null) {
   return { type: 'FeatureCollection' as const, features: [...lineFeatures, ...pointFeatures] }
 }
 
+interface WindParticle {
+  pos: Coordinate
+  age: number
+}
+
+const WIND_PARTICLE_COUNT = 150
+/** Frames before a particle respawns elsewhere — keeps trails short and
+ * the field feeling continuously "alive" rather than a few long streaks. */
+const WIND_PARTICLE_MAX_AGE = 100
+/** Stylized animation-speed multiplier — see `advancePosition`'s own doc
+ * comment (`utils/windField.ts`) for why real-world wind speed would be
+ * imperceptible frame-to-frame on a map. */
+const WIND_SPEED_SCALE = 60
+
+function randomPointInBounds(map: MapLibreMap): Coordinate {
+  const bounds = map.getBounds()
+  return {
+    lat: bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth()),
+    lng: bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest()),
+  }
+}
+
+/**
+ * Owns a `<canvas>` overlaid on the map container and a
+ * `requestAnimationFrame` loop drawing an animated wind "flow field" on
+ * it (Phase 6) — a plain 2D canvas, not a MapLibre GeoJSON layer, since
+ * particle trails need per-frame screen-space redraws a style layer
+ * isn't suited for. `map.project()` reprojects every particle every
+ * frame, so pan/zoom/rotate need no extra bookkeeping to stay correct.
+ * Each particle's wind vector is the *nearest real grid sample*
+ * (`utils/windField.ts`'s `windAt`) — never interpolated/fabricated
+ * between samples.
+ */
+function createWindLayer(map: MapLibreMap, container: HTMLElement) {
+  const canvas = document.createElement('canvas')
+  canvas.style.position = 'absolute'
+  canvas.style.inset = '0'
+  canvas.style.pointerEvents = 'none'
+  container.appendChild(canvas)
+
+  let field: WindField | null = null
+  let hourOffset = 0
+  let particles: WindParticle[] = []
+  let animationFrame: number | null = null
+
+  function reset() {
+    particles = Array.from({ length: WIND_PARTICLE_COUNT }, () => ({
+      pos: randomPointInBounds(map),
+      age: Math.floor(Math.random() * WIND_PARTICLE_MAX_AGE),
+    }))
+  }
+
+  function step() {
+    if (!field) return
+    const dpr = window.devicePixelRatio || 1
+    const width = container.clientWidth
+    const height = container.clientHeight
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, width, height)
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.75)'
+    ctx.lineWidth = 1.5
+    ctx.lineCap = 'round'
+
+    for (const particle of particles) {
+      const screenStart = map.project([particle.pos.lng, particle.pos.lat])
+      const wind = windAt(field, particle.pos, hourOffset)
+      if (wind) {
+        const nextPos = advancePosition(particle.pos, wind, 1 / 60, WIND_SPEED_SCALE)
+        const screenEnd = map.project([nextPos.lng, nextPos.lat])
+        ctx.beginPath()
+        ctx.moveTo(screenStart.x, screenStart.y)
+        ctx.lineTo(screenEnd.x, screenEnd.y)
+        ctx.stroke()
+        particle.pos = nextPos
+        particle.age += 1
+      } else {
+        particle.age = WIND_PARTICLE_MAX_AGE + 1
+      }
+      const offScreen =
+        screenStart.x < -20 ||
+        screenStart.x > width + 20 ||
+        screenStart.y < -20 ||
+        screenStart.y > height + 20
+      if (particle.age > WIND_PARTICLE_MAX_AGE || offScreen) {
+        particle.pos = randomPointInBounds(map)
+        particle.age = 0
+      }
+    }
+
+    animationFrame = requestAnimationFrame(step)
+  }
+
+  return {
+    setField(newField: WindField | null, newHourOffset: number) {
+      field = newField
+      hourOffset = newHourOffset
+      if (field && animationFrame === null) {
+        reset()
+        animationFrame = requestAnimationFrame(step)
+      } else if (!field && animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+        animationFrame = null
+        const ctx = canvas.getContext('2d')
+        ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    },
+    destroy() {
+      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+      canvas.remove()
+    },
+  }
+}
+
 /**
  * Offline tile caching (Phase 3). Tile requests are redirected (via
  * `transformRequest` below) from `https://…` to `ctrtile://…`, which
@@ -393,6 +516,7 @@ export class MapLibreProvider implements MapProvider {
     })
 
     map.addControl(new NavigationControl(), 'top-right')
+    const windLayer = createWindLayer(map, container)
 
     // Re-applied on every style load — including the first one, and every
     // subsequent setStyle() from setBaseLayer, which discards all prior
@@ -562,6 +686,9 @@ export class MapLibreProvider implements MapProvider {
         const source = map.getSource(MEASURE_SOURCE_ID) as GeoJSONSource | undefined
         source?.setData(measurePathGeoJson(points))
       },
+      setWindField(field: WindField | null, hourOffset: number) {
+        windLayer.setField(field, hourOffset)
+      },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         terrainEnabled = enabled
         terrainExaggeration = exaggeration
@@ -624,6 +751,7 @@ export class MapLibreProvider implements MapProvider {
       destroy() {
         userMarker?.remove()
         for (const marker of waypointMarkers.values()) marker.remove()
+        windLayer.destroy()
         map.remove()
       },
     }

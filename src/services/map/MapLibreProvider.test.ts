@@ -585,6 +585,62 @@ describe('MapLibreProvider', () => {
     })
   })
 
+  describe('wind flow field (Phase 6)', () => {
+    const FIELD = {
+      timezone: 'America/Toronto',
+      samples: [
+        {
+          coordinate: { lat: 0, lng: 0 },
+          hourly: [{ time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 12, gustsKmh: 20 }],
+        },
+      ],
+    }
+
+    it('adds a canvas overlay to the container on creation', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(container.querySelector('canvas')).not.toBeNull()
+    })
+
+    it('setWindField does not throw when enabling, updating, or clearing the field', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(() => instance.setWindField(FIELD, 0)).not.toThrow()
+      expect(() => instance.setWindField(FIELD, 1)).not.toThrow()
+      expect(() => instance.setWindField(null, 0)).not.toThrow()
+    })
+
+    it('removes the canvas overlay on destroy', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      instance.setWindField(FIELD, 0)
+      instance.destroy()
+
+      expect(container.querySelector('canvas')).toBeNull()
+    })
+  })
+
   describe('terrain (Phase 4)', () => {
     it('does not enable terrain by default', () => {
       mapInstances.length = 0

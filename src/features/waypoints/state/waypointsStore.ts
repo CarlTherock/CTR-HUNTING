@@ -35,6 +35,7 @@ interface WaypointsState {
       notes: string
       coordinate: Coordinate
       photoIds: string[]
+      optimalWindDirections: number[]
     }>,
   ) => Promise<void>
   deleteWaypoint: (id: string) => Promise<void>
