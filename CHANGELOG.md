@@ -3,6 +3,59 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 5 — Weather, complete (2026-08-17)
+
+Current conditions, 24h hourly forecast, and an offline cache fallback,
+behind a swappable provider adapter.
+
+### Provider: Open-Meteo, verified live, no API key
+
+Open-Meteo (open-meteo.com) was chosen because it needs no API key for
+non-commercial use (verified directly against their live docs — no key
+management step at all, unlike the Phase 1 map providers) and every
+parameter name used (`temperature_2m`, `relative_humidity_2m`,
+`wind_gusts_10m`, `surface_pressure`, etc.) was confirmed against their
+docs before being hard-coded. One wrinkle: their `current=` block
+doesn't natively include visibility (it's `hourly=`-only, confirmed via
+docs) — `OpenMeteoWeatherProvider` sources current visibility from the
+first hourly sample instead of omitting it or guessing.
+
+### Added
+
+- `src/types/weather.ts`: `WeatherConditions`, `HourlyForecastEntry`,
+  `WeatherForecast`.
+- `src/services/weather/` (`WeatherProvider` interface,
+  `OpenMeteoWeatherProvider`, `index.ts`) — the adapter pattern
+  `src/services/README.md` already documented for this phase.
+- `features/weather/state/weatherStore.ts`: fetches once on mount (GPS if
+  already fixed, else the map's last known center) and once more if a GPS
+  fix arrives afterward — deliberately **not** on every subsequent GPS
+  update, to avoid hammering the free API on ordinary GPS jitter; a manual
+  refresh button covers "I've actually moved." Every successful fetch is
+  cached (`settingsRepository`/Dexie); a later failed fetch falls back to
+  that cache, clearly flagged (`isCached` + the real error reason) rather
+  than silently presenting stale data as fresh.
+- `features/weather/pages/WeatherPage.tsx`: current-conditions card
+  (temperature, humidity, pressure, precipitation, cloud cover,
+  visibility, wind, gusts) + a horizontally-scrollable 24h hourly
+  forecast. Wind speed/gusts show here as one metric among others —
+  Wind's own dedicated engine (direction, animation, timeline) is Phase 6,
+  per the spec's phase split.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (188/188 — 13 new tests across
+`OpenMeteoWeatherProvider.test.ts`, `weatherStore.test.ts` and
+`WeatherPage.test.tsx`) and `build` all pass. **Fully verified live in
+the browser** — unlike Phases 3/4, which needed a map API key this
+session didn't have, Open-Meteo needs no key at all: real current
+conditions (22°C, 85% humidity, 100% cloud cover, 8.8 km visibility) and
+a real 24h hourly forecast rendered correctly for the default map
+coordinate, cross-checked against a direct `fetch()` to the same
+Open-Meteo endpoint from the same browser context (identical
+temperature/timestamp), and the Dexie cache write was confirmed directly
+via IndexedDB inspection.
+
 ## Elevation profile: show points/line on the map while measuring (2026-08-17)
 
 User feedback: tapping points for an elevation profile gave no visual

@@ -23,7 +23,7 @@ const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
   { phase: 2, label: 'Waypoints & Tracks', status: 'done' },
   { phase: 3, label: 'Offline', status: 'done' },
   { phase: 4, label: 'Terrain 3D', status: 'done' },
-  { phase: 5, label: 'Weather', status: 'pending' },
+  { phase: 5, label: 'Weather', status: 'done' },
   { phase: 6, label: 'Wind', status: 'pending' },
   { phase: 7, label: 'Temporal Data', status: 'pending' },
   { phase: 8, label: 'Analytics Engine', status: 'pending' },

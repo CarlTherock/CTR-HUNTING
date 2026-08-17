@@ -18,7 +18,8 @@ Features import the interface and the configured instance from the
 feature's own `index.ts` re-export — never the concrete provider class
 directly — so swapping providers later never touches feature code.
 
-No adapters exist yet in Phase 0: the map (Phase 1), weather (Phase 5), wind
-(Phase 6) and elevation providers all get their own adapter when their phase
-is implemented, per the project's "never fabricate external data, never
-build ahead of the roadmap" rules.
+The map (`src/services/map/`, Phase 1) and weather (`src/services/weather/`,
+Phase 5) adapters exist now, each added when its phase began, not before.
+Wind (Phase 6) and elevation providers get their own adapter the same way,
+per the project's "never fabricate external data, never build ahead of the
+roadmap" rules.
