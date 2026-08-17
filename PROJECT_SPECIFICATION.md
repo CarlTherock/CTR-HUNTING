@@ -12,7 +12,13 @@ profile; Phase 5 (Weather) complete — current conditions, hourly
 forecast, offline cache fallback, swappable provider (Open-Meteo); Phase 6
 (Wind) complete — animated particle flow-field, direction/speed/gusts,
 24h interactive timeline, plus a per-waypoint "Optimal Wind" feature
-beyond the base spec, inspired by onX Hunt's own feature of the same name
+beyond the base spec, inspired by onX Hunt's own feature of the same
+name, later upgraded to a Windy-style multi-layer weather map
+(Wind/Temperature/Precipitation/Clouds, calibrated color scale) and an
+onX Hunt-style cross-waypoint wind comparison; Phase 7 (Temporal Data)
+complete — sunrise/sunset, moonrise/moonset, moon phase, day length, a
+global 24h timeline, and real solunar major/minor periods, computed
+fully offline via SunCalc
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -69,7 +75,7 @@ exists).
 | 4   | Terrain 3D ✅          | 3D terrain, rotation/tilt/zoom/pan, orientation, altitude, slope, aspect, contour lines, elevation profile. Same layers/data as 2D. Real elevation relief via a `raster-dem` source (AWS Terrarium tiles, `setTerrain`/exaggeration slider); rotation/tilt/zoom/pan via MapLibre's native handlers + `NavigationControl`; contour lines already existed (Phase 1.4 overlay); altitude/slope/aspect point query and elevation-profile line tool both via `queryTerrainElevation`. |
 | 5   | Weather ✅             | Temperature, humidity, pressure, precipitation, cloud cover, visibility, wind, gusts, hourly forecast. Provider must be swappable. Provider: Open-Meteo (`WeatherProvider` adapter, keyless, verified live). Current conditions + 24h hourly forecast; offline fallback to the last successfully cached reading (Dexie via `settingsRepository`), clearly flagged when shown. |
 | 6   | Wind ✅                | Dedicated wind engine: direction, speed, gusts, temporal change, map animation, interactive timeline. Provider: Open-Meteo (`WindProvider` adapter, keyless, batched grid fetch, verified live) — the same fetch also carries temperature/precipitation/cloud cover. Windy-style multi-layer map (Wind/Temperature/Precipitation/Clouds, calibrated color scale + legend, particles colored by speed) with an instant no-refetch layer switcher; 24h timeline scrubber; a per-waypoint "Optimal Wind" octant picker + live match badge; and an onX Hunt-style cross-waypoint "Wind Comparisons" panel — all beyond the base spec, built from live research on Windy and onX Hunt's real feature sets. |
-| 7   | Temporal Data          | Sunrise/sunset, moonrise/moonset, moon phase, day length; global 24h timeline.                                                                                                                     |
+| 7   | Temporal Data ✅       | Sunrise/sunset, moonrise/moonset, moon phase, day length; global 24h timeline. Computed fully client-side via SunCalc (verified BSD-2-Clause, no network call needed — offline-first by design, unlike Phases 5/6). Real moon-transit-based solunar major/minor periods per the public-domain Solunar Theory geometry, explicitly not a commercial activity score. |
 | 8   | Analytics Engine       | Independent analyzers: TerrainAnalyzer, VegetationAnalyzer, WeatherAnalyzer, WindAnalyzer, TimeAnalyzer, HistoryAnalyzer. Results must be explainable.                                             |
 | 9   | Analysis Map           | Heatmap, analyzed zones, configurable scores, explanatory factors, comparison. No result presented as certainty when data is probabilistic.                                                        |
 | 10  | Advanced Charts        | 24h/12h/6h/3h/1h charts; zoom, pan, cursor, hour selection, day comparison. Time cursor synchronizes map, wind, weather, temporal data.                                                            |

@@ -3,6 +3,58 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 7 — Temporal Data, complete (2026-08-17)
+
+Sunrise/sunset, moonrise/moonset, moon phase, day length, and a global
+24h timeline, plus real solunar major/minor periods.
+
+### Research (live, before writing any code)
+
+- Confirmed Open-Meteo's `daily=` API does expose
+  `sunrise`/`sunset`/`moonrise`/`moonset`/`moon_phase` — but using it
+  would add a network dependency for data that doesn't need one, worse
+  for offline-first than computing it client-side.
+- Confirmed [SunCalc](https://github.com/mourner/suncalc) directly
+  against its GitHub repo: dependency-free, based on the Astronomical
+  Almanac's low-precision solar/lunar formulas (same family as NOAA's
+  solar calculator). Its `LICENSE` file is BSD-2-Clause — npm's registry
+  page misleadingly shows "Proprietary" only because `package.json`
+  omits a `license` field; verified the actual license text directly
+  before depending on it.
+- Confirmed Solunar Theory's major/minor-period geometry (moon
+  transit/anti-transit; near moonrise/moonset) is John Alden Knight's
+  1926 public-domain concept — distinct from the *proprietary*
+  activity-scoring commercial apps (onX Hunt, HuntStand) layer on top,
+  which this app does not attempt to reproduce or fabricate.
+
+### Added
+
+- `utils/temporal.ts`: thin wrappers around SunCalc (`getSunTimes`,
+  `getMoonTimes`, `getMoonIllumination`), `moonPhaseName()` (buckets the
+  real 0–1 phase fraction into the 8 conventional named phases),
+  `computeSolunarPeriods()` (real moon-transit/anti-transit found by
+  sampling `SunCalc.getMoonPosition`'s altitude every 10 minutes across
+  the day — transit time genuinely shifts daily, never assumed fixed).
+- `features/temporal/pages/TemporalPage.tsx` (new "Sun & Moon" nav
+  item/route): GPS-or-map-center fallback, previous/next-day navigation,
+  sun/moon cards, and a solunar-periods list.
+- `components/DayTimelineBar.tsx`: the roadmap's "global 24h timeline" —
+  night/day shading from real sun times, solunar period bands, a "now"
+  marker.
+- `components/MoonPhaseIcon.tsx`: a real crescent/gibbous SVG rendering
+  computed from the actual `phase`/`waxing` values (not a generic icon).
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (248/248 across 36 files — new
+`temporal.test.ts`, `TemporalPage.test.tsx`) and `build` all pass.
+Verified live in-browser (this phase needs no map API key, unlike
+Phases 3/4/6): real sunrise/sunset/moonrise/moonset/day-length/solunar
+times render correctly for the fallback location, and previous/next-day
+navigation updates them; the moon icon's crescent orientation was
+visually checked and one rendering bug (lit on the wrong side) was found
+and fixed before considering this phase done.
+
 ## Phase 5/6 upgrade — Windy-style weather map + onX Hunt wind comparison (2026-08-17)
 
 User feedback after Phase 6 shipped: not satisfied with the wind/weather
