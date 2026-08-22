@@ -107,3 +107,12 @@ map container (not a GL custom layer), redrawn every frame via
 to screen pixels each frame with `map.project()`, so pan/zoom/rotate need
 no extra bookkeeping. See `features/wind/README.md` for the data layer,
 UI, and the "Optimal Wind" per-waypoint feature it also introduced.
+
+## Analytics (Phase 8)
+
+`features/analytics/components/AnalysisControl.tsx` adds a fourth
+arm-then-tap tool (alongside terrain info, elevation profile, and
+waypoint placement) — "Analyze this spot" runs all 6 explainable
+analyzers for the tapped point using the map's live `queryElevation` for
+terrain, plus on-demand weather/wind/vegetation fetches for that exact
+coordinate. See `features/analytics/README.md` for the full design.

@@ -19,10 +19,13 @@ feature's own `index.ts` re-export — never the concrete provider class
 directly — so swapping providers later never touches feature code.
 
 The map (`src/services/map/`, Phase 1), weather (`src/services/weather/`,
-Phase 5), and wind (`src/services/wind/`, Phase 6) adapters exist now,
-each added when its phase began, not before. Elevation providers get
-their own adapter the same way, per the project's "never fabricate
-external data, never build ahead of the roadmap" rules.
+Phase 5), wind (`src/services/wind/`, Phase 6), and vegetation
+(`src/services/vegetation/`, Phase 8) adapters exist now, each added when
+its phase began, not before. Per the project's "never fabricate external
+data" rule, `vegetationProvider` uses the Overpass API (OpenStreetMap)
+rather than ESA WorldCover (no live point-query API exists) or USGS NLCD
+(US-only, no coverage for this app's actual Quebec/Canada usage) — both
+were checked live before picking Overpass.
 
 `src/services/wind/OpenMeteoWindProvider.ts` also reuses Open-Meteo (same
 keyless, free provider as weather), but fetches a whole **grid** of

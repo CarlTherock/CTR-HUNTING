@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { availableBaseLayers, mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
+import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
+import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
@@ -90,6 +92,10 @@ export function MapPage() {
           })
         } else if (terrainMode === 'profiling') {
           useTerrainToolsStore.getState().addProfilePoint(coordinate)
+        } else if (useAnalysisStore.getState().mode === 'analyzing') {
+          const map = instanceRef.current
+          if (!map) return
+          void useAnalysisStore.getState().analyze(coordinate, (c) => map.queryElevation(c))
         }
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
@@ -238,6 +244,7 @@ export function MapPage() {
             getBounds={() => instanceRef.current?.getBounds() ?? null}
             referenceCoordinate={view.center}
           />
+          <AnalysisControl />
         </div>
       ) : (
         <EmptyState

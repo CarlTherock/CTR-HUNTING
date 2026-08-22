@@ -3,6 +3,56 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 8 — Analytics Engine, complete (2026-08-17)
+
+6 independent, explainable analyzers (terrain, vegetation, weather,
+wind, time, history), reachable as a "tap the map, get an explainable
+breakdown" tool.
+
+### Research (live, before writing any code)
+
+- ESA WorldCover: no point-query API exists (rasters/tiles only) — ruled
+  out for a live per-tap lookup.
+- USGS NLCD: a real, live, CORS-open point-query API exists (Esri
+  ImageServer `identify`), but is US-only — no coverage for this app's
+  actual Quebec/Canada usage.
+- Overpass API (OpenStreetMap): confirmed live, free, keyless, CORS-open,
+  globally available — chosen as the vegetation data source.
+
+### Added
+
+- `utils/analyzers.ts`: `terrainAnalyzer`, `vegetationAnalyzer`,
+  `weatherAnalyzer`, `windAnalyzer`, `timeAnalyzer`, `historyAnalyzer`,
+  `combineAnalyses` — every one a pure function returning a score (0-100
+  or `null`, never guessed) plus the real `AnalysisFactor[]` behind it.
+  Factors built on commonly cited outdoor observations (barometric
+  pressure, crepuscular activity, Solunar Theory) are labeled as such,
+  never presented as settled science.
+- `services/vegetation/` (`VegetationProvider` adapter,
+  `OverpassVegetationProvider` implementation): real OSM
+  `landuse`/`natural` tags near a point, mapped to hunting-relevant
+  categories (forest/wetland/agricultural/grassland/water/developed).
+- `features/analytics/state/analysisStore.ts` +
+  `components/AnalysisControl.tsx`: a 4th arm-then-tap Map page tool
+  (alongside terrain info, elevation profile, waypoint placement) running
+  all 6 analyzers for the tapped point (fresh on-demand weather/wind/
+  vegetation fetches for that exact coordinate, real elevation query for
+  terrain, local waypoint/track data for history) and showing a combined
+  score plus expandable per-analyzer factor breakdowns.
+- `/analysis` page updated from a Phase-8 placeholder to a Phase-9
+  placeholder, since the analyzer engine itself is now live (used from
+  the Map page) — only the heatmap/zone view remains unbuilt.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (278/278 across 38 files — new
+`analyzers.test.ts`, `OverpassVegetationProvider.test.ts`, and a
+`MapPage.test.tsx` integration test covering the full tap → combined
+score → expandable factors flow) and `build` all pass. The live
+"Analyze this spot" flow itself wasn't visually verified (no map API key
+in this environment) — same caveat as Phases 3/4/6's other
+map-dependent tools.
+
 ## Phase 7 — Temporal Data, complete (2026-08-17)
 
 Sunrise/sunset, moonrise/moonset, moon phase, day length, and a global

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
@@ -9,6 +9,7 @@ import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useWindStore } from '@/features/wind/state/windStore'
+import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -94,6 +95,35 @@ vi.mock('@/services/wind', () => ({
   windProvider: { fetchWindField: (...args: unknown[]) => fetchWindField(...args) },
 }))
 
+const fetchForecast = vi.fn().mockResolvedValue({
+  timezone: 'America/Toronto',
+  current: {
+    timestamp: '2026-08-17T10:00',
+    temperatureCelsius: 18,
+    relativeHumidityPercent: 55,
+    surfacePressureHpa: 1013,
+    precipitationMm: 0,
+    cloudCoverPercent: 30,
+    windSpeedKmh: 10,
+    windGustsKmh: 15,
+    visibilityMeters: 20000,
+  },
+  hourly: [],
+})
+vi.mock('@/services/weather', () => ({
+  weatherProvider: { fetchForecast: (...args: unknown[]) => fetchForecast(...args) },
+}))
+
+const fetchVegetation = vi.fn().mockResolvedValue({
+  coordinate: { lat: 46.8139, lng: -71.208 },
+  radiusMeters: 300,
+  categoryCounts: { forest: 2 },
+  source: 'openstreetmap',
+})
+vi.mock('@/services/vegetation', () => ({
+  vegetationProvider: { fetchVegetation: (...args: unknown[]) => fetchVegetation(...args) },
+}))
+
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
@@ -128,6 +158,7 @@ afterEach(async () => {
     enabled: false,
     selectedHourOffset: 0,
   })
+  useAnalysisStore.setState({ mode: 'idle', status: 'idle', coordinate: null, combined: null, errorReason: null })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
     tracks: [],
@@ -540,5 +571,32 @@ describe('MapPage', () => {
     await vi.waitFor(() => {
       expect(setWindField).toHaveBeenLastCalledWith(expect.anything(), 0, 'temperature')
     })
+  })
+
+  it('arms the spot analysis tool, runs every analyzer for the tapped point, and shows an explainable breakdown', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
+    expect(screen.getByText('Tap the map to analyze that spot')).toBeInTheDocument()
+
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
+
+    expect(await screen.findByRole('heading', { name: 'Spot analysis' })).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(fetchForecast).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 })
+      expect(fetchVegetation).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 }, 300)
+    })
+
+    // A real combined score + all 6 analyzers, not a fabricated summary.
+    expect(await screen.findByText(/\/100 —/)).toBeInTheDocument()
+    const panel = within(screen.getByTestId('spot-analysis-panel'))
+    for (const label of ['Terrain', 'Vegetation', 'Weather', 'Wind', 'Time', 'History']) {
+      expect(panel.getByText(label)).toBeInTheDocument()
+    }
+
+    await user.click(panel.getByText('Terrain'))
+    expect(panel.getByText(/slope/i)).toBeInTheDocument()
   })
 })
