@@ -3,6 +3,58 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 12 — Camera, complete (2026-08-17)
+
+A real live in-app camera, replacing (well, joining — the file picker
+stays for choosing existing photos) slice 2.4's plain OS-camera-app
+handoff.
+
+### Research (live, before writing any code)
+
+- Confirmed `zoom` is a real W3C "MediaStream Image Capture" spec
+  property (Working Draft, extending `getUserMedia`) on
+  `MediaTrackCapabilities`/`MediaTrackConstraintSet`/`MediaTrackSettings`
+  — `{min, max, step}` shape, read via `getCapabilities()`, applied via
+  `track.applyConstraints({ advanced: [{ zoom }] })`.
+- Confirmed real support is narrow: Chrome 87+ desktop (full pan/tilt/
+  zoom), Android Chrome (zoom only), no evidence of Safari/iOS support.
+- Confirmed TypeScript's built-in DOM types genuinely lack `zoom`
+  (microsoft/TypeScript#56589, still open) — a real, current gap, not an
+  excuse to fabricate a type; handled via a narrow explicit cast.
+
+### Added
+
+- `features/camera/useCameraStream.ts`: real `getUserMedia` stream
+  lifecycle, real hardware zoom detection/control when the track reports
+  one, `null` otherwise (never fabricated).
+- `utils/imageAdjustments.ts`: `buildCanvasFilter()` — a real Canvas2D
+  `filter` string (standard CSS filter functions) from brightness/
+  contrast/preset values.
+- `components/CameraCapture.tsx`: live preview → capture-to-canvas
+  (`originalBlob`, kept untouched) → non-destructive review (brightness/
+  contrast sliders + grayscale/sepia/vivid presets, redrawn live from the
+  original each time) → save (a *separate* canvas produces `editedBlob`).
+  Zoom slider labeled "Zoom" vs. "Zoom (digital)" depending on whether
+  real hardware zoom or a CSS `scale()` fallback is active — never
+  presenting one as the other.
+- `Photo` (`types/photo.ts`): new `originalBlob` (Phase 12's "original
+  image always kept" rule) and `coordinate` (real GPS at capture time,
+  from `useGeolocation`) fields. `photosRepository.addPhoto()` defaults
+  `originalBlob` to `blob` when not given, so slice 2.4's file-picker
+  path needed zero changes.
+- `WaypointPhotos.tsx`: a second "Open camera" button alongside the
+  existing "Choose a photo" file picker.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (352/352 across 52 files — new
+`useCameraStream.test.ts`, `CameraCapture.test.tsx`,
+`imageAdjustments.test.ts`, `WaypointPhotos.test.tsx`) and `build` all
+pass. Not verified live: the actual camera preview/capture/hardware zoom
+on a physical device (this environment has no camera hardware, and
+reaching a waypoint's photo panel needs a map API key this environment
+doesn't have either).
+
 ## Phase 11 — Field Mode, complete (2026-08-17)
 
 A simplified, low-power, large-touch-target map UI, plus a real device

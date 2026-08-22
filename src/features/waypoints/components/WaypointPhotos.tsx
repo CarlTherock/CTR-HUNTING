@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Camera, Trash2 } from 'lucide-react'
+import { Camera, ImagePlus, Trash2 } from 'lucide-react'
 import { addPhoto, deletePhoto, listPhotosForWaypoint } from '@/database/photosRepository'
+import { CameraCapture } from '@/features/camera/components/CameraCapture'
+import type { CapturedPhoto } from '@/features/camera/components/CameraCapture'
 import { useWaypointsStore } from '../state/waypointsStore'
 import type { Photo } from '@/types'
 
 type PhotoWithUrl = Photo & { url: string }
 
-/** Photo grid + "add photo" button for the waypoint currently open in
- * `WaypointEditPanel`. A plain `<input type="file" capture="environment">`
- * delegates to the device's own camera/gallery picker — this is *not*
- * Phase 12's camera tool (live preview, zoom, filters); slice 2.4 only
- * needs to attach an existing photo to a waypoint. */
+/** Photo grid for the waypoint currently open in `WaypointEditPanel`,
+ * with two ways to add one: `CameraCapture` (Phase 12 — a real live
+ * in-app camera with zoom/adjustments/filters), or a plain
+ * `<input type="file" capture="environment">` delegating to the
+ * device's own camera/gallery picker (slice 2.4's original, simpler
+ * path — still useful for picking an existing photo, which the in-app
+ * camera can't do). */
 export function WaypointPhotos({
   waypointId,
   photoIds,
@@ -21,6 +25,7 @@ export function WaypointPhotos({
 }) {
   const updateWaypoint = useWaypointsStore((state) => state.updateWaypoint)
   const [photos, setPhotos] = useState<PhotoWithUrl[]>([])
+  const [cameraOpen, setCameraOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Object URLs are created alongside the data that needs them (this
@@ -67,6 +72,19 @@ export function WaypointPhotos({
     void updateWaypoint(waypointId, { photoIds: photoIds.filter((id) => id !== photo.id) })
   }
 
+  async function handleCameraSave(captured: CapturedPhoto) {
+    setCameraOpen(false)
+    const photo = await addPhoto({
+      waypointId,
+      blob: captured.editedBlob,
+      originalBlob: captured.originalBlob,
+      coordinate: captured.coordinate,
+    })
+    const url = URL.createObjectURL(photo.blob)
+    setPhotos((prev) => [...prev, { ...photo, url }])
+    void updateWaypoint(waypointId, { photoIds: [...photoIds, photo.id] })
+  }
+
   return (
     <div>
       <span className="text-ink-500 text-xs font-medium">Photos</span>
@@ -86,12 +104,25 @@ export function WaypointPhotos({
         ))}
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          aria-label="Add photo"
+          onClick={() => setCameraOpen(true)}
+          aria-label="Open camera"
+          title="Open camera"
           className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
         >
           <Camera size={18} aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Add photo"
+          title="Choose a photo"
+          className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
+        >
+          <ImagePlus size={18} aria-hidden="true" />
+        </button>
+        {cameraOpen && (
+          <CameraCapture onSave={(captured) => void handleCameraSave(captured)} onClose={() => setCameraOpen(false)} />
+        )}
         <input
           ref={fileInputRef}
           type="file"

@@ -107,12 +107,13 @@ discourage a synchronous `setState` call in an effect body outside a
 subscription callback, which a naive "recompute all object URLs whenever
 `photos` changes" effect would be.
 
-Adding a photo is a plain `<input type="file" accept="image/*"
-capture="environment">` — it delegates entirely to the device's own
-camera/gallery picker. This is **not** Phase 12's camera tool (live
-preview, zoom, exposure, filters); slice 2.4 only needs to attach an
-already-taken photo to a waypoint, matching "don't build ahead of the
-roadmap."
+Two ways to add a photo, side by side: `features/camera/`'s
+`CameraCapture` (Phase 12 — a real live in-app camera with zoom/
+adjustments/filters, GPS+timestamp tagging), or the original plain
+`<input type="file" accept="image/*" capture="environment">` delegating
+to the device's own camera/gallery picker — kept because it's still the
+only way to pick an *existing* photo rather than taking a new one. See
+`features/camera/README.md` for the full camera design.
 
 `Waypoint.photoIds` (`src/types/geo.ts`) stays in sync with the `photos`
 table so `WaypointsPage`'s list can show a photo count per waypoint

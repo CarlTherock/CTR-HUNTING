@@ -1,9 +1,14 @@
 import { db } from './db'
-import type { Photo } from '@/types'
+import type { Coordinate, Photo } from '@/types'
 
 export interface CreatePhotoInput {
   waypointId: string
   blob: Blob
+  /** Defaults to `blob` — a photo with no separate edited version has
+   * nothing else to call "original." */
+  originalBlob?: Blob
+  /** Real GPS at capture time, when the caller has one — never guessed. */
+  coordinate?: Coordinate
 }
 
 /** Photo CRUD against the local Dexie database — same real
@@ -17,6 +22,8 @@ export async function addPhoto(input: CreatePhotoInput): Promise<Photo> {
     id: crypto.randomUUID(),
     waypointId: input.waypointId,
     blob: input.blob,
+    originalBlob: input.originalBlob ?? input.blob,
+    coordinate: input.coordinate,
     createdAt: new Date().toISOString(),
   }
   await db.photos.add(photo)

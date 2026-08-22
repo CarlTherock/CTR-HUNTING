@@ -30,7 +30,7 @@ const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
   { phase: 9, label: 'Analysis Map', status: 'done' },
   { phase: 10, label: 'Advanced Charts', status: 'done' },
   { phase: 11, label: 'Field Mode', status: 'done' },
-  { phase: 12, label: 'Camera', status: 'pending' },
+  { phase: 12, label: 'Camera', status: 'done' },
   { phase: 13, label: 'Journal', status: 'pending' },
   { phase: 14, label: 'AI & Assistant', status: 'pending' },
   { phase: 15, label: 'Synchronization', status: 'pending' },
