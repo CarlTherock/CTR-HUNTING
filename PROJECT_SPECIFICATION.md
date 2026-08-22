@@ -24,7 +24,10 @@ time/history) over real data, reachable as a "tap the map, get an
 explainable breakdown" tool; Phase 9 (Analysis Map) complete — a
 color-graded heatmap over the visible area using the same 6 analyzers,
 configurable to show any single analyzer or the combined score, plus a
-recent-spots comparison strip
+recent-spots comparison strip; Phase 10 (Advanced Charts) complete — a
+real hourly temperature/wind/precipitation chart with 5 granularities,
+day-1-vs-day-2 comparison, and a shared timeline cursor synchronizing
+the Map page's wind layer and the Sun & Moon page's marker
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -84,7 +87,7 @@ exists).
 | 7   | Temporal Data ✅       | Sunrise/sunset, moonrise/moonset, moon phase, day length; global 24h timeline. Computed fully client-side via SunCalc (verified BSD-2-Clause, no network call needed — offline-first by design, unlike Phases 5/6). Real moon-transit-based solunar major/minor periods per the public-domain Solunar Theory geometry, explicitly not a commercial activity score. |
 | 8   | Analytics Engine ✅    | Independent analyzers: TerrainAnalyzer, VegetationAnalyzer, WeatherAnalyzer, WindAnalyzer, TimeAnalyzer, HistoryAnalyzer. Results must be explainable. All 6 built as pure functions (`utils/analyzers.ts`) over real data (Phases 4/5/6/7 + local waypoints/tracks); vegetation via a new `VegetationProvider` adapter (Overpass API/OpenStreetMap, verified live — ESA WorldCover has no point-query API, USGS NLCD is US-only). Reachable today as a "tap the map, get an explainable breakdown" tool on the Map page; a whole-area heatmap view is Phase 9. |
 | 9   | Analysis Map ✅        | Heatmap, analyzed zones, configurable scores, explanatory factors, comparison. No result presented as certainty when data is probabilistic. A color-graded heatmap over the visible map area (one real `AnalysisHeatmapCell` per grid point, same 6 analyzers as Phase 8, from 3 batched requests total — never one per cell); a "score shown" selector (combined or any single analyzer, instant, no re-fetch); a recent-spots comparison strip on the point-analysis tool. |
-| 10  | Advanced Charts        | 24h/12h/6h/3h/1h charts; zoom, pan, cursor, hour selection, day comparison. Time cursor synchronizes map, wind, weather, temporal data.                                                            |
+| 10  | Advanced Charts ✅     | 24h/12h/6h/3h/1h charts; zoom, pan, cursor, hour selection, day comparison. Time cursor synchronizes map, wind, weather, temporal data. Hand-rolled SVG chart (`features/charts/`) over the already-fetched 48h forecast — real bucket averaging for granularity, container scroll for pan, day-1-vs-day-2 overlay for comparison (real data, Open-Meteo has no historical endpoint). The cursor reuses `windStore.selectedHourOffset` (extended to 0-47) as the one shared clock, verified live to move the Map page's wind hour and the Sun & Moon timeline marker together. |
 | 11  | Field Mode             | Simplified mobile UI: readability, large buttons, one-handed use, low power draw, offline, GPS, map, compass, observation, camera.                                                                 |
 | 12  | Camera                 | Live camera, zoom, exposure, contrast, brightness, filters, image enhancement, save with GPS + timestamp. Original image always kept.                                                              |
 | 13  | Journal                | Field journal: observations, photos, positions, dates/times, conditions, tracks, notes, history — all viewable on the map.                                                                         |

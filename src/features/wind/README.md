@@ -75,6 +75,13 @@ layer off keeps the already-fetched field cached in memory rather than
 discarding it, so re-enabling is instant. `activeLayer` is separate state
 — switching it never touches `fetch`.
 
+`selectedHourOffset` (range 0-47, since Phase 10) additionally doubles as
+this app's one shared timeline cursor — `features/charts/`'s Advanced
+Chart, `WeatherPage`, and the Sun & Moon page's timeline bar all read/
+write this same value rather than each owning a separate one. See
+`features/charts/README.md` for why this store specifically, not a new
+parallel one.
+
 `components/WindLayerControl.tsx` is a floating toggle + bottom-sheet
 panel: the layer tabs above, current reading for whichever layer is
 active (a rotated compass icon + `compassLabel()`, reused from

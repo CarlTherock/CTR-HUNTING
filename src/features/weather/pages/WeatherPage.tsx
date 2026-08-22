@@ -11,6 +11,7 @@ import {
   EmptyState,
   PageHeader,
 } from '@/components/ui'
+import { AdvancedChart } from '@/features/charts/components/AdvancedChart'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
 import { useWeatherStore } from '../state/weatherStore'
@@ -215,6 +216,19 @@ export function WeatherPage() {
               ))}
             </div>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced chart</CardTitle>
+              <CardDescription>
+                Tap the chart to move the shared timeline cursor — also moves the Map page's wind
+                layer hour and the Sun & Moon page's marker.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdvancedChart />
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

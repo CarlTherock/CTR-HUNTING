@@ -3,6 +3,45 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 10 — Advanced Charts, complete (2026-08-17)
+
+A real hourly chart (temperature/wind/precipitation) with 5
+granularities, day comparison, and one shared timeline cursor across
+the app.
+
+### Added
+
+- `utils/chartResampling.ts`: `resampleHourly()` buckets real hourly
+  forecast entries into wider chunks (averaged; precipitation summed,
+  since averaging an hourly rain total would understate it).
+- `utils/chartScale.ts`: `scaleLinear`/`buildLinePath` — the only chart
+  primitives needed; no charting library added (this app's minimal-
+  dependency habit, and the need was simple enough not to justify one).
+- `features/charts/components/AdvancedChart.tsx`: a hand-rolled SVG chart
+  over `weatherStore`'s already-fetched 48h forecast, with granularity
+  tabs, container-scroll pan, click-to-set cursor, and a day-1-vs-day-2
+  comparison overlay (real data — Open-Meteo's forecast API has no
+  historical endpoint, so this compares the two real days already
+  fetched, never a fabricated "past").
+- `windStore.selectedHourOffset`'s range extended from 24 to 48 (matching
+  the real 48h both weather and wind fetch) and reused directly as the
+  app's one shared timeline cursor — chosen over introducing a parallel
+  "timeline" store since `windStore` already drove the Map page's wind
+  layer hour.
+- `DayTimelineBar.tsx` gained a `selectedHour` prop so the Sun & Moon
+  page's timeline shows the same shared cursor.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (319/319 across 45 files — new
+`chartResampling.test.ts`, `chartScale.test.ts`, `AdvancedChart.test.tsx`,
+extended `windStore`/`TemporalPage`/`WeatherPage` tests) and `build` all
+pass. **Verified live in-browser** (this phase needs no map API key): the
+chart renders real data, granularity switching and day comparison work,
+clicking the chart moves the cursor, and that cursor's marker appears on
+the Sun & Moon page's timeline — confirmed the cross-page sync actually
+works end to end, not just in isolated component tests.
+
 ## Phase 9 — Analysis Map, complete (2026-08-17)
 
 A color-graded heatmap over the visible map area, a configurable

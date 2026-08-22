@@ -194,7 +194,7 @@ export function WindLayerControl({ getBounds, referenceCoordinate }: WindLayerCo
                 <input
                   type="range"
                   min={0}
-                  max={23}
+                  max={47}
                   step={1}
                   value={selectedHourOffset}
                   onChange={(e) => setSelectedHourOffset(Number(e.target.value))}
@@ -203,8 +203,8 @@ export function WindLayerControl({ getBounds, referenceCoordinate }: WindLayerCo
                 />
                 <div className="text-ink-500 mt-1 flex justify-between text-[10px]">
                   <span>Now</span>
-                  <span>+12h</span>
-                  <span>+23h</span>
+                  <span>+24h</span>
+                  <span>+47h</span>
                 </div>
                 <button
                   type="button"

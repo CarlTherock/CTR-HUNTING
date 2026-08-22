@@ -21,7 +21,16 @@ interface WindState {
    * `status` so turning it off doesn't discard the fetched field (no
    * need to re-fetch on toggling back on). */
   enabled: boolean
-  /** Hourly index the timeline scrubber is on, 0 = soonest. */
+  /** Hourly index the timeline scrubber is on, 0 = soonest, up to 47
+   * (both Open-Meteo fetches here and `weatherStore`'s cover a real 48h
+   * window — `forecast_days=2`). Doubles as this app's shared timeline
+   * cursor (Phase 10): `features/charts/components/AdvancedChart.tsx`,
+   * `WeatherPage.tsx`, and `DayTimelineBar.tsx` all read/write this same
+   * value rather than each owning a separate one, so dragging any one of
+   * them moves all the others — reusing this store directly (an
+   * established pattern in this app, see `WindComparisonPanel.tsx`)
+   * rather than introducing a parallel "timeline" store that would just
+   * have to stay in sync with this one. */
   selectedHourOffset: number
   /** Which Windy-style layer the map canvas renders — switching this
    * never re-fetches: temperature/precipitation/cloud cover already ride
@@ -67,7 +76,7 @@ export const useWindStore = create<WindState>((set, get) => ({
     }
   },
 
-  setSelectedHourOffset: (offset) => set({ selectedHourOffset: Math.max(0, Math.min(23, offset)) }),
+  setSelectedHourOffset: (offset) => set({ selectedHourOffset: Math.max(0, Math.min(47, offset)) }),
 
   setActiveLayer: (layer) => set({ activeLayer: layer }),
 

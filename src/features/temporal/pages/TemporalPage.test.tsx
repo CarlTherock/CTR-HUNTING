@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TemporalPage } from './TemporalPage'
+import { useWindStore } from '@/features/wind/state/windStore'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 let mockGpsReading: GeolocationReading = {
@@ -14,6 +15,7 @@ vi.mock('@/features/gps/useGeolocation', () => ({
 
 afterEach(() => {
   mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
+  useWindStore.setState({ selectedHourOffset: 0 })
 })
 
 describe('TemporalPage', () => {
@@ -54,5 +56,12 @@ describe('TemporalPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Previous day' }))
     expect(screen.getByText('Today')).toBeInTheDocument()
+  })
+
+  it('shows the shared Phase 10 timeline cursor on the day bar when windStore has a real hour selected', () => {
+    useWindStore.setState({ selectedHourOffset: 15 }) // hour-of-day 15
+    render(<TemporalPage />)
+
+    expect(screen.getByLabelText('Selected hour (shared timeline cursor)')).toBeInTheDocument()
   })
 })

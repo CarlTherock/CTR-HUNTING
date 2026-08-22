@@ -7,18 +7,24 @@ export interface DayTimelineBarProps {
   solunarPeriods: SolunarPeriod[]
   /** Only drawn when the bar is showing today. */
   now?: Date | null
+  /** Real hour-of-day (0-23), when provided — the Phase 10 shared
+   * timeline cursor (`windStore.selectedHourOffset`), so dragging the
+   * Advanced Chart's cursor or the wind timeline also moves a marker
+   * here, satisfying "the time cursor synchronizes … temporal data." */
+  selectedHour?: number | null
 }
 
 /** The roadmap's "global 24h timeline" (Phase 7) — a single horizontal
  * bar spanning local midnight to midnight: night/dawn/day/dusk shading
  * from real sun times, major/minor solunar period bands, and a "now"
  * marker. All positions come from `timeToPercent`, never hand-tuned. */
-export function DayTimelineBar({ dayStart, sun, solunarPeriods, now }: DayTimelineBarProps) {
+export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHour }: DayTimelineBarProps) {
   const dawn = sun.dawn ? timeToPercent(sun.dawn, dayStart) : null
   const sunrise = sun.sunrise ? timeToPercent(sun.sunrise, dayStart) : null
   const sunset = sun.sunset ? timeToPercent(sun.sunset, dayStart) : null
   const dusk = sun.dusk ? timeToPercent(sun.dusk, dayStart) : null
   const nowPercent = now ? timeToPercent(now.toISOString(), dayStart) : null
+  const selectedHourPercent = selectedHour != null ? (selectedHour / 24) * 100 : null
 
   // Night (dark) as the base, with a lighter band from dawn to dusk (or
   // sunrise/sunset if dawn/dusk aren't available) layered on top — never
@@ -61,6 +67,14 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now }: DayTimeli
             />
           )
         })}
+        {selectedHourPercent !== null && (
+          <div
+            className="bg-ink-100 absolute inset-y-0 w-0.5"
+            style={{ left: `${selectedHourPercent}%` }}
+            aria-label="Selected hour (shared timeline cursor)"
+            title="Selected hour"
+          />
+        )}
         {nowPercent !== null && (
           <div
             className="bg-status-danger absolute inset-y-0 w-0.5"

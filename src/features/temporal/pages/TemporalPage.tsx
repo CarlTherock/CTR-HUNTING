@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Moon, Sunrise, Sunset } from 'lucide-react'
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from '@/components/ui'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
+import { useWindStore } from '@/features/wind/state/windStore'
 import { computeTemporalData } from '@/utils/temporal'
 import { DayTimelineBar } from '../components/DayTimelineBar'
 import { MoonPhaseIcon } from '../components/MoonPhaseIcon'
@@ -50,6 +51,7 @@ function isSameDay(a: Date, b: Date): boolean {
 export function TemporalPage() {
   const gpsReading = useGeolocation()
   const mapCenter = useMapStore((state) => state.view.center)
+  const selectedHourOffset = useWindStore((state) => state.selectedHourOffset)
   const usingGps = gpsReading.status === 'available'
   const coordinate = usingGps ? gpsReading.value : mapCenter
 
@@ -99,6 +101,7 @@ export function TemporalPage() {
         sun={data.sun}
         solunarPeriods={data.solunarPeriods}
         now={isToday ? new Date() : null}
+        selectedHour={selectedHourOffset % 24}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -88,6 +88,8 @@ describe('WeatherPage', () => {
     expect(screen.getByText('Next 24 hours')).toBeInTheDocument()
     expect(screen.getByText('10:00')).toBeInTheDocument()
     expect(screen.getByText('11:00')).toBeInTheDocument()
+    expect(screen.getByText('Advanced chart')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Hourly temperature and wind chart' })).toBeInTheDocument()
   })
 
   it('fetches using the map center and flags it, when GPS is unavailable', async () => {

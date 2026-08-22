@@ -102,9 +102,9 @@ describe('windStore', () => {
     expect(useWindStore.getState().errorReason).toBe('network down')
   })
 
-  it('setSelectedHourOffset clamps to [0, 23]', () => {
+  it('setSelectedHourOffset clamps to [0, 47]', () => {
     useWindStore.getState().setSelectedHourOffset(99)
-    expect(useWindStore.getState().selectedHourOffset).toBe(23)
+    expect(useWindStore.getState().selectedHourOffset).toBe(47)
 
     useWindStore.getState().setSelectedHourOffset(-5)
     expect(useWindStore.getState().selectedHourOffset).toBe(0)
