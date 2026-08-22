@@ -84,9 +84,12 @@ export function AnalysisControl() {
   const mode = useAnalysisStore((state) => state.mode)
   const status = useAnalysisStore((state) => state.status)
   const combined = useAnalysisStore((state) => state.combined)
+  const coordinate = useAnalysisStore((state) => state.coordinate)
+  const recent = useAnalysisStore((state) => state.recent)
   const startAnalyzing = useAnalysisStore((state) => state.startAnalyzing)
   const cancel = useAnalysisStore((state) => state.cancel)
   const close = useAnalysisStore((state) => state.close)
+  const recall = useAnalysisStore((state) => state.recall)
 
   if (mode === 'analyzing') {
     return (
@@ -133,6 +136,35 @@ export function AnalysisControl() {
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
+
+            {recent.length > 1 && (
+              <div
+                role="group"
+                aria-label="Recently analyzed spots"
+                className="mb-3 flex gap-1.5 overflow-x-auto pb-1"
+              >
+                {recent.map((entry, i) => {
+                  const isActive =
+                    coordinate?.lat === entry.coordinate.lat && coordinate.lng === entry.coordinate.lng
+                  return (
+                    <button
+                      key={`${entry.coordinate.lat}-${entry.coordinate.lng}-${i}`}
+                      type="button"
+                      onClick={() => recall(i)}
+                      className={cn(
+                        'shrink-0 rounded-md border px-2 py-1 text-xs',
+                        isActive ? 'border-brand-500 text-brand-400' : 'border-surface-700 text-ink-300',
+                      )}
+                    >
+                      {entry.combined.overallScore !== null ? `${Math.round(entry.combined.overallScore)}/100` : '—'}
+                      <span className="text-ink-600 ml-1">
+                        {entry.coordinate.lat.toFixed(3)},{entry.coordinate.lng.toFixed(3)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {status === 'loading' && <p className="text-ink-500 text-sm">Analyzing…</p>}
 

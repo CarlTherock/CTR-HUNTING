@@ -30,6 +30,15 @@ const VEGETATION_RADIUS_METERS = 300
  * grid fetch — `gridSize: 1` means exactly one real sample, at
  * essentially the tapped coordinate. */
 const WIND_QUERY_DEGREES = 0.02
+/** How many recently analyzed spots stay visible for side-by-side
+ * comparison (Phase 9's "comparison" requirement) — a small fixed
+ * window, not a growing history; older ones just drop off. */
+const MAX_RECENT = 3
+
+export interface RecentAnalysis {
+  coordinate: Coordinate
+  combined: CombinedAnalysis
+}
 
 interface AnalysisState {
   mode: AnalysisMode
@@ -37,6 +46,9 @@ interface AnalysisState {
   coordinate: Coordinate | null
   combined: CombinedAnalysis | null
   errorReason: string | null
+  /** The last few analyzed spots (most recent first), for a compact
+   * comparison strip — real results, never recomputed/guessed. */
+  recent: RecentAnalysis[]
 
   startAnalyzing: () => void
   cancel: () => void
@@ -51,14 +63,17 @@ interface AnalysisState {
     optimalWindDirections?: number[],
   ) => Promise<void>
   close: () => void
+  /** Re-shows a cached recent result without re-fetching anything. */
+  recall: (index: number) => void
 }
 
-export const useAnalysisStore = create<AnalysisState>((set) => ({
+export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   mode: 'idle',
   status: 'idle',
   coordinate: null,
   combined: null,
   errorReason: null,
+  recent: [],
 
   startAnalyzing: () => set({ mode: 'analyzing' }),
   cancel: () => set({ mode: 'idle' }),
@@ -107,8 +122,15 @@ export const useAnalysisStore = create<AnalysisState>((set) => ({
         : unavailableResult('vegetation', vegetationOutcome.reason instanceof Error ? vegetationOutcome.reason.message : 'Vegetation lookup failed.')
 
     const combined = combineAnalyses([terrain, vegetation, weather, wind, time, history])
-    set({ status: 'ready', combined })
+    const recent = [{ coordinate, combined }, ...get().recent].slice(0, MAX_RECENT)
+    set({ status: 'ready', combined, recent })
   },
 
   close: () => set({ status: 'idle', combined: null, coordinate: null }),
+
+  recall: (index) => {
+    const entry = get().recent[index]
+    if (!entry) return
+    set({ status: 'ready', coordinate: entry.coordinate, combined: entry.combined, errorReason: null })
+  },
 }))

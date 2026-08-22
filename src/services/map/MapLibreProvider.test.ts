@@ -666,6 +666,87 @@ describe('MapLibreProvider', () => {
     })
   })
 
+  describe('analysis heatmap (Phase 9)', () => {
+    const CELLS = [
+      {
+        coordinate: { lat: 0, lng: 0 },
+        combined: {
+          overallScore: 72,
+          results: [{ analyzer: 'terrain' as const, score: 72, confidence: 'calculated' as const, factors: [] }],
+        },
+      },
+      {
+        coordinate: { lat: 0.01, lng: 0.01 },
+        combined: { overallScore: null, results: [] },
+      },
+    ]
+
+    it('adds a second, independent canvas overlay alongside the wind layer', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(container.querySelectorAll('canvas')).toHaveLength(2)
+    })
+
+    it('setAnalysisHeatmap does not throw when enabling, updating (including a null-score cell), or clearing', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      expect(() => instance.setAnalysisHeatmap(CELLS)).not.toThrow()
+      expect(() => instance.setAnalysisHeatmap(CELLS)).not.toThrow()
+      expect(() => instance.setAnalysisHeatmap(null)).not.toThrow()
+    })
+
+    it('setting the wind field and the heatmap together does not interfere with either', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      instance.setAnalysisHeatmap(CELLS)
+      expect(() =>
+        instance.setWindField(
+          { timezone: 'UTC', samples: [] },
+          0,
+          'wind',
+        ),
+      ).not.toThrow()
+      expect(() => instance.setAnalysisHeatmap(null)).not.toThrow()
+    })
+
+    it('removes both canvases on destroy', () => {
+      const container = document.createElement('div')
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      const instance = provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+
+      instance.setAnalysisHeatmap(CELLS)
+      instance.destroy()
+
+      expect(container.querySelectorAll('canvas')).toHaveLength(0)
+    })
+  })
+
   describe('terrain (Phase 4)', () => {
     it('does not enable terrain by default', () => {
       mapInstances.length = 0

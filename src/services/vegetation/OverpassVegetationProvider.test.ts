@@ -72,3 +72,60 @@ describe('OverpassVegetationProvider', () => {
     await expect(provider.fetchVegetation(COORDINATE, 300)).rejects.toThrow(/504/)
   })
 })
+
+describe('OverpassVegetationProvider.fetchVegetationGrid', () => {
+  const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('makes exactly one request for the whole bounding box, not one per grid point', async () => {
+    stubFetch({ elements: [] })
+    const provider = new OverpassVegetationProvider()
+
+    await provider.fetchVegetationGrid(BOUNDS, 5)
+
+    expect(fetch).toHaveBeenCalledOnce()
+    const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    const body = new URLSearchParams(String((init as RequestInit).body)).get('data') ?? ''
+    expect(body).toContain('nwr(46.7,-71.3,46.9,-71.1)')
+    expect(body).toContain('out center;')
+  })
+
+  it('returns exactly one sample per grid point, even with no real elements found', async () => {
+    stubFetch({ elements: [] })
+    const provider = new OverpassVegetationProvider()
+
+    const samples = await provider.fetchVegetationGrid(BOUNDS, 3)
+
+    expect(samples).toHaveLength(9)
+    expect(samples.every((s) => Object.keys(s.categoryCounts).length === 0)).toBe(true)
+  })
+
+  it('assigns each real element to its nearest grid cell using node lat/lon or way/relation center', async () => {
+    stubFetch({
+      elements: [
+        { tags: { landuse: 'forest' }, lat: 46.71, lon: -71.29 }, // near the SW corner
+        { tags: { natural: 'water' }, center: { lat: 46.89, lon: -71.11 } }, // near the NE corner
+      ],
+    })
+    const provider = new OverpassVegetationProvider()
+
+    const samples = await provider.fetchVegetationGrid(BOUNDS, 2)
+
+    const totalForest = samples.reduce((sum, s) => sum + (s.categoryCounts.forest ?? 0), 0)
+    const totalWater = samples.reduce((sum, s) => sum + (s.categoryCounts.water ?? 0), 0)
+    expect(totalForest).toBe(1)
+    expect(totalWater).toBe(1)
+  })
+
+  it('ignores elements with no usable coordinate', async () => {
+    stubFetch({ elements: [{ tags: { landuse: 'forest' } }] }) // no lat/lon, no center
+    const provider = new OverpassVegetationProvider()
+
+    const samples = await provider.fetchVegetationGrid(BOUNDS, 2)
+
+    expect(samples.every((s) => Object.keys(s.categoryCounts).length === 0)).toBe(true)
+  })
+})

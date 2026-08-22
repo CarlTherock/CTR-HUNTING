@@ -2,6 +2,7 @@ import type { GeoJSONSource } from 'maplibre-gl'
 import { addProtocol, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
 import * as tileCache from '@/offline/tileCache'
 import type {
+  AnalysisHeatmapCell,
   Coordinate,
   MapBaseLayerId,
   MapOverlayId,
@@ -11,6 +12,7 @@ import type {
   WaypointCategory,
   WindField,
 } from '@/types'
+import { analysisHeatmapColor } from '@/utils/analysisHeatmapColors'
 import { tileCenterLngLat, tileRangeForBounds, tilesForRange } from '@/utils/tiles'
 import type { LngLatBounds } from '@/utils/tiles'
 import { weatherLayerColor, valueForLayer } from '@/utils/weatherMapColors'
@@ -383,6 +385,75 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
 }
 
 /**
+ * Owns a separate `<canvas>` (independent of `createWindLayer`'s, so both
+ * layers can be shown together without clearing each other) drawing the
+ * Phase 9 analysis heatmap — one soft color blob per real
+ * `AnalysisHeatmapCell`, reprojected every frame via `map.project()` so
+ * pan/zoom/rotate stay correct with no extra bookkeeping, same technique
+ * as the Phase 6 weather overlay.
+ */
+function createAnalysisHeatmapLayer(map: MapLibreMap, container: HTMLElement) {
+  const canvas = document.createElement('canvas')
+  canvas.style.position = 'absolute'
+  canvas.style.inset = '0'
+  canvas.style.pointerEvents = 'none'
+  container.appendChild(canvas)
+
+  let cells: AnalysisHeatmapCell[] | null = null
+  let animationFrame: number | null = null
+
+  function step() {
+    if (!cells) return
+    const dpr = window.devicePixelRatio || 1
+    const width = container.clientWidth
+    const height = container.clientHeight
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, width, height)
+
+    const radius = Math.max(50, (Math.min(width, height) / Math.sqrt(cells.length)) * 0.95)
+    for (const cell of cells) {
+      if (cell.combined.overallScore === null) continue
+      const screen = map.project([cell.coordinate.lng, cell.coordinate.lat])
+      const gradient = ctx.createRadialGradient(screen.x, screen.y, 0, screen.x, screen.y, radius)
+      gradient.addColorStop(0, analysisHeatmapColor(cell.combined.overallScore, 0.5))
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      ctx.fillStyle = gradient
+      ctx.beginPath()
+      ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    animationFrame = requestAnimationFrame(step)
+  }
+
+  return {
+    setCells(newCells: AnalysisHeatmapCell[] | null) {
+      cells = newCells
+      if (cells && animationFrame === null) {
+        animationFrame = requestAnimationFrame(step)
+      } else if (!cells && animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+        animationFrame = null
+        const ctx = canvas.getContext('2d')
+        ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    },
+    destroy() {
+      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+      canvas.remove()
+    },
+  }
+}
+
+/**
  * Offline tile caching (Phase 3). Tile requests are redirected (via
  * `transformRequest` below) from `https://…` to `ctrtile://…`, which
  * MapLibre then routes to this handler instead of fetching directly —
@@ -566,6 +637,7 @@ export class MapLibreProvider implements MapProvider {
 
     map.addControl(new NavigationControl(), 'top-right')
     const windLayer = createWindLayer(map, container)
+    const analysisHeatmapLayer = createAnalysisHeatmapLayer(map, container)
 
     // Re-applied on every style load — including the first one, and every
     // subsequent setStyle() from setBaseLayer, which discards all prior
@@ -738,6 +810,9 @@ export class MapLibreProvider implements MapProvider {
       setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer) {
         windLayer.setField(field, hourOffset, layer)
       },
+      setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null) {
+        analysisHeatmapLayer.setCells(cells)
+      },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         terrainEnabled = enabled
         terrainExaggeration = exaggeration
@@ -801,6 +876,7 @@ export class MapLibreProvider implements MapProvider {
         userMarker?.remove()
         for (const marker of waypointMarkers.values()) marker.remove()
         windLayer.destroy()
+        analysisHeatmapLayer.destroy()
         map.remove()
       },
     }

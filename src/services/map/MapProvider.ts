@@ -1,4 +1,5 @@
 import type {
+  AnalysisHeatmapCell,
   Coordinate,
   MapBaseLayerId,
   MapOverlayId,
@@ -88,6 +89,15 @@ export interface MapInstance {
    * data.
    */
   setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer): void
+  /**
+   * Renders (Phase 9) or clears (`null`) the analysis heatmap: a soft
+   * color-graded overlay, one blob per real `AnalysisHeatmapCell`,
+   * colored by that cell's combined analyzer score
+   * (`utils/analysisHeatmapColors.ts` — red/unfavorable through
+   * green/favorable). Its own canvas, independent of the wind/weather
+   * layer, so both can be shown without interfering with each other.
+   */
+  setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

@@ -34,3 +34,11 @@ lists — verified live against Open-Meteo's actual multi-location
 response shape, a top-level array, before any code assumed it) rather
 than a single point, since the flow-field animation needs real wind
 samples spread across the visible map area, not just one location.
+`buildGrid()` (`utils/grid.ts`) is the shared grid-point math both this
+and the Phase 9 analysis heatmap use, so "the grid" means the same thing
+everywhere in the app.
+
+`vegetationProvider` (Phase 8/9) similarly grew a batched grid method,
+`fetchVegetationGrid()` — one Overpass query over a whole bounding box
+(not one `around:` query per point), with each real tagged element
+assigned to its nearest grid cell client-side.

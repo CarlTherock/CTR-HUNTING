@@ -1,9 +1,10 @@
 # features/analytics
 
-**Status:** Phase 8 (Analytics Engine) complete — 6 independent,
-explainable analyzers, reachable as a point tool from the Map page.
-Phase 9 (Analysis Map / heatmap) is next; `/analysis` stays a
-placeholder for that until it's built.
+**Status:** Phase 8 (Analytics Engine) and Phase 9 (Analysis Map)
+complete — 6 independent, explainable analyzers, reachable both as a
+single-point tool and as a heatmap over the whole visible area, both on
+the Map page. `/analysis` is now a real overview/landing page for both,
+not a placeholder.
 
 ## The 6 analyzers (`utils/analyzers.ts`)
 
@@ -67,10 +68,43 @@ modes. Shows a combined score (explicitly labeled "a probabilistic read,
 not a guarantee") plus each analyzer as an expandable card with its real
 factors and their individual confidence levels.
 
+A recent-spots comparison strip (Phase 9's "comparison" requirement)
+keeps the last 3 analyzed points visible as compact score chips —
+tapping one recalls its cached result instantly, no re-fetch.
+
+## Analysis heatmap (Phase 9)
+
+`heatmapEngine.ts`'s `computeHeatmapCell()` runs the same 6 analyzers
+Phase 8 uses, for one grid point — `state/heatmapStore.ts` maps it over a
+`buildGrid()` (`utils/grid.ts`, the same grid-point math the Phase 6 wind
+layer uses) covering the visible area, from exactly **3 real network
+requests total** regardless of grid size: one batched wind grid fetch
+(`windProvider.fetchWindField`), one weather fetch at the area's center
+(weather doesn't meaningfully vary within a typical hunting-area
+viewport, so one point stands in for the whole area — documented as such,
+not silently assumed), and one batched vegetation query covering the
+whole bounding box (`vegetationProvider.fetchVegetationGrid()`, new for
+this phase — a single Overpass call over the bbox, with each real tagged
+element assigned to its nearest grid cell, rather than one query per
+point).
+
+`MapLibreProvider.ts`'s `createAnalysisHeatmapLayer()` draws it as a soft
+color-graded overlay (same radial-gradient-blob technique as the Phase 6
+weather layers) on its own canvas, independent of the wind/weather
+canvas so both can be shown together. `utils/analysisHeatmapColors.ts`
+provides the red (unfavorable) → green (favorable) scale, using the same
+score buckets `AnalysisControl`'s text labels do.
+
+`HeatmapControl.tsx`'s "Score shown" selector (combined, or any one of
+the 6 analyzers alone) is Phase 9's "configurable scores" — switching it
+is a pure client-side re-projection of the already-computed cells (see
+`MapPage.tsx`'s heatmap effect), never a re-fetch.
+
 **Not verified live** (no map API key in this environment): the actual
-on-map "Analyze this spot" flow, since it needs a live `MapInstance` for
-elevation queries — same caveat as Phases 3/4/6's other map-dependent
-tools. The analyzer math (`utils/analyzers.ts`, 23 tests), the vegetation
-provider (5 tests), and the full store/UI wiring (a `MapPage.test.tsx`
-integration test covering the whole tap → combined-score → expandable
-factor flow) are fully tested instead.
+on-map "Analyze this spot" and heatmap flows, since both need a live
+`MapInstance` — same caveat as Phases 3/4/6's other map-dependent tools.
+The analyzer math (`utils/analyzers.ts`), the heatmap engine
+(`heatmapEngine.test.ts`), the vegetation grid provider, `heatmapStore`,
+and the full store/UI wiring (`MapPage.test.tsx` integration tests
+covering the tap → combined-score flow, the heatmap toggle, the view
+switcher, and the comparison strip) are fully tested instead.

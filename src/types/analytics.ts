@@ -1,3 +1,4 @@
+import type { Coordinate } from './geo'
 import type { DataConfidence } from './data-quality'
 
 export type AnalyzerId = 'terrain' | 'vegetation' | 'weather' | 'wind' | 'time' | 'history'
@@ -37,4 +38,12 @@ export interface AnalyzerResult {
 export interface CombinedAnalysis {
   overallScore: number | null
   results: AnalyzerResult[]
+}
+
+/** One real grid cell of a Phase 9 analysis heatmap — the same
+ * `CombinedAnalysis` a single point-tap produces, computed for every
+ * cell of a `buildGrid()` covering the visible map area. */
+export interface AnalysisHeatmapCell {
+  coordinate: Coordinate
+  combined: CombinedAnalysis
 }

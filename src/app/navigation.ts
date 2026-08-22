@@ -39,7 +39,7 @@ export const navItems: NavItem[] = [
   },
   { path: '/weather', label: 'Weather & Wind', icon: CloudSun, phase: 5, primary: true },
   { path: '/temporal', label: 'Sun & Moon', icon: Moon, phase: 7 },
-  { path: '/analysis', label: 'Terrain Analysis', icon: BarChart3, phase: 9 },
+  { path: '/analysis', label: 'Terrain Analysis', icon: BarChart3, phase: null },
   { path: '/journal', label: 'Journal', icon: NotebookPen, phase: 13 },
   { path: '/settings', label: 'Settings', icon: Settings, phase: null, primary: true },
 ]

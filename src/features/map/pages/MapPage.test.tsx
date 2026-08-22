@@ -10,6 +10,7 @@ import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
+import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -26,6 +27,7 @@ const setWaypoints = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
 const setWindField = vi.fn()
+const setAnalysisHeatmap = vi.fn()
 const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
@@ -44,6 +46,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setTrackPreview,
     setMeasurePath,
     setWindField,
+    setAnalysisHeatmap,
     setTerrainEnabled,
     queryElevation,
     getBounds,
@@ -120,8 +123,19 @@ const fetchVegetation = vi.fn().mockResolvedValue({
   categoryCounts: { forest: 2 },
   source: 'openstreetmap',
 })
+const fetchVegetationGrid = vi.fn().mockResolvedValue(
+  Array.from({ length: 25 }, () => ({
+    coordinate: { lat: 46.8139, lng: -71.208 },
+    radiusMeters: 100,
+    categoryCounts: { forest: 1 },
+    source: 'openstreetmap',
+  })),
+)
 vi.mock('@/services/vegetation', () => ({
-  vegetationProvider: { fetchVegetation: (...args: unknown[]) => fetchVegetation(...args) },
+  vegetationProvider: {
+    fetchVegetation: (...args: unknown[]) => fetchVegetation(...args),
+    fetchVegetationGrid: (...args: unknown[]) => fetchVegetationGrid(...args),
+  },
 }))
 
 let mockGpsReading: GeolocationReading = {
@@ -158,7 +172,8 @@ afterEach(async () => {
     enabled: false,
     selectedHourOffset: 0,
   })
-  useAnalysisStore.setState({ mode: 'idle', status: 'idle', coordinate: null, combined: null, errorReason: null })
+  useAnalysisStore.setState({ mode: 'idle', status: 'idle', coordinate: null, combined: null, errorReason: null, recent: [] })
+  useHeatmapStore.setState({ status: 'idle', enabled: false, cells: [], errorReason: null, selectedView: 'combined' })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
     tracks: [],
@@ -573,6 +588,33 @@ describe('MapPage', () => {
     })
   })
 
+  it('shows a recent-spots comparison strip after analyzing 2+ points, and recalls a cached one with no re-fetch', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
+    await screen.findByRole('heading', { name: 'Spot analysis' })
+    await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.82, lng: -71.21 })
+    await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Recently analyzed spots' })).toBeInTheDocument()
+    })
+
+    const strip = screen.getByRole('group', { name: 'Recently analyzed spots' })
+    const chips = within(strip).getAllByRole('button')
+    expect(chips).toHaveLength(2)
+
+    fetchForecast.mockClear()
+    await user.click(chips[1]) // recall the first-analyzed spot from cache
+
+    expect(fetchForecast).not.toHaveBeenCalled()
+  })
+
   it('arms the spot analysis tool, runs every analyzer for the tapped point, and shows an explainable breakdown', async () => {
     const user = userEvent.setup()
     queryElevation.mockReturnValue(300)
@@ -598,5 +640,59 @@ describe('MapPage', () => {
 
     await user.click(panel.getByText('Terrain'))
     expect(panel.getByText(/slope/i)).toBeInTheDocument()
+  })
+
+  it('toggles the analysis heatmap, computing a real 5x5 grid from one batched fetch each', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+
+    await vi.waitFor(() => {
+      expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(
+        expect.arrayContaining([expect.objectContaining({ coordinate: expect.anything() })]),
+      )
+    })
+    const [cells] = setAnalysisHeatmap.mock.calls[setAnalysisHeatmap.mock.calls.length - 1]
+    expect(cells).toHaveLength(25)
+    expect(fetchWindField).toHaveBeenCalledWith(
+      { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
+      5,
+    )
+    expect(fetchVegetationGrid).toHaveBeenCalledWith(
+      { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
+      5,
+    )
+    expect(screen.getByText(/probabilistic read/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+    expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(null)
+  })
+
+  it('re-projects the heatmap to a single analyzer score when the view is switched, with no re-fetch', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+    await vi.waitFor(() => {
+      expect(setAnalysisHeatmap).toHaveBeenCalled()
+    })
+    fetchWindField.mockClear()
+    fetchForecast.mockClear()
+    fetchVegetationGrid.mockClear()
+
+    await user.selectOptions(screen.getByLabelText('Score shown'), 'wind')
+
+    expect(fetchWindField).not.toHaveBeenCalled()
+    expect(fetchForecast).not.toHaveBeenCalled()
+    expect(fetchVegetationGrid).not.toHaveBeenCalled()
+    await vi.waitFor(() => {
+      const [cells] = setAnalysisHeatmap.mock.calls[setAnalysisHeatmap.mock.calls.length - 1]
+      expect(cells[0].combined.overallScore).toBe(
+        cells[0].combined.results.find((r: { analyzer: string }) => r.analyzer === 'wind').score,
+      )
+    })
   })
 })

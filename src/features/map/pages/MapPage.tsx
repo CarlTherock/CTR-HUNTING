@@ -5,7 +5,9 @@ import { availableBaseLayers, mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
+import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
+import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
@@ -54,6 +56,9 @@ export function MapPage() {
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
   const windActiveLayer = useWindStore((state) => state.activeLayer)
+  const heatmapEnabled = useHeatmapStore((state) => state.enabled)
+  const heatmapCells = useHeatmapStore((state) => state.cells)
+  const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -169,6 +174,27 @@ export function MapPage() {
     instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset, windActiveLayer)
   }, [windEnabled, windField, windHourOffset, windActiveLayer])
 
+  useEffect(() => {
+    if (!heatmapEnabled) {
+      instanceRef.current?.setAnalysisHeatmap(null)
+      return
+    }
+    // Re-projecting to a single analyzer's score is a pure client-side
+    // transform of the already-computed cells — never a re-fetch, same
+    // "instant, no re-fetch" principle as the Phase 6 layer switcher.
+    const projected =
+      heatmapSelectedView === 'combined'
+        ? heatmapCells
+        : heatmapCells.map((cell) => ({
+            ...cell,
+            combined: {
+              ...cell.combined,
+              overallScore: cell.combined.results.find((r) => r.analyzer === heatmapSelectedView)?.score ?? null,
+            },
+          }))
+    instanceRef.current?.setAnalysisHeatmap(projected)
+  }, [heatmapEnabled, heatmapCells, heatmapSelectedView])
+
   function locate() {
     if (gpsReading.status !== 'available') return
     const coordinate = gpsReading.value
@@ -245,6 +271,10 @@ export function MapPage() {
             referenceCoordinate={view.center}
           />
           <AnalysisControl />
+          <HeatmapControl
+            getBounds={() => instanceRef.current?.getBounds() ?? null}
+            queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
+          />
         </div>
       ) : (
         <EmptyState

@@ -1,4 +1,5 @@
-import type { Coordinate, WindField, WindFieldSample } from '@/types'
+import { buildGrid } from '@/utils/grid'
+import type { WindField, WindFieldSample } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 import type { WindProvider } from './WindProvider'
 
@@ -22,21 +23,6 @@ const WIND_PARAMS = [
   'precipitation',
   'cloud_cover',
 ].join(',')
-
-/** Evenly spaced `gridSize` × `gridSize` cell-center points covering
- * `bounds` — the real coordinates every wind sample is actually fetched
- * for, not an arbitrary/fabricated arrangement. */
-function buildGrid(bounds: LngLatBounds, gridSize: number): Coordinate[] {
-  const points: Coordinate[] = []
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const lat = bounds.south + ((bounds.north - bounds.south) * (row + 0.5)) / gridSize
-      const lng = bounds.west + ((bounds.east - bounds.west) * (col + 0.5)) / gridSize
-      points.push({ lat, lng })
-    }
-  }
-  return points
-}
 
 interface OpenMeteoLocation {
   timezone: string

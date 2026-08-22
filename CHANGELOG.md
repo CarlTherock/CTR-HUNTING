@@ -3,6 +3,51 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 9 — Analysis Map, complete (2026-08-17)
+
+A color-graded heatmap over the visible map area, a configurable
+"score shown" selector, and a comparison strip — building directly on
+Phase 8's 6 analyzers, never a separate scoring system.
+
+### Added
+
+- `utils/grid.ts`: extracted `buildGrid()` from the Phase 6 wind provider
+  into a shared utility, so the heatmap grid and the wind grid always
+  mean the same thing.
+- `services/vegetation/`: `fetchVegetationGrid()` — one Overpass query
+  over a whole bounding box (never one request per grid point), each
+  real tagged element assigned to its nearest grid cell.
+- `features/analytics/heatmapEngine.ts`: `computeHeatmapCell()` runs the
+  same 6 analyzers as the point tool, for one grid cell.
+- `features/analytics/state/heatmapStore.ts` +
+  `components/HeatmapControl.tsx`: a second Map page layer toggle
+  (alongside wind) computing a whole-area heatmap from exactly 3 batched
+  network requests (wind grid, one weather point for the area, one
+  vegetation bbox query) regardless of grid size — never one request per
+  cell. A "score shown" selector (combined or any single analyzer) is a
+  pure client-side re-projection of the already-computed cells, no
+  re-fetch, same principle as the Phase 6 layer switcher.
+- `MapLibreProvider.ts`: `createAnalysisHeatmapLayer()` — a second,
+  independent canvas (alongside the wind/weather one) drawing the
+  heatmap via `utils/analysisHeatmapColors.ts`'s red→green score scale.
+- `AnalysisControl.tsx`: a recent-spots comparison strip (last 3
+  analyzed points, tapping one recalls its cached result with no
+  re-fetch) — Phase 9's "comparison" requirement.
+- `/analysis` page rewritten from a placeholder into a real overview,
+  since both Phase 8 and 9's actual tools live on the Map page (they need
+  a live `MapInstance`).
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (302/302 across 42 files — new
+`grid.test.ts`, `analysisHeatmapColors.test.ts`, `heatmapEngine.test.ts`,
+`heatmapStore.test.ts`, extended `OverpassVegetationProvider.test.ts` and
+`MapLibreProvider.test.ts`, and `MapPage.test.tsx` integration tests for
+the heatmap toggle, the view switcher, and the comparison strip) and
+`build` all pass. The actual on-map heatmap rendering wasn't visually
+verified (no map API key in this environment) — same caveat as the
+rest of this app's map-dependent visuals.
+
 ## Phase 8 — Analytics Engine, complete (2026-08-17)
 
 6 independent, explainable analyzers (terrain, vegetation, weather,
