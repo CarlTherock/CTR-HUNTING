@@ -8,6 +8,8 @@ import { AnalysisControl } from '@/features/analytics/components/AnalysisControl
 import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
+import { CompassDisplay } from '@/features/field-mode/components/CompassDisplay'
+import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
@@ -59,6 +61,19 @@ export function MapPage() {
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
+  const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
+
+  // Field Mode's "low power draw" requirement: turning it on also turns
+  // off the two continuously-animated canvas layers (wind flow field,
+  // analysis heatmap), which stop their requestAnimationFrame loops —
+  // a real battery saving, not just a visual simplification. Re-enabling
+  // either one manually while Field Mode stays on is still possible; this
+  // only forces them off at the moment Field Mode is switched on.
+  useEffect(() => {
+    if (!fieldModeEnabled) return
+    if (useWindStore.getState().enabled) useWindStore.setState({ enabled: false })
+    if (useHeatmapStore.getState().enabled) useHeatmapStore.setState({ enabled: false })
+  }, [fieldModeEnabled])
 
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
@@ -112,6 +127,7 @@ export function MapPage() {
     void useWaypointsStore.getState().load()
     void useTracksStore.getState().load()
     void useOfflineStore.getState().load()
+    void useFieldModeStore.getState().load()
 
     return () => {
       instanceRef.current = null
@@ -246,35 +262,47 @@ export function MapPage() {
             className="rounded-card border-surface-600 h-full overflow-hidden border"
             data-testid="map-container"
           />
-          <LayerManagerPanel />
-          <ViewModeToggle
-            pitch={view.pitch}
-            onChange={setViewMode}
-            terrainExaggeration={terrainExaggeration}
-            onTerrainExaggerationChange={changeTerrainExaggeration}
-          />
-          <GpsControl reading={gpsReading} onLocate={locate} />
-          <WaypointControl />
+          {fieldModeEnabled ? (
+            <div className="absolute top-3 left-3 z-10">
+              <CompassDisplay />
+            </div>
+          ) : (
+            <LayerManagerPanel />
+          )}
+          {!fieldModeEnabled && (
+            <ViewModeToggle
+              pitch={view.pitch}
+              onChange={setViewMode}
+              terrainExaggeration={terrainExaggeration}
+              onTerrainExaggerationChange={changeTerrainExaggeration}
+            />
+          )}
+          <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
+          <WaypointControl large={fieldModeEnabled} />
           <WaypointEditPanel />
           <TrackRecorderControl />
-          <OfflineAreaControl
-            getMapInstance={() => instanceRef.current}
-            baseLayer={baseLayer}
-            currentZoom={view.zoom}
-          />
-          <TerrainInfoControl />
-          <ElevationProfileControl
-            queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
-          />
-          <WindLayerControl
-            getBounds={() => instanceRef.current?.getBounds() ?? null}
-            referenceCoordinate={view.center}
-          />
-          <AnalysisControl />
-          <HeatmapControl
-            getBounds={() => instanceRef.current?.getBounds() ?? null}
-            queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
-          />
+          {!fieldModeEnabled && (
+            <>
+              <OfflineAreaControl
+                getMapInstance={() => instanceRef.current}
+                baseLayer={baseLayer}
+                currentZoom={view.zoom}
+              />
+              <TerrainInfoControl />
+              <ElevationProfileControl
+                queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
+              />
+              <WindLayerControl
+                getBounds={() => instanceRef.current?.getBounds() ?? null}
+                referenceCoordinate={view.center}
+              />
+              <AnalysisControl />
+              <HeatmapControl
+                getBounds={() => instanceRef.current?.getBounds() ?? null}
+                queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
+              />
+            </>
+          )}
         </div>
       ) : (
         <EmptyState

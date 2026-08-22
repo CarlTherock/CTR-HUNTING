@@ -3,6 +3,44 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 11 — Field Mode, complete (2026-08-17)
+
+A simplified, low-power, large-touch-target map UI, plus a real device
+compass.
+
+### Added
+
+- `features/field-mode/state/fieldModeStore.ts`: a persisted toggle
+  (`settingsRepository`, same pattern as other app-level preferences).
+- `useCompassHeading.ts`: real device compass heading via
+  `DeviceOrientationEvent` — iOS's non-standard `webkitCompassHeading`
+  (direct bearing) with the standard `deviceorientationabsolute`
+  fallback for other platforms, plus the iOS 13+ permission-gesture flow
+  (`requestPermission()`). Never a simulated heading — reports
+  `unavailable` with the real reason otherwise.
+- `components/CompassDisplay.tsx`: a large rotating compass rose.
+- `MapPage.tsx`: while Field Mode is on, hides every advanced tool
+  (layer manager, 3D/terrain, offline areas, wind, spot analysis,
+  heatmap), shows the compass instead of the layer panel, enlarges
+  `GpsControl`/`WaypointControl` (new `large` prop on both), and turns
+  off the wind/heatmap animation loops the moment it's switched on — a
+  real battery saving, not just a visual simplification.
+- A "Field Mode" toggle on the Settings page.
+
+Deliberately NOT built: "observation" and "camera" (also listed in this
+phase's roadmap goal) are Phase 12/13's own features — building them
+here would be building ahead of the roadmap.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (333/333 across 48 files — new
+`fieldModeStore.test.ts`, `useCompassHeading.test.ts`,
+`CompassDisplay.test.tsx`, extended `SettingsPage`/`MapPage` tests) and
+`build` all pass. Verified live in-browser: the Field Mode toggle
+persists correctly across a real page reload. The Map page's field-mode
+control hiding/enlarging wasn't visually verified (no map API key in
+this environment) — same caveat as other map-dependent features.
+
 ## Phase 10 — Advanced Charts, complete (2026-08-17)
 
 A real hourly chart (temperature/wind/precipitation) with 5

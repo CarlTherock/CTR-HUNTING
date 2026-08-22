@@ -119,3 +119,13 @@ coordinate. `components/HeatmapControl.tsx` adds a second layer toggle
 (alongside wind) coloring the whole visible area by score, via its own
 independent canvas (`MapInstance.setAnalysisHeatmap`). See
 `features/analytics/README.md` for the full design.
+
+## Field Mode (Phase 11)
+
+When `features/field-mode/state/fieldModeStore.ts`'s toggle is on,
+`MapPage.tsx` hides every advanced tool above (layer manager, 3D/terrain
+controls, offline area management, wind, spot analysis, heatmap),
+enlarges `GpsControl`/`WaypointControl`, shows a real device compass
+instead of the layer panel, and turns off the wind/heatmap layers'
+animation loops for real battery savings. See
+`features/field-mode/README.md` for the full design.

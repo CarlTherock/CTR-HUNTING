@@ -14,6 +14,7 @@ import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { estimateStorageUsage } from '@/offline/tileCache'
 import { getSetting, setSetting } from '@/database/settingsRepository'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { formatBytes } from '@/utils/format'
 
 const APP_VERSION = '0.1.0'
@@ -27,6 +28,11 @@ export function SettingsPage() {
   const loaded = useOfflineStore((state) => state.loaded)
   const load = useOfflineStore((state) => state.load)
   const deleteArea = useOfflineStore((state) => state.deleteArea)
+
+  const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
+  const fieldModeLoaded = useFieldModeStore((state) => state.loaded)
+  const loadFieldMode = useFieldModeStore((state) => state.load)
+  const toggleFieldMode = useFieldModeStore((state) => state.toggle)
 
   // Exercises the local persistence layer end-to-end (round-trips through
   // IndexedDB) so Phase 0 ships with at least one real offline read/write,
@@ -43,6 +49,10 @@ export function SettingsPage() {
     void estimateStorageUsage().then(setStorageUsage)
   }, [loaded, load])
 
+  useEffect(() => {
+    if (!fieldModeLoaded) void loadFieldMode()
+  }, [fieldModeLoaded, loadFieldMode])
+
   const completedAreas = areas.filter((area) => area.status !== 'downloading')
 
   return (
@@ -58,6 +68,27 @@ export function SettingsPage() {
           <Badge variant={isOnline ? 'success' : 'warning'}>
             {isOnline ? 'Online' : 'Offline'}
           </Badge>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Field Mode</CardTitle>
+          <CardDescription>
+            Simplified map UI for outdoor use — larger buttons, a real compass, and the wind/
+            heatmap animations turned off to save battery.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={fieldModeEnabled}
+              onChange={toggleFieldMode}
+              aria-label="Field Mode"
+            />
+            {fieldModeEnabled ? 'On' : 'Off'}
+          </label>
         </CardContent>
       </Card>
 

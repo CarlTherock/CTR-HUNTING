@@ -1,12 +1,19 @@
 import { MapPinPlus, X } from 'lucide-react'
+import { cn } from '@/utils/cn'
 import { useWaypointsStore } from '../state/waypointsStore'
+
+export interface WaypointControlProps {
+  /** Field Mode (Phase 11): a larger touch target for one-handed/gloved
+   * outdoor use. */
+  large?: boolean
+}
 
 /** Floating "add waypoint" button. Tapping it arms placing mode — the
  * next tap on the map creates a real waypoint there (see
  * `waypointsStore.placeWaypointAt`) and opens it for editing. While
  * armed, the button turns into a banner + cancel, so the pending
  * "tap the map" state is never invisible. */
-export function WaypointControl() {
+export function WaypointControl({ large }: WaypointControlProps = {}) {
   const isPlacing = useWaypointsStore((state) => state.isPlacing)
   const startPlacing = useWaypointsStore((state) => state.startPlacing)
   const cancelPlacing = useWaypointsStore((state) => state.cancelPlacing)
@@ -33,9 +40,12 @@ export function WaypointControl() {
       onClick={startPlacing}
       title="Add waypoint"
       aria-label="Add waypoint"
-      className="border-surface-600 bg-surface-900/90 text-brand-400 hover:bg-surface-800 absolute top-44 right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
+      className={cn(
+        'border-surface-600 bg-surface-900/90 text-brand-400 hover:bg-surface-800 absolute top-44 right-3 z-10 rounded-lg border shadow-lg backdrop-blur-sm transition-colors',
+        large ? 'p-5' : 'p-2.5',
+      )}
     >
-      <MapPinPlus size={18} aria-hidden="true" />
+      <MapPinPlus size={large ? 32 : 18} aria-hidden="true" />
     </button>
   )
 }

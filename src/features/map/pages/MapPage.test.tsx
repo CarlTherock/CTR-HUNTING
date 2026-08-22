@@ -11,6 +11,7 @@ import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
+import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
@@ -174,6 +175,7 @@ afterEach(async () => {
   })
   useAnalysisStore.setState({ mode: 'idle', status: 'idle', coordinate: null, combined: null, errorReason: null, recent: [] })
   useHeatmapStore.setState({ status: 'idle', enabled: false, cells: [], errorReason: null, selectedView: 'combined' })
+  useFieldModeStore.setState({ enabled: false, loaded: true })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
     tracks: [],
@@ -197,6 +199,7 @@ afterEach(async () => {
   await db.waypoints.clear()
   await db.tracks.clear()
   await db.offlineAreas.clear()
+  await db.settings.delete('fieldModeEnabled')
   lastCreateMapOptions = undefined
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
 })
@@ -694,5 +697,27 @@ describe('MapPage', () => {
         cells[0].combined.results.find((r: { analyzer: string }) => r.analyzer === 'wind').score,
       )
     })
+  })
+
+  it('Field Mode hides the advanced tools, shows a real compass, and turns off an active wind/heatmap layer', async () => {
+    vi.stubGlobal('DeviceOrientationEvent', undefined)
+    render(<MapPage />)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    expect(screen.getByRole('button', { name: 'Toggle wind flow field' })).toBeInTheDocument()
+
+    useFieldModeStore.setState({ enabled: true, loaded: true })
+
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Toggle wind flow field' })).not.toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: 'Toggle analysis heatmap' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Analyze this spot' })).not.toBeInTheDocument()
+    // Real CompassDisplay is now shown instead — jsdom has no orientation
+    // API, so it honestly reports unavailable rather than a fake heading.
+    expect(screen.getByText(/not supported/)).toBeInTheDocument()
+    expect(useWindStore.getState().enabled).toBe(false)
+
+    vi.unstubAllGlobals()
   })
 })

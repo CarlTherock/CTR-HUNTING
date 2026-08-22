@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { SettingsPage } from './SettingsPage'
 import { db } from '@/database/db'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 
 // jsdom has no Cache Storage API — `deleteArea` (via tileCache.ts)
 // touches it to remove a deleted area's tiles, which is exercised for
@@ -34,6 +35,7 @@ async function renderSettled() {
 
 afterEach(async () => {
   await db.offlineAreas.clear()
+  await db.settings.delete('fieldModeEnabled')
   useOfflineStore.setState({
     areas: [],
     loaded: false,
@@ -44,6 +46,7 @@ afterEach(async () => {
     activeAreaId: null,
     downloadProgress: null,
   })
+  useFieldModeStore.setState({ enabled: false, loaded: false })
 })
 
 describe('SettingsPage', () => {
@@ -122,5 +125,20 @@ describe('SettingsPage', () => {
 
     expect(screen.queryByText('Camp area')).not.toBeInTheDocument()
     expect(await db.offlineAreas.get('a1')).toBeUndefined()
+  })
+
+  it('toggles Field Mode and persists the real value to Dexie', async () => {
+    const user = userEvent.setup()
+    await renderSettled()
+
+    const checkbox = screen.getByLabelText('Field Mode')
+    expect(checkbox).not.toBeChecked()
+
+    await user.click(checkbox)
+
+    expect(checkbox).toBeChecked()
+    await vi.waitFor(async () => {
+      expect((await db.settings.get('fieldModeEnabled'))?.value).toBe(true)
+    })
   })
 })
