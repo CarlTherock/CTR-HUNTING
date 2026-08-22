@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Cloud, CloudRain, Droplets, Eye, Gauge, RefreshCw, Thermometer, Wind } from 'lucide-react'
+import { Cloud, CloudDrizzle, CloudRain, Droplets, Eye, Gauge, RefreshCw, Sun, Thermometer, Wind } from 'lucide-react'
 import {
   Badge,
   Card,
@@ -32,6 +32,18 @@ function next24Hours(forecast: WeatherForecast): HourlyForecastEntry[] {
   const fromIndex = forecast.hourly.findIndex((h) => h.time >= forecast.current.timestamp)
   const start = fromIndex === -1 ? 0 : fromIndex
   return forecast.hourly.slice(start, start + 24)
+}
+
+/** Picks a condition icon straight from the two real fields Open-Meteo's
+ * `current` block actually has (cloud cover, precipitation) — never a
+ * fabricated "weather code" or condition string this app doesn't
+ * receive. Thresholds are the same plain-language bands a MétéoMédia-style
+ * hero display uses (light drizzle vs. rain, clear vs. overcast). */
+function conditionIcon(current: { cloudCoverPercent: number; precipitationMm: number }): LucideIcon {
+  if (current.precipitationMm >= 2.5) return CloudRain
+  if (current.precipitationMm > 0) return CloudDrizzle
+  if (current.cloudCoverPercent >= 60) return Cloud
+  return Sun
 }
 
 function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
@@ -141,6 +153,28 @@ export function WeatherPage() {
 
       {forecast && (
         <>
+          {(() => {
+            const ConditionIcon = conditionIcon(forecast.current)
+            return (
+              <Card className="flex items-center gap-4 p-5">
+                <ConditionIcon size={48} className="text-brand-400 shrink-0" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-ink-100 text-4xl font-bold leading-none">
+                    {Math.round(forecast.current.temperatureCelsius)}°
+                  </p>
+                  <p className="text-ink-500 mt-1.5 text-sm">
+                    {Math.round(forecast.current.windSpeedKmh)} km/h wind ·{' '}
+                    {Math.round(forecast.current.cloudCoverPercent)}% cloud ·{' '}
+                    {new Date(forecast.current.timestamp).toLocaleTimeString(undefined, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </Card>
+            )
+          })()}
+
           <Card>
             <CardHeader>
               <CardTitle>Current conditions</CardTitle>

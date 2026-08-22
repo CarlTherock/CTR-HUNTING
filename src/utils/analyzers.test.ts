@@ -162,8 +162,14 @@ describe('timeAnalyzer', () => {
     moon: { rise: null, set: null, alwaysUp: false, alwaysDown: false },
     illumination: { fraction: 0.2, phase: 0.1, waxing: true, phaseName: 'Waxing Crescent' },
     solunarPeriods: [
-      { type: 'major', start: '2026-08-17T09:00:00.000Z', end: '2026-08-17T11:00:00.000Z' },
+      {
+        type: 'major',
+        start: '2026-08-17T09:00:00.000Z',
+        end: '2026-08-17T11:00:00.000Z',
+        peak: '2026-08-17T10:00:00.000Z',
+      },
     ],
+    moonTransit: { overhead: '2026-08-17T10:00:00.000Z', underfoot: '2026-08-17T22:00:00.000Z' },
   }
 
   it('scores higher within the dawn/dusk crepuscular window', () => {

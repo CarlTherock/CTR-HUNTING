@@ -4,6 +4,7 @@ import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
 import { LAYER_LEGEND, valueForLayer, weatherLayerGradientCss } from '@/utils/weatherMapColors'
 import { useWindStore } from '../state/windStore'
+import { WindCompass } from './WindCompass'
 import type { Coordinate, WeatherMapLayer } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 
@@ -143,34 +144,33 @@ export function WindLayerControl({ getBounds, referenceCoordinate }: WindLayerCo
 
             {reading && (
               <>
-                <div className="mb-2 flex items-center gap-3">
-                  {activeLayer === 'wind' ? (
-                    <Wind
-                      size={22}
-                      className="text-brand-400 shrink-0"
-                      style={{ transform: `rotate(${reading.directionDegrees}deg)` }}
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    (() => {
+                {activeLayer === 'wind' ? (
+                  <div className="mb-2 flex items-center gap-3">
+                    <WindCompass directionDegrees={reading.directionDegrees} speedKmh={reading.speedKmh} />
+                    <div>
+                      <p className="text-ink-100 text-xl font-bold">
+                        {Math.round(reading.speedKmh)} <span className="text-sm font-medium">km/h</span>
+                      </p>
+                      <p className="text-ink-300 text-sm">from {compassLabel(reading.directionDegrees)}</p>
+                      <p className="text-ink-500 mt-1 text-xs">
+                        Gusts {Math.round(reading.gustsKmh)} km/h · {formatHourLabel(selectedHourOffset)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-2 flex items-center gap-3">
+                    {(() => {
                       const LayerIcon = LAYER_ICON[activeLayer]
                       return <LayerIcon size={22} className="text-brand-400 shrink-0" aria-hidden="true" />
-                    })()
-                  )}
-                  <div>
-                    <p className="text-ink-100 text-sm font-medium">
-                      {activeLayer === 'wind'
-                        ? `${Math.round(reading.speedKmh)} km/h from ${compassLabel(reading.directionDegrees)}`
-                        : formatLayerValue(activeLayer, valueForLayer(activeLayer, reading))}
-                    </p>
-                    <p className="text-ink-500 text-xs">
-                      {activeLayer === 'wind'
-                        ? `Gusts ${Math.round(reading.gustsKmh)} km/h · `
-                        : ''}
-                      {formatHourLabel(selectedHourOffset)}
-                    </p>
+                    })()}
+                    <div>
+                      <p className="text-ink-100 text-sm font-medium">
+                        {formatLayerValue(activeLayer, valueForLayer(activeLayer, reading))}
+                      </p>
+                      <p className="text-ink-500 text-xs">{formatHourLabel(selectedHourOffset)}</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="mb-2">
                   <div

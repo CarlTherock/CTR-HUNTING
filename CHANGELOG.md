@@ -3,6 +3,46 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Visual redesign round: wind compass, moon transit times, weather hero (2026-08-22)
+
+Follow-up to the terrain fix below — user feedback was that the result
+still looked plain next to reference apps (MétéoMédia, HuntStand,
+Spartan Forge screenshots the user supplied). Reproduced the visual
+*style* those apps use — radar-style dials, dense icon rows, a
+big-number weather hero — entirely from this app's own real data, not
+by fabricating the proprietary scoring those apps also show (HuntStand's
+"scent impact" ring-coloring, its "Buck Movement Probability" percentage,
+Spartan Forge's "Movement: Core Area/Transition" classifications — none
+of those have a real model behind them in this app, so none were added).
+
+### Added
+
+- `utils/polarGeometry.ts`: shared `pointOnCircle`/`wedgePath` math for
+  any compass/radar-style dial.
+- `WindCompass.tsx`: a real radar-dial wind compass (concentric rings,
+  a directional arrow colored by real speed, N/E/S/W labels, and green
+  wedges for a waypoint's real saved "optimal wind" octants) — replaces
+  the plain rotated arrow icon in both `WindLayerControl` (map's weather
+  layer panel) and `WaypointEditPanel` (per-waypoint optimal-wind editor).
+- `TemporalData.moonTransit` (`overhead`/`underfoot`): the real moon
+  transit/anti-transit instants `SolunarPeriod`'s two major periods are
+  already centered on, now also surfaced as their own point-in-time
+  values (`SolunarPeriod.peak` too) — matches how Spartan Forge's
+  reference screenshot labels this same real geometry. Computed by the
+  same 10-minute altitude sweep `computeSolunarPeriods` already did;
+  refactored so the sweep only runs once per day, shared between the two.
+  Surfaced on `TemporalPage.tsx`'s Moon card as "Overhead"/"Underfoot".
+- `WeatherPage.tsx`: a MétéoMédia-style hero header — large temperature,
+  a condition icon picked from the two real fields Open-Meteo's
+  `current` block has (cloud cover, precipitation — never a fabricated
+  "weather code"), and a compact wind/cloud/time summary line, above the
+  existing detailed metrics grid.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (382/382 across 58 files) and
+`build` all pass.
+
 ## Fix round: terrain "no data," and visibility on Sun & Moon / Advanced Chart (2026-08-22)
 
 User feedback on the deployed app: the Analysis heatmap and Spot

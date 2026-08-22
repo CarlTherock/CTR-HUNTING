@@ -5,6 +5,7 @@ import { useWindStore } from '@/features/wind/state/windStore'
 import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
 import { isOptimalWind } from '@/utils/windField'
+import { WindCompass } from '@/features/wind/components/WindCompass'
 import type { WaypointCategory, WaypointColor } from '@/types'
 import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR } from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
@@ -187,27 +188,37 @@ export function WaypointEditPanel() {
                 </span>
               )}
             </div>
-            <div
-              role="group"
-              aria-label="Optimal wind directions"
-              className="mt-1.5 grid grid-cols-4 gap-1.5"
-            >
-              {OCTANTS.map((octant) => (
-                <button
-                  key={octant}
-                  type="button"
-                  aria-pressed={optimalWindDirections.includes(octant)}
-                  onClick={() => toggleOctant(octant)}
-                  className={cn(
-                    'rounded-md px-1 py-1.5 text-center text-xs font-medium transition-colors',
-                    optimalWindDirections.includes(octant)
-                      ? 'bg-brand-500/15 text-brand-400'
-                      : 'text-ink-300 hover:bg-surface-800',
-                  )}
-                >
-                  {compassLabel(octant)}
-                </button>
-              ))}
+            <div className="mt-2 flex items-center gap-3">
+              {currentWind && (
+                <WindCompass
+                  directionDegrees={currentWind.directionDegrees}
+                  speedKmh={currentWind.speedKmh}
+                  optimalDirections={optimalWindDirections}
+                  size={100}
+                />
+              )}
+              <div
+                role="group"
+                aria-label="Optimal wind directions"
+                className="grid flex-1 grid-cols-4 gap-1.5"
+              >
+                {OCTANTS.map((octant) => (
+                  <button
+                    key={octant}
+                    type="button"
+                    aria-pressed={optimalWindDirections.includes(octant)}
+                    onClick={() => toggleOctant(octant)}
+                    className={cn(
+                      'rounded-md px-1 py-1.5 text-center text-xs font-medium transition-colors',
+                      optimalWindDirections.includes(octant)
+                        ? 'bg-brand-500/15 text-brand-400'
+                        : 'text-ink-300 hover:bg-surface-800',
+                    )}
+                  >
+                    {compassLabel(octant)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

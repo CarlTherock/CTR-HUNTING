@@ -50,6 +50,21 @@ export interface SolunarPeriod {
   type: 'major' | 'minor'
   start: string // ISO 8601
   end: string
+  /** The exact moment this period is centered on — real moon transit
+   * (overhead) or anti-transit (underfoot) time for a major period, or
+   * the real moonrise/moonset instant for a minor one. `start`/`end`
+   * are just a ± window around this real instant. */
+  peak: string
+}
+
+/** Real moon transit ("overhead") and anti-transit ("underfoot") times —
+ * the exact instants `SolunarPeriod`'s two major periods are centered
+ * on, surfaced directly since some hunters look for these specific
+ * moments rather than a whole window (matching how several commercial
+ * hunting apps label the same real geometry). */
+export interface MoonTransitTimes {
+  overhead: string // ISO 8601 — moon's highest point today
+  underfoot: string // ISO 8601 — moon's lowest point today
 }
 
 export interface TemporalData {
@@ -58,4 +73,5 @@ export interface TemporalData {
   moon: MoonTimes
   illumination: MoonIllumination
   solunarPeriods: SolunarPeriod[]
+  moonTransit: MoonTransitTimes
 }

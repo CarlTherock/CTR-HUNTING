@@ -1,5 +1,13 @@
 import * as SunCalc from 'suncalc'
-import type { Coordinate, MoonPhaseName, MoonIllumination, MoonTimes, SolunarPeriod, SunTimes, TemporalData } from '@/types'
+import type {
+  Coordinate,
+  MoonPhaseName,
+  MoonIllumination,
+  MoonTimes,
+  SolunarPeriod,
+  SunTimes,
+  TemporalData,
+} from '@/types'
 
 /**
  * Sun/moon math via SunCalc (github.com/mourner/suncalc, BSD-2-Clause —
@@ -91,7 +99,15 @@ const SAMPLE_INTERVAL_MS = 10 * 60_000
  * transit time shifts day to day with the moon's ~24h50m cycle. "Minor"
  * periods center on the real moonrise/moonset times.
  */
-export function computeSolunarPeriods(date: Date, coordinate: Coordinate): SolunarPeriod[] {
+/** Sweeps the moon's altitude every 10 minutes across `date`'s calendar
+ * day to find its real transit (highest, "overhead") and anti-transit
+ * (lowest, "underfoot") instants — shared by `computeSolunarPeriods` and
+ * `computeTemporalData`'s `moonTransit` field so the sweep only runs
+ * once per day computed. */
+function findMoonExtremes(
+  date: Date,
+  coordinate: Coordinate,
+): { highest: { time: Date; altitude: number }; lowest: { time: Date; altitude: number } } {
   const dayStart = new Date(date)
   dayStart.setHours(0, 0, 0, 0)
 
@@ -103,17 +119,28 @@ export function computeSolunarPeriods(date: Date, coordinate: Coordinate): Solun
     if (altitude > highest.altitude) highest = { time, altitude }
     if (altitude < lowest.altitude) lowest = { time, altitude }
   }
+  return { highest, lowest }
+}
+
+export function computeSolunarPeriods(
+  date: Date,
+  coordinate: Coordinate,
+  precomputedExtremes?: ReturnType<typeof findMoonExtremes>,
+): SolunarPeriod[] {
+  const { highest, lowest } = precomputedExtremes ?? findMoonExtremes(date, coordinate)
 
   const periods: SolunarPeriod[] = [
     {
       type: 'major',
       start: new Date(highest.time.getTime() - MAJOR_WINDOW_MS).toISOString(),
       end: new Date(highest.time.getTime() + MAJOR_WINDOW_MS).toISOString(),
+      peak: highest.time.toISOString(),
     },
     {
       type: 'major',
       start: new Date(lowest.time.getTime() - MAJOR_WINDOW_MS).toISOString(),
       end: new Date(lowest.time.getTime() + MAJOR_WINDOW_MS).toISOString(),
+      peak: lowest.time.toISOString(),
     },
   ]
 
@@ -123,6 +150,7 @@ export function computeSolunarPeriods(date: Date, coordinate: Coordinate): Solun
       type: 'minor',
       start: new Date(moonTimes.rise.getTime() - MINOR_WINDOW_MS).toISOString(),
       end: new Date(moonTimes.rise.getTime() + MINOR_WINDOW_MS).toISOString(),
+      peak: moonTimes.rise.toISOString(),
     })
   }
   if (moonTimes.set) {
@@ -130,6 +158,7 @@ export function computeSolunarPeriods(date: Date, coordinate: Coordinate): Solun
       type: 'minor',
       start: new Date(moonTimes.set.getTime() - MINOR_WINDOW_MS).toISOString(),
       end: new Date(moonTimes.set.getTime() + MINOR_WINDOW_MS).toISOString(),
+      peak: moonTimes.set.toISOString(),
     })
   }
 
@@ -146,11 +175,16 @@ export function timeToPercent(iso: string, dayStart: Date): number {
 }
 
 export function computeTemporalData(date: Date, coordinate: Coordinate): TemporalData {
+  const extremes = findMoonExtremes(date, coordinate)
   return {
     date: date.toISOString().slice(0, 10),
     sun: getSunTimes(date, coordinate),
     moon: getMoonTimes(date, coordinate),
     illumination: getMoonIllumination(date),
-    solunarPeriods: computeSolunarPeriods(date, coordinate),
+    solunarPeriods: computeSolunarPeriods(date, coordinate, extremes),
+    moonTransit: {
+      overhead: extremes.highest.time.toISOString(),
+      underfoot: extremes.lowest.time.toISOString(),
+    },
   }
 }

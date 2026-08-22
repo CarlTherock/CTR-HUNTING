@@ -464,7 +464,9 @@ describe('MapPage', () => {
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
-    await screen.findByText(/km\/h from/)
+    await vi.waitFor(() => {
+      expect(screen.getAllByRole('img', { name: 'Wind compass' }).length).toBeGreaterThan(0)
+    })
 
     // Mark north as optimal — the live wind (W) should read as a mismatch.
     await user.click(screen.getByRole('button', { name: 'N' }))
@@ -567,7 +569,7 @@ describe('MapPage', () => {
         'wind',
       )
     })
-    expect(await screen.findByText(/km\/h from/)).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: 'Wind compass' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
     expect(setWindField).toHaveBeenLastCalledWith(null, 0, 'wind')

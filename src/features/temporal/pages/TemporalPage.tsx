@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Moon, Sunrise, Sunset } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpToLine, ChevronLeft, ChevronRight, Moon, Sunrise, Sunset } from 'lucide-react'
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from '@/components/ui'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
@@ -205,6 +205,20 @@ export function TemporalPage() {
               <div>
                 <p className="text-ink-100 text-sm font-medium">{formatTime(data.moon.set)}</p>
                 <p className="text-ink-500 text-xs">Moonset</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ArrowUpToLine size={14} className="text-status-success shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.overhead)}</p>
+                  <p className="text-ink-500 text-xs">Overhead</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ArrowDownToLine size={14} className="text-brand-400 shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.underfoot)}</p>
+                  <p className="text-ink-500 text-xs">Underfoot</p>
+                </div>
               </div>
             </div>
           </CardContent>
