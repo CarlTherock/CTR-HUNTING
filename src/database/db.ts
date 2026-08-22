@@ -62,6 +62,13 @@ export class FieldTerrainDatabase extends Dexie {
     this.version(3).stores({
       offlineAreas: 'id, status, createdAt',
     })
+
+    // Phase 13 (Journal): photos can now belong to an observation instead
+    // of a waypoint — `observationId` needs its own index for
+    // `listPhotosForObservation`'s `.where(...)` query.
+    this.version(4).stores({
+      photos: 'id, waypointId, observationId, createdAt',
+    })
   }
 }
 

@@ -122,6 +122,10 @@ Deleting a waypoint (`waypointsStore.deleteWaypoint`) also deletes its
 photos (`deletePhotosForWaypoint`) — without that they'd be orphaned in
 Dexie forever, since nothing else references them.
 
+`Photo` (`types/photo.ts`) was generalized in Phase 13 to belong to
+*either* a waypoint or a journal observation, never both — see
+`features/journal/README.md` for the full design.
+
 ## Optimal wind (Phase 6)
 
 `Waypoint.optimalWindDirections` — an 8-octant picker in

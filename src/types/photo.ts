@@ -12,7 +12,10 @@ import type { Coordinate } from './geo'
  * in-app editing happened to it). */
 export interface Photo {
   id: string
-  waypointId: string
+  /** A photo belongs to exactly one of these — never both, never
+   * neither. */
+  waypointId?: string
+  observationId?: string
   /** The version shown/exported — identical to `originalBlob` unless the
    * camera tool's brightness/contrast/filter adjustments were applied. */
   blob: Blob

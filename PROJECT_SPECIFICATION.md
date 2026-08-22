@@ -32,7 +32,10 @@ the Map page's wind layer and the Sun & Moon page's marker; Phase 11
 hidden advanced tools, animations off for battery) plus a real device
 compass; Phase 12 (Camera) complete — a real live in-app camera with
 hardware/digital zoom, non-destructive brightness/contrast/filter
-adjustments, GPS+timestamp tagging, and the original capture always kept
+adjustments, GPS+timestamp tagging, and the original capture always
+kept; Phase 13 (Journal) complete — field observations with notes,
+photos, position, and real weather/wind conditions snapshots, viewable
+on the map via recentering
 **This file is authoritative.** Together with `ARCHITECTURE.md`, `README.md`
 and the validated source code, it is the source of truth for what this
 product is and how it is built. If the code and this document disagree,
@@ -95,7 +98,7 @@ exists).
 | 10  | Advanced Charts ✅     | 24h/12h/6h/3h/1h charts; zoom, pan, cursor, hour selection, day comparison. Time cursor synchronizes map, wind, weather, temporal data. Hand-rolled SVG chart (`features/charts/`) over the already-fetched 48h forecast — real bucket averaging for granularity, container scroll for pan, day-1-vs-day-2 overlay for comparison (real data, Open-Meteo has no historical endpoint). The cursor reuses `windStore.selectedHourOffset` (extended to 0-47) as the one shared clock, verified live to move the Map page's wind hour and the Sun & Moon timeline marker together. |
 | 11  | Field Mode ✅          | Simplified mobile UI: readability, large buttons, one-handed use, low power draw, offline, GPS, map, compass, observation, camera. A persisted toggle (`fieldModeStore`) hides advanced Map page tools, enlarges GPS/waypoint controls, and turns off the wind/heatmap animation loops for real battery savings. Real device compass via `DeviceOrientationEvent` (iOS's `webkitCompassHeading` + the standard `deviceorientationabsolute` fallback), including iOS 13+'s required permission gesture. Observation/camera are Phase 12/13's own features, not built ahead of them. |
 | 12  | Camera ✅              | Live camera, zoom, exposure, contrast, brightness, filters, image enhancement, save with GPS + timestamp. Original image always kept. Real `getUserMedia` preview; real hardware zoom via the W3C Image Capture spec's `MediaTrackCapabilities.zoom` where the device reports one (Chrome desktop/Android only, verified live), digital CSS-scale fallback elsewhere, clearly labeled which. Non-destructive brightness/contrast/filter review via a real Canvas2D `filter` string. `Photo` gained `originalBlob` (always the untouched raw capture) and `coordinate` (real GPS at capture time). |
-| 13  | Journal                | Field journal: observations, photos, positions, dates/times, conditions, tracks, notes, history — all viewable on the map.                                                                         |
+| 13  | Journal ✅             | Field journal: observations, photos, positions, dates/times, conditions, tracks, notes, history — all viewable on the map. Builds on `Observation` (scaffolded since Phase 0's Dexie schema). Real conditions snapshots from already-loaded weather/wind data (never fetched specifically for this, never partial/fabricated). `Photo` generalized to belong to a waypoint or an observation. "Viewable on the map" via recentering (`mapStore.setView`), not a duplicate marker layer. |
 | 14  | AI & Assistant         | Summarize observations, compare periods, explain an analysis, search history, detect trends. Must distinguish real data / analysis / estimate / AI interpretation / user observation at all times. |
 | 15  | Synchronization        | Phone ↔ local DB ↔ sync engine ↔ cloud ↔ desktop/tablet. Conflict handling, export, import, backup.                                                                                                |
 | 16  | Testing & Optimization | Cross-device testing (iPhone/Android/tablet/PC), offline, GPS, map, 3D, sync. Optimize battery, memory, network, bundle size, load time, map rendering.                                            |

@@ -3,7 +3,9 @@ import { db } from './db'
 import {
   addPhoto,
   deletePhoto,
+  deletePhotosForObservation,
   deletePhotosForWaypoint,
+  listPhotosForObservation,
   listPhotosForWaypoint,
 } from './photosRepository'
 
@@ -61,5 +63,32 @@ describe('photosRepository (IndexedDB via Dexie)', () => {
 
     expect(await listPhotosForWaypoint('w1')).toEqual([])
     expect(await listPhotosForWaypoint('w2')).toHaveLength(1)
+  })
+
+  it('adds a photo owned by an observation instead of a waypoint', async () => {
+    const photo = await addPhoto({ observationId: 'o1', blob: fakeBlob() })
+
+    expect(photo.observationId).toBe('o1')
+    expect(photo.waypointId).toBeUndefined()
+    const [reloaded] = await listPhotosForObservation('o1')
+    expect(reloaded.id).toBe(photo.id)
+  })
+
+  it('only lists photos for the requested observation, separate from waypoint photos', async () => {
+    await addPhoto({ observationId: 'o1', blob: fakeBlob('a') })
+    await addPhoto({ waypointId: 'w1', blob: fakeBlob('b') })
+
+    expect(await listPhotosForObservation('o1')).toHaveLength(1)
+    expect(await listPhotosForWaypoint('w1')).toHaveLength(1)
+  })
+
+  it('deletePhotosForObservation removes only that observation\'s photos', async () => {
+    await addPhoto({ observationId: 'o1', blob: fakeBlob('a') })
+    await addPhoto({ observationId: 'o2', blob: fakeBlob('b') })
+
+    await deletePhotosForObservation('o1')
+
+    expect(await listPhotosForObservation('o1')).toEqual([])
+    expect(await listPhotosForObservation('o2')).toHaveLength(1)
   })
 })

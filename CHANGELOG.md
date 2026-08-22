@@ -3,6 +3,50 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Phase 13 — Journal, complete (2026-08-17)
+
+A real field journal, built on `Observation` — a type/table already
+scaffolded back in Phase 0 (unused since observations are referenced
+from waypoints/photos, and the project doesn't build ahead of the
+roadmap).
+
+### Added
+
+- `database/observationsRepository.ts`: CRUD, same pattern as
+  `waypointsRepository`; deleting an observation also deletes its
+  photos.
+- `Photo` (`types/photo.ts`) generalized from waypoint-only to belong to
+  *either* a waypoint or an observation (mutually exclusive, enforced by
+  a discriminated `CreatePhotoInput` union) — `photosRepository` gained
+  `listPhotosForObservation`/`deletePhotosForObservation`.
+- `features/journal/components/JournalPhotos.tsx`: `WaypointPhotos`'s
+  same in-app-camera + file-picker pattern, keyed by `observationId`.
+- `JournalPage.tsx`: real create/edit/delete UI. `snapshotConditions()`
+  attaches a real weather+wind reading only when *both* are already
+  loaded for that coordinate — never fetched specifically for a journal
+  entry, never a partial/fabricated snapshot. "View on map" recenters
+  the Map page on the entry's real coordinate (`mapStore.setView`) rather
+  than a new duplicate marker layer.
+
+### Fixed (found live during this phase)
+
+The notes `<textarea>` was originally bound directly to the store's
+async `update()` on every keystroke — a fast keystroke could fire before
+the previous one's Dexie write resolved, snapping the textarea back to
+stale text mid-word (caught live: typing "Fresh rub line" rendered as
+"Fhe"). Fixed with local draft state saved on blur/close, the same
+pattern `WaypointEditPanel` already uses for exactly this reason.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (374/374 across 56 files — new
+`observationsRepository.test.ts`, `journalStore.test.ts`,
+`JournalPhotos.test.tsx`, `JournalPage.test.tsx`, extended
+`photosRepository.test.ts`) and `build` all pass. **Verified live in-
+browser** (this page needs no map API key): created a real entry, typed
+multi-word notes with no corruption (confirming the fix above), closed
+it, and confirmed it listed with its real timestamp/coordinate.
+
 ## Phase 12 — Camera, complete (2026-08-17)
 
 A real live in-app camera, replacing (well, joining — the file picker
