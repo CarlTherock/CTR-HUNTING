@@ -35,7 +35,7 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
 
   return (
     <div className="w-full">
-      <div className="border-surface-600 relative h-8 w-full overflow-hidden rounded-md border">
+      <div className="border-surface-600 relative h-14 w-full overflow-hidden rounded-md border">
         <div className="bg-surface-950 absolute inset-0" aria-hidden="true" />
         {dayBandStart !== null && dayBandEnd !== null && (
           <div
@@ -60,16 +60,20 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
               title={`${period.type === 'major' ? 'Major' : 'Minor'} solunar period`}
               className={
                 period.type === 'major'
-                  ? 'absolute inset-y-0 bg-amber-500/70'
-                  : 'absolute inset-y-0 bg-amber-500/35'
+                  ? 'absolute inset-y-0 bg-amber-500/80'
+                  : 'absolute inset-y-0 bg-amber-500/40'
               }
-              style={{ left: `${start}%`, width: `${Math.max(0.5, end - start)}%` }}
+              // A real period can be a fraction of a percent of the full
+              // 24h bar (a ±30min minor window is ~2%) — floored to a
+              // real minimum so it's still visible/tappable on a phone
+              // screen, never so wide it misrepresents the actual window.
+              style={{ left: `${start}%`, width: `${Math.max(2.5, end - start)}%` }}
             />
           )
         })}
         {selectedHourPercent !== null && (
           <div
-            className="bg-ink-100 absolute inset-y-0 w-0.5"
+            className="bg-ink-100 absolute inset-y-0 w-1 shadow-[0_0_4px_rgba(0,0,0,0.8)]"
             style={{ left: `${selectedHourPercent}%` }}
             aria-label="Selected hour (shared timeline cursor)"
             title="Selected hour"
@@ -77,7 +81,7 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
         )}
         {nowPercent !== null && (
           <div
-            className="bg-status-danger absolute inset-y-0 w-0.5"
+            className="bg-status-danger absolute inset-y-0 w-1 shadow-[0_0_4px_rgba(0,0,0,0.8)]"
             style={{ left: `${nowPercent}%` }}
             aria-label="Now"
             title="Now"
@@ -90,6 +94,30 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
         <span>12 PM</span>
         <span>6 PM</span>
         <span>12 AM</span>
+      </div>
+      <div className="text-ink-500 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+        <span className="flex items-center gap-1">
+          <span className="bg-brand-400/60 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
+          Daylight
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="bg-amber-500/80 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
+          Major solunar
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="bg-amber-500/40 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
+          Minor solunar
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="bg-status-danger h-2.5 w-1 rounded-sm" aria-hidden="true" />
+          Now
+        </span>
+        {selectedHourPercent !== null && (
+          <span className="flex items-center gap-1">
+            <span className="bg-ink-100 h-2.5 w-1 rounded-sm" aria-hidden="true" />
+            Selected hour
+          </span>
+        )}
       </div>
     </div>
   )

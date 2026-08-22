@@ -645,8 +645,18 @@ export class MapLibreProvider implements MapProvider {
     const overlayState: Record<MapOverlayId, boolean> = { ...initialOverlays }
     let trackPreviewPoints: Coordinate[] | null = null
     let measurePathPoints: Coordinate[] | null = null
-    let terrainEnabled = false
-    let terrainExaggeration = 1.5
+    // Terrain is now *always* kept set on the map (never `null`), even in
+    // "2D" mode — confirmed directly in MapLibre's own type definitions:
+    // `queryTerrainElevation` "Returns null if terrain is not enabled."
+    // Before this fix, every elevation query (terrain info, elevation
+    // profile, and every Phase 8/9 analyzer/heatmap cell) silently
+    // returned null whenever the user wasn't in 3D view — the actual
+    // cause of "Terrain: No data" always showing. In 2D, exaggeration is
+    // simply held at 1 (true scale) rather than nulling terrain
+    // entirely — with pitch 0 (looking straight down), real-scale
+    // terrain displacement isn't visually different from no terrain at
+    // all, so 2D still looks flat.
+    let terrainExaggeration = 1
     map.on('style.load', () => {
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
         applyOverlay(map, overlay, overlayState[overlay])
@@ -701,9 +711,9 @@ export class MapLibreProvider implements MapProvider {
         encoding: 'terrarium',
         maxzoom: 15,
       })
-      if (terrainEnabled) {
-        map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
-      }
+      // Always set (see the doc comment above `terrainExaggeration`) —
+      // not conditional on a "3D mode" flag.
+      map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
     })
 
     if (onViewChange) {
@@ -814,12 +824,21 @@ export class MapLibreProvider implements MapProvider {
         analysisHeatmapLayer.setCells(cells)
       },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
-        terrainEnabled = enabled
-        terrainExaggeration = exaggeration
-        map.setTerrain(enabled ? { source: TERRAIN_SOURCE_ID, exaggeration } : null)
+        // Terrain itself stays set either way (see the doc comment on
+        // `terrainExaggeration`'s declaration) — "2D" now means "real
+        // scale, not visually exaggerated," not "no terrain at all."
+        terrainExaggeration = enabled ? exaggeration : 1
+        map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
       },
       queryElevation(coordinate: Coordinate): number | null {
-        return map.queryTerrainElevation([coordinate.lng, coordinate.lat]) ?? null
+        const raw = map.queryTerrainElevation([coordinate.lng, coordinate.lat])
+        if (raw === null) return null
+        // MapLibre's own docs: "If terrain is enabled with some
+        // exaggeration value, the value returned here will be
+        // reflective of (multiplied by) that exaggeration value" — undo
+        // that scaling so callers always get the real elevation,
+        // regardless of the visual exaggeration currently active.
+        return raw / terrainExaggeration
       },
       getBounds(): LngLatBounds {
         const bounds = map.getBounds()

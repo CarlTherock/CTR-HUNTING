@@ -748,13 +748,18 @@ describe('MapLibreProvider', () => {
   })
 
   describe('terrain (Phase 4)', () => {
-    it('does not enable terrain by default', () => {
+    it('keeps terrain always set, at real scale (exaggeration 1) by default, so elevation queries work even in 2D', () => {
+      // MapLibre's own docs: `queryTerrainElevation` "Returns null if
+      // terrain is not enabled" — before this fix, every elevation
+      // query (terrain info, elevation profile, every Phase 8/9
+      // analyzer/heatmap cell) silently returned null whenever the user
+      // wasn't in 3D view. Terrain now stays set unconditionally.
       mapInstances.length = 0
       createTestMap()
       const map = mapInstances[0]
       map.fire('style.load')
 
-      expect(map.terrainCalls).toEqual([])
+      expect(map.terrainCalls).toEqual([{ source: 'terrain-dem', exaggeration: 1 }])
     })
 
     it('setTerrainEnabled(true, exaggeration) calls setTerrain with the DEM source and exaggeration', () => {
@@ -767,7 +772,7 @@ describe('MapLibreProvider', () => {
       expect(map.terrainCalls).toEqual([{ source: 'terrain-dem', exaggeration: 2 }])
     })
 
-    it('setTerrainEnabled(false, …) calls setTerrain(null)', () => {
+    it('setTerrainEnabled(false, …) drops to real scale (exaggeration 1), never nulls terrain out entirely', () => {
       mapInstances.length = 0
       const instance = createTestMap()
       const map = mapInstances[0]
@@ -775,7 +780,7 @@ describe('MapLibreProvider', () => {
       instance.setTerrainEnabled(true, 2)
       instance.setTerrainEnabled(false, 2)
 
-      expect(map.terrainCalls.at(-1)).toBeNull()
+      expect(map.terrainCalls.at(-1)).toEqual({ source: 'terrain-dem', exaggeration: 1 })
     })
 
     it('re-enables terrain automatically after a base layer switch reloads the style', () => {
@@ -800,6 +805,22 @@ describe('MapLibreProvider', () => {
 
       expect(instance.queryElevation({ lat: 46.8, lng: -71.2 })).toBe(312)
       expect(instance.queryElevation({ lat: 0, lng: 0 })).toBeNull()
+    })
+
+    it('queryElevation undoes the exaggeration scaling MapLibre applies to the raw value, so it always returns the real elevation', () => {
+      // MapLibre's own docs: "If terrain is enabled with some
+      // exaggeration value, the value returned here will be reflective
+      // of (multiplied by) that exaggeration value." The fake engine
+      // returns whatever raw value is set — real terrain at 3x
+      // exaggeration would report 3x the true elevation.
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.elevationByLngLat['-71.2,46.8'] = 900 // raw value at 3x exaggeration
+
+      instance.setTerrainEnabled(true, 3)
+
+      expect(instance.queryElevation({ lat: 46.8, lng: -71.2 })).toBe(300) // 900 / 3 = true elevation
     })
   })
 

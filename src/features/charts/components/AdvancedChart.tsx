@@ -9,7 +9,7 @@ import type { HourlyForecastEntry } from '@/types'
 
 const GRANULARITIES: ChartGranularity[] = ['1h', '3h', '6h', '12h', '24h']
 const WIDTH = 600
-const HEIGHT = 200
+const HEIGHT = 260
 const PADDING = { top: 10, right: 10, bottom: 20, left: 10 }
 const PLOT_LEFT = PADDING.left
 const PLOT_RIGHT = WIDTH - PADDING.right
@@ -149,18 +149,29 @@ export function AdvancedChart() {
           {allPlotted.map((s, i) => (
             <rect
               key={i}
-              x={s.x - 2}
-              y={PLOT_BOTTOM - (s.bucket.precipitationMm / maxPrecip) * 20}
-              width={4}
-              height={(s.bucket.precipitationMm / maxPrecip) * 20}
+              x={s.x - 3}
+              y={PLOT_BOTTOM - (s.bucket.precipitationMm / maxPrecip) * 32}
+              width={6}
+              height={(s.bucket.precipitationMm / maxPrecip) * 32}
               className="fill-brand-500/40"
             />
           ))}
-          {tempPath && <path d={tempPath} fill="none" className="stroke-status-danger" strokeWidth={1.5} />}
+          {tempPath && <path d={tempPath} fill="none" className="stroke-status-danger" strokeWidth={2} />}
           {tempPath2 && (
-            <path d={tempPath2} fill="none" className="stroke-status-danger" strokeWidth={1.5} strokeDasharray="4 3" />
+            <path d={tempPath2} fill="none" className="stroke-status-danger" strokeWidth={2} strokeDasharray="4 3" />
           )}
-          {windPath && <path d={windPath} fill="none" className="stroke-brand-400" strokeWidth={1.5} />}
+          {windPath && <path d={windPath} fill="none" className="stroke-brand-400" strokeWidth={2} />}
+          {/* Real markers at every plotted hour — a line alone reads as
+              a trend, but each individual real reading (especially wind,
+              which the user most needs to spot at a glance) should be
+              directly visible as its own point, not just implied by the
+              connecting line. */}
+          {day1Series.map((s, i) => (
+            <circle key={`temp-${i}`} cx={s.x} cy={tempScale(s.bucket.temperatureCelsius)} r={3} className="fill-status-danger" />
+          ))}
+          {day1Series.map((s, i) => (
+            <circle key={`wind-${i}`} cx={s.x} cy={windScale(s.bucket.windSpeedKmh)} r={3} className="fill-brand-400" />
+          ))}
           {cursorSeries && (
             <line
               x1={cursorSeries.x}

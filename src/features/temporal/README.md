@@ -65,3 +65,18 @@ never hand-placed.
 `toLocaleTimeString()`), not the target coordinate's — reasonable since,
 unlike a general-purpose world clock, a hunter using this app is expected
 to be physically at or near the location shown.
+
+### Visibility fix + "next event" banner (user feedback on the deployed app)
+
+The timeline bar's solunar bands and cursor markers were hard to see on
+mobile — a ±30min minor-period window is only ~2% of the bar, which
+floored to sub-pixel width at the original bar height. Fixed by raising
+the bar's height, giving every band/marker a real minimum visible width,
+and adding an explicit color-swatch legend underneath so it's clear what
+each band/line means without guessing.
+
+Also added a weather-app-style hero banner ("Sunrise in 3h42," etc.) —
+`nextEvent()` finds whichever real sun/moon time (sunrise/sunset/
+moonrise/moonset) is soonest and still in the future today; `null` (and
+the banner simply doesn't render) once every one of today's events has
+already passed, never a stale or negative countdown.

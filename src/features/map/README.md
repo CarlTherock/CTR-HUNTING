@@ -91,6 +91,25 @@ wired from `MapPage`:
   interfere with each other), and the connecting line/dots stay visible
   after "Done" too, until the chart panel is discarded.
 
+### Bug fixed (found via user report on the deployed app): terrain always showed "no data" outside 3D mode
+
+`queryElevation` (and therefore every Phase 8/9 analyzer/heatmap cell
+that depends on real elevation) always returned `null` unless the user
+happened to be in 3D view. Root cause, confirmed directly in MapLibre's
+own type definitions: `queryTerrainElevation` "Returns null if terrain
+is not enabled" — and terrain was only ever set (`map.setTerrain(...)`)
+while the 3D toggle was on; in the default 2D view it was `null`. Fixed
+by keeping terrain *always* set (real scale, exaggeration 1, when not in
+3D) — with pitch 0 (looking straight down), true-scale terrain
+displacement isn't visually different from no terrain, so 2D still
+looks flat, but elevation queries now work everywhere. A second bug came
+with it: MapLibre's docs also say the returned value "will be reflective
+of (multiplied by) that exaggeration value" — so a query made while 3D
+exaggeration was, say, 3× was returning 3× the true elevation, silently
+corrupting slope/aspect math. `queryElevation` now divides the raw value
+back down by the currently active exaggeration, so it always returns the
+real elevation regardless of the visual exaggeration in use.
+
 **Not verified live** (no map API key in this environment): the actual
 rendered 3D relief, and whether AWS's Terrarium tiles resolve/render
 correctly end-to-end. The wiring (source re-added on every style reload,

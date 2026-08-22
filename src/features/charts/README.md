@@ -39,3 +39,13 @@ chart renders real data, granularity switching and day-comparison work,
 clicking the chart moves the cursor, and that same cursor's marker
 appears on the Sun & Moon page's timeline bar, confirming the cross-page
 sync actually works end to end.
+
+### Visibility fix (user feedback on the deployed app)
+
+Individual real readings — especially wind speed, which is the most
+important one to be able to spot at a glance — were hard to make out on
+mobile with a line alone; the chart also read as visually thin/cramped
+at its original 200px height. Fixed by drawing a real circle marker at
+every plotted hour on both the temperature and wind lines (not just the
+connecting line), increasing the chart height, and widening the
+precipitation bars — no data or scale changed, purely a legibility fix.

@@ -7,6 +7,7 @@ import { useWindStore } from '@/features/wind/state/windStore'
 import { computeTemporalData } from '@/utils/temporal'
 import { DayTimelineBar } from '../components/DayTimelineBar'
 import { MoonPhaseIcon } from '../components/MoonPhaseIcon'
+import type { TemporalData } from '@/types'
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—'
@@ -37,6 +38,28 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString()
 }
 
+/** The soonest still-upcoming real sun/moon event today, for a weather-
+ * app-style "Sunset in 3h42" banner — only ever built from real
+ * computed times, and only when the event genuinely hasn't passed yet
+ * (never shows a negative/elapsed duration). `null` when nothing is
+ * left today (e.g. every event already passed). */
+function nextEvent(data: TemporalData, now: Date): { label: string; iso: string; msUntil: number } | null {
+  const candidates: { label: string; iso: string | null }[] = [
+    { label: 'Sunrise', iso: data.sun.sunrise },
+    { label: 'Sunset', iso: data.sun.sunset },
+    { label: 'Moonrise', iso: data.moon.rise },
+    { label: 'Moonset', iso: data.moon.set },
+  ]
+  let best: { label: string; iso: string; msUntil: number } | null = null
+  for (const candidate of candidates) {
+    if (!candidate.iso) continue
+    const msUntil = new Date(candidate.iso).getTime() - now.getTime()
+    if (msUntil <= 0) continue
+    if (!best || msUntil < best.msUntil) best = { label: candidate.label, iso: candidate.iso, msUntil }
+  }
+  return best
+}
+
 /**
  * Phase 7 — sunrise/sunset, moonrise/moonset, moon phase, day length, and
  * a 24h timeline, all computed fully offline via SunCalc (see
@@ -63,6 +86,7 @@ export function TemporalPage() {
     () => computeTemporalData(selectedDay, coordinate),
     [selectedDay, coordinate],
   )
+  const upcoming = isToday ? nextEvent(data, new Date()) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,6 +119,26 @@ export function TemporalPage() {
       />
 
       {!usingGps && <Badge variant="warning">Using map location — GPS unavailable</Badge>}
+
+      {upcoming && (
+        <Card className="flex items-center gap-3 p-4">
+          {upcoming.label.startsWith('Sun') ? (
+            upcoming.label === 'Sunrise' ? (
+              <Sunrise size={28} className="text-brand-400 shrink-0" aria-hidden="true" />
+            ) : (
+              <Sunset size={28} className="text-brand-400 shrink-0" aria-hidden="true" />
+            )
+          ) : (
+            <Moon size={28} className="text-brand-400 shrink-0" aria-hidden="true" />
+          )}
+          <div>
+            <p className="text-ink-100 text-lg font-semibold">
+              {upcoming.label} in {formatDuration(upcoming.msUntil)}
+            </p>
+            <p className="text-ink-500 text-xs">at {formatTime(upcoming.iso)}</p>
+          </div>
+        </Card>
+      )}
 
       <DayTimelineBar
         dayStart={selectedDay}

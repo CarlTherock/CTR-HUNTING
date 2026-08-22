@@ -3,6 +3,53 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Fix round: terrain "no data," and visibility on Sun & Moon / Advanced Chart (2026-08-22)
+
+User feedback on the deployed app: the Analysis heatmap and Spot
+analysis tools always showed "Terrain: no data" and a score stuck around
+55/100; the Sun & Moon page's timeline was hard to read without
+zooming; the Advanced Chart's wind points were barely visible.
+
+### Root cause found and fixed
+
+`MapInstance.queryElevation` — and therefore every Phase 8/9 analyzer
+and heatmap cell depending on real elevation — always returned `null`
+outside 3D view. Confirmed directly in MapLibre's own type definitions:
+`queryTerrainElevation` "Returns null if terrain is not enabled," and
+terrain was only ever set while the 3D toggle was on. Fixed by keeping
+terrain always set (real scale when not in 3D) so elevation queries work
+in 2D too — the default view most people use these tools from. A second,
+related bug: MapLibre's docs also say the returned elevation "will be
+reflective of (multiplied by) that exaggeration value" — so a query
+during 3D at, say, 3× exaggeration was silently returning 3× the true
+elevation, corrupting slope/aspect math. `queryElevation` now divides
+back out by the currently active exaggeration, always returning the real
+elevation.
+
+### Visibility fixes
+
+- `DayTimelineBar.tsx`: taller bar, a real minimum visible width for
+  every solunar band/cursor (previously floored to sub-pixel at small
+  window sizes), and an explicit color-swatch legend.
+- `AdvancedChart.tsx`: real circle markers on every plotted hour for
+  both temperature and wind (not just the connecting line), a taller
+  chart, wider precipitation bars.
+- `TemporalPage.tsx`: a new weather-app-style "Sunrise/Sunset/Moonrise/
+  Moonset in Xh Ym" hero banner — the soonest real upcoming event today,
+  `null` (banner simply omitted) once nothing is left today.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (375/375 across 56 files — updated
+`MapLibreProvider.test.ts` terrain tests, new exaggeration-correction
+test) and `build` all pass. Verified live in-browser: the Sun & Moon
+timeline and hero banner render correctly with real, legible bands and
+countdowns. The terrain fix itself wasn't visually re-verified against a
+live map (no map API key in this environment) — the fix was confirmed
+directly against MapLibre's own documented behavior and covered by
+updated unit tests, same caveat as this app's other map-dependent
+features.
+
 ## Phase 13 — Journal, complete (2026-08-17)
 
 A real field journal, built on `Observation` — a type/table already
