@@ -24,6 +24,7 @@ function fakeMapInstance(
     setMeasurePath: vi.fn(),
     setWindField: vi.fn(),
     setAnalysisHeatmap: vi.fn(),
+    setRadarLayer: vi.fn(),
     setTerrainEnabled: vi.fn(),
     queryElevation: vi.fn().mockReturnValue(null),
     getBounds: vi.fn().mockReturnValue(BOUNDS),

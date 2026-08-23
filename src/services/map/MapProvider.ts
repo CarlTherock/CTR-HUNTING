@@ -98,6 +98,14 @@ export interface MapInstance {
    * layer, so both can be shown without interfering with each other.
    */
   setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null): void
+  /**
+   * Renders or clears (`null` tileUrlTemplate) a real precipitation radar
+   * tile overlay (`services/radar`) — a genuine MapLibre raster layer (not
+   * a canvas overlay like `setWindField`'s, since these are real map
+   * tiles from RainViewer, not synthesized per-point blobs) at the given
+   * opacity (0-1).
+   */
+  setRadarLayer(tileUrlTemplate: string | null, opacity: number): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

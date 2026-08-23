@@ -82,7 +82,7 @@ const {
       handlers: Record<string, ((...args: never[]) => void)[]> = {}
       setStyleCalls: string[] = []
       layoutProps: Record<string, string> = {}
-      sources: Record<string, { data: unknown; setDataCalls: unknown[] }> = {}
+      sources: Record<string, { data: unknown; setDataCalls: unknown[]; raw: unknown }> = {}
       layerIds: string[] = []
       transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
       maxPitch?: number | null
@@ -100,7 +100,7 @@ const {
         /* not under test */
       }
       addSource(id: string, source: { data: unknown }) {
-        this.sources[id] = { data: source.data, setDataCalls: [] }
+        this.sources[id] = { data: source.data, setDataCalls: [], raw: source }
       }
       getSource(id: string) {
         const source = this.sources[id]
@@ -112,8 +112,18 @@ const {
           },
         }
       }
-      addLayer(layer: { id: string }) {
+      addLayer(layer: { id: string; source?: unknown; paint?: unknown }) {
         this.layerIds.push(layer.id)
+        this.addedLayers.push(layer)
+      }
+      addedLayers: { id: string; source?: unknown; paint?: unknown }[] = []
+      removeLayer(id: string) {
+        this.layerIds = this.layerIds.filter((l) => l !== id)
+        this.addedLayers = this.addedLayers.filter((l) => l.id !== id)
+      }
+      removeSource(id: string) {
+        const { [id]: _removed, ...rest } = this.sources
+        this.sources = rest
       }
       on(event: string, handler: (...args: never[]) => void) {
         ;(this.handlers[event] ??= []).push(handler)
@@ -176,7 +186,7 @@ const {
         this.setStyleCalls.push(url)
       }
       getLayer(id: string) {
-        return existingLayers.has(id) ? {} : undefined
+        return existingLayers.has(id) || this.layerIds.includes(id) ? {} : undefined
       }
       setLayoutProperty(id: string, _prop: string, value: string) {
         this.layoutProps[id] = value
@@ -821,6 +831,54 @@ describe('MapLibreProvider', () => {
       instance.setTerrainEnabled(true, 3)
 
       expect(instance.queryElevation({ lat: 46.8, lng: -71.2 })).toBe(300) // 900 / 3 = true elevation
+    })
+  })
+
+  describe('radar layer', () => {
+    it('adds a real raster source/layer for the given tile template and opacity', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+
+      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
+
+      expect(map.sources['radar-tiles'].raw).toEqual({
+        type: 'raster',
+        tiles: ['https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png'],
+        tileSize: 256,
+      })
+      expect(map.addedLayers.at(-1)).toEqual({
+        id: 'radar-tiles-layer',
+        type: 'raster',
+        source: 'radar-tiles',
+        paint: { 'raster-opacity': 0.6 },
+      })
+    })
+
+    it('removes the layer/source when passed null, rather than leaving a stale radar frame', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
+
+      instance.setRadarLayer(null, 0.6)
+
+      expect(map.getLayer('radar-tiles-layer')).toBeUndefined()
+      expect(map.sources['radar-tiles']).toBeUndefined()
+    })
+
+    it('re-adds radar after a base layer switch reloads the style, same as terrain', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
+      map.layerIds = map.layerIds.filter((id) => id !== 'radar-tiles-layer')
+      map.removeSource('radar-tiles')
+
+      instance.setBaseLayer('satellite')
+      map.fire('style.load')
+
+      expect(map.getLayer('radar-tiles-layer')).toBeDefined()
     })
   })
 

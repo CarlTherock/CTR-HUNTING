@@ -16,6 +16,8 @@ import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { RadarLayerControl } from '@/features/radar/components/RadarLayerControl'
+import { useRadarStore } from '@/features/radar/state/radarStore'
 import { WindLayerControl } from '@/features/wind/components/WindLayerControl'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
@@ -62,6 +64,9 @@ export function MapPage() {
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
+  const radarEnabled = useRadarStore((state) => state.enabled)
+  const radarOpacity = useRadarStore((state) => state.opacity)
+  const radarTileUrlTemplate = useRadarStore((state) => state.selectedTileUrlTemplate())
 
   // Field Mode's "low power draw" requirement: turning it on also turns
   // off the two continuously-animated canvas layers (wind flow field,
@@ -191,6 +196,10 @@ export function MapPage() {
   }, [windEnabled, windField, windHourOffset, windActiveLayer])
 
   useEffect(() => {
+    instanceRef.current?.setRadarLayer(radarEnabled ? radarTileUrlTemplate : null, radarOpacity)
+  }, [radarEnabled, radarTileUrlTemplate, radarOpacity])
+
+  useEffect(() => {
     if (!heatmapEnabled) {
       instanceRef.current?.setAnalysisHeatmap(null)
       return
@@ -296,6 +305,7 @@ export function MapPage() {
                 getBounds={() => instanceRef.current?.getBounds() ?? null}
                 referenceCoordinate={view.center}
               />
+              <RadarLayerControl />
               <AnalysisControl />
               <HeatmapControl
                 getBounds={() => instanceRef.current?.getBounds() ?? null}

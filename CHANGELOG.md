@@ -3,6 +3,45 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Real precipitation radar map (2026-08-23)
+
+Follow-up to the round below — user feedback specifically named the map
+*tools* in MétéoMédia/AccuWeather/HuntStand as the bar to reach, not just
+individual panels. Those apps' "carte" (map) feature is a real radar
+mosaic overlay, which this app didn't have — the existing Phase 6 layer
+switcher draws per-point color blobs from Open-Meteo's forecast grid,
+useful for wind/temp/precip/cloud trends but not the same thing as an
+actual radar image.
+
+### Added
+
+- `services/radar/`: a new `RadarProvider` adapter (same pattern as
+  `WeatherProvider`/`WindProvider`) backed by RainViewer's real, free,
+  keyless public radar API (rainviewer.com/api.html) — the same kind of
+  observed-precipitation radar mosaic those reference apps show. `past`
+  frames are real observed radar (~last 2h); `nowcast` frames are
+  RainViewer's own short-range extrapolation of that data, clearly
+  labeled "(forecast)" in the UI rather than presented as observed.
+- `MapInstance.setRadarLayer`: a genuine MapLibre raster tile layer (not
+  a canvas overlay like the wind/weather layer) — real map tiles, added/
+  removed as a whole since a raster source's tile URL can't be mutated
+  in place, and re-added automatically after a base-layer switch (same
+  pattern already used for terrain).
+- `RadarLayerControl.tsx`: a new map toggle + frame scrubber ("-Xmin" /
+  "Now" / "Forecast"), with RainViewer attribution, independent of the
+  Phase 6 wind layer's 48h timeline since radar only covers its own
+  real ~2h-past/~30-60min-nowcast window.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (394/394 across 60 files — new
+`RainViewerProvider`, `radarStore`, and `MapLibreProvider` radar-layer
+tests) and `build` all pass. Not live-verified in-browser (no network
+access to RainViewer's API in this environment, same caveat as every
+other live network-dependent feature here) — built directly from
+RainViewer's own published API docs, and the tile-URL/response-shape
+logic is covered by unit tests against that documented shape.
+
 ## Visual redesign round: wind compass, moon transit times, weather hero (2026-08-22)
 
 Follow-up to the terrain fix below — user feedback was that the result
