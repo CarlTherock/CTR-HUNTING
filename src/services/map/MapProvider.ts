@@ -99,13 +99,18 @@ export interface MapInstance {
    */
   setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null): void
   /**
-   * Renders or clears (`null` tileUrlTemplate) a real precipitation radar
-   * tile overlay (`services/radar`) — a genuine MapLibre raster layer (not
-   * a canvas overlay like `setWindField`'s, since these are real map
-   * tiles from RainViewer, not synthesized per-point blobs) at the given
-   * opacity (0-1).
+   * Renders or clears (`null` tileUrlTemplate) a named external raster
+   * tile overlay — a genuine MapLibre raster layer (not a canvas overlay
+   * like `setWindField`'s), sourced from a real external tile/WMS/ArcGIS
+   * service: real precipitation radar (`services/radar`'s RainViewer),
+   * or a real Québec government layer (`services/map/forestLayerTiles.ts`
+   * — cadastre, coupes forestières, peuplements écoforestiers). `id`
+   * namespaces the underlying source/layer so any number of these can be
+   * shown simultaneously without clobbering each other; passing the same
+   * `id` again with a different `tileUrlTemplate` replaces that one
+   * overlay (a raster source's tile URLs can't be mutated in place).
    */
-  setRadarLayer(tileUrlTemplate: string | null, opacity: number): void
+  setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number): void
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

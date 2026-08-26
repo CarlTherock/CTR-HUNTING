@@ -166,12 +166,6 @@ const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
 const TERRAIN_SOURCE_ID = 'terrain-dem'
 const TERRAIN_TILE_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
 
-/** Real precipitation radar tiles (`services/radar` — RainViewer, free
- * and keyless) — a genuine MapLibre raster layer, added/removed as a
- * whole rather than mutated in place, since a raster source's `tiles`
- * array (which frame/opacity is showing) can't be changed after creation. */
-const RADAR_SOURCE_ID = 'radar-tiles'
-const RADAR_LAYER_ID = 'radar-tiles-layer'
 
 /** A LineString needs at least 2 positions to be valid GeoJSON — fewer
  * than that (recording just started, or not recording) renders as an
@@ -664,28 +658,42 @@ export class MapLibreProvider implements MapProvider {
     // terrain displacement isn't visually different from no terrain at
     // all, so 2D still looks flat.
     let terrainExaggeration = 1
-    // Radar's own state, re-applied on every style load same as terrain
-    // (a base-layer switch's setStyle() discards custom sources/layers).
-    let radarTileTemplate: string | null = null
-    let radarOpacity = 0.75
-    function applyRadarLayer() {
-      if (map.getLayer(RADAR_LAYER_ID)) {
-        map.removeLayer(RADAR_LAYER_ID)
-        map.removeSource(RADAR_SOURCE_ID)
+    // Named external raster overlays (radar, Forêt ouverte's cadastre/
+    // coupes/peuplements, …) — re-applied on every style load same as
+    // terrain, since a base-layer switch's setStyle() discards custom
+    // sources/layers. Keyed by the caller's own `id` so any number of
+    // these can be active simultaneously without clobbering each other.
+    const rasterOverlays = new Map<string, { tileUrlTemplate: string; opacity: number }>()
+    function rasterSourceId(id: string) {
+      return `raster-overlay-${id}`
+    }
+    function rasterLayerId(id: string) {
+      return `raster-overlay-${id}-layer`
+    }
+    function applyRasterOverlay(id: string) {
+      const sourceId = rasterSourceId(id)
+      const layerId = rasterLayerId(id)
+      if (map.getLayer(layerId)) {
+        map.removeLayer(layerId)
+        map.removeSource(sourceId)
       }
-      if (radarTileTemplate) {
-        map.addSource(RADAR_SOURCE_ID, {
+      const overlay = rasterOverlays.get(id)
+      if (overlay) {
+        map.addSource(sourceId, {
           type: 'raster',
-          tiles: [radarTileTemplate],
+          tiles: [overlay.tileUrlTemplate],
           tileSize: 256,
         })
         map.addLayer({
-          id: RADAR_LAYER_ID,
+          id: layerId,
           type: 'raster',
-          source: RADAR_SOURCE_ID,
-          paint: { 'raster-opacity': radarOpacity },
+          source: sourceId,
+          paint: { 'raster-opacity': overlay.opacity },
         })
       }
+    }
+    function applyAllRasterOverlays() {
+      for (const id of rasterOverlays.keys()) applyRasterOverlay(id)
     }
     map.on('style.load', () => {
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
@@ -744,7 +752,7 @@ export class MapLibreProvider implements MapProvider {
       // Always set (see the doc comment above `terrainExaggeration`) —
       // not conditional on a "3D mode" flag.
       map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
-      applyRadarLayer()
+      applyAllRasterOverlays()
     })
 
     if (onViewChange) {
@@ -854,10 +862,13 @@ export class MapLibreProvider implements MapProvider {
       setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null) {
         analysisHeatmapLayer.setCells(cells)
       },
-      setRadarLayer(tileUrlTemplate: string | null, opacity: number) {
-        radarTileTemplate = tileUrlTemplate
-        radarOpacity = opacity
-        applyRadarLayer()
+      setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number) {
+        if (tileUrlTemplate) {
+          rasterOverlays.set(id, { tileUrlTemplate, opacity })
+        } else {
+          rasterOverlays.delete(id)
+        }
+        applyRasterOverlay(id)
       },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         // Terrain itself stays set either way (see the doc comment on

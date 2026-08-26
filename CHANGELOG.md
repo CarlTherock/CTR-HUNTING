@@ -3,6 +3,49 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Forêt ouverte layers: cadastre, coupes forestières, peuplements (2026-08-23)
+
+User asked for "toutes les couches Forêt ouverte" — cadastre and forest
+harvest layers specifically. Added three real Québec government map
+overlays, each verified directly against its own live service metadata
+this session (not assumed from memory):
+
+- **Cadastre** — "Lots du cadastre rénové" from the real ArcGIS
+  MapServer at `geo.environnement.gouv.qc.ca` (`Reference/
+  Cadastre_allege`), confirmed via that service's own `?f=json`
+  metadata.
+- **Coupes forestières** — the `ori_pee_interventions` WMS layer
+  ("Interventions sylvicoles et récolte"), confirmed by fetching Forêt
+  ouverte's real WMS GetCapabilities (`mffpecofor.fcgi`) and finding
+  this exact layer name — the same layer données Québec's own
+  "Récolte et autres interventions sylvicoles" dataset page links to.
+- **Peuplements forestiers** — the `ori_pee_ori_prov` WMS layer (real
+  ecoforestry stand composition/age), same WMS service.
+
+### Added
+
+- `services/map/forestLayerTiles.ts`: builds the real WMS/ArcGIS tile
+  URLs, using the `{bbox-epsg-3857}` template MapLibre substitutes per
+  tile — the same technique as MapLibre's own official "Add a WMS
+  source" example, not a fabricated integration.
+- Generalized `MapInstance.setRadarLayer` into `setRasterOverlay(id,
+  tileUrlTemplate, opacity)` — a named-overlay version of the same
+  mechanism, since radar and up to three Forêt ouverte layers can now
+  all be active on the map at once, each independently added/removed/
+  re-applied after a base-layer switch.
+- `ForestLayersControl.tsx` + `forestLayersStore.ts`: a new map panel
+  with an independent toggle per layer and a shared opacity slider.
+  CC-BY 4.0 attribution shown in the panel, per données Québec's
+  license for these datasets.
+
+### Verified
+
+`npm run typecheck`, `lint`, `test` (401/401 across 62 files — new
+`forestLayerTiles`/`forestLayersStore` tests, generalized
+`MapLibreProvider` raster-overlay tests) and `build` all pass. Not
+live-verified in-browser (no map API key configured in this
+environment, same pre-existing limitation as the rest of the map).
+
 ## Real precipitation radar map (2026-08-23)
 
 Follow-up to the round below — user feedback specifically named the map

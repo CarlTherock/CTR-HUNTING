@@ -834,51 +834,80 @@ describe('MapLibreProvider', () => {
     })
   })
 
-  describe('radar layer', () => {
-    it('adds a real raster source/layer for the given tile template and opacity', () => {
+  describe('raster overlays (radar, Forêt ouverte layers, …)', () => {
+    it('adds a real raster source/layer for the given id/tile template/opacity', () => {
       mapInstances.length = 0
       const instance = createTestMap()
       const map = mapInstances[0]
 
-      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
+      instance.setRasterOverlay(
+        'radar',
+        'https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png',
+        0.6,
+      )
 
-      expect(map.sources['radar-tiles'].raw).toEqual({
+      expect(map.sources['raster-overlay-radar'].raw).toEqual({
         type: 'raster',
         tiles: ['https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png'],
         tileSize: 256,
       })
       expect(map.addedLayers.at(-1)).toEqual({
-        id: 'radar-tiles-layer',
+        id: 'raster-overlay-radar-layer',
         type: 'raster',
-        source: 'radar-tiles',
+        source: 'raster-overlay-radar',
         paint: { 'raster-opacity': 0.6 },
       })
     })
 
-    it('removes the layer/source when passed null, rather than leaving a stale radar frame', () => {
+    it('supports multiple overlay ids active at once, without clobbering each other', () => {
       mapInstances.length = 0
       const instance = createTestMap()
       const map = mapInstances[0]
-      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
 
-      instance.setRadarLayer(null, 0.6)
+      instance.setRasterOverlay('radar', 'https://example.com/radar/{bbox-epsg-3857}', 0.6)
+      instance.setRasterOverlay('cadastre', 'https://example.com/cadastre/{bbox-epsg-3857}', 0.7)
 
-      expect(map.getLayer('radar-tiles-layer')).toBeUndefined()
-      expect(map.sources['radar-tiles']).toBeUndefined()
+      expect(map.getLayer('raster-overlay-radar-layer')).toBeDefined()
+      expect(map.getLayer('raster-overlay-cadastre-layer')).toBeDefined()
+
+      instance.setRasterOverlay('radar', null, 0.6)
+
+      expect(map.getLayer('raster-overlay-radar-layer')).toBeUndefined()
+      expect(map.getLayer('raster-overlay-cadastre-layer')).toBeDefined()
     })
 
-    it('re-adds radar after a base layer switch reloads the style, same as terrain', () => {
+    it('removes the layer/source when passed null, rather than leaving a stale overlay', () => {
       mapInstances.length = 0
       const instance = createTestMap()
       const map = mapInstances[0]
-      instance.setRadarLayer('https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png', 0.6)
-      map.layerIds = map.layerIds.filter((id) => id !== 'radar-tiles-layer')
-      map.removeSource('radar-tiles')
+      instance.setRasterOverlay(
+        'radar',
+        'https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png',
+        0.6,
+      )
+
+      instance.setRasterOverlay('radar', null, 0.6)
+
+      expect(map.getLayer('raster-overlay-radar-layer')).toBeUndefined()
+      expect(map.sources['raster-overlay-radar']).toBeUndefined()
+    })
+
+    it('re-adds every active overlay after a base layer switch reloads the style, same as terrain', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      instance.setRasterOverlay(
+        'radar',
+        'https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png',
+        0.6,
+      )
+      map.layerIds = map.layerIds.filter((id) => id !== 'raster-overlay-radar-layer')
+      map.removeSource('raster-overlay-radar')
 
       instance.setBaseLayer('satellite')
       map.fire('style.load')
 
-      expect(map.getLayer('radar-tiles-layer')).toBeDefined()
+      expect(map.getLayer('raster-overlay-radar-layer')).toBeDefined()
     })
   })
 

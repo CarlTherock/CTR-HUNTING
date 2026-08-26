@@ -29,7 +29,7 @@ const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
 const setWindField = vi.fn()
 const setAnalysisHeatmap = vi.fn()
-const setRadarLayer = vi.fn()
+const setRasterOverlay = vi.fn()
 const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
@@ -49,7 +49,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setMeasurePath,
     setWindField,
     setAnalysisHeatmap,
-    setRadarLayer,
+    setRasterOverlay,
     setTerrainEnabled,
     queryElevation,
     getBounds,

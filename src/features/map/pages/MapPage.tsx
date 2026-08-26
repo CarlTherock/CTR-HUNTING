@@ -16,6 +16,9 @@ import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
+import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
+import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
 import { RadarLayerControl } from '@/features/radar/components/RadarLayerControl'
 import { useRadarStore } from '@/features/radar/state/radarStore'
 import { WindLayerControl } from '@/features/wind/components/WindLayerControl'
@@ -67,6 +70,8 @@ export function MapPage() {
   const radarEnabled = useRadarStore((state) => state.enabled)
   const radarOpacity = useRadarStore((state) => state.opacity)
   const radarTileUrlTemplate = useRadarStore((state) => state.selectedTileUrlTemplate())
+  const forestLayersEnabled = useForestLayersStore((state) => state.enabled)
+  const forestLayersOpacity = useForestLayersStore((state) => state.opacity)
 
   // Field Mode's "low power draw" requirement: turning it on also turns
   // off the two continuously-animated canvas layers (wind flow field,
@@ -196,8 +201,18 @@ export function MapPage() {
   }, [windEnabled, windField, windHourOffset, windActiveLayer])
 
   useEffect(() => {
-    instanceRef.current?.setRadarLayer(radarEnabled ? radarTileUrlTemplate : null, radarOpacity)
+    instanceRef.current?.setRasterOverlay('radar', radarEnabled ? radarTileUrlTemplate : null, radarOpacity)
   }, [radarEnabled, radarTileUrlTemplate, radarOpacity])
+
+  useEffect(() => {
+    for (const option of FOREST_LAYER_OPTIONS) {
+      instanceRef.current?.setRasterOverlay(
+        `forest-${option.id}`,
+        forestLayersEnabled[option.id] ? forestLayerTileUrl(option.id) : null,
+        forestLayersOpacity,
+      )
+    }
+  }, [forestLayersEnabled, forestLayersOpacity])
 
   useEffect(() => {
     if (!heatmapEnabled) {
@@ -306,6 +321,7 @@ export function MapPage() {
                 referenceCoordinate={view.center}
               />
               <RadarLayerControl />
+              <ForestLayersControl />
               <AnalysisControl />
               <HeatmapControl
                 getBounds={() => instanceRef.current?.getBounds() ?? null}
