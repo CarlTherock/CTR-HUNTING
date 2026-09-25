@@ -21,7 +21,7 @@ export function ForestLayersControl() {
   const anyEnabled = Object.values(enabled).some(Boolean)
   // Separate from `enabled` (per-layer visibility) so closing the panel
   // never turns off already-toggled layers — same split as
-  // `WindLayerControl`'s panel visibility vs. its layer toggle.
+  // `WeatherMapControl`'s panel visibility vs. its layer toggle.
   const [panelOpen, setPanelOpen] = useState(false)
 
   return (

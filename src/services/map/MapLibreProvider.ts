@@ -8,6 +8,7 @@ import type {
   MapOverlayId,
   MapViewState,
   WeatherMapLayer,
+  WeatherTileFrame,
   Waypoint,
   WaypointCategory,
   WindField,
@@ -222,7 +223,7 @@ interface WindParticle {
   age: number
 }
 
-const WIND_PARTICLE_COUNT = 150
+const WIND_PARTICLE_COUNT = 400
 /** Frames before a particle respawns elsewhere — keeps trails short and
  * the field feeling continuously "alive" rather than a few long streaks. */
 const WIND_PARTICLE_MAX_AGE = 100
@@ -297,6 +298,11 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
   let layer: WeatherMapLayer = 'wind'
   let particles: WindParticle[] = []
   let animationFrame: number | null = null
+  let trailsNeedClear = true
+  const onMove = () => {
+    trailsNeedClear = true
+  }
+  map.on('move', onMove)
 
   function reset() {
     particles = Array.from({ length: WIND_PARTICLE_COUNT }, () => ({
@@ -319,22 +325,39 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, width, height)
 
     if (layer !== 'wind') {
+      ctx.clearRect(0, 0, width, height)
       drawWeatherOverlay(ctx, map, field, hourOffset, layer, width, height)
       animationFrame = requestAnimationFrame(step)
       return
     }
 
-    ctx.lineWidth = 1.5
+    // Fading trails (Windy/earth.nullschool style): instead of wiping
+    // the canvas every frame, the previous frame is faded a little so
+    // each particle leaves a short tail. Cleared outright whenever the
+    // camera moves (see the `move` listener) so trails never smear
+    // across a pan.
+    if (trailsNeedClear) {
+      ctx.clearRect(0, 0, width, height)
+      trailsNeedClear = false
+    } else {
+      ctx.globalCompositeOperation = 'destination-in'
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
+      ctx.fillRect(0, 0, width, height)
+      ctx.globalCompositeOperation = 'source-over'
+    }
+    ctx.lineWidth = 1.8
     ctx.lineCap = 'round'
+    // Constant on-screen speed whatever the zoom: a fixed geographic step
+    // is invisible zoomed out (~1 km/px at z7) and too fast zoomed in.
+    const zoomSpeedScale = WIND_SPEED_SCALE * Math.pow(2, 14 - map.getZoom())
 
     for (const particle of particles) {
       const screenStart = map.project([particle.pos.lng, particle.pos.lat])
       const wind = windAt(field, particle.pos, hourOffset)
       if (wind) {
-        const nextPos = advancePosition(particle.pos, wind, 1 / 60, WIND_SPEED_SCALE)
+        const nextPos = advancePosition(particle.pos, wind, 1 / 60, zoomSpeedScale)
         const screenEnd = map.project([nextPos.lng, nextPos.lat])
         // Colored by local speed — Windy's own convention (blue calm →
         // red gale) — so the flow field reads at a glance, not just from
@@ -380,18 +403,69 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
     },
     destroy() {
       if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+      map.off('move', onMove)
       canvas.remove()
     },
   }
 }
 
+/** `rgba(r, g, b, a)` → numeric channels (alpha scaled to 0-255). */
+function parseRgba(color: string): [number, number, number, number] {
+  const m = /rgba?\(([^)]+)\)/.exec(color)
+  if (!m) return [0, 0, 0, 0]
+  const [r, g, b, a = '1'] = m[1].split(',').map((v) => v.trim())
+  return [Number(r), Number(g), Number(b), Math.round(Number(a) * 255)]
+}
+
+interface HeatmapGrid {
+  lngs: number[]
+  lats: number[] // north → south
+  /** Offscreen canvas, one pixel per real cell (transparent = no score). */
+  image: HTMLCanvasElement
+  cellLng: number
+  cellLat: number
+}
+
+/** Rebuilds the regular grid the cells came from (`utils/grid.ts`'s
+ * `buildGrid` — evenly spaced lat/lng) as a tiny image, one pixel per
+ * real cell. Upscaled with bilinear smoothing when drawn, which blends
+ * *between* real cell centers for a continuous surface — each pixel
+ * center still sits exactly on its real cell's value. */
+function buildHeatmapGrid(cells: AnalysisHeatmapCell[]): HeatmapGrid | null {
+  const round = (v: number) => Math.round(v * 1e6) / 1e6
+  const lngs = [...new Set(cells.map((c) => round(c.coordinate.lng)))].sort((a, b) => a - b)
+  const lats = [...new Set(cells.map((c) => round(c.coordinate.lat)))].sort((a, b) => b - a)
+  if (lngs.length === 0 || lats.length === 0) return null
+  const image = document.createElement('canvas')
+  image.width = lngs.length
+  image.height = lats.length
+  const ctx = image.getContext('2d')
+  if (!ctx) return null
+  const data = ctx.createImageData(lngs.length, lats.length)
+  for (const cell of cells) {
+    if (cell.combined.overallScore === null) continue
+    const x = lngs.indexOf(round(cell.coordinate.lng))
+    const y = lats.indexOf(round(cell.coordinate.lat))
+    if (x < 0 || y < 0) continue
+    const [r, g, b, a] = parseRgba(analysisHeatmapColor(cell.combined.overallScore, 0.5))
+    const i = (y * lngs.length + x) * 4
+    data.data[i] = r
+    data.data[i + 1] = g
+    data.data[i + 2] = b
+    data.data[i + 3] = a
+  }
+  ctx.putImageData(data, 0, 0)
+  const cellLng = lngs.length > 1 ? (lngs[lngs.length - 1] - lngs[0]) / (lngs.length - 1) : 0.01
+  const cellLat = lats.length > 1 ? (lats[0] - lats[lats.length - 1]) / (lats.length - 1) : 0.01
+  return { lngs, lats, image, cellLng, cellLat }
+}
+
 /**
- * Owns a separate `<canvas>` (independent of `createWindLayer`'s, so both
- * layers can be shown together without clearing each other) drawing the
- * Phase 9 analysis heatmap — one soft color blob per real
- * `AnalysisHeatmapCell`, reprojected every frame via `map.project()` so
- * pan/zoom/rotate stay correct with no extra bookkeeping, same technique
- * as the Phase 6 weather overlay.
+ * Owns a separate `<canvas>` (independent of `createWindLayer`'s) drawing
+ * the analysis heatmap as a continuous color surface over the analyzed
+ * area — no more isolated radial blobs. Redrawn only when the camera
+ * moves (`render` event), never in a continuous animation loop, so an
+ * idle map costs no battery.
  */
 function createAnalysisHeatmapLayer(map: MapLibreMap, container: HTMLElement) {
   const canvas = document.createElement('canvas')
@@ -400,11 +474,10 @@ function createAnalysisHeatmapLayer(map: MapLibreMap, container: HTMLElement) {
   canvas.style.pointerEvents = 'none'
   container.appendChild(canvas)
 
-  let cells: AnalysisHeatmapCell[] | null = null
-  let animationFrame: number | null = null
+  let grid: HeatmapGrid | null = null
+  let listening = false
 
-  function step() {
-    if (!cells) return
+  function draw() {
     const dpr = window.devicePixelRatio || 1
     const width = container.clientWidth
     const height = container.clientHeight
@@ -418,37 +491,63 @@ function createAnalysisHeatmapLayer(map: MapLibreMap, container: HTMLElement) {
     if (!ctx) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, width, height)
+    if (!grid) return
 
-    const radius = Math.max(50, (Math.min(width, height) / Math.sqrt(cells.length)) * 0.95)
-    for (const cell of cells) {
-      if (cell.combined.overallScore === null) continue
-      const screen = map.project([cell.coordinate.lng, cell.coordinate.lat])
-      const gradient = ctx.createRadialGradient(screen.x, screen.y, 0, screen.x, screen.y, radius)
-      gradient.addColorStop(0, analysisHeatmapColor(cell.combined.overallScore, 0.5))
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
-      ctx.fillStyle = gradient
-      ctx.beginPath()
-      ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2)
-      ctx.fill()
+    const { lngs, lats, image, cellLng, cellLat } = grid
+    const west = lngs[0] - cellLng / 2
+    const east = lngs[lngs.length - 1] + cellLng / 2
+    const north = lats[0] + cellLat / 2
+    const south = lats[lats.length - 1] - cellLat / 2
+
+    const flat = Math.abs(map.getBearing()) < 0.5 && map.getPitch() < 1
+    if (flat) {
+      const topLeft = map.project([west, north])
+      const bottomRight = map.project([east, south])
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(image, topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y)
+      return
     }
-
-    animationFrame = requestAnimationFrame(step)
+    // Rotated / tilted: one projected quad per real cell (no smoothing
+    // across a non-affine projection — still the real values).
+    const pixels = image.getContext('2d')?.getImageData(0, 0, image.width, image.height).data
+    if (!pixels) return
+    for (let y = 0; y < lats.length; y++) {
+      for (let x = 0; x < lngs.length; x++) {
+        const i = (y * lngs.length + x) * 4
+        if (pixels[i + 3] === 0) continue
+        const w = lngs[x] - cellLng / 2
+        const e = lngs[x] + cellLng / 2
+        const n = lats[y] + cellLat / 2
+        const s = lats[y] - cellLat / 2
+        const corners = [map.project([w, n]), map.project([e, n]), map.project([e, s]), map.project([w, s])]
+        ctx.fillStyle = `rgba(${pixels[i]}, ${pixels[i + 1]}, ${pixels[i + 2]}, ${pixels[i + 3] / 255})`
+        ctx.beginPath()
+        ctx.moveTo(corners[0].x, corners[0].y)
+        for (const c of corners.slice(1)) ctx.lineTo(c.x, c.y)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
   }
 
   return {
     setCells(newCells: AnalysisHeatmapCell[] | null) {
-      cells = newCells
-      if (cells && animationFrame === null) {
-        animationFrame = requestAnimationFrame(step)
-      } else if (!cells && animationFrame !== null) {
-        cancelAnimationFrame(animationFrame)
-        animationFrame = null
-        const ctx = canvas.getContext('2d')
-        ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      grid = newCells && newCells.length > 0 ? buildHeatmapGrid(newCells) : null
+      if (grid && !listening) {
+        map.on('render', draw)
+        map.on('resize', draw)
+        listening = true
+      } else if (!grid && listening) {
+        map.off('render', draw)
+        map.off('resize', draw)
+        listening = false
       }
+      draw()
     },
     destroy() {
-      if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+      map.off('render', draw)
+      map.off('resize', draw)
       canvas.remove()
     },
   }
@@ -475,6 +574,7 @@ function createAnalysisHeatmapLayer(map: MapLibreMap, container: HTMLElement) {
  * to work.
  */
 const CTR_TILE_PROTOCOL = 'ctrtile'
+const NON_CACHED_TILE_HOSTS = /^https?:\/\/geo\.weather\.gc\.ca\//
 let tileProtocolRegistered = false
 
 interface ActiveDownload {
@@ -523,7 +623,10 @@ function ensureTileProtocolRegistered(): void {
 /** Redirects tile (not style/sprite/glyph) requests through our custom
  * protocol so they can be served from cache when offline. */
 function transformTileRequest(url: string, resourceType?: string) {
-  if (resourceType === 'Tile' && /^https?:\/\//.test(url)) {
+  // Time-varying weather imagery (radar/model frames) is never cached:
+  // every frame has a unique URL, so caching would only fill IndexedDB
+  // with images that are stale within minutes.
+  if (resourceType === 'Tile' && /^https?:\/\//.test(url) && !NON_CACHED_TILE_HOSTS.test(url)) {
     return { url: url.replace(/^https?:\/\//, `${CTR_TILE_PROTOCOL}://`) }
   }
   return undefined
@@ -695,6 +798,89 @@ export class MapLibreProvider implements MapProvider {
     function applyAllRasterOverlays() {
       for (const id of rasterOverlays.keys()) applyRasterOverlay(id)
     }
+
+    // Animated weather frames (radar / HRDPS forecast). One raster
+    // source+layer per frame, all at opacity 0 except the active one, so
+    // swapping frames is a paint-property change (no flicker, no
+    // re-request). Only a small window around the active frame is kept
+    // on the map — enough to preload what playback shows next without
+    // requesting 48 hours of imagery at once.
+    let weatherFrames: WeatherTileFrame[] = []
+    let weatherActiveIndex = 0
+    let weatherOpacity = 0.75
+    const WEATHER_PREFIX = 'wx-frame-'
+    /** Frames currently on the map — cleared on every style load, since
+     * setStyle() discards custom sources/layers. */
+    const addedWeatherKeys = new Set<string>()
+    const WEATHER_WINDOW_BEHIND = 1
+    const WEATHER_WINDOW_AHEAD = 3
+    /** Sub-layer count per frame (radar = rain + snow). */
+    const weatherPartCounts = new Map<string, number>()
+    function weatherSourceId(key: string, part: number) {
+      return `${WEATHER_PREFIX}${key}-${part}`
+    }
+    function weatherLayerId(key: string, part: number) {
+      return `${WEATHER_PREFIX}${key}-${part}-layer`
+    }
+    function wantedWeatherKeys(): Set<string> {
+      const wanted = new Set<string>()
+      const n = weatherFrames.length
+      if (n === 0) return wanted
+      for (let d = -WEATHER_WINDOW_BEHIND; d <= WEATHER_WINDOW_AHEAD; d++) {
+        wanted.add(weatherFrames[(((weatherActiveIndex + d) % n) + n) % n].key)
+      }
+      return wanted
+    }
+    function syncWeatherFrames() {
+      const wanted = wantedWeatherKeys()
+      const activeKey = weatherFrames[weatherActiveIndex]?.key
+      for (const key of [...addedWeatherKeys]) {
+        if (wanted.has(key)) continue
+        for (let i = 0; i < (weatherPartCounts.get(key) ?? 1); i++) {
+          if (map.getLayer(weatherLayerId(key, i))) map.removeLayer(weatherLayerId(key, i))
+          if (map.getSource(weatherSourceId(key, i))) map.removeSource(weatherSourceId(key, i))
+        }
+        addedWeatherKeys.delete(key)
+        weatherPartCounts.delete(key)
+      }
+      if (wanted.size === 0) return
+      // Draw weather under the GPS track / measurement lines.
+      const beforeId = map.getLayer(TRACK_PREVIEW_LAYER_ID) ? TRACK_PREVIEW_LAYER_ID : undefined
+      for (const frame of weatherFrames) {
+        if (!wanted.has(frame.key)) continue
+        const opacity = frame.key === activeKey ? weatherOpacity : 0
+        const parts = frame.tileUrlTemplates.length
+        if (addedWeatherKeys.has(frame.key)) {
+          for (let i = 0; i < parts; i++) {
+            map.setPaintProperty(weatherLayerId(frame.key, i), 'raster-opacity', opacity)
+          }
+          continue
+        }
+        frame.tileUrlTemplates.forEach((template, i) => {
+          map.addSource(weatherSourceId(frame.key, i), {
+            type: 'raster',
+            tiles: [template],
+            tileSize: 256,
+            attribution: 'Environnement et Changement climatique Canada (MSC GeoMet)',
+          })
+          map.addLayer(
+            {
+              id: weatherLayerId(frame.key, i),
+              type: 'raster',
+              source: weatherSourceId(frame.key, i),
+              paint: {
+                'raster-opacity': opacity,
+                'raster-fade-duration': 0,
+                'raster-resampling': 'linear',
+              },
+            },
+            beforeId,
+          )
+        })
+        weatherPartCounts.set(frame.key, parts)
+        addedWeatherKeys.add(frame.key)
+      }
+    }
     map.on('style.load', () => {
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
         applyOverlay(map, overlay, overlayState[overlay])
@@ -753,6 +939,9 @@ export class MapLibreProvider implements MapProvider {
       // not conditional on a "3D mode" flag.
       map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: terrainExaggeration })
       applyAllRasterOverlays()
+      addedWeatherKeys.clear()
+      weatherPartCounts.clear()
+      syncWeatherFrames()
     })
 
     if (onViewChange) {
@@ -861,6 +1050,26 @@ export class MapLibreProvider implements MapProvider {
       },
       setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null) {
         analysisHeatmapLayer.setCells(cells)
+      },
+      setWeatherFrames(frames: WeatherTileFrame[] | null, activeIndex: number, opacity: number) {
+        weatherFrames = frames ?? []
+        weatherActiveIndex = Math.max(0, Math.min(weatherFrames.length - 1, activeIndex))
+        weatherOpacity = opacity
+        try {
+          syncWeatherFrames()
+        } catch {
+          // Style not ready yet (mount, or mid base-layer switch) — the
+          // `style.load` handler re-applies the current frames.
+        }
+      },
+      isWeatherFrameReady(key: string): boolean {
+        const parts = weatherPartCounts.get(key)
+        if (!parts || !addedWeatherKeys.has(key)) return false
+        for (let i = 0; i < parts; i++) {
+          const id = weatherSourceId(key, i)
+          if (!map.getSource(id) || !map.isSourceLoaded(id)) return false
+        }
+        return true
       },
       setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number) {
         if (tileUrlTemplate) {

@@ -81,3 +81,32 @@ export function isOptimalWind(
   if (!optimalDirections || optimalDirections.length === 0) return false
   return optimalDirections.includes(octantOf(windDirectionDegrees))
 }
+
+/** `YYYY-MM-DDTHH:00` for `date` as a wall-clock hour in `timeZone` —
+ * the exact format Open-Meteo's `timezone=auto` hourly `time` strings
+ * use (local time, no offset), so a real instant can be matched to its
+ * real hourly sample without guessing an offset. */
+export function localHourKey(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:00`
+}
+
+/** Index of the hourly sample covering `date` in `field` (Open-Meteo's
+ * hourly arrays start at local midnight *today*, so index 0 is 00:00,
+ * not "now" — using 0 as "now" silently read the midnight reading).
+ * `null` when that hour isn't in the fetched window. */
+export function hourIndexAt(field: WindField, date: Date): number | null {
+  const hourly = field.samples[0]?.hourly
+  if (!hourly) return null
+  const key = localHourKey(date, field.timezone)
+  const index = hourly.findIndex((h) => h.time.startsWith(key))
+  return index === -1 ? null : index
+}
