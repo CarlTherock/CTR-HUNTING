@@ -3,6 +3,32 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Carte météo radar + carte de potentiel fiabilisée (2026-09-25)
+
+User feedback: "le heatmap fonctionne pas bien, la météo vent pluie etc
+ne fonctionne pas à son maximum — j'aimerais que ce soit comme une app
+météo avec radar".
+
+### Added
+- `features/weather-map/` + `services/weather-map/`: animated weather map
+  from ECCC MSC GeoMet (radar 1 km observed, HRDPS 2.5 km forecast
+  48 h): Radar, Précip., Temp., Vent, Rafales, Nuages, Pression; play /
+  pause timeline, official legends, value under the map center.
+- Wind particles: 400 particles, fading trails, constant on-screen speed
+  at every zoom, synced to the timeline hour.
+
+### Changed
+- Heatmap (Carte de potentiel): real per-cell grid rendering (no more
+  blotches), 8×8 grid, partial results when one source fails (listed as
+  unavailable), "Recalculer" prompt when the map leaves the analysed
+  zone, French UI.
+- Open-Meteo hourly index now resolved to the current local hour (it was
+  reading local midnight as "now").
+
+### Removed
+- RainViewer radar (blank above zoom 7), `features/radar/`,
+  `services/radar/`, `WindLayerControl` (replaced by the weather map).
+
 ## Forêt ouverte layers: cadastre, coupes forestières, peuplements (2026-08-23)
 
 User asked for "toutes les couches Forêt ouverte" — cadastre and forest

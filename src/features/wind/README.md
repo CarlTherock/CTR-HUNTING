@@ -19,33 +19,16 @@ Phase 5's weather feature) alongside the wind parameters
 (`wind_speed_10m`, `wind_direction_10m` — 0–360°, meteorological "from"
 convention — `wind_gusts_10m`), so every map layer below rides one fetch.
 
-## Windy-style multi-layer weather map
+## Weather map (moved to `features/weather-map/`)
 
-Verified via live research (windy.com/colors, Windy's community docs)
-before building: Windy's signature look is a **calibrated, per-layer
-color scale** plus particle trails proportional to speed — not just
-particle motion alone. This app now does the same, entirely from the one
-batched Open-Meteo grid fetch, no extra network calls:
-
-- `utils/weatherMapColors.ts` — a real multi-stop color scale per layer
-  (`weatherLayerColor()`), a matching legend gradient/bounds
-  (`weatherLayerGradientCss()`, `LAYER_LEGEND`), and `valueForLayer()`
-  mapping each layer to the real field it visualizes. These are
-  deliberate *design* choices (which color means what), never fabricated
-  *data* — every value colored is a genuine Open-Meteo reading.
-- `MapLibreProvider.ts`'s `createWindLayer()` branches on the active
-  layer: `'wind'` keeps the particle flow field (now colored by local
-  speed, blue→red, matching Windy's own convention), while
-  `'temperature' | 'precipitation' | 'clouds'` instead draw a smooth
-  color-graded overlay — a soft radial gradient per real grid sample,
-  blended together so the field reads as continuous rather than as
-  isolated dots (still never an interpolated/fabricated value — only the
-  *visual blending* is smoothed, each blob's color comes from one real
-  sample).
-- `components/WindLayerControl.tsx`'s layer switcher (Wind / Temperature
-  / Precipitation / Clouds tabs) plus a legend bar under the readout —
-  switching layers is instant, no re-fetch, since every layer already
-  has its data from the one shared grid response.
+The old Open-Meteo "blob" overlays (temperature / precipitation / clouds
+drawn as soft radial gradients per grid sample) and `WindLayerControl`
+were replaced by `features/weather-map/`: real gridded rasters from
+Environment Canada's MSC GeoMet (radar 1 km, HRDPS 2.5 km), animated on a
+timeline. This feature keeps the Open-Meteo grid for what it is good at:
+the particle flow field, the per-waypoint Optimal Wind and the
+cross-waypoint comparison. `windStore.activeLayer` and
+`utils/weatherMapColors.ts` remain (particle colors, `WindCompass`).
 
 ## Flow-field animation
 

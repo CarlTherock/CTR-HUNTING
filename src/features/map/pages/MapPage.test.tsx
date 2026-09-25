@@ -11,6 +11,7 @@ import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
+import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
@@ -30,6 +31,8 @@ const setMeasurePath = vi.fn()
 const setWindField = vi.fn()
 const setAnalysisHeatmap = vi.fn()
 const setRasterOverlay = vi.fn()
+const setWeatherFrames = vi.fn()
+const isWeatherFrameReady = vi.fn(() => true)
 const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
@@ -50,6 +53,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setWindField,
     setAnalysisHeatmap,
     setRasterOverlay,
+    setWeatherFrames,
+    isWeatherFrameReady,
     setTerrainEnabled,
     queryElevation,
     getBounds,
@@ -116,6 +121,22 @@ const fetchForecast = vi.fn().mockResolvedValue({
   },
   hourly: [],
 })
+const fetchFrames = vi.fn().mockResolvedValue([
+  { time: '2026-09-25T14:48:00Z', kind: 'observed' },
+  { time: '2026-09-25T15:00:00Z', kind: 'observed' },
+])
+const fetchValueAt = vi.fn().mockResolvedValue(null)
+vi.mock('@/services/weather-map', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/weather-map')>()
+  return {
+    ...actual,
+    weatherMapProvider: {
+      fetchFrames: (...args: unknown[]) => fetchFrames(...args),
+      fetchValueAt: (...args: unknown[]) => fetchValueAt(...args),
+    },
+  }
+})
+
 vi.mock('@/services/weather', () => ({
   weatherProvider: { fetchForecast: (...args: unknown[]) => fetchForecast(...args) },
 }))
@@ -177,6 +198,7 @@ afterEach(async () => {
   })
   useAnalysisStore.setState({ mode: 'idle', status: 'idle', coordinate: null, combined: null, errorReason: null, recent: [] })
   useHeatmapStore.setState({ status: 'idle', enabled: false, cells: [], errorReason: null, selectedView: 'combined' })
+  useWeatherMapStore.setState({ enabled: false, activeLayer: 'radar', status: 'idle', frames: [], frameIndex: 0, playing: false, cache: {} })
   useFieldModeStore.setState({ enabled: false, loaded: true })
   useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
   useTracksStore.setState({
@@ -465,6 +487,7 @@ describe('MapPage', () => {
 
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
+    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
     await vi.waitFor(() => {
       expect(screen.getAllByRole('img', { name: 'Wind compass' }).length).toBeGreaterThan(0)
@@ -554,10 +577,11 @@ describe('MapPage', () => {
     expect(persisted.tilesDownloaded).toBe(4)
   })
 
-  it('toggling the wind layer fetches a real field and animates it on the map; toggling off clears it', async () => {
+  it('toggling wind particles (inside the weather map) fetches a real field and animates it; toggling off clears it', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
+    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
 
     expect(fetchWindField).toHaveBeenCalledWith(
@@ -577,22 +601,42 @@ describe('MapPage', () => {
     expect(setWindField).toHaveBeenLastCalledWith(null, 0, 'wind')
   })
 
-  it('switching the weather map layer re-renders instantly with no re-fetch, since every layer rides the same fetched grid', async () => {
+  it('the weather map shows real GeoMet radar frames on the map, latest first, and switches layers', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
-    await vi.waitFor(() => {
-      expect(setWindField).toHaveBeenLastCalledWith(expect.anything(), 0, 'wind')
-    })
-    fetchWindField.mockClear()
+    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
 
-    await user.click(screen.getByRole('tab', { name: 'Temperature' }))
-
-    expect(fetchWindField).not.toHaveBeenCalled()
     await vi.waitFor(() => {
-      expect(setWindField).toHaveBeenLastCalledWith(expect.anything(), 0, 'temperature')
+      expect(setWeatherFrames).toHaveBeenLastCalledWith(
+        [
+          expect.objectContaining({ key: 'radar-2026-09-25T14:48:00Z' }),
+          expect.objectContaining({
+            key: 'radar-2026-09-25T15:00:00Z',
+            tileUrlTemplates: [
+              expect.stringContaining('RADAR_1KM_RRAI'),
+              expect.stringContaining('RADAR_1KM_RSNO'),
+            ],
+          }),
+        ],
+        1,
+        0.75,
+      )
     })
+    expect(screen.getByRole('slider', { name: 'Ligne du temps' })).toBeInTheDocument()
+
+    fetchFrames.mockResolvedValueOnce([{ time: '2026-09-25T15:00:00Z', kind: 'forecast' }])
+    await user.click(screen.getByRole('radio', { name: 'Temp.' }))
+    await vi.waitFor(() => {
+      expect(setWeatherFrames).toHaveBeenLastCalledWith(
+        [expect.objectContaining({ tileUrlTemplates: [expect.stringContaining('HRDPS.CONTINENTAL_TT')] })],
+        0,
+        0.75,
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Fermer la carte météo' }))
+    expect(setWeatherFrames).toHaveBeenLastCalledWith(null, 0, 0.75)
   })
 
   it('shows a recent-spots comparison strip after analyzing 2+ points, and recalls a cached one with no re-fetch', async () => {
@@ -649,7 +693,7 @@ describe('MapPage', () => {
     expect(panel.getByText(/slope/i)).toBeInTheDocument()
   })
 
-  it('toggles the analysis heatmap, computing a real 5x5 grid from one batched fetch each', async () => {
+  it('toggles the analysis heatmap, computing a real 8x8 grid from one batched fetch each', async () => {
     const user = userEvent.setup()
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
@@ -662,16 +706,16 @@ describe('MapPage', () => {
       )
     })
     const [cells] = setAnalysisHeatmap.mock.calls[setAnalysisHeatmap.mock.calls.length - 1]
-    expect(cells).toHaveLength(25)
+    expect(cells).toHaveLength(64)
     expect(fetchWindField).toHaveBeenCalledWith(
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
-      5,
+      8,
     )
     expect(fetchVegetationGrid).toHaveBeenCalledWith(
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
-      5,
+      8,
     )
-    expect(screen.getByText(/probabilistic read/)).toBeInTheDocument()
+    expect(screen.getByText(/Lecture probabiliste/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
     expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(null)
@@ -690,7 +734,7 @@ describe('MapPage', () => {
     fetchForecast.mockClear()
     fetchVegetationGrid.mockClear()
 
-    await user.selectOptions(screen.getByLabelText('Score shown'), 'wind')
+    await user.selectOptions(screen.getByLabelText('Score affiché'), 'wind')
 
     expect(fetchWindField).not.toHaveBeenCalled()
     expect(fetchForecast).not.toHaveBeenCalled()
@@ -707,7 +751,9 @@ describe('MapPage', () => {
     vi.stubGlobal('DeviceOrientationEvent', undefined)
     render(<MapPage />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
     expect(screen.getByRole('button', { name: 'Toggle wind flow field' })).toBeInTheDocument()
 
     useFieldModeStore.setState({ enabled: true, loaded: true })
@@ -721,6 +767,7 @@ describe('MapPage', () => {
     // API, so it honestly reports unavailable rather than a fake heading.
     expect(screen.getByText(/not supported/)).toBeInTheDocument()
     expect(useWindStore.getState().enabled).toBe(false)
+    expect(useWeatherMapStore.getState().enabled).toBe(false)
 
     vi.unstubAllGlobals()
   })

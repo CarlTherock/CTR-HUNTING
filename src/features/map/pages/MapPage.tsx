@@ -19,9 +19,10 @@ import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
 import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
 import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
-import { RadarLayerControl } from '@/features/radar/components/RadarLayerControl'
-import { useRadarStore } from '@/features/radar/state/radarStore'
-import { WindLayerControl } from '@/features/wind/components/WindLayerControl'
+import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
+import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
+import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
+import { geoMetTileUrls, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
@@ -62,14 +63,15 @@ export function MapPage() {
   const windEnabled = useWindStore((state) => state.enabled)
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
-  const windActiveLayer = useWindStore((state) => state.activeLayer)
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
-  const radarEnabled = useRadarStore((state) => state.enabled)
-  const radarOpacity = useRadarStore((state) => state.opacity)
-  const radarTileUrlTemplate = useRadarStore((state) => state.selectedTileUrlTemplate())
+  const weatherMapEnabled = useWeatherMapStore((state) => state.enabled)
+  const weatherMapLayer = useWeatherMapStore((state) => state.activeLayer)
+  const weatherMapFrames = useWeatherMapStore((state) => state.frames)
+  const weatherMapFrameIndex = useWeatherMapStore((state) => state.frameIndex)
+  const weatherMapOpacity = useWeatherMapStore((state) => state.opacity)
   const forestLayersEnabled = useForestLayersStore((state) => state.enabled)
   const forestLayersOpacity = useForestLayersStore((state) => state.opacity)
 
@@ -83,6 +85,7 @@ export function MapPage() {
     if (!fieldModeEnabled) return
     if (useWindStore.getState().enabled) useWindStore.setState({ enabled: false })
     if (useHeatmapStore.getState().enabled) useHeatmapStore.setState({ enabled: false })
+    if (useWeatherMapStore.getState().enabled) useWeatherMapStore.setState({ enabled: false, playing: false })
   }, [fieldModeEnabled])
 
   useEffect(() => {
@@ -197,12 +200,26 @@ export function MapPage() {
   }, [profilePoints])
 
   useEffect(() => {
-    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset, windActiveLayer)
-  }, [windEnabled, windField, windHourOffset, windActiveLayer])
+    // Particles only — the colored weather surfaces are now real GeoMet
+    // rasters (see the weather-map effect below).
+    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset, 'wind')
+  }, [windEnabled, windField, windHourOffset])
 
   useEffect(() => {
-    instanceRef.current?.setRasterOverlay('radar', radarEnabled ? radarTileUrlTemplate : null, radarOpacity)
-  }, [radarEnabled, radarTileUrlTemplate, radarOpacity])
+    if (!weatherMapEnabled || weatherMapFrames.length === 0) {
+      instanceRef.current?.setWeatherFrames(null, 0, weatherMapOpacity)
+      return
+    }
+    const def = layerDef(weatherMapLayer)
+    instanceRef.current?.setWeatherFrames(
+      weatherMapFrames.map((frame) => ({
+        key: frameKey(weatherMapLayer, frame.time),
+        tileUrlTemplates: geoMetTileUrls(def, frame.time),
+      })),
+      weatherMapFrameIndex,
+      weatherMapOpacity,
+    )
+  }, [weatherMapEnabled, weatherMapLayer, weatherMapFrames, weatherMapFrameIndex, weatherMapOpacity])
 
   useEffect(() => {
     for (const option of FOREST_LAYER_OPTIONS) {
@@ -316,16 +333,17 @@ export function MapPage() {
               <ElevationProfileControl
                 queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
               />
-              <WindLayerControl
+              <WeatherMapControl
                 getBounds={() => instanceRef.current?.getBounds() ?? null}
-                referenceCoordinate={view.center}
+                isFrameReady={(key) => instanceRef.current?.isWeatherFrameReady(key) ?? false}
+                viewCenter={view.center}
               />
-              <RadarLayerControl />
               <ForestLayersControl />
               <AnalysisControl />
               <HeatmapControl
                 getBounds={() => instanceRef.current?.getBounds() ?? null}
                 queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
+                viewCenter={view.center}
               />
             </>
           )}

@@ -128,6 +128,16 @@ const {
       on(event: string, handler: (...args: never[]) => void) {
         ;(this.handlers[event] ??= []).push(handler)
       }
+      off(event: string, handler: (...args: never[]) => void) {
+        this.handlers[event] = (this.handlers[event] ?? []).filter((h) => h !== handler)
+      }
+      paintCalls: { id: string; name: string; value: unknown }[] = []
+      setPaintProperty(id: string, name: string, value: unknown) {
+        this.paintCalls.push({ id, name, value })
+      }
+      isSourceLoaded(id: string) {
+        return id in this.sources
+      }
       fire(event: string, ...args: unknown[]) {
         for (const handler of this.handlers[event] ?? []) (handler as (...a: unknown[]) => void)(...args)
       }
@@ -831,6 +841,78 @@ describe('MapLibreProvider', () => {
       instance.setTerrainEnabled(true, 3)
 
       expect(instance.queryElevation({ lat: 46.8, lng: -71.2 })).toBe(300) // 900 / 3 = true elevation
+    })
+  })
+
+  describe('animated weather frames (GeoMet radar / HRDPS)', () => {
+    const FRAMES = Array.from({ length: 8 }, (_, i) => ({
+      key: `radar-t${i}`,
+      tileUrlTemplates: [
+        `https://geo.weather.gc.ca/geomet?LAYERS=RRAI&TIME=t${i}&BBOX={bbox-epsg-3857}`,
+        `https://geo.weather.gc.ca/geomet?LAYERS=RSNO&TIME=t${i}&BBOX={bbox-epsg-3857}`,
+      ],
+    }))
+
+    it('keeps only a small preload window on the map, with only the active frame visible', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setWeatherFrames(FRAMES, 7, 0.8)
+
+      const wxLayers = map.addedLayers.filter((l) => l.id.startsWith('wx-frame-') && l.id.endsWith('-0-layer'))
+      // Rain + snow: one stacked raster per WMS layer, per frame.
+      expect(map.addedLayers.filter((l) => l.id.startsWith('wx-frame-'))).toHaveLength(10)
+      // 1 behind + active + 3 ahead (wrapping around for looping playback).
+      expect(wxLayers.map((l) => l.id)).toEqual([
+        'wx-frame-radar-t0-0-layer',
+        'wx-frame-radar-t1-0-layer',
+        'wx-frame-radar-t2-0-layer',
+        'wx-frame-radar-t6-0-layer',
+        'wx-frame-radar-t7-0-layer',
+      ])
+      const active = wxLayers.find((l) => l.id === 'wx-frame-radar-t7-0-layer')
+      expect(active?.paint).toMatchObject({ 'raster-opacity': 0.8, 'raster-fade-duration': 0 })
+      expect(wxLayers.find((l) => l.id === 'wx-frame-radar-t0-0-layer')?.paint).toMatchObject({ 'raster-opacity': 0 })
+    })
+
+    it('advancing swaps opacity in place, and drops frames that leave the window', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      instance.setWeatherFrames(FRAMES, 1, 0.8)
+      instance.setWeatherFrames(FRAMES, 2, 0.8)
+
+      expect(map.paintCalls).toContainEqual({ id: 'wx-frame-radar-t2-0-layer', name: 'raster-opacity', value: 0.8 })
+      expect(map.paintCalls).toContainEqual({ id: 'wx-frame-radar-t1-0-layer', name: 'raster-opacity', value: 0 })
+      expect(map.getLayer('wx-frame-radar-t0-0-layer')).toBeUndefined()
+      expect(map.getLayer('wx-frame-radar-t5-0-layer')).toBeDefined()
+      expect(instance.isWeatherFrameReady('radar-t5')).toBe(true)
+      expect(instance.isWeatherFrameReady('radar-t0')).toBe(false)
+    })
+
+    it('clears every frame on null, and re-adds them after a base layer switch', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      instance.setWeatherFrames(FRAMES, 0, 0.8)
+      map.layerIds = []
+      map.sources = {}
+      map.fire('style.load')
+      expect(map.getLayer('wx-frame-radar-t0-0-layer')).toBeDefined()
+
+      instance.setWeatherFrames(null, 0, 0.8)
+      expect(map.layerIds.some((id) => id.startsWith('wx-frame-'))).toBe(false)
+    })
+
+    it('never routes weather tiles through the offline tile cache', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+      expect(map.transformRequest?.('https://geo.weather.gc.ca/geomet?x=1', 'Tile')).toBeUndefined()
     })
   })
 

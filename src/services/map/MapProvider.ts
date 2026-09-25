@@ -5,6 +5,7 @@ import type {
   MapOverlayId,
   MapViewState,
   WeatherMapLayer,
+  WeatherTileFrame,
   Waypoint,
   WindField,
 } from '@/types'
@@ -102,8 +103,7 @@ export interface MapInstance {
    * Renders or clears (`null` tileUrlTemplate) a named external raster
    * tile overlay — a genuine MapLibre raster layer (not a canvas overlay
    * like `setWindField`'s), sourced from a real external tile/WMS/ArcGIS
-   * service: real precipitation radar (`services/radar`'s RainViewer),
-   * or a real Québec government layer (`services/map/forestLayerTiles.ts`
+   * service, e.g. a real Québec government layer (`services/map/forestLayerTiles.ts`
    * — cadastre, coupes forestières, peuplements écoforestiers). `id`
    * namespaces the underlying source/layer so any number of these can be
    * shown simultaneously without clobbering each other; passing the same
@@ -111,6 +111,16 @@ export interface MapInstance {
    * overlay (a raster source's tile URLs can't be mutated in place).
    */
   setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number): void
+  /**
+   * Weather-app-style animated raster (radar loop / hourly forecast):
+   * `frames` are real GeoMet WMS tile templates, `activeIndex` the one
+   * shown. Frames near the active one are preloaded invisibly so playback
+   * swaps instantly without flicker. `null` clears everything.
+   */
+  setWeatherFrames(frames: WeatherTileFrame[] | null, activeIndex: number, opacity: number): void
+  /** Whether a frame's tiles for the current view have finished loading —
+   * playback waits on this so it never flashes an empty frame. */
+  isWeatherFrameReady(key: string): boolean
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

@@ -17,12 +17,11 @@ export type HeatmapStatus = 'idle' | 'loading' | 'ready' | 'error'
  * instant" principle as the Phase 6 weather-layer switcher. */
 export type HeatmapView = 'combined' | AnalyzerId
 
-/** Same spatial resolution as the wind flow-field grid (Phase 6) — real
- * spatial detail without pushing per-fetch cost too high, since a
- * heatmap compute fans out to 3 real network requests total (one
- * batched wind grid, one weather point, one batched vegetation bbox),
- * never one request per cell. */
-const GRID_SIZE = 5
+/** 8x8 = 64 real cells — enough for a continuous-looking surface once
+ * smoothed (see `createAnalysisHeatmapLayer`), still only 3 real network
+ * requests total (one batched wind grid, one weather point, one batched
+ * vegetation bbox), never one request per cell. */
+const GRID_SIZE = 8
 
 interface HeatmapState {
   status: HeatmapStatus
@@ -30,6 +29,12 @@ interface HeatmapState {
   cells: AnalysisHeatmapCell[]
   errorReason: string | null
   selectedView: HeatmapView
+  /** Area the current cells were computed for — lets the UI offer a
+   * recompute once the user pans somewhere else. */
+  computedBounds: LngLatBounds | null
+  /** Real sources that failed on the last compute (e.g. Overpass busy) —
+   * their analyzer is shown as unavailable, never guessed. */
+  unavailableSources: string[]
 
   toggle: (bounds: LngLatBounds, queryElevation: (coordinate: Coordinate) => number | null) => void
   compute: (bounds: LngLatBounds, queryElevation: (coordinate: Coordinate) => number | null) => Promise<void>
@@ -42,6 +47,8 @@ export const useHeatmapStore = create<HeatmapState>((set, get) => ({
   cells: [],
   errorReason: null,
   selectedView: 'combined',
+  computedBounds: null,
+  unavailableSources: [],
 
   toggle: (bounds, queryElevation) => {
     const { enabled, cells } = get()
@@ -60,11 +67,25 @@ export const useHeatmapStore = create<HeatmapState>((set, get) => ({
         lat: (bounds.north + bounds.south) / 2,
         lng: (bounds.east + bounds.west) / 2,
       }
-      const [windField, weather, vegetationSamples] = await Promise.all([
+      // allSettled, not all: one busy provider (the public Overpass
+      // instance regularly answers 429/504) must not blank the whole
+      // heatmap — that analyzer just becomes unavailable.
+      const [windResult, weatherResult, vegetationResult] = await Promise.allSettled([
         windProvider.fetchWindField(bounds, GRID_SIZE),
         weatherProvider.fetchForecast(center),
         vegetationProvider.fetchVegetationGrid(bounds, GRID_SIZE),
       ])
+      const windField = windResult.status === 'fulfilled' ? windResult.value : null
+      const weather = weatherResult.status === 'fulfilled' ? weatherResult.value : null
+      const vegetationSamples = vegetationResult.status === 'fulfilled' ? vegetationResult.value : []
+      const unavailableSources = [
+        windResult.status === 'rejected' ? 'Vent' : null,
+        weatherResult.status === 'rejected' ? 'Météo' : null,
+        vegetationResult.status === 'rejected' ? 'Végétation' : null,
+      ].filter((s): s is string => s !== null)
+      if (unavailableSources.length === 3) {
+        throw new Error('aucune source de données ne répond (hors ligne ?)')
+      }
 
       const points = buildGrid(bounds, GRID_SIZE)
       const { waypoints } = useWaypointsStore.getState()
@@ -83,9 +104,9 @@ export const useHeatmapStore = create<HeatmapState>((set, get) => ({
           now,
         ),
       )
-      set({ status: 'ready', cells })
+      set({ status: 'ready', cells, computedBounds: bounds, unavailableSources })
     } catch (err) {
-      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Unknown error' })
+      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Erreur inconnue' })
     }
   },
 

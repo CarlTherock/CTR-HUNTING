@@ -136,3 +136,17 @@ describe('isOptimalWind', () => {
     expect(isOptimalWind(200, [0, 45])).toBe(false)
   })
 })
+
+describe('hourIndexAt / localHourKey', () => {
+  it('formats a real instant as the local wall-clock hour Open-Meteo uses', async () => {
+    const { localHourKey } = await import('./windField')
+    // 14:30 UTC = 10:30 EDT
+    expect(localHourKey(new Date('2026-08-17T14:30:00Z'), 'America/Toronto')).toBe('2026-08-17T10:00')
+  })
+
+  it('finds the hourly sample covering an instant, or null outside the window', async () => {
+    const { hourIndexAt } = await import('./windField')
+    expect(hourIndexAt(FIELD, new Date('2026-08-17T15:10:00Z'))).toBe(1)
+    expect(hourIndexAt(FIELD, new Date('2026-08-20T15:10:00Z'))).toBeNull()
+  })
+})
