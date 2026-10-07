@@ -3,6 +3,17 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Carte de potentiel : familles, heure, fiche de cellule (2026-10-07)
+
+### Fixed
+
+- Plus de « 50 neutre » caché : un groupe sans signal n'a pas de score. Vent compté une seule fois, pente de 22° mal décrite, visites ne gonflant plus le score, soleil calculé sur le bon jour local.
+
+### Added
+
+- Familles Habitat / Conditions / Observations, texte de couverture, cellules hachurées (partielles) et pointillées (sans donnée).
+- Sélecteur d'heure sans requête supplémentaire, fiche de cellule, comparaison de deux créneaux, création de waypoint depuis une cellule.
+
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 
 ### Fixed

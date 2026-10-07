@@ -108,3 +108,44 @@ The analyzer math (`utils/analyzers.ts`), the heatmap engine
 and the full store/UI wiring (`MapPage.test.tsx` integration tests
 covering the tap → combined-score flow, the heatmap toggle, the view
 switcher, and the comparison strip) are fully tested instead.
+
+## Carte de potentiel — « Analyse environnementale générale » (T1)
+
+Le moteur ci-dessus est conservé ; il a été corrigé et enrichi, sans second
+moteur. Le score est un **indice de repère de 0 à 100**, jamais une
+probabilité de présence ni un pourcentage de confiance. Il n'existe aucun
+profil d'espèce : en ajouter un exigerait des règles documentées et sourcées
+(et il n'existe aucune donnée structurée « animal observé » dans l'app : le
+journal est du texte libre, compté en information, jamais interprété).
+
+**Trois familles** (`utils/analysisFamilies.ts`) : Habitat (terrain,
+végétation), Conditions (météo, vent, moment — ce dernier est un « indice
+populaire non vérifié »), Observations (historique). Chaque facteur porte sa
+source, son heure de donnée, sa résolution, `uniformAcrossArea` et ses
+limites.
+
+**Règles de score.** Moyenne des facteurs comptés ; sans facteur compté, le
+score vaut `null` (jamais un 50 caché). Un facteur `scored:false` est
+affiché mais ne pèse pas (exposition, visites/traces, waypoints non-indices,
+entrées de journal). Seuls `game_sign`, `kill_site` et `trail_camera` sont
+des indices comptés. La couverture se lit « N groupes de facteurs sur 6
+renseignés ».
+
+**Rendu.** Cellule blocs sans lissage ; hachurée = un groupe environnemental
+manque (les observations absentes ne hachurent pas) ; pointillée grise = pas
+de donnée ; contour épais = cellule sélectionnée. Toucher une cellule ouvre
+sa fiche (`HeatmapCellSheet`) : famille, facteurs, comparaison de deux
+créneaux (`cellDiff.ts`), création d'un waypoint via le brouillon existant
+(`startDraftAt`, position verrouillée à l'enregistrement).
+
+**Heure.** `utils/analysisTime.ts` : actuel / prévision / heure passée
+(valeur de modèle), uniquement parmi les heures déjà chargées (aucune
+extrapolation). Les éléments indépendants de l'heure sont calculés une fois
+(`computeCellStatics`) ; changer d'heure est un recalcul pur
+(`analyzeCellAtHour`) : toujours **3 requêtes** (vent en lot, météo au
+centre, Overpass sur l'emprise). `heatmapStore.generation` ignore les calculs
+périmés.
+
+**Limites.** Météo uniforme sur la zone (un point central). Résolution
+d'une cellule = emprise visible / 8 (affichée). Végétation évaluée au
+centroïde de l'élément. Les tests utilisent des fournisseurs simulés.

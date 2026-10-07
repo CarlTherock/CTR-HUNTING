@@ -236,3 +236,13 @@ and refactor-safe as the tree grows.
 - No CI pipeline is configured yet; `npm run typecheck && npm run lint &&
 npm run test && npm run build` must be run locally before considering a
   change complete.
+
+## Potential map (T1)
+
+The potential-map engine (`src/features/analytics`) scores each grid cell
+with six analyzer groups arranged in three families (habitat, conditions,
+observations). Hour-independent factors are computed once per area
+(`computeCellStatics`); the selected hour only re-runs the pure
+`analyzeCellAtHour`, so the network stays at three requests. A group with
+no input data yields `null`, never a neutral score. See
+`src/features/analytics/README.md` for rules and limits.
