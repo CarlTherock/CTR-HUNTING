@@ -32,5 +32,11 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
     },
   },
+  {
+    // Playwright fixtures receive a callback named `use`, which the React
+    // hooks rule mistakes for React's `use` hook.
+    files: ['e2e/**/*.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
+  },
   prettierConfig,
 )

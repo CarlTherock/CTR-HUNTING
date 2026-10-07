@@ -43,3 +43,8 @@ lerna-debug.log*
 
 # Local Claude Code session state
 .claude/scheduled_tasks.lock
+
+# Playwright
+test-results
+playwright-report
+e2e/.artifacts
