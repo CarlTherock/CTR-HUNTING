@@ -5,11 +5,23 @@ const DEFAULT_OVERLAYS = { trails: true, hydrography: true, contours: true }
 
 describe('layersStore', () => {
   afterEach(() => {
-    useLayersStore.setState({ baseLayer: 'outdoor', overlays: DEFAULT_OVERLAYS })
+    useLayersStore.setState({
+      baseLayer: 'outdoor',
+      baseLayerChosenByUser: false,
+      overlays: DEFAULT_OVERLAYS,
+    })
   })
 
   it('defaults to the outdoor base layer', () => {
     expect(useLayersStore.getState().baseLayer).toBe('outdoor')
+  })
+
+  it('marks a layer picked by the user, but not the startup default', () => {
+    useLayersStore.getState().setInitialBaseLayer('esri-imagery')
+    expect(useLayersStore.getState().baseLayerChosenByUser).toBe(false)
+
+    useLayersStore.getState().setBaseLayer('outdoor')
+    expect(useLayersStore.getState().baseLayerChosenByUser).toBe(true)
   })
 
   it('switches the active base layer', () => {

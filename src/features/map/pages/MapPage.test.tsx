@@ -179,6 +179,7 @@ afterEach(async () => {
   mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
   useLayersStore.setState({
     baseLayer: 'outdoor',
+    baseLayerChosenByUser: false,
     overlays: { trails: true, hydrography: true, contours: true },
   })
   useMapStore.setState({
@@ -253,11 +254,25 @@ describe('MapPage', () => {
     expect(screen.getByTestId('map-container')).toBeInTheDocument()
     expect(createMap).toHaveBeenCalledOnce()
     expect(createMap).toHaveBeenCalledWith(
-      expect.objectContaining({ initialBaseLayer: 'outdoor' }),
+      expect.objectContaining({ initialBaseLayer: 'esri-imagery' }),
     )
 
     unmount()
     expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('opens on the hybrid satellite view and does not swap the style afterwards', () => {
+    render(<MapPage />)
+
+    expect(useLayersStore.getState().baseLayer).toBe('esri-imagery')
+    expect(setBaseLayer).not.toHaveBeenCalled()
+  })
+
+  it('keeps the layer the user picked earlier in the session', () => {
+    useLayersStore.setState({ baseLayer: 'outdoor', baseLayerChosenByUser: true })
+    render(<MapPage />)
+
+    expect(createMap).toHaveBeenCalledWith(expect.objectContaining({ initialBaseLayer: 'outdoor' }))
   })
 
   it('shows an explicit unavailable state when no provider is configured', () => {
@@ -311,6 +326,7 @@ describe('MapPage', () => {
 
   it('toggles an overlay via the layer manager panel', async () => {
     const user = userEvent.setup()
+    useLayersStore.setState({ baseLayer: 'outdoor', baseLayerChosenByUser: true })
     render(<MapPage />)
     await openLayers(user)
 
@@ -325,7 +341,7 @@ describe('MapPage', () => {
 
   it('disables overlay toggles while the Satellite base layer is active', async () => {
     const user = userEvent.setup()
-    useLayersStore.setState({ baseLayer: 'satellite' })
+    useLayersStore.setState({ baseLayer: 'satellite', baseLayerChosenByUser: true })
     render(<MapPage />)
     await openLayers(user)
 

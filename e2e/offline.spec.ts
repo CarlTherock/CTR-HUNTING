@@ -23,7 +23,7 @@ test.describe('démarrage à froid hors ligne', () => {
     backend,
   }) => {
     const canvas = page.locator('canvas.maplibregl-canvas')
-    const outdoorGreen = TILE_COLOR.outdoor ?? [0, 0, 0]
+    const hybridColor = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
     const failedEngineRequests: string[] = []
     page.on('requestfailed', (request) => {
       if (request.url().includes('/maplibre/')) failedEngineRequests.push(request.url())
@@ -33,7 +33,7 @@ test.describe('démarrage à froid hors ligne', () => {
       await page.goto('map')
       await expect(canvas).toBeVisible()
       await expect
-        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), {
+        .poll(async () => colorsClose(await dominantColor(page, canvas), hybridColor), {
           timeout: 20_000,
         })
         .toBe(true)
@@ -88,7 +88,7 @@ test.describe('démarrage à froid hors ligne', () => {
 
     await test.step('3. contenu de la carte (style + tuiles) hors ligne', async () => {
       await expect
-        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), {
+        .poll(async () => colorsClose(await dominantColor(page, canvas), hybridColor), {
           timeout: 20_000,
         })
         .toBe(true)

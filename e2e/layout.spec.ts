@@ -41,7 +41,7 @@ for (const viewport of VIEWPORTS) {
       await page.goto('map')
       const canvas = page.locator('canvas.maplibregl-canvas')
       await expect(canvas).toBeVisible()
-      const green = TILE_COLOR.outdoor ?? [0, 0, 0]
+      const green = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
       await expect
         .poll(async () => colorsClose(await dominantColor(page, canvas), green), {
           timeout: 20_000,

@@ -18,6 +18,7 @@ import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { CompassDisplay } from '@/features/field-mode/components/CompassDisplay'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
+import { resolveInitialBaseLayer } from '@/features/layers/startupBaseLayer'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
@@ -109,17 +110,20 @@ export function MapPage() {
   useEffect(() => {
     if (!mapProvider || !containerRef.current) return
 
-    // The stored baseLayer (default "outdoor") may belong to a vendor
-    // with no key configured, e.g. only Esri is set up — fall back to
-    // whatever's actually available rather than requesting a style with
-    // an undefined API key.
-    const storedBaseLayer = useLayersStore.getState().baseLayer
-    const initialBaseLayer = availableBaseLayers.includes(storedBaseLayer)
-      ? storedBaseLayer
-      : (availableBaseLayers[0] ?? storedBaseLayer)
-    if (initialBaseLayer !== storedBaseLayer) {
-      useLayersStore.getState().setBaseLayer(initialBaseLayer)
+    // Open on the hybrid satellite view (see `startupBaseLayer.ts`) unless the
+    // user already picked a layer this session; never request a style whose
+    // vendor key is missing.
+    const layers = useLayersStore.getState()
+    const initialBaseLayer = resolveInitialBaseLayer(
+      availableBaseLayers,
+      layers.baseLayer,
+      layers.baseLayerChosenByUser,
+    )
+    if (initialBaseLayer !== layers.baseLayer) {
+      layers.setInitialBaseLayer(initialBaseLayer)
     }
+    // The engine is created with this layer: not a change to apply afterwards.
+    appliedBaseLayerRef.current = initialBaseLayer
 
     const instance = mapProvider.createMap({
       container: containerRef.current,
@@ -172,9 +176,12 @@ export function MapPage() {
   useEffect(() => {
     // Skip the run that fires on mount with the same value the map was
     // already created with — only react to an actual layer change.
-    if (appliedBaseLayerRef.current === baseLayer) return
-    appliedBaseLayerRef.current = baseLayer
-    instanceRef.current?.setBaseLayer(baseLayer)
+    // Read the live store value, not the render-time closure: the mount
+    // effect above may have replaced the placeholder layer in this same commit.
+    const current = useLayersStore.getState().baseLayer
+    if (appliedBaseLayerRef.current === current) return
+    appliedBaseLayerRef.current = current
+    instanceRef.current?.setBaseLayer(current)
   }, [baseLayer])
 
   useEffect(() => {

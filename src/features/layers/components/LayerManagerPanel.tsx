@@ -113,6 +113,12 @@ export function LayerManagerPanel() {
       <div className="border-surface-700 text-ink-500 mt-2 mb-1.5 border-t px-1 pt-2 text-xs font-semibold">
         Superpositions
       </div>
+      {!overlaysAvailable && (
+        <p className="text-ink-500 px-1 pb-1.5 text-xs">
+          Sentiers, hydrographie et courbes de niveau ne sont disponibles qu’avec le fond
+          « Plein air (topo) ».
+        </p>
+      )}
       <div className="flex flex-col gap-0.5" role="group" aria-label="Superpositions">
         {OVERLAYS.map((option) => (
           <button
