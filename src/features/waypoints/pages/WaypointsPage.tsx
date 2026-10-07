@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Camera, FolderTree, MapPinned, Route } from 'lucide-react'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
+import { ComparePanel } from '@/features/compare/components/ComparePanel'
+import { CompareSelectionBar } from '@/features/compare/components/CompareSelectionBar'
+import { MAX_WAYPOINTS } from '@/features/compare/criteria'
+import { useCompareStore } from '@/features/compare/state/compareStore'
 import { TerritoryFilterBar } from '@/features/territories/components/TerritoryFilterBar'
 import { TerritoryManager } from '@/features/territories/components/TerritoryManager'
 import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
@@ -44,6 +48,15 @@ export function WaypointsPage() {
     [tracks, territoryFilter, territories],
   )
   const hiddenWaypoints = waypoints.length - visibleWaypoints.length
+
+  // Comparaison de caches : la sélection ne garde que les points visibles
+  // avec le filtre de territoire courant.
+  const selectedIds = useCompareStore((state) => state.selectedIds)
+  const toggleSelected = useCompareStore((state) => state.toggleSelected)
+  const pruneSelection = useCompareStore((state) => state.pruneSelection)
+  useEffect(() => {
+    pruneSelection(visibleWaypoints.map((w) => w.id))
+  }, [visibleWaypoints, pruneSelection])
   const territoryName = (id: string | undefined) =>
     id ? territories.find((t) => t.id === id)?.name : undefined
 
@@ -80,6 +93,8 @@ export function WaypointsPage() {
 
       <WindComparisonPanel />
 
+      <ComparePanel />
+
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <MapPinned size={16} aria-hidden="true" />
@@ -89,6 +104,11 @@ export function WaypointsPage() {
           <p className="text-ink-500 mb-2 text-xs">
             {hiddenByFilterMessage(hiddenWaypoints)}
           </p>
+        )}
+        {visibleWaypoints.length > 0 && (
+          <div className="mb-3">
+            <CompareSelectionBar />
+          </div>
         )}
         {waypoints.length === 0 ? (
           <EmptyState
@@ -109,11 +129,27 @@ export function WaypointsPage() {
               const color = waypoint.color ?? DEFAULT_WAYPOINT_COLOR
               const photoCount = waypoint.photoIds?.length ?? 0
               return (
-                <Card key={waypoint.id} className="p-0">
+                <Card key={waypoint.id} className="flex items-stretch p-0">
+                  <label
+                    className="flex min-h-11 w-12 shrink-0 cursor-pointer items-center justify-center"
+                    title="Sélectionner pour la comparaison"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(waypoint.id)}
+                      disabled={
+                        !selectedIds.includes(waypoint.id) &&
+                        selectedIds.length >= MAX_WAYPOINTS
+                      }
+                      onChange={() => toggleSelected(waypoint.id)}
+                      aria-label={`Comparer : ${waypoint.name}`}
+                      className="accent-brand-500 h-6 w-6"
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() => selectWaypoint(waypoint.id)}
-                    className="hover:bg-surface-800 flex w-full items-center gap-3 rounded-[inherit] p-3 text-left transition-colors pointer-coarse:min-h-11"
+                    className="hover:bg-surface-800 flex min-w-0 flex-1 items-center gap-3 rounded-[inherit] p-3 pl-0 text-left transition-colors pointer-coarse:min-h-11"
                   >
                     <span
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white"

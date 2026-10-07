@@ -3,6 +3,22 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Comparateur de caches (2026-10-07)
+
+### Added
+
+- Page Points de repère : cases à cocher (zone tactile 44 px) et bouton « Comparer (N) » (actif pour 2 à 4 points). Le filtre de territoire s'applique : un point masqué quitte la sélection.
+- Comparaison pour un même créneau horaire pris parmi les heures réellement présentes dans le vent chargé : vent et rafales (source, heure, distance au point de grille), compatibilité avec les directions préférées, conditions (actuel / prévision / heure passée), habitat (végétation OSM, terrain « non évalué ici »), observations en comptes séparés (visites, signes de gibier, entrées de journal, animaux observés « non disponible »), distance depuis ma position (GPS frais et précis seulement, sinon « position indisponible »), âge des données.
+- Tri par 5 critères documentés, sur les seuls critères évaluables pour tous les points classés ; couverture « N/5 critères évaluables » par point, ex æquo, points non classés ou « non comparables » plutôt qu'un classement forcé. Aucun score caché. Libellé « Comparaison indicative : ce n'est pas une prévision de réussite. »
+- Actions par point : Voir sur la carte, Aller à, Ouvrir la fiche, Consulter les observations associées.
+- Cartes empilées sur petit écran, tableau à défilement interne sur grand écran.
+- `compareCaches()` : logique pure et type `CacheComparison` exporté, réutilisable par l'assistant.
+
+### Changed
+
+- Une seule requête de vent (qui porte aussi température, précipitations et nuages) et une seule de végétation pour l'emprise englobante ; cache mémoire de 10 min (clé : emprise arrondie + jour), requêtes partagées et annulées (AbortController) quand la sélection change, réutilisation du vent déjà chargé par la carte s'il est récent. Changer d'heure ne fait aucune requête.
+- `WindProvider.fetchWindField` et `VegetationProvider.fetchVegetationGrid` acceptent un `AbortSignal` optionnel ; `windStore` mémorise `fetchedAt`.
+
 ## Organisation par territoire (2026-10-07)
 
 ### Added

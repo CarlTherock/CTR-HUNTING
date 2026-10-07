@@ -246,3 +246,16 @@ observations). Hour-independent factors are computed once per area
 `analyzeCellAtHour`, so the network stays at three requests. A group with
 no input data yields `null`, never a neutral score. See
 `src/features/analytics/README.md` for rules and limits.
+
+## Cache comparator (T4)
+
+`src/features/compare/` compares 2-4 saved waypoints for one hour. Layers:
+UI (`components/`) -> store (`state/compareStore.ts`, selection + abortable
+load) -> `compareData.ts` (grouped requests, TTL cache, shared/aborted
+in-flight requests, reuse of wind already loaded by the map) -> providers
+behind `services/wind` and `services/vegetation`. `compareCaches()` is pure
+and returns the structured `CacheComparison` (criteria, values, missing data,
+pros/cons, ranking with reasons) that the future assistant reuses. It reuses
+the potential-map analyzers (vegetation, observations) and their thresholds;
+it is not a second engine. Missing data are "non evaluable", never neutral.
+See `src/features/compare/README.md`.
