@@ -259,6 +259,7 @@ pros/cons, ranking with reasons) that the future assistant reuses. It reuses
 the potential-map analyzers (vegetation, observations) and their thresholds;
 it is not a second engine. Missing data are "non evaluable", never neutral.
 See `src/features/compare/README.md`.
+
 ## Backup, restore and GPX (`src/features/backup/`)
 
 UI (Réglages › « Données et sauvegarde », lazy-loaded) → `state/` stores →

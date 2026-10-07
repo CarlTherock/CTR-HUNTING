@@ -1,3 +1,4 @@
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { create } from 'zustand'
 import {
   countUserData,
@@ -30,6 +31,7 @@ export async function reloadDataStores(): Promise<void> {
     useTracksStore.getState().load(),
     useJournalStore.getState().load(),
     useOfflineStore.getState().load(),
+    useTerritoriesStore.getState().load(),
   ])
 }
 

@@ -66,6 +66,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 - CORS et rendu réel des tuiles non vérifiés en navigateur ; les couches ne sont pas incluses dans les zones hors ligne.
 - Les noms de couche `ori_pee_interventions` / `ori_pee_ori_prov` n'ont pas été retrouvés dans la partie lisible du GetCapabilities actuel : à revérifier.
+
 ## Export, import et sauvegarde (T3) (2026-10-07)
 
 ### Added
