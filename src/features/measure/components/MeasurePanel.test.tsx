@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NBSP, THIN_NBSP } from '@/utils/format'
@@ -58,6 +58,26 @@ describe('MeasurePanel', () => {
     tap([BOX[0], BOX[1]])
     expect(screen.queryByText(/élévation non chargée/)).not.toBeInTheDocument()
     expect(screen.getByText(/Distance 3D/).nextSibling).toHaveTextContent(/\d/)
+  })
+
+  it('distance: the 3D figure appears by itself once the terrain has loaded', () => {
+    vi.useFakeTimers()
+    try {
+      let loaded = false
+      render(<MeasurePanel queryElevation={() => (loaded ? 250 : null)} />)
+      act(() => useMeasureStore.getState().start('distance'))
+      tap([BOX[0], BOX[1]])
+      expect(screen.getByText('indisponible : élévation non chargée')).toBeInTheDocument()
+
+      loaded = true
+      act(() => {
+        vi.advanceTimersByTime(2100)
+      })
+      expect(screen.queryByText(/élévation non chargée/)).not.toBeInTheDocument()
+      expect(screen.getByText(/Distance 3D/).nextSibling).toHaveTextContent(/\d/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('distance: no 3D figure when a single point lacks elevation', () => {

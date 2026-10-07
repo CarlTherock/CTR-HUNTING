@@ -1,5 +1,15 @@
-import { useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Pentagon, Play, Ruler, Undo2, X } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Pentagon,
+  Play,
+  Ruler,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatLatitude, formatLongitude } from '@/utils/coordinateFormat'
 import {
@@ -24,11 +34,14 @@ export const EPHEMERAL_NOTE = 'Cette mesure est éphémère : elle n’est pas e
 export const METHOD_NOTE =
   'Calcul géodésique sur une sphère de 6 371 km de rayon ; l’écart avec l’ellipsoïde WGS 84 reste de l’ordre de quelques dixièmes de pour cent.'
 
+/** How often a missing 3D figure is re-checked against the loaded terrain. */
+const ELEVATION_RECHECK_MS = 2000
+
 /** Short landscape screens (phone turned sideways): fold the results. */
 const SHORT_LANDSCAPE = '(orientation: landscape) and (max-height: 480px)'
 
 const BUTTON =
-  'border-surface-600 text-ink-100 hover:bg-surface-800 disabled:text-ink-700 flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium disabled:cursor-not-allowed disabled:hover:bg-transparent'
+  'border-surface-600 text-ink-100 hover:bg-surface-800 disabled:text-ink-700 flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium disabled:cursor-not-allowed disabled:hover:bg-transparent'
 const ICON_BUTTON =
   'text-ink-300 hover:bg-surface-800 hover:text-ink-100 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg'
 
@@ -164,128 +177,170 @@ export function MeasurePanel({ queryElevation }: MeasurePanelProps) {
     return () => query.removeEventListener('change', fold)
   }, [isOpen])
 
+  // Elevations are read on each render. A DEM tile that finishes loading
+  // changes nothing in the store, so while the 3D figure is missing the panel
+  // looks again every couple of seconds: it then appears by itself, and never
+  // before the elevations are real.
+  const distance = kind === 'distance' ? summarizeDistance(points, queryElevation) : null
+  const waitingFor3D =
+    distance !== null && distance.pathMeters !== null && distance.length3DMeters === null
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!waitingFor3D) return
+    const timer = window.setInterval(
+      () => setTick((tick) => tick + 1),
+      ELEVATION_RECHECK_MS,
+    )
+    return () => window.clearInterval(timer)
+  }, [waitingFor3D])
+
   if (!kind) return null
 
-  // Elevations are read on each render: a DEM tile that finishes loading
-  // makes the 3D figure appear on the next update, never before.
-  const distance = kind === 'distance' ? summarizeDistance(points, queryElevation) : null
   const area = kind === 'area' ? summarizeArea(points) : null
   const quick = headline(kind, distance, area)
   const minPoints = MIN_POINTS[kind]
   const status = finished ? 'Terminée' : active ? 'Mode actif' : 'En pause'
   const Icon = kind === 'distance' ? Ruler : Pentagon
 
+  const toggleLabel = collapsed ? 'Agrandir les résultats' : 'Réduire les résultats'
+  const Chevron = collapsed ? ChevronUp : ChevronDown
+
   return (
     <section
       role="region"
       aria-label={TITLES[kind]}
       data-testid="measure-panel"
-      className="border-surface-600 bg-surface-900/95 pointer-events-auto flex max-h-full min-h-0 w-full flex-col rounded-lg border shadow-xl"
+      className="border-surface-600 bg-surface-900/95 @container pointer-events-auto flex max-h-[min(45dvh,28rem)] min-h-0 w-full flex-col rounded-lg border shadow-xl"
     >
-      <div className="flex shrink-0 items-center gap-1 pl-3">
-        <Icon size={16} aria-hidden="true" className="text-brand-400 shrink-0" />
-        <div className="min-w-0 flex-1 py-1">
-          <h2 className="text-ink-100 truncate text-sm font-semibold">
-            {TITLES[kind]}
-            {quick && collapsed ? ` · ${quick}` : ''}
-          </h2>
-          <p
-            data-testid="measure-status"
-            className={cn('text-xs', active ? 'text-brand-400' : 'text-ink-300')}
+      {/* Title bar: the whole left part folds/unfolds the panel (one 44 px
+          target instead of two), so it still fits a ~190 px wide dock on a
+          phone turned sideways. */}
+      <div className="flex shrink-0 items-stretch">
+        <h2 className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-expanded={!collapsed}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            className="hover:bg-surface-800 flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-1 text-left"
           >
-            {status} · {points.length} point{points.length > 1 ? 's' : ''}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Agrandir les résultats' : 'Réduire les résultats'}
-          className={ICON_BUTTON}
-        >
-          {collapsed ? (
-            <ChevronUp size={18} aria-hidden="true" />
-          ) : (
-            <ChevronDown size={18} aria-hidden="true" />
-          )}
-        </button>
+            <Icon size={16} aria-hidden="true" className="text-brand-400 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="text-ink-100 block text-sm leading-tight font-semibold first-letter:uppercase">
+                {/* Narrow dock (phone sideways): just « Surface » / « Distance ». */}
+                <span className="hidden @2xs:inline">Mesure de </span>
+                {kind === 'distance' ? 'distance' : 'surface'}
+                {quick && collapsed ? ` · ${quick}` : ''}
+              </span>
+              <span
+                data-testid="measure-status"
+                className={cn(
+                  'block text-xs leading-tight',
+                  active ? 'text-brand-400' : 'text-ink-300',
+                )}
+              >
+                {status} · {points.length} point{points.length > 1 ? 's' : ''}
+              </span>
+            </span>
+            <Chevron size={18} aria-hidden="true" className="text-ink-300 shrink-0" />
+          </button>
+        </h2>
         <button
           type="button"
           onClick={close}
           aria-label="Quitter la mesure"
+          title="Quitter la mesure"
           className={ICON_BUTTON}
         >
           <X size={18} aria-hidden="true" />
         </button>
       </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2 px-3 pb-2">
-        <button
-          type="button"
-          onClick={removeLastPoint}
-          disabled={finished || points.length === 0}
-          aria-label="Annuler le dernier point"
-          className={BUTTON}
-        >
-          <Undo2 size={16} aria-hidden="true" />
-          Annuler
-        </button>
-        {!finished && !active && (
-          <button type="button" onClick={() => start(kind)} className={BUTTON}>
-            <Play size={16} aria-hidden="true" />
-            Reprendre
+      {/* Everything under the title bar scrolls, so nothing is ever clipped
+          on a short screen. Action labels show once the panel is wide enough. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-wrap gap-1.5 px-2 pb-2">
+          <button
+            type="button"
+            onClick={removeLastPoint}
+            disabled={finished || points.length === 0}
+            aria-label="Annuler le dernier point"
+            title="Annuler le dernier point"
+            className={BUTTON}
+          >
+            <Undo2 size={16} aria-hidden="true" />
+            <span className="hidden @2xs:inline">Annuler</span>
           </button>
-        )}
-        <button
-          type="button"
-          onClick={finish}
-          disabled={finished || points.length < minPoints}
-          className={BUTTON}
-        >
-          Terminer
-        </button>
-        <button
-          type="button"
-          onClick={clear}
-          disabled={points.length === 0 && !finished}
-          className={BUTTON}
-        >
-          Effacer
-        </button>
-      </div>
-
-      {!collapsed && (
-        <div
-          data-testid="measure-body"
-          className="border-surface-600 min-h-0 flex-1 overflow-y-auto border-t px-3 py-2"
-        >
-          {!finished && (
-            <p className="text-ink-300 mb-1 text-xs" role="status">
-              {active
-                ? `Touchez la carte pour ajouter un point (${minPoints} minimum).`
-                : 'Mesure en pause : un autre outil de la carte est actif. Touchez « Reprendre » pour continuer.'}
-            </p>
+          {!finished && !active && (
+            <button
+              type="button"
+              onClick={() => start(kind)}
+              aria-label="Reprendre"
+              title="Reprendre la mesure"
+              className={BUTTON}
+            >
+              <Play size={16} aria-hidden="true" />
+              <span className="hidden @2xs:inline">Reprendre</span>
+            </button>
           )}
-          {distance && <DistanceResults summary={distance} />}
-          {area && <AreaResults summary={area} />}
-          {points.length > 0 && (
-            <details className="mt-1">
-              <summary className="text-ink-300 flex min-h-11 cursor-pointer items-center text-xs">
-                Coordonnées des points ({points.length})
-              </summary>
-              <ol className="text-ink-300 list-decimal pl-5 text-xs tabular-nums">
-                {points.map((point, index) => (
-                  <li key={index} data-lat={point.lat} data-lng={point.lng}>
-                    {formatLatitude(point.lat)}, {formatLongitude(point.lng)}
-                  </li>
-                ))}
-              </ol>
-            </details>
-          )}
-          <p className="text-ink-300 mt-1 text-xs">{EPHEMERAL_NOTE}</p>
-          <p className="text-ink-500 mt-1 text-xs">{METHOD_NOTE}</p>
+          <button
+            type="button"
+            onClick={finish}
+            disabled={finished || points.length < minPoints}
+            aria-label="Terminer"
+            title="Terminer la mesure"
+            className={BUTTON}
+          >
+            <Check size={16} aria-hidden="true" />
+            <span className="hidden @2xs:inline">Terminer</span>
+          </button>
+          <button
+            type="button"
+            onClick={clear}
+            disabled={points.length === 0 && !finished}
+            aria-label="Effacer"
+            title="Effacer les points"
+            className={BUTTON}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            <span className="hidden @2xs:inline">Effacer</span>
+          </button>
         </div>
-      )}
+
+        {!collapsed && (
+          <div
+            data-testid="measure-body"
+            className="border-surface-600 border-t px-3 py-2"
+          >
+            {!finished && (
+              <p className="text-ink-300 mb-1 text-xs" role="status">
+                {active
+                  ? `Touchez la carte pour ajouter un point (${minPoints} minimum).`
+                  : 'Mesure en pause : un autre outil de la carte est actif. Touchez « Reprendre » pour continuer.'}
+              </p>
+            )}
+            {distance && <DistanceResults summary={distance} />}
+            {area && <AreaResults summary={area} />}
+            {points.length > 0 && (
+              <details className="mt-1">
+                <summary className="text-ink-300 flex min-h-11 cursor-pointer items-center text-xs">
+                  Coordonnées des points ({points.length})
+                </summary>
+                <ol className="text-ink-300 list-decimal pl-5 text-xs tabular-nums">
+                  {points.map((point, index) => (
+                    <li key={index} data-lat={point.lat} data-lng={point.lng}>
+                      {formatLatitude(point.lat)}, {formatLongitude(point.lng)}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+            <p className="text-ink-300 mt-1 text-xs">{EPHEMERAL_NOTE}</p>
+            <p className="text-ink-500 mt-1 text-xs">{METHOD_NOTE}</p>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

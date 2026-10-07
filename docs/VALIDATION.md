@@ -66,6 +66,7 @@ contrôles visibles et non masqués, cibles tactiles ≥ 44 px (écrans tactiles
 - `share.spec.ts` : partage natif (réussi, annulé, en échec, absent), repli par copie, contenu exclu.
 - `shared-link.spec.ts` : ouverture à froid d'un lien `?p=lat,lng&n=nom` sous `/CTR-HUNTING/`, lien invalide, tentative d'injection, aucun enregistrement automatique.
 - `guidance.spec.ts` : « Aller à » (distance, relèvement, ligne, mise à jour, arrêt), GPS refusé / ancien, hors ligne, aucune trace créée, coexistence avec un suivi explicitement démarré, mise en page aux 7 tailles et rotation.
+- `measure.spec.ts` : outils de mesure (3 points → aire comparée à un calcul sphérique indépendant par vecteurs, annuler, terminer, effacer, rien en base ; distance : 3 libellés, 3D seulement avec élévation réelle du MNT simulé à 0 m ; pause quand un point de repère est placé) et panneau compact aux 7 tailles + 568×320. Le MNT est simulé : l'altitude réelle d'un terrain n'est pas validée ici.
 - `screenshots-panels.spec.ts` : captures des nouveaux panneaux (uniquement avec `E2E_SCREENSHOTS=1`).
 
 ## Régénérer les captures « après »
