@@ -3,6 +3,17 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Export, import et sauvegarde (T3) (2026-10-07)
+
+### Added
+
+- Réglages › « Données et sauvegarde » : sauvegarde complète en `.zip` versionné (manifeste, sommes de contrôle, photos en fichiers, `originalBlob` conservé), restauration avec aperçu, confirmation et rapport, sans nuage ni compte.
+- Restauration sûre : validation complète avant écriture, ajout seulement (aucune suppression, aucun écrasement, coordonnées existantes intactes), une seule transaction Dexie (rollback complet en cas d'échec), politique de doublons documentée (`docs/BACKUP_FORMAT.md`).
+- Export / import GPX 1.1 (tout, un territoire, un point de repère, une trace) avec extensions dans un espace de noms dédié, import durci (limites, DOCTYPE refusé, coordonnées validées, texte jamais interprété comme HTML).
+- Rappel de sauvegarde (`BackupReminder`, `backupReminderState`), demande de `navigator.storage.persist()` avec état affiché honnêtement.
+- Dépendance `fflate` (~8 ko gzip), chargée en import dynamique seulement à la sauvegarde / restauration.
+- `docs/SYNC_PREPARATION.md` : ce qui reste à décider pour la synchronisation. La phase 15 (synchronisation) n'est PAS livrée.
+
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 
 ### Fixed

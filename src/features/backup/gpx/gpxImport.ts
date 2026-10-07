@@ -211,7 +211,10 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
   }
   const root = doc.documentElement
   if (root.localName !== 'gpx') {
-    throw new GpxImportError('not-gpx', 'Ce fichier XML n’est pas un fichier GPX (élément <gpx> absent).')
+    throw new GpxImportError(
+      'not-gpx',
+      'Ce fichier XML n’est pas un fichier GPX (élément <gpx> absent).',
+    )
   }
 
   const wptElements = children(root, 'wpt')
@@ -236,7 +239,10 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     routesIgnored: rteElements.length,
   }
   if (rteElements.length > 0) {
-    issue('info', `${rteElements.length} itinéraire(s) (<rte>) ignoré(s) : seuls les points de repère et les traces sont importés.`)
+    issue(
+      'info',
+      `${rteElements.length} itinéraire(s) (<rte>) ignoré(s) : seuls les points de repère et les traces sont importés.`,
+    )
   }
 
   const seenIds = new Set<string>()
@@ -262,7 +268,8 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     const accuracy = parseStrictNumber(ext?.getAttribute('accuracyMeters'))
     if (accuracy !== null && accuracy >= 0) coordinate.accuracyMeters = accuracy
 
-    const note = (message: string) => issue('warning', `Point n° ${index + 1} : ${message}`)
+    const note = (message: string) =>
+      issue('warning', `Point n° ${index + 1} : ${message}`)
     const rawName = limitText(childText(wpt, 'name'), GPX_MAX_NAME_LENGTH, note, 'Nom')
     const name = rawName && rawName.trim() ? rawName : 'Point importé'
     const notes = limitText(
@@ -272,7 +279,9 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
       'Texte',
     )
     const ctrCategory = ext?.getAttribute('category')
-    const category: WaypointCategory = WAYPOINT_CATEGORIES.includes(ctrCategory as WaypointCategory)
+    const category: WaypointCategory = WAYPOINT_CATEGORIES.includes(
+      ctrCategory as WaypointCategory,
+    )
       ? (ctrCategory as WaypointCategory)
       : (categoryFromSymbol(childText(wpt, 'sym')) ?? 'general')
     const colorAttr = ext?.getAttribute('color')
@@ -293,7 +302,8 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
       coordinate,
       category,
       color,
-      territoryId: territoryId && SAFE_ID_PATTERN.test(territoryId) ? territoryId : undefined,
+      territoryId:
+        territoryId && SAFE_ID_PATTERN.test(territoryId) ? territoryId : undefined,
       optimalWindDirections: wind && wind.length > 0 ? wind : undefined,
       createdAt: time ?? nowIso,
       updatedAt: parseTime(ext?.getAttribute('updatedAt')) ?? time ?? nowIso,
@@ -332,7 +342,10 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     stats.pointsInvalid += invalid
     const label = `Trace n° ${index + 1}`
     if (invalid > 0) {
-      issue('warning', `${label} : ${invalid} point(s) aux coordonnées invalides ignoré(s).`)
+      issue(
+        'warning',
+        `${label} : ${invalid} point(s) aux coordonnées invalides ignoré(s).`,
+      )
     }
     if (valid.length === 0) {
       stats.tracksSkipped++
@@ -340,7 +353,10 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
       return
     }
     if (segments.length > 1) {
-      issue('info', `${label} : ${segments.length} segments fusionnés en une seule trace.`)
+      issue(
+        'info',
+        `${label} : ${segments.length} segments fusionnés en une seule trace.`,
+      )
     }
     const ext = ctrElement(trk, 'track')
     const firstTime = valid.find((p) => p.time)?.time ?? null
@@ -363,12 +379,18 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     tracks.push({
       id: safeId(ext?.getAttribute('id')),
       name: rawName && rawName.trim() ? rawName : 'Trace importée',
-      notes: limitText(childText(trk, 'desc') ?? childText(trk, 'cmt'), GPX_MAX_TEXT_LENGTH, note, 'Texte'),
+      notes: limitText(
+        childText(trk, 'desc') ?? childText(trk, 'cmt'),
+        GPX_MAX_TEXT_LENGTH,
+        note,
+        'Texte',
+      ),
       points,
       startedAt,
       endedAt: parseTime(ext?.getAttribute('endedAt')) ?? lastTime ?? undefined,
       distanceMeters: totalDistanceMeters(points),
-      territoryId: territoryId && SAFE_ID_PATTERN.test(territoryId) ? territoryId : undefined,
+      territoryId:
+        territoryId && SAFE_ID_PATTERN.test(territoryId) ? territoryId : undefined,
       pointsWithoutTime: withoutTime,
     })
   })

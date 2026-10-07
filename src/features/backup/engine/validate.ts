@@ -76,7 +76,10 @@ function validateWaypoint(raw: Rec): Validation<Rec> {
   }
   return {
     ok: true,
-    value: { ...raw, updatedAt: validIsoLike(raw.updatedAt) ? raw.updatedAt : raw.createdAt },
+    value: {
+      ...raw,
+      updatedAt: validIsoLike(raw.updatedAt) ? raw.updatedAt : raw.createdAt,
+    },
   }
 }
 
@@ -111,7 +114,8 @@ function validateTrack(raw: Rec): Validation<Rec> {
 function validateObservation(raw: Rec): Validation<Rec> {
   if (!validCoordinate(raw.coordinate)) return fail('coordonnées invalides')
   if (!validIsoLike(raw.timestamp)) return fail('horodatage invalide')
-  if (raw.notes !== undefined && typeof raw.notes !== 'string') return fail('notes invalides')
+  if (raw.notes !== undefined && typeof raw.notes !== 'string')
+    return fail('notes invalides')
   for (const key of ['waypointId', 'territoryId']) {
     const problem = optionalString(raw, key)
     if (problem) return fail(problem)
@@ -119,7 +123,10 @@ function validateObservation(raw: Rec): Validation<Rec> {
   if (raw.photoIds !== undefined && !isStringArray(raw.photoIds)) {
     return fail('liste de photos invalide')
   }
-  return { ok: true, value: { ...raw, notes: typeof raw.notes === 'string' ? raw.notes : '' } }
+  return {
+    ok: true,
+    value: { ...raw, notes: typeof raw.notes === 'string' ? raw.notes : '' },
+  }
 }
 
 function validateTerritory(raw: Rec): Validation<Rec> {
@@ -127,7 +134,10 @@ function validateTerritory(raw: Rec): Validation<Rec> {
   if (!validIsoLike(raw.createdAt)) return fail('date de création invalide')
   return {
     ok: true,
-    value: { ...raw, updatedAt: validIsoLike(raw.updatedAt) ? raw.updatedAt : raw.createdAt },
+    value: {
+      ...raw,
+      updatedAt: validIsoLike(raw.updatedAt) ? raw.updatedAt : raw.createdAt,
+    },
   }
 }
 
@@ -141,7 +151,8 @@ function validateOfflineArea(raw: Rec): Validation<Rec> {
   ) {
     return fail('étendue invalide')
   }
-  if (!isFiniteNumber(raw.minZoom) || !isFiniteNumber(raw.maxZoom)) return fail('zooms invalides')
+  if (!isFiniteNumber(raw.minZoom) || !isFiniteNumber(raw.maxZoom))
+    return fail('zooms invalides')
   if (typeof raw.baseLayer !== 'string') return fail('fond de carte manquant')
   if (!validIsoLike(raw.createdAt)) return fail('date de création invalide')
   return { ok: true, value: { ...raw } }
@@ -169,7 +180,10 @@ export function validateRecord(
   }
   const result = validators[table](raw)
   if (!result.ok) return result
-  return { ok: true, value: { id: raw.id, label: labelOf(table, result.value), record: result.value } }
+  return {
+    ok: true,
+    value: { id: raw.id, label: labelOf(table, result.value), record: result.value },
+  }
 }
 
 function labelOf(table: BackupTableName, record: Rec): string {
@@ -182,7 +196,9 @@ function labelOf(table: BackupTableName, record: Rec): string {
   return String(record.id)
 }
 
-export function validateSetting(raw: unknown): Validation<{ key: string; value: unknown }> {
+export function validateSetting(
+  raw: unknown,
+): Validation<{ key: string; value: unknown }> {
   if (!isRecord(raw) || !nonEmptyString(raw.key)) return fail('clé manquante')
   if (!isBackupSettingKey(raw.key)) return fail('réglage non pris en charge (ignoré)')
   if (!('value' in raw)) return fail('valeur manquante')
@@ -211,7 +227,9 @@ export function validatePhotoEntry(
   const hasWaypoint = record.waypointId !== undefined
   const hasObservation = record.observationId !== undefined
   if (hasWaypoint === hasObservation) {
-    return fail('une photo doit appartenir à exactement un point de repère ou une entrée de journal')
+    return fail(
+      'une photo doit appartenir à exactement un point de repère ou une entrée de journal',
+    )
   }
   const ownerKey = hasWaypoint ? 'waypointId' : 'observationId'
   if (!nonEmptyString(record[ownerKey])) return fail('parent invalide')
@@ -219,7 +237,8 @@ export function validatePhotoEntry(
     return fail('coordonnées invalides')
   }
   const blobRef = entry.blob
-  if (!isRecord(blobRef) || typeof blobRef.path !== 'string') return fail('fichier image manquant')
+  if (!isRecord(blobRef) || typeof blobRef.path !== 'string')
+    return fail('fichier image manquant')
   const blobBytes = media.get(blobRef.path)
   if (!blobBytes || blobBytes.length === 0) return fail('fichier image absent ou vide')
   let originalBytes: Uint8Array | null = null
@@ -230,7 +249,8 @@ export function validatePhotoEntry(
       return fail('original manquant')
     }
     originalBytes = media.get(originalRef.path) ?? null
-    if (!originalBytes || originalBytes.length === 0) return fail('original absent ou vide')
+    if (!originalBytes || originalBytes.length === 0)
+      return fail('original absent ou vide')
     originalType = typeof originalRef.type === 'string' ? originalRef.type : ''
   }
   return {

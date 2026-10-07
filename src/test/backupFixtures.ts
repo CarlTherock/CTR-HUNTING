@@ -82,7 +82,12 @@ export async function seedEverything(database: Dexie): Promise<SeedResult> {
     {
       id: 'wp-1',
       name: 'Poste du ruisseau',
-      coordinate: { lat: 46.123456789012345, lng: -71.987654321098765, altitude: 231.4, accuracyMeters: 4.5 },
+      coordinate: {
+        lat: 46.12345678901234,
+        lng: -71.98765432109876,
+        altitude: 231.4,
+        accuracyMeters: 4.5,
+      },
       category: 'stand_blind',
       color: '#22c55e',
       notes: 'Vent N/NE <b>gras</b> & "guillemets"',
@@ -108,14 +113,22 @@ export async function seedEverything(database: Dexie): Promise<SeedResult> {
     endedAt: '2026-09-05T10:00:00.000Z',
     distanceMeters: 1234.5,
     points: [
-      { lat: 46.1, lng: -71.1, altitude: 100, accuracyMeters: 5, timestamp: '2026-09-05T09:00:00.000Z' },
+      {
+        lat: 46.1,
+        lng: -71.1,
+        altitude: 100,
+        accuracyMeters: 5,
+        timestamp: '2026-09-05T09:00:00.000Z',
+      },
       { lat: 46.10001, lng: -71.10002, timestamp: '2026-09-05T09:00:05.000Z' },
       { lat: 46.1002, lng: -71.1004, timestamp: '2026-09-05T09:30:00.000Z' },
     ],
     // Fields a recording slice may add: they must survive untouched.
     status: 'interrupted',
     interruptedAt: '2026-09-05T09:30:00.000Z',
-    pauses: [{ startedAt: '2026-09-05T09:10:00.000Z', endedAt: '2026-09-05T09:20:00.000Z' }],
+    pauses: [
+      { startedAt: '2026-09-05T09:10:00.000Z', endedAt: '2026-09-05T09:20:00.000Z' },
+    ],
     ...withTerritory,
   })
   await database.table('observations').add({
@@ -125,7 +138,12 @@ export async function seedEverything(database: Dexie): Promise<SeedResult> {
     notes: 'Traces fraîches <script>alert(1)</script>',
     waypointId: 'wp-1',
     photoIds: ['ph-3'],
-    conditions: { temperatureCelsius: 4, windSpeedKmh: 8, windDirectionDegrees: 300, cloudCoverPercent: 40 },
+    conditions: {
+      temperatureCelsius: 4,
+      windSpeedKmh: 8,
+      windDirectionDegrees: 300,
+      cloudCoverPercent: 40,
+    },
     ...withTerritory,
   })
   const edited = randomBytes(2048, 7)

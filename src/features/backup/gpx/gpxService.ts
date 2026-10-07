@@ -150,7 +150,10 @@ export async function planGpxImport(
   const localWaypoints = (await database.table('waypoints').toArray()) as Waypoint[]
   const localTracks = (await database.table('tracks').toArray()) as Track[]
   const territoryIds = new Set((await loadTerritories(database)).map((t) => t.id))
-  const usedIds = new Set([...localWaypoints.map((w) => w.id), ...localTracks.map((t) => t.id)])
+  const usedIds = new Set([
+    ...localWaypoints.map((w) => w.id),
+    ...localTracks.map((t) => t.id),
+  ])
 
   const wpKey = (name: string, lat: number, lng: number) => `${name}|${lat}|${lng}`
   const presentWaypoints = new Set(
@@ -182,7 +185,9 @@ export async function planGpxImport(
   }
 
   const waypoints = parsed.waypoints.map((raw): GpxPlanItem<ParsedGpxWaypoint> => {
-    const present = presentWaypoints.has(wpKey(raw.name, raw.coordinate.lat, raw.coordinate.lng))
+    const present = presentWaypoints.has(
+      wpKey(raw.name, raw.coordinate.lat, raw.coordinate.lng),
+    )
     return {
       item: resolveTerritory(raw),
       status: present ? 'present' : 'new',
@@ -201,9 +206,7 @@ export async function planGpxImport(
 }
 
 function compact<T extends object>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, v]) => v !== undefined),
-  ) as T
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T
 }
 
 /** Adds the « new » items in ONE transaction. Nothing existing is touched. */

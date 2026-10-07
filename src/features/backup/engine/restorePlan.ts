@@ -191,7 +191,13 @@ export async function planRestore(
       if (table === 'settings') {
         const result = validateSetting(raw)
         if (!result.ok) {
-          items.push({ table, id: guessedId, label: guessedId, status: 'invalid', reason: result.reason })
+          items.push({
+            table,
+            id: guessedId,
+            label: guessedId,
+            status: 'invalid',
+            reason: result.reason,
+          })
         } else {
           items.push({
             table,
@@ -204,7 +210,13 @@ export async function planRestore(
       } else if (table === 'photos') {
         const result = validatePhotoEntry(raw, parsed.media)
         if (!result.ok) {
-          items.push({ table, id: guessedId, label: 'Photo', status: 'invalid', reason: result.reason })
+          items.push({
+            table,
+            id: guessedId,
+            label: 'Photo',
+            status: 'invalid',
+            reason: result.reason,
+          })
         } else {
           items.push({
             table,
@@ -217,7 +229,13 @@ export async function planRestore(
       } else {
         const result = validateRecord(table, raw)
         if (!result.ok) {
-          items.push({ table, id: guessedId, label: guessedId, status: 'invalid', reason: result.reason })
+          items.push({
+            table,
+            id: guessedId,
+            label: guessedId,
+            status: 'invalid',
+            reason: result.reason,
+          })
         } else {
           items.push({
             table,
@@ -242,17 +260,22 @@ export async function planRestore(
   if (supported.has('photos')) {
     const backupParents = {
       waypointId: new Set(
-        items.filter((i) => i.table === 'waypoints' && i.status !== 'invalid').map((i) => i.id),
+        items
+          .filter((i) => i.table === 'waypoints' && i.status !== 'invalid')
+          .map((i) => i.id),
       ),
       observationId: new Set(
-        items.filter((i) => i.table === 'observations' && i.status !== 'invalid').map((i) => i.id),
+        items
+          .filter((i) => i.table === 'observations' && i.status !== 'invalid')
+          .map((i) => i.id),
       ),
     }
     const photoItems = items.filter((i) => i.table === 'photos' && i.status === 'new')
     const needLocal = { waypointId: new Set<string>(), observationId: new Set<string>() }
     for (const item of photoItems) {
-      const ownerKey = item.photo!.record.waypointId !== undefined ? 'waypointId' : 'observationId'
-      const owner = String(item.photo!.record[ownerKey])
+      const record = item.photo?.record ?? {}
+      const ownerKey = record.waypointId !== undefined ? 'waypointId' : 'observationId'
+      const owner = String(record[ownerKey])
       if (!backupParents[ownerKey].has(owner)) needLocal[ownerKey].add(owner)
     }
     const localWaypoints = await bulkGetChunked(
@@ -266,8 +289,9 @@ export async function planRestore(
       yielder.tick,
     )
     for (const item of photoItems) {
-      const ownerKey = item.photo!.record.waypointId !== undefined ? 'waypointId' : 'observationId'
-      const owner = String(item.photo!.record[ownerKey])
+      const record = item.photo?.record ?? {}
+      const ownerKey = record.waypointId !== undefined ? 'waypointId' : 'observationId'
+      const owner = String(record[ownerKey])
       const local = ownerKey === 'waypointId' ? localWaypoints : localObservations
       if (!backupParents[ownerKey].has(owner) && !local.has(owner)) {
         item.status = 'invalid'
@@ -296,10 +320,11 @@ export async function planRestore(
       const local = localRows.get(item.id)
       if (!local) continue
       let same: boolean
-      if (table === 'photos') same = await samePhoto(local, item.photo!)
+      if (table === 'photos')
+        same = item.photo ? await samePhoto(local, item.photo) : false
       else if (table === 'settings') {
-        same = stableStringify(local.value) === stableStringify(item.record!.value)
-      } else same = sameRecord(table, local, item.record!)
+        same = stableStringify(local.value) === stableStringify(item.record?.value)
+      } else same = item.record ? sameRecord(table, local, item.record) : false
       item.status = same ? 'identical' : 'conflict'
     }
   }

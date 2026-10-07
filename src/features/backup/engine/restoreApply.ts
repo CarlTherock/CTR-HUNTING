@@ -138,7 +138,11 @@ export async function applyRestore(
       })
       if (!copy) continue
     }
-    const row = buildRow(item, copy ? (idMap[item.table]?.get(item.id) ?? null) : null, remap)
+    const row = buildRow(
+      item,
+      copy ? (idMap[item.table]?.get(item.id) ?? null) : null,
+      remap,
+    )
     ;(writes[item.table] ??= []).push(row)
     added[item.table] = (added[item.table] ?? 0) + 1
   }
@@ -181,7 +185,8 @@ function buildRow(
   remap: (table: BackupTableName, id: unknown) => unknown,
 ): Rec {
   if (item.table === 'photos') {
-    const photo = item.photo!
+    const photo = item.photo
+    if (!photo) throw new Error(`Photo ${item.id} sans données`)
     const row: Rec = { ...photo.record }
     if (copyId) row.id = copyId
     if (row.waypointId !== undefined) row.waypointId = remap('waypoints', row.waypointId)
@@ -198,7 +203,8 @@ function buildRow(
   const row: Rec = { ...item.record }
   if (item.table === 'settings') return row
   if (copyId) row.id = copyId
-  if (row.territoryId !== undefined) row.territoryId = remap('territories', row.territoryId)
+  if (row.territoryId !== undefined)
+    row.territoryId = remap('territories', row.territoryId)
   if (item.table === 'waypoints' || item.table === 'observations') {
     if (Array.isArray(row.photoIds)) {
       row.photoIds = row.photoIds.map((id: unknown) => remap('photos', id))

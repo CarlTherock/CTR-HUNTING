@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test code asserts presence right before use */
 import { afterEach, describe, expect, it } from 'vitest'
 import type Dexie from 'dexie'
 import type { Track, Waypoint } from '@/types'
@@ -28,7 +29,7 @@ afterEach(async () => {
 const wp = (overrides: Partial<Waypoint> & { territoryId?: string } = {}): Waypoint => ({
   id: 'wp-1',
   name: 'Poste',
-  coordinate: { lat: 46.123456789012345, lng: -71.987654321098765 },
+  coordinate: { lat: 46.12345678901234, lng: -71.98765432109876 },
   category: 'stand_blind',
   createdAt: '2026-09-03T12:00:00.000Z',
   updatedAt: '2026-09-04T12:00:00.000Z',
@@ -41,7 +42,13 @@ const track = (overrides: Partial<Track> = {}): Track => ({
   startedAt: '2026-09-05T09:00:00.000Z',
   endedAt: '2026-09-05T10:00:00.000Z',
   points: [
-    { lat: 46.1, lng: -71.1, altitude: 100.5, accuracyMeters: 5, timestamp: '2026-09-05T09:00:00.000Z' },
+    {
+      lat: 46.1,
+      lng: -71.1,
+      altitude: 100.5,
+      accuracyMeters: 5,
+      timestamp: '2026-09-05T09:00:00.000Z',
+    },
     { lat: 46.10001, lng: -71.10002, timestamp: '2026-09-05T09:00:05.000Z' },
   ],
   ...overrides,
@@ -49,8 +56,8 @@ const track = (overrides: Partial<Track> = {}): Track => ({
 
 describe('number formatting', () => {
   it.each([
-    0, -0.5, 46.123456789012345, -71.987654321098765, 90, -180, 3.1234567890123456e-6,
-    1e-7, -2.5e-9, 123456789.123456789,
+    0, -0.5, 46.12345678901234, -71.98765432109876, 90, -180, 3.123456789012346e-6, 1e-7,
+    -2.5e-9, 123456789.12345679,
   ])('writes %s so that it parses back to the identical double', (value) => {
     const text = formatNumber(value)
     expect(text).not.toMatch(/e/i)
@@ -60,7 +67,18 @@ describe('number formatting', () => {
   it('parses numbers strictly', () => {
     expect(parseStrictNumber('46.5')).toBe(46.5)
     expect(parseStrictNumber(' -1e2 ')).toBe(-100)
-    for (const bad of ['', 'abc', '1,5', 'NaN', 'Infinity', '0x10', '1e999', '--1', null, undefined]) {
+    for (const bad of [
+      '',
+      'abc',
+      '1,5',
+      'NaN',
+      'Infinity',
+      '0x10',
+      '1e999',
+      '--1',
+      null,
+      undefined,
+    ]) {
       expect(parseStrictNumber(bad as string | null)).toBeNull()
     }
   })
@@ -109,12 +127,38 @@ describe('GPX export', () => {
 describe('GPX round trip', () => {
   it('returns waypoints and tracks with identical numbers, text and extensions', () => {
     const waypoints: Waypoint[] = [
-      wp({ notes: 'Vent <b>N</b> & "NE" — éèà 🦌', color: '#a855f7', optimalWindDirections: [0, 45, 315] }),
-      wp({ id: 'wp-2', name: 'Petit', coordinate: { lat: 3.1234567890123456e-6, lng: -1.5e-7, altitude: -12.25 }, category: 'water' }),
-      wp({ id: 'wp-3', name: 'Pôle', coordinate: { lat: 90, lng: -180, accuracyMeters: 3.25 }, category: 'hazard' }),
-      wp({ id: 'wp-4', name: 'Zéro', coordinate: { lat: 0, lng: 0 }, category: 'custom' }),
+      wp({
+        notes: 'Vent <b>N</b> & "NE" — éèà 🦌',
+        color: '#a855f7',
+        optimalWindDirections: [0, 45, 315],
+      }),
+      wp({
+        id: 'wp-2',
+        name: 'Petit',
+        coordinate: { lat: 3.123456789012346e-6, lng: -1.5e-7, altitude: -12.25 },
+        category: 'water',
+      }),
+      wp({
+        id: 'wp-3',
+        name: 'Pôle',
+        coordinate: { lat: 90, lng: -180, accuracyMeters: 3.25 },
+        category: 'hazard',
+      }),
+      wp({
+        id: 'wp-4',
+        name: 'Zéro',
+        coordinate: { lat: 0, lng: 0 },
+        category: 'custom',
+      }),
     ]
-    const tracks = [track(), track({ id: 'tr-2', name: 'Vide-ish', points: [{ lat: 1, lng: 2, timestamp: '2026-09-05T09:00:00.000Z' }] })]
+    const tracks = [
+      track(),
+      track({
+        id: 'tr-2',
+        name: 'Vide-ish',
+        points: [{ lat: 1, lng: 2, timestamp: '2026-09-05T09:00:00.000Z' }],
+      }),
+    ]
     const xml = buildGpx({ waypoints, tracks })
     const parsed = parseGpx(xml)
 
@@ -250,7 +294,9 @@ describe('GPX import refusals', () => {
 
   it('refuses a file over the size limit', () => {
     expect(code(() => parseGpx('x'.repeat(10 * 1024 * 1024 + 1)))).toBe('too-large')
-    expect(code(() => parseGpx('<gpx/>'.padEnd(2000, ' '), { maxBytes: 1000 }))).toBe('too-large')
+    expect(code(() => parseGpx('<gpx/>'.padEnd(2000, ' '), { maxBytes: 1000 }))).toBe(
+      'too-large',
+    )
   })
 
   it('refuses too many waypoints before parsing the DOM', () => {
@@ -287,12 +333,19 @@ describe('GPX with the database', () => {
     })
     await database.table('waypoints').bulkAdd([
       wp({ ...{ territoryId: 'terr-1' }, notes: 'a' }),
-      wp({ id: 'wp-2', name: 'Hors territoire', coordinate: { lat: 46.2, lng: -71.9 }, category: 'parking' }),
+      wp({
+        id: 'wp-2',
+        name: 'Hors territoire',
+        coordinate: { lat: 46.2, lng: -71.9 },
+        category: 'parking',
+      }),
     ])
-    await database.table('tracks').bulkAdd([
-      { ...track(), territoryId: 'terr-1' },
-      track({ id: 'tr-2', name: 'Autre trace' }),
-    ])
+    await database
+      .table('tracks')
+      .bulkAdd([
+        { ...track(), territoryId: 'terr-1' },
+        track({ id: 'tr-2', name: 'Autre trace' }),
+      ])
   }
 
   it('exports everything, one territory, one waypoint or one track', async () => {
@@ -301,13 +354,27 @@ describe('GPX with the database', () => {
     const now = new Date(2026, 9, 7, 12)
 
     const all = await exportGpx({ kind: 'all' }, { database, now })
-    expect(all).toMatchObject({ waypointCount: 2, trackCount: 2, fileName: 'ctr-hunting-tout-2026-10-07.gpx' })
+    expect(all).toMatchObject({
+      waypointCount: 2,
+      trackCount: 2,
+      fileName: 'ctr-hunting-tout-2026-10-07.gpx',
+    })
 
-    const terr = await exportGpx({ kind: 'territory', territoryId: 'terr-1' }, { database, now })
-    expect(terr).toMatchObject({ waypointCount: 1, trackCount: 1, fileName: 'ctr-hunting-secteur-nord-2026-10-07.gpx' })
+    const terr = await exportGpx(
+      { kind: 'territory', territoryId: 'terr-1' },
+      { database, now },
+    )
+    expect(terr).toMatchObject({
+      waypointCount: 1,
+      trackCount: 1,
+      fileName: 'ctr-hunting-secteur-nord-2026-10-07.gpx',
+    })
     expect(terr.xml).not.toContain('Hors territoire')
 
-    const one = await exportGpx({ kind: 'waypoint', waypointId: 'wp-2' }, { database, now })
+    const one = await exportGpx(
+      { kind: 'waypoint', waypointId: 'wp-2' },
+      { database, now },
+    )
     expect(one).toMatchObject({ waypointCount: 1, trackCount: 0 })
     expect(one.xml).toContain('Hors territoire')
 
@@ -372,9 +439,17 @@ describe('GPX with the database', () => {
 
   it('never overwrites: a same-id file item with other content gets a new id; unknown territory is dropped', async () => {
     const target = newDb()
-    await target.table('waypoints').add(wp({ name: 'Local', coordinate: { lat: 10, lng: 10 } }))
+    await target
+      .table('waypoints')
+      .add(wp({ name: 'Local', coordinate: { lat: 10, lng: 10 } }))
     const xml = buildGpx({
-      waypoints: [wp({ name: 'Du fichier', coordinate: { lat: 20, lng: 20 }, ...{ territoryId: 'inconnu' } })],
+      waypoints: [
+        wp({
+          name: 'Du fichier',
+          coordinate: { lat: 20, lng: 20 },
+          ...{ territoryId: 'inconnu' },
+        }),
+      ],
       tracks: [],
     })
     const plan = await planGpxImport(parseGpx(xml), { database: target })

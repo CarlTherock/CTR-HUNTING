@@ -23,14 +23,25 @@ export interface GpxExportInput {
   appVersion?: string
 }
 
-// Characters that cannot appear in an XML 1.0 document at all.
-const INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g
+/** Characters that cannot appear in an XML 1.0 document at all. */
+function stripInvalidXmlChars(text: string): string {
+  let out = ''
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0
+    const bad =
+      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) ||
+      code === 0xfffe ||
+      code === 0xffff
+    if (!bad) out += char
+  }
+  return out
+}
 
 export function escapeXml(value: string): string {
   const maybe = value as string & { toWellFormed?: () => string }
-  const wellFormed = typeof maybe.toWellFormed === 'function' ? maybe.toWellFormed() : value
-  return wellFormed
-    .replace(INVALID_XML_CHARS, '')
+  const wellFormed =
+    typeof maybe.toWellFormed === 'function' ? maybe.toWellFormed() : value
+  return stripInvalidXmlChars(wellFormed)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -64,7 +75,10 @@ function tag(name: string, text: string | undefined, indent: string): string {
 function attrs(values: Record<string, string | number | undefined>): string {
   return Object.entries(values)
     .filter(([, v]) => v !== undefined && v !== '')
-    .map(([k, v]) => ` ${k}="${escapeXml(typeof v === 'number' ? formatNumber(v) : String(v))}"`)
+    .map(
+      ([k, v]) =>
+        ` ${k}="${escapeXml(typeof v === 'number' ? formatNumber(v) : String(v))}"`,
+    )
     .join('')
 }
 
@@ -140,7 +154,9 @@ export function buildGpx(input: GpxExportInput): string {
     out.push('    </extensions>\n')
     out.push('    <trkseg>\n')
     for (const point of track.points) {
-      out.push(`      <trkpt lat="${formatNumber(point.lat)}" lon="${formatNumber(point.lng)}">\n`)
+      out.push(
+        `      <trkpt lat="${formatNumber(point.lat)}" lon="${formatNumber(point.lng)}">\n`,
+      )
       if (point.altitude !== undefined && Number.isFinite(point.altitude)) {
         out.push(`        <ele>${formatNumber(point.altitude)}</ele>\n`)
       }

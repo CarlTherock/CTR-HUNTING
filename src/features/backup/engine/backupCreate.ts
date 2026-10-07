@@ -2,11 +2,7 @@ import type Dexie from 'dexie'
 import { db } from '@/database/db'
 import type { Photo } from '@/types'
 import { crc32 } from '../core/crc32'
-import {
-  createYielder,
-  throwIfAborted,
-  type RunOptions,
-} from '../core/tasks'
+import { createYielder, throwIfAborted, type RunOptions } from '../core/tasks'
 import { APP_VERSION } from './appInfo'
 import {
   BACKUP_FORMAT,
@@ -101,8 +97,7 @@ export async function createBackup(
   const jsonTables = tables.filter((name) => name !== 'photos')
   const totalSteps = jsonTables.length + 1 + photoRows.length
   let step = 0
-  const report = (phase: string) =>
-    onProgress?.({ phase, done: step, total: totalSteps })
+  const report = (phase: string) => onProgress?.({ phase, done: step, total: totalSteps })
 
   /** Adds a compressed JSON file, pushed in slices so the thread stays free. */
   async function addJson(path: string, text: string): Promise<void> {

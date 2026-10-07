@@ -257,7 +257,10 @@ function parseManifest(text: string): BackupManifest {
     const value = counts[table]
     if (value === undefined) continue
     if (!isNonNegativeInt(value)) {
-      throw new BackupFormatError('corrupt', `Le manifeste est invalide (compte de « ${table} »).`)
+      throw new BackupFormatError(
+        'corrupt',
+        `Le manifeste est invalide (compte de « ${table} »).`,
+      )
     }
     cleanCounts[table] = value
   }
@@ -270,7 +273,10 @@ function parseManifest(text: string): BackupManifest {
       path.includes('..') ||
       path.startsWith('/')
     ) {
-      throw new BackupFormatError('corrupt', 'Le manifeste est invalide (liste des fichiers).')
+      throw new BackupFormatError(
+        'corrupt',
+        'Le manifeste est invalide (liste des fichiers).',
+      )
     }
     cleanFiles[path] = { bytes: entry.bytes, crc32: entry.crc32 }
   }

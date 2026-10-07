@@ -2,6 +2,7 @@
 // Node environment on purpose: its structuredClone round-trips real Blobs
 // through fake-indexeddb, so photo bytes can be compared byte for byte
 // (jsdom's Blob is silently emptied by fake-indexeddb).
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test code asserts presence right before use */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Dexie from 'dexie'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
@@ -36,11 +37,7 @@ afterEach(async () => {
   }
 })
 
-async function restoreAll(
-  file: Blob,
-  target: Dexie,
-  mode: ConflictMode = 'keep-local',
-) {
+async function restoreAll(file: Blob, target: Dexie, mode: ConflictMode = 'keep-local') {
   const parsed = await readBackup(file)
   const plan = await planRestore(parsed, { database: target })
   const report = await applyRestore(plan, { database: target, mode })
@@ -127,8 +124,8 @@ describe('full backup round trip', () => {
       (w) => w.id === 'wp-1',
     )
     expect(wp!.coordinate).toEqual({
-      lat: 46.123456789012345,
-      lng: -71.987654321098765,
+      lat: 46.12345678901234,
+      lng: -71.98765432109876,
       altitude: 231.4,
       accuracyMeters: 4.5,
     })
@@ -150,7 +147,9 @@ describe('full backup round trip', () => {
 
     const edited = await target.table('photos').get('ph-1')
     expect(await bytesOfBlob(edited.blob)).toEqual(Array.from(randomBytes(2048, 7)))
-    expect(await bytesOfBlob(edited.originalBlob)).toEqual(Array.from(randomBytes(4096, 9)))
+    expect(await bytesOfBlob(edited.originalBlob)).toEqual(
+      Array.from(randomBytes(4096, 9)),
+    )
     expect(edited.blob.type).toBe('image/jpeg')
 
     const plain = await target.table('photos').get('ph-2')
@@ -174,7 +173,9 @@ describe('full backup round trip', () => {
     await seedEverything(source)
     const { blob } = await createBackup({ database: source })
     const files = unzipSync(await bytesFromBlob(blob))
-    const everything = Object.values(files).map((f) => strFromU8(f)).join('\n')
+    const everything = Object.values(files)
+      .map((f) => strFromU8(f))
+      .join('\n')
     expect(everything).not.toContain('SECRET-DO-NOT-EXPORT')
     expect(everything).not.toContain('someApiKey')
     expect(everything).not.toContain('lastWeatherForecast')
@@ -277,7 +278,10 @@ describe('refusing bad files (nothing is written)', () => {
 
   it('refuses a truncated archive', async () => {
     const archive = await validArchive()
-    await expectRefused(new Blob([archive.subarray(0, Math.floor(archive.length * 0.6)) as BlobPart]), 'corrupt')
+    await expectRefused(
+      new Blob([archive.subarray(0, Math.floor(archive.length * 0.6)) as BlobPart]),
+      'corrupt',
+    )
   })
 
   it('refuses an archive whose photo bytes were altered (checksum)', async () => {
@@ -308,7 +312,13 @@ describe('refusing bad files (nothing is written)', () => {
   })
 
   it('refuses a zip that is not one of our backups', async () => {
-    const file = new Blob([zipSync({ 'manifest.json': strToU8('{"format":"autre","schemaVersion":1,"counts":{},"files":{}}') }) as BlobPart])
+    const file = new Blob([
+      zipSync({
+        'manifest.json': strToU8(
+          '{"format":"autre","schemaVersion":1,"counts":{},"files":{}}',
+        ),
+      }) as BlobPart,
+    ])
     await expectRefused(file, 'unknown-format')
   })
 
@@ -323,15 +333,18 @@ describe('refusing bad files (nothing is written)', () => {
     await expect(readBackup(file)).rejects.toThrow(/plus récent/)
   })
 
-  it.each([0, -1, 1.5, '1', null])('refuses an invalid schema version %j', async (version) => {
-    const archive = await validArchive()
-    const file = tamper(archive, (files) => {
-      const manifest = JSON.parse(strFromU8(files['manifest.json']))
-      manifest.schemaVersion = version
-      files['manifest.json'] = strToU8(JSON.stringify(manifest))
-    })
-    await expectRefused(file, 'invalid-version')
-  })
+  it.each([0, -1, 1.5, '1', null])(
+    'refuses an invalid schema version %j',
+    async (version) => {
+      const archive = await validArchive()
+      const file = tamper(archive, (files) => {
+        const manifest = JSON.parse(strFromU8(files['manifest.json']))
+        manifest.schemaVersion = version
+        files['manifest.json'] = strToU8(JSON.stringify(manifest))
+      })
+      await expectRefused(file, 'invalid-version')
+    },
+  )
 
   it('refuses a record count that disagrees with the manifest', async () => {
     const archive = await validArchive()
@@ -357,8 +370,14 @@ describe('record validation and orphans', () => {
     waypoints.push({ ...waypoints[0], id: 'wp-2' }) // duplicate id inside the backup
     files['data/waypoints.json'] = strToU8(JSON.stringify(waypoints))
     const photos = JSON.parse(strFromU8(files['data/photos.json']))
-    photos.push({ ...photos[0], record: { ...photos[0].record, id: 'orphan', waypointId: 'ghost' } })
-    photos.push({ ...photos[0], record: { ...photos[0].record, id: 'both', observationId: 'ob-1' } })
+    photos.push({
+      ...photos[0],
+      record: { ...photos[0].record, id: 'orphan', waypointId: 'ghost' },
+    })
+    photos.push({
+      ...photos[0],
+      record: { ...photos[0].record, id: 'both', observationId: 'ob-1' },
+    })
     files['data/photos.json'] = strToU8(JSON.stringify(photos))
     const manifest = JSON.parse(strFromU8(files['manifest.json']))
     const { crc32 } = await import('../core/crc32')
@@ -408,11 +427,21 @@ describe('record validation and orphans', () => {
     )
     const observationsJson = strToU8(
       JSON.stringify([
-        { id: 'old-o', coordinate: { lat: 46, lng: -71 }, timestamp: '2026-01-01T00:00:00.000Z' },
+        {
+          id: 'old-o',
+          coordinate: { lat: 46, lng: -71 },
+          timestamp: '2026-01-01T00:00:00.000Z',
+        },
       ]),
     )
-    minimal.files['data/waypoints.json'] = { bytes: waypointsJson.length, crc32: crc32(waypointsJson) }
-    minimal.files['data/observations.json'] = { bytes: observationsJson.length, crc32: crc32(observationsJson) }
+    minimal.files['data/waypoints.json'] = {
+      bytes: waypointsJson.length,
+      crc32: crc32(waypointsJson),
+    }
+    minimal.files['data/observations.json'] = {
+      bytes: observationsJson.length,
+      crc32: crc32(observationsJson),
+    }
     const file = new Blob([
       zipSync({
         'manifest.json': strToU8(JSON.stringify(minimal)),
@@ -424,7 +453,9 @@ describe('record validation and orphans', () => {
     const { report } = await restoreAll(file, target)
     expect(report.invalid).toEqual([])
     expect(report.addedTotal).toBe(2)
-    expect((await target.table('waypoints').get('old-1')).updatedAt).toBe('2026-01-01T00:00:00.000Z')
+    expect((await target.table('waypoints').get('old-1')).updatedAt).toBe(
+      '2026-01-01T00:00:00.000Z',
+    )
     expect((await target.table('observations').get('old-o')).notes).toBe('')
   })
 })
@@ -452,9 +483,13 @@ describe('duplicates and conflicts', () => {
     const target = newDb()
     await seedEverything(target)
     // Local diverged: edited name+notes of wp-1, a different photo for ph-2.
-    await target.table('waypoints').update('wp-1', { name: 'Poste modifié ici', notes: 'local' })
+    await target
+      .table('waypoints')
+      .update('wp-1', { name: 'Poste modifié ici', notes: 'local' })
     const otherPhoto = blobOf(randomBytes(1500, 99))
-    await target.table('photos').update('ph-2', { blob: otherPhoto, originalBlob: otherPhoto })
+    await target
+      .table('photos')
+      .update('ph-2', { blob: otherPhoto, originalBlob: otherPhoto })
     return { blob, target }
   }
 
@@ -465,10 +500,9 @@ describe('duplicates and conflicts', () => {
     expect(plan.preview.waypoints).toMatchObject({ identical: 1, conflict: 1, new: 0 })
     expect(plan.preview.photos).toMatchObject({ conflict: 1, identical: 2 })
     expect(report.addedTotal).toBe(0)
-    expect(report.conflicts.map((c) => `${c.table}:${c.id}:${c.resolution}`).sort()).toEqual([
-      'photos:ph-2:kept-local',
-      'waypoints:wp-1:kept-local',
-    ])
+    expect(
+      report.conflicts.map((c) => `${c.table}:${c.id}:${c.resolution}`).sort(),
+    ).toEqual(['photos:ph-2:kept-local', 'waypoints:wp-1:kept-local'])
     expect(await snapshot(target)).toEqual(before)
   })
 
@@ -477,7 +511,9 @@ describe('duplicates and conflicts', () => {
     const localWp = await target.table('waypoints').get('wp-1')
     const { report } = await restoreAll(blob, target, 'keep-both')
 
-    expect(report.conflicts.every((c) => c.resolution === 'copy-added' && c.newId)).toBe(true)
+    expect(report.conflicts.every((c) => c.resolution === 'copy-added' && c.newId)).toBe(
+      true,
+    )
     // Local waypoint: identical, coordinates untouched.
     expect(await target.table('waypoints').get('wp-1')).toEqual(localWp)
 
@@ -513,9 +549,14 @@ describe('duplicates and conflicts', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
     })
     const { report } = await restoreAll(blob, target, 'keep-both')
-    const copy = (await target.table('waypoints').toArray()).find((w) => w.name.endsWith('(importé)'))!
+    const copy = (await target.table('waypoints').toArray()).find((w) =>
+      w.name.endsWith('(importé)'),
+    )!
     expect(copy.id).not.toBe('wp-1')
-    expect((await target.table('waypoints').get('wp-1')).coordinate).toEqual({ lat: 10, lng: 10 })
+    expect((await target.table('waypoints').get('wp-1')).coordinate).toEqual({
+      lat: 10,
+      lng: 10,
+    })
     const photos = await target.table('photos').toArray()
     const own = photos.filter((p) => p.waypointId === copy.id)
     expect(own.map((p) => p.id).sort()).toEqual(['ph-1', 'ph-2'])
@@ -566,7 +607,9 @@ describe('duplicates and conflicts', () => {
     await target.table('settings').add({ key: 'fieldModeEnabled', value: false })
     const { report } = await restoreAll(blob, target, 'keep-both')
     expect((await target.table('settings').get('fieldModeEnabled')).value).toBe(false)
-    expect(report.conflicts.find((c) => c.table === 'settings')?.resolution).toBe('kept-local')
+    expect(report.conflicts.find((c) => c.table === 'settings')?.resolution).toBe(
+      'kept-local',
+    )
   })
 })
 
@@ -598,8 +641,12 @@ describe('atomic write', () => {
       throw new Error('panne injectée')
     }) as unknown as typeof observations.bulkAdd)
 
-    await expect(applyRestore(plan, { database: target })).rejects.toBeInstanceOf(RestoreWriteError)
-    await expect(applyRestore(plan, { database: target })).rejects.toThrow(/aucune donnée n’a été ajoutée/)
+    await expect(applyRestore(plan, { database: target })).rejects.toBeInstanceOf(
+      RestoreWriteError,
+    )
+    await expect(applyRestore(plan, { database: target })).rejects.toThrow(
+      /aucune donnée n’a été ajoutée/,
+    )
     expect(spy).toHaveBeenCalled()
     expect(await snapshot(target)).toEqual(before)
     spy.mockRestore()
@@ -624,8 +671,13 @@ describe('atomic write', () => {
       createdAt: '2026-08-01T00:00:00.000Z',
       updatedAt: '2026-08-01T00:00:00.000Z',
     })
-    await expect(applyRestore(plan, { database: target })).rejects.toBeInstanceOf(RestoreWriteError)
-    expect((await target.table('waypoints').get('wp-1')).coordinate).toEqual({ lat: 1, lng: 2 })
+    await expect(applyRestore(plan, { database: target })).rejects.toBeInstanceOf(
+      RestoreWriteError,
+    )
+    expect((await target.table('waypoints').get('wp-1')).coordinate).toEqual({
+      lat: 1,
+      lng: 2,
+    })
     expect(await target.table('tracks').count()).toBe(0)
     expect(await target.table('photos').count()).toBe(0)
   })
