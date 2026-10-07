@@ -26,6 +26,7 @@ import {
   resolveInitialBaseLayer,
   startupFallbackNotice,
 } from '@/features/layers/startupBaseLayer'
+import { baseLayerLabel } from '@/features/layers/baseLayerOptions'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { GpsStatusBadge } from '@/features/gps/components/GpsStatusBadge'
@@ -36,6 +37,7 @@ import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { canRetryArea } from '@/features/offline/areaStatus'
 import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
 import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
 import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
@@ -244,6 +246,30 @@ export function MapPage() {
     appliedBaseLayerRef.current = current
     instanceRef.current?.setBaseLayer(current)
   }, [baseLayer])
+
+  // "Réessayer" requested from Réglages: run the existing `retryArea` once the
+  // map exists and the areas are loaded. Only on the area's own base layer
+  // (the sweep caches the layer on screen) — otherwise say so, never guess.
+  const pendingRetryAreaId = useOfflineStore((state) => state.pendingRetryAreaId)
+  const offlineLoaded = useOfflineStore((state) => state.loaded)
+  const offlineAreas = useOfflineStore((state) => state.areas)
+  useEffect(() => {
+    const map = instanceRef.current
+    if (!pendingRetryAreaId || !offlineLoaded || !map) return
+    const offline = useOfflineStore.getState()
+    offline.clearPendingRetry()
+    const area = offlineAreas.find((a) => a.id === pendingRetryAreaId)
+    if (!area || !canRetryArea(area)) return
+    if (area.baseLayer !== baseLayer) {
+      useLayersStore
+        .getState()
+        .setBaseLayerNotice(
+          `Pour réessayer « ${area.name} », choisissez d’abord le fond « ${baseLayerLabel(area.baseLayer)} », puis touchez « Réessayer le téléchargement ».`,
+        )
+      return
+    }
+    void offline.retryArea(map, area).catch(() => undefined)
+  }, [pendingRetryAreaId, offlineLoaded, offlineAreas, baseLayer])
 
   useEffect(() => {
     if (appliedOverlaysRef.current === overlays) return

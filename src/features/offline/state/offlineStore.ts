@@ -47,6 +47,11 @@ interface OfflineState {
   /** Resumes an incomplete / interrupted / failed area on the same record:
    * tiles already cached are reused, only missing ones are re-fetched. */
   retryArea: (map: MapInstance, area: OfflineArea) => Promise<void>
+  /** Retry requested from Réglages (no map there): consumed by the Carte page
+   * once its map exists, which then calls `retryArea` — the same function. */
+  pendingRetryAreaId: string | null
+  requestRetry: (areaId: string) => void
+  clearPendingRetry: () => void
   cancelDownload: () => void
   dismissResult: () => void
   deleteArea: (id: string) => Promise<void>
@@ -241,6 +246,10 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
       const current = get().areas.find((a) => a.id === area.id) ?? area
       await runDownload(map, current, current.bounds, current.minZoom, current.maxZoom)
     },
+
+    pendingRetryAreaId: null,
+    requestRetry: (areaId) => set({ pendingRetryAreaId: areaId }),
+    clearPendingRetry: () => set({ pendingRetryAreaId: null }),
 
     cancelDownload: () => activeAbortController?.abort(),
 

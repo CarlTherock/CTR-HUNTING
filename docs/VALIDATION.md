@@ -58,7 +58,7 @@ contrôles visibles et non masqués, cibles tactiles ≥ 44 px (écrans tactiles
 - `immersive.spec.ts` : mode plein écran de la carte.
 - `startup-layer.spec.ts` : fond hybride au lancement à froid, fond conservé pendant la session, ancienne préférence sans effet, repli explicite (style 403, y compris avec un style déjà en cache).
 - `offline.spec.ts` : démarrage à froid sans réseau (shell, moteur, contenu carte).
-- `offline-download.spec.ts` : téléchargement de zone avec échecs de tuiles simulés → « incomplète » avec les compteurs, puis « Réessayer » → « complète ».
+- `offline-download.spec.ts` : téléchargement de zone avec échecs de tuiles simulés → « incomplète » avec les compteurs, puis « Réessayer » (depuis la carte, et depuis Réglages) → « complète ».
 - `csp.spec.ts` : politique CSP effective, avec contrôle négatif.
 - `tracks.spec.ts` : trace interrompue récupérée après rechargement.
 - `waypoints.spec.ts` : brouillon, annulation, enregistrement, verrouillage de la position.
@@ -119,6 +119,10 @@ Conséquences :
   ou en échec : les tuiles déjà reçues sont réutilisées, seules les manquantes
   sont redemandées. Annuler ou échouer ne supprime jamais les tuiles déjà en
   cache.
+- **Depuis Réglages**, « Réessayer » (zones incomplètes, interrompues ou en
+  échec) ouvre la page Carte puis appelle la même fonction de reprise. Le fond
+  de carte affiché doit être celui de la zone ; sinon un message l'indique et
+  rien n'est téléchargé.
 - Le cache d'un style n'est servi qu'après une **panne réseau** (hors ligne,
   délai dépassé, 5xx). Une réponse 401/403/404 du fournisseur n'est pas masquée
   par la copie en cache : le repli explicite vers le fond suivant se déclenche.

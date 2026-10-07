@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import {
   Card,
   CardHeader,
@@ -53,6 +54,8 @@ export function SettingsPage() {
   const loaded = useOfflineStore((state) => state.loaded)
   const load = useOfflineStore((state) => state.load)
   const deleteArea = useOfflineStore((state) => state.deleteArea)
+  const requestRetry = useOfflineStore((state) => state.requestRetry)
+  const navigate = useNavigate()
 
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
   const fieldModeLoaded = useFieldModeStore((state) => state.loaded)
@@ -168,10 +171,24 @@ export function SettingsPage() {
                       </span>
                     )}
                     {canRetryArea(area) && (
-                      <span className="text-ink-500 block text-xs">
-                        Pour réessayer : ouvrez la page Carte avec le fond «{' '}
-                        {baseLayerLabel(area.baseLayer)} ».
-                      </span>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            requestRetry(area.id)
+                            navigate('/map')
+                          }}
+                          className="border-surface-600 bg-surface-800 text-ink-100 hover:bg-surface-700 mt-2 flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium"
+                        >
+                          <RefreshCw size={14} aria-hidden="true" />
+                          Réessayer
+                        </button>
+                        <span className="text-ink-500 mt-1 block text-xs">
+                          Ouvre la page Carte et relance le téléchargement avec le fond «{' '}
+                          {baseLayerLabel(area.baseLayer)} » (il doit être le fond
+                          affiché).
+                        </span>
+                      </>
                     )}
                     {area.summary &&
                       (area.summary.failures.length > 0 ||

@@ -18,6 +18,10 @@ export const GUIDANCE_DISCLAIMER =
 const ICON_BUTTON =
   'text-ink-300 hover:bg-surface-800 hover:text-ink-100 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg'
 
+/** Short landscape screens (phone turned sideways): the open panel would
+ * crowd the map and the tool rail, so it folds to its one-line summary. */
+const SHORT_LANDSCAPE = '(orientation: landscape) and (max-height: 480px)'
+
 const TONE_TO_VARIANT = {
   success: 'success',
   warning: 'warning',
@@ -84,6 +88,19 @@ function ActiveGuidance({
   const setCollapsed = useGuidanceStore((state) => state.setCollapsed)
   const stop = useGuidanceStore((state) => state.stop)
   const nowMs = useGpsClock(1000)
+
+  // Fold the panel on a short landscape screen (at start and on rotation);
+  // the user can still expand it, and its body scrolls inside the panel.
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(SHORT_LANDSCAPE)
+    const fold = () => {
+      if (query.matches) setCollapsed(true)
+    }
+    fold()
+    query.addEventListener('change', fold)
+    return () => query.removeEventListener('change', fold)
+  }, [setCollapsed])
 
   // Declination needs the position; a stale fix is fine for that (it moves
   // by hundredths of a degree per kilometre) — it is NOT used for guidance.

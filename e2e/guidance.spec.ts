@@ -625,6 +625,12 @@ for (const viewport of VIEWPORTS) {
         page,
         'Mirador nord avec un nom particulièrement long pour tester',
       )
+      // Short landscape: the panel starts folded (and expands on demand).
+      if (viewport.width > viewport.height && viewport.height <= 480) {
+        await expect(page.getByTestId('guidance-summary')).toBeVisible()
+        await expectLayoutOk(page, 'replié au départ')
+        await page.getByRole('button', { name: 'Agrandir' }).click()
+      }
       await expect(page.getByTestId('guidance-distance')).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Activer la boussole' }),
@@ -649,14 +655,35 @@ for (const viewport of VIEWPORTS) {
         })
         .toBeLessThanOrEqual(2)
       if (viewport.width === 320) {
-        // 568x320 is outside the required matrix: the app's own tool rail
-        // collapses into a strip there. Only check the panel stays usable.
+        // 568x320 (short landscape): the panel folds itself; its buttons
+        // must be on screen and actually tappable (not covered).
+        await expect(page.getByTestId('guidance-summary')).toBeVisible()
         const m = await measureLayout(page)
         expect(m.document.scrollWidth).toBeLessThanOrEqual(m.document.clientWidth)
         expect(m.document.scrollHeight).toBeLessThanOrEqual(m.document.clientHeight)
+        for (const name of ['Arrêter le guidage', 'Agrandir']) {
+          const button = page.getByRole('button', { name })
+          await expect(button).toBeVisible()
+          const b = await button.boundingBox()
+          expect(b?.width ?? 0).toBeGreaterThanOrEqual(43.5)
+          expect(b?.height ?? 0).toBeGreaterThanOrEqual(43.5)
+          expect(
+            await button.evaluate((el) => {
+              const r = el.getBoundingClientRect()
+              const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+              return hit !== null && el.contains(hit)
+            }),
+            `${name} masqué`,
+          ).toBe(true)
+        }
+        // Expanding keeps the buttons reachable (the body scrolls inside).
+        await page.getByRole('button', { name: 'Agrandir' }).click()
+        await expect(page.getByTestId('guidance-body')).toBeVisible()
         await expect(
           page.getByRole('button', { name: 'Arrêter le guidage' }),
         ).toBeVisible()
+        const panelBox = await page.getByTestId('guidance-panel').boundingBox()
+        expect(panelBox?.height ?? 999).toBeLessThanOrEqual(320 * 0.76)
       } else {
         await expectLayoutOk(page, 'après rotation')
       }

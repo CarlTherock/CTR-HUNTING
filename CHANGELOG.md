@@ -21,6 +21,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 ### Changed
 
+- Finitions : distances avec virgule décimale française (« 2,31 km ») ; badges de phase (P1/P2…) retirés de la navigation et des raccourcis ; panneau de guidage replié par défaut en paysage court (corps défilant, boutons ≥ 44 px) ; « Réessayer » dans Réglages pour les téléchargements incomplets.
 - Interface entièrement en français, `prefers-reduced-motion`, pauses explicites des animations, cibles tactiles ≥ 44 px.
 - `MapLibreProvider` découpé en modules ; l'UI n'importe plus la base de données.
 

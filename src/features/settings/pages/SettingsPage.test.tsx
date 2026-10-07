@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { SettingsPage } from './SettingsPage'
 import { estimateStorageUsage } from '@/offline/tileCache'
 import { trackUnhandledRejections } from '@/test/unhandledRejections'
@@ -33,7 +34,14 @@ const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
 // racing call), removes the race entirely instead of trying to out-wait it.
 async function renderSettled() {
   await useOfflineStore.getState().load()
-  render(<SettingsPage />)
+  render(
+    <MemoryRouter initialEntries={['/settings']}>
+      <Routes>
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/map" element={<p>Page Carte</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 afterEach(async () => {
@@ -48,6 +56,7 @@ afterEach(async () => {
     selectedZoom: null,
     activeAreaId: null,
     downloadProgress: null,
+    pendingRetryAreaId: null,
   })
   useFieldModeStore.setState({ enabled: false, loaded: false })
 })
@@ -115,7 +124,11 @@ describe('SettingsPage', () => {
         },
       ],
     })
-    render(<SettingsPage />)
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByText('Aucune zone hors ligne pour le moment')).toBeInTheDocument()
     expect(screen.queryByText('Still downloading')).not.toBeInTheDocument()
@@ -189,8 +202,46 @@ describe('SettingsPage', () => {
     expect(
       screen.getByText(/Échec · HTTP 503 · https:\/\/tiles\.test\/12\/1\/2\.pbf/),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Pour réessayer/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument()
     expect(screen.queryByText(/prête/i)).not.toBeInTheDocument()
+  })
+
+  it('«\u00a0Réessayer\u00a0» only for incomplete areas: queues the retry and opens the map', async () => {
+    const base = {
+      bounds: BOUNDS,
+      minZoom: 12,
+      maxZoom: 12,
+      baseLayer: 'outdoor' as const,
+      tileCount: 4,
+      tilesDownloaded: 2,
+      bytesDownloaded: 2000,
+      tileUrls: [],
+      createdAt: '2026-08-16T00:00:00.000Z',
+    }
+    await db.offlineAreas.add({
+      ...base,
+      id: 'inc',
+      name: 'Zone partielle',
+      status: 'incomplete',
+      summary: summaryFixture({ requested: 4, succeeded: 2, failed: 2 }),
+    })
+    await db.offlineAreas.add({
+      ...base,
+      id: 'ok',
+      name: 'Zone complète',
+      status: 'complete',
+      tilesDownloaded: 4,
+      summary: summaryFixture({ requested: 4, succeeded: 4, failed: 0 }),
+    })
+    const user = userEvent.setup()
+    await renderSettled()
+
+    const buttons = screen.getAllByRole('button', { name: 'Réessayer' })
+    expect(buttons).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Réessayer' }))
+
+    expect(useOfflineStore.getState().pendingRetryAreaId).toBe('inc')
+    expect(screen.getByText('Page Carte')).toBeInTheDocument()
   })
 
   it('deleting an area removes it from the list and from Dexie', async () => {

@@ -78,4 +78,41 @@ test.describe('téléchargement de zone hors ligne', () => {
     await expect(page.getByText('Terminée', { exact: true })).toBeVisible()
     await expect(page.getByText('Zone hors ligne 2')).toHaveCount(0)
   })
+
+  test('« Réessayer » depuis Réglages : ouvre la carte et reprend la même zone', async ({
+    page,
+    backend,
+  }) => {
+    test.setTimeout(240_000)
+    const canvas = page.locator('canvas.maplibregl-canvas')
+    await page.goto('map')
+    await expect(canvas).toBeVisible()
+
+    await page.getByRole('button', { name: 'Outils' }).click()
+    await page.getByRole('button', { name: 'Télécharger cette zone hors ligne' }).click()
+    await page.getByRole('button', { name: 'Moins de niveaux de zoom' }).click()
+    await page.getByRole('button', { name: 'Moins de niveaux de zoom' }).click()
+    backend.failTiles((url) => {
+      const m = /\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(url.pathname)
+      return m !== null && (Number(m[2]) + Number(m[3])) % 2 === 0
+    })
+    await page.getByRole('button', { name: 'Lancer le téléchargement' }).click()
+
+    const banner = page.getByRole('status').filter({ hasText: 'Zone hors ligne 1' })
+    await expect(banner).toContainText('Incomplète', { timeout: 120_000 })
+    await banner
+      .getByRole('button', { name: 'Fermer le résultat du téléchargement' })
+      .click()
+
+    // Failures lifted; retry from Réglages (no map there).
+    backend.failTiles(null)
+    await page.getByRole('link', { name: /Réglages/ }).click()
+    await expect(page.getByText('Incomplète', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Réessayer', exact: true }).click()
+
+    await expect(page).toHaveURL(/\/map$/)
+    const done = page.getByRole('status').filter({ hasText: 'Zone hors ligne 1' })
+    await expect(done).toContainText('Terminée', { timeout: 120_000 })
+    await expect(done).toContainText('0 échec')
+  })
 })
