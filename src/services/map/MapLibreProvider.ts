@@ -65,6 +65,7 @@ export class MapLibreProvider implements MapProvider {
     onDraftMove,
     onUserInteraction,
     onBaseLayerError,
+    onRasterOverlayStatus,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -101,7 +102,7 @@ export class MapLibreProvider implements MapProvider {
     const analysisHeatmapLayer = createAnalysisHeatmapLayer(map, container)
     const markers = createMarkerController(map, { onWaypointClick, onDraftMove })
     const pathLayers = createPathLayers(map)
-    const rasterOverlays = createRasterOverlays(map)
+    const rasterOverlays = createRasterOverlays(map, onRasterOverlayStatus)
     const weatherFrames = createWeatherFrames(map)
 
     // Re-applied on every style load — including the first one, and every
@@ -235,8 +236,13 @@ export class MapLibreProvider implements MapProvider {
       isWeatherFrameReady(key: string): boolean {
         return weatherFrames.isReady(key)
       },
-      setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number) {
-        rasterOverlays.set(id, tileUrlTemplate, opacity)
+      setRasterOverlay(
+        id: string,
+        tileUrlTemplate: string | null,
+        opacity: number,
+        attribution?: string,
+      ) {
+        rasterOverlays.set(id, tileUrlTemplate, opacity, attribution)
       },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         // Terrain itself stays set either way — "2D" means "real scale,

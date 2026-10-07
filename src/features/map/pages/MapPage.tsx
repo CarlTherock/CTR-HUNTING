@@ -1,4 +1,4 @@
-import type { MapBaseLayerId } from '@/types'
+import type { ForestLayerId, MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
@@ -39,7 +39,10 @@ import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaCon
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { canRetryArea } from '@/features/offline/areaStatus'
 import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
-import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
+import {
+  effectiveOpacity,
+  useForestLayersStore,
+} from '@/features/forest-layers/state/forestLayersStore'
 import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
@@ -123,6 +126,7 @@ export function MapPage() {
   const weatherMapOpacity = useWeatherMapStore((state) => state.opacity)
   const forestLayersEnabled = useForestLayersStore((state) => state.enabled)
   const forestLayersOpacity = useForestLayersStore((state) => state.opacity)
+  const forestLayerOpacities = useForestLayersStore((state) => state.layerOpacity)
 
   // Field Mode's "low power draw" requirement: turning it on also turns
   // off the two continuously-animated canvas layers (wind flow field,
@@ -205,6 +209,13 @@ export function MapPage() {
       onUserInteraction: () => useFollowStore.getState().pauseForUserGesture(),
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
       onDraftMove: (coordinate) => useWaypointsStore.getState().moveDraft(coordinate),
+      // Government overlays: surface "loading / loaded / error" in the panel.
+      onRasterOverlayStatus: (overlayId, status) => {
+        if (!overlayId.startsWith('forest-')) return
+        useForestLayersStore
+          .getState()
+          .setStatus(overlayId.slice('forest-'.length) as ForestLayerId, status)
+      },
       onBaseLayerError: (failed) => {
         const state = useLayersStore.getState()
         failedBaseLayers.push(failed)
@@ -426,10 +437,14 @@ export function MapPage() {
       instanceRef.current?.setRasterOverlay(
         `forest-${option.id}`,
         forestLayersEnabled[option.id] ? forestLayerTileUrl(option.id) : null,
-        forestLayersOpacity,
+        effectiveOpacity(
+          { opacity: forestLayersOpacity, layerOpacity: forestLayerOpacities },
+          option.id,
+        ),
+        option.attribution,
       )
     }
-  }, [forestLayersEnabled, forestLayersOpacity])
+  }, [forestLayersEnabled, forestLayersOpacity, forestLayerOpacities])
 
   useEffect(() => {
     if (!heatmapEnabled) {
@@ -647,7 +662,7 @@ export function MapPage() {
                   }
                   viewCenter={view.center}
                 />
-                <ForestLayersControl />
+                <ForestLayersControl currentZoom={view.zoom} />
                 <AnalysisControl />
                 <HeatmapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}

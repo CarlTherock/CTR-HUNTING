@@ -28,6 +28,18 @@ describe('buildCsp', () => {
     expect(directive('base-uri')).toBe("'self'")
   })
 
+  it('allows exactly the Québec government hosts used by the forest/LiDAR/territory layers', () => {
+    for (const host of [
+      'https://geoegl.msp.gouv.qc.ca',
+      'https://geo.environnement.gouv.qc.ca',
+      'https://servicescarto.mrnf.gouv.qc.ca',
+    ]) {
+      expect(directive('img-src')).toContain(host)
+      expect(directive('connect-src')).toContain(host)
+    }
+    expect(directive('img-src')).not.toContain('*.gouv.qc.ca')
+  })
+
   it('adds extra hosts (E2E simulated backend) only when asked', () => {
     expect(csp).not.toContain('e2e.test')
     expect(buildCsp(['https://tiles.e2e.test'])).toContain('https://tiles.e2e.test')
