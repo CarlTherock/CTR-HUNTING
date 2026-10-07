@@ -155,6 +155,21 @@ function renderWaypointElement(el: HTMLDivElement, waypoint: Waypoint): void {
   el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`
 }
 
+/** Marker of a waypoint that is not saved yet: a dashed ring, visibly
+ * different from saved markers, and the only draggable one. */
+function createDraftElement(): HTMLDivElement {
+  const el = document.createElement('div')
+  el.style.width = '34px'
+  el.style.height = '34px'
+  el.style.cursor = 'grab'
+  el.style.borderRadius = '50%'
+  el.style.background = 'rgba(255,255,255,0.85)'
+  el.style.border = '3px dashed #f59e0b'
+  el.style.boxShadow = '0 1px 6px rgba(0,0,0,0.55)'
+  el.setAttribute('data-testid', 'draft-waypoint-marker')
+  return el
+}
+
 const TRACK_PREVIEW_SOURCE_ID = 'track-preview'
 const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
 
@@ -632,7 +647,7 @@ export class MapLibreProvider implements MapProvider {
     onViewChange,
     onMapClick,
     onWaypointClick,
-    onWaypointDragEnd,
+    onDraftMove,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -888,6 +903,7 @@ export class MapLibreProvider implements MapProvider {
     }
 
     let userMarker: Marker | null = null
+    let draftMarker: Marker | null = null
     const waypointMarkers = new Map<string, Marker>()
 
     return {
@@ -942,15 +958,10 @@ export class MapLibreProvider implements MapProvider {
             e.stopPropagation()
             onWaypointClick?.(waypoint.id)
           })
-          const marker = new Marker({ element: el, anchor: 'center', draggable: true })
+          // Never draggable: a saved waypoint's location is locked.
+          const marker = new Marker({ element: el, anchor: 'center', draggable: false })
             .setLngLat([waypoint.coordinate.lng, waypoint.coordinate.lat])
             .addTo(map)
-          if (onWaypointDragEnd) {
-            marker.on('dragend', () => {
-              const lngLat = marker.getLngLat()
-              onWaypointDragEnd(waypoint.id, { lat: lngLat.lat, lng: lngLat.lng })
-            })
-          }
           waypointMarkers.set(waypoint.id, marker)
         }
         for (const [id, marker] of waypointMarkers) {
@@ -958,6 +969,29 @@ export class MapLibreProvider implements MapProvider {
             marker.remove()
             waypointMarkers.delete(id)
           }
+        }
+      },
+      setDraftWaypoint(coordinate: Coordinate | null) {
+        if (!coordinate) {
+          draftMarker?.remove()
+          draftMarker = null
+          return
+        }
+        if (!draftMarker) {
+          const marker = new Marker({
+            element: createDraftElement(),
+            anchor: 'center',
+            draggable: true,
+          })
+            .setLngLat([coordinate.lng, coordinate.lat])
+            .addTo(map)
+          marker.on('dragend', () => {
+            const lngLat = marker.getLngLat()
+            onDraftMove?.({ lat: lngLat.lat, lng: lngLat.lng })
+          })
+          draftMarker = marker
+        } else {
+          draftMarker.setLngLat([coordinate.lng, coordinate.lat])
         }
       },
       setTrackPreview(points: Coordinate[] | null) {
@@ -1077,6 +1111,7 @@ export class MapLibreProvider implements MapProvider {
       },
       destroy() {
         userMarker?.remove()
+        draftMarker?.remove()
         for (const marker of waypointMarkers.values()) marker.remove()
         windLayer.destroy()
         analysisHeatmapLayer.destroy()

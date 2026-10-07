@@ -76,6 +76,7 @@ export function MapPage() {
   const gpsReading = useGeolocation()
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
+  const draftCoordinate = useWaypointsStore((state) => state.draft?.coordinate ?? null)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
@@ -132,8 +133,15 @@ export function MapPage() {
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
       onMapClick: (coordinate) => {
-        if (useWaypointsStore.getState().isPlacing) {
-          void useWaypointsStore.getState().placeWaypointAt(coordinate)
+        const waypoints = useWaypointsStore.getState()
+        if (waypoints.isPlacing) {
+          waypoints.placeWaypointAt(coordinate)
+          return
+        }
+        // A tap while a new waypoint is being created adjusts that draft.
+        // It never moves a saved waypoint: those are locked once saved.
+        if (waypoints.draft) {
+          waypoints.moveDraft(coordinate)
           return
         }
         const terrainMode = useTerrainToolsStore.getState().mode
@@ -154,9 +162,7 @@ export function MapPage() {
         }
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
-      onWaypointDragEnd: (id, coordinate) => {
-        void useWaypointsStore.getState().updateWaypoint(id, { coordinate })
-      },
+      onDraftMove: (coordinate) => useWaypointsStore.getState().moveDraft(coordinate),
     })
     instanceRef.current = instance
     void useWaypointsStore.getState().load()
@@ -229,6 +235,10 @@ export function MapPage() {
   useEffect(() => {
     instanceRef.current?.setWaypoints(waypoints)
   }, [waypoints])
+
+  useEffect(() => {
+    instanceRef.current?.setDraftWaypoint(draftCoordinate)
+  }, [draftCoordinate])
 
   useEffect(() => {
     instanceRef.current?.setTrackPreview(trackStatus === 'idle' ? null : trackPoints)

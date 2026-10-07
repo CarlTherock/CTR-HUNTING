@@ -34,6 +34,10 @@ export interface MapInstance {
   /** Replace the set of waypoint markers shown on the map (diffed
    * internally by id — does not recreate markers that haven't moved). */
   setWaypoints(waypoints: Waypoint[]): void
+  /** Shows (or moves/removes, with `null`) the draggable marker of the
+   * waypoint being created. Not part of `setWaypoints` on purpose: saved
+   * markers are fixed, only this one can be adjusted before Save. */
+  setDraftWaypoint(coordinate: Coordinate | null): void
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
@@ -142,10 +146,10 @@ export interface CreateMapOptions {
   onMapClick?: (coordinate: Coordinate) => void
   /** Called when the user taps/clicks an existing waypoint marker. */
   onWaypointClick?: (waypointId: string) => void
-  /** Called when the user finishes dragging a waypoint marker to a new
-   * position (drag-to-move) — the caller is responsible for persisting
-   * it; the marker's on-screen position already reflects the drop point. */
-  onWaypointDragEnd?: (waypointId: string, coordinate: Coordinate) => void
+  /** Called when the user finishes dragging the *draft* marker (a waypoint
+   * not saved yet) to a new position. Saved waypoint markers are never
+   * draggable: a saved waypoint's location is locked. */
+  onDraftMove?: (coordinate: Coordinate) => void
 }
 
 /**

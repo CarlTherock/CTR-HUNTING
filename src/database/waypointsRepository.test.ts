@@ -71,3 +71,23 @@ describe('waypointsRepository (IndexedDB via Dexie)', () => {
     expect(remaining[0].id).toBe(b.id)
   })
 })
+
+describe('waypointsRepository — location lock', () => {
+  afterEach(async () => {
+    await db.waypoints.clear()
+  })
+
+  it('refuses to update the coordinate of a saved waypoint', async () => {
+    const waypoint = await createWaypoint({
+      name: 'Fixe',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      category: 'general',
+    })
+
+    await expect(
+      updateWaypoint(waypoint.id, { coordinate: { lat: 0, lng: 0 } } as unknown as { name: string }),
+    ).rejects.toThrow(/locked/)
+
+    expect((await db.waypoints.get(waypoint.id))?.coordinate).toEqual({ lat: 46.8, lng: -71.2 })
+  })
+})

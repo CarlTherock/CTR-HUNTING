@@ -442,25 +442,63 @@ describe('MapLibreProvider', () => {
       expect(onMapClick).not.toHaveBeenCalled()
     })
 
-    it('creates waypoint markers as draggable and reports the drop position via onWaypointDragEnd', () => {
+    it('creates saved waypoint markers as NOT draggable (their location is locked)', () => {
       markerInstances.length = 0
-      const onWaypointDragEnd = vi.fn()
+      const instance = createTestMap()
+
+      instance.setWaypoints([waypointA])
+
+      expect(markerInstances).toHaveLength(1)
+      expect(markerInstances[0].draggable).toBe(false)
+      // Nothing listens for a drag on a saved marker, so a forced `dragend`
+      // cannot reach any caller.
+      expect(markerInstances[0].handlers.dragend ?? []).toHaveLength(0)
+    })
+
+    it('does not move a saved marker when the same waypoint is re-sent with another position', () => {
+      markerInstances.length = 0
+      const instance = createTestMap()
+
+      instance.setWaypoints([waypointA])
+      const before = markerInstances[0].lngLat
+      instance.setWaypoints([waypointA])
+
+      expect(markerInstances).toHaveLength(1)
+      expect(markerInstances[0].lngLat).toEqual(before)
+    })
+
+    it('shows a draggable draft marker and reports its drop position via onDraftMove', () => {
+      markerInstances.length = 0
+      const onDraftMove = vi.fn()
       const provider = new MapLibreProvider({ mapTiler: 'test-key' })
       const instance = provider.createMap({
         container: document.createElement('div'),
         initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
         initialBaseLayer: 'outdoor',
         initialOverlays: { trails: true, hydrography: true, contours: true },
-        onWaypointDragEnd,
+        onDraftMove,
       })
 
-      instance.setWaypoints([waypointA])
+      instance.setDraftWaypoint({ lat: 1, lng: 2 })
+      expect(markerInstances).toHaveLength(1)
       expect(markerInstances[0].draggable).toBe(true)
 
       markerInstances[0].setLngLat([9, 8]) // simulates the drag moving the marker
       markerInstances[0].fire('dragend')
+      expect(onDraftMove).toHaveBeenCalledWith({ lat: 8, lng: 9 })
+    })
 
-      expect(onWaypointDragEnd).toHaveBeenCalledWith('a', { lat: 8, lng: 9 })
+    it('moves the existing draft marker instead of adding another, and removes it with null', () => {
+      markerInstances.length = 0
+      const instance = createTestMap()
+
+      instance.setDraftWaypoint({ lat: 1, lng: 2 })
+      instance.setDraftWaypoint({ lat: 3, lng: 4 })
+      expect(markerInstances).toHaveLength(1)
+      expect(markerInstances[0].lngLat).toEqual([4, 3])
+
+      instance.setDraftWaypoint(null)
+      expect(calls).toContain('remove')
     })
   })
 

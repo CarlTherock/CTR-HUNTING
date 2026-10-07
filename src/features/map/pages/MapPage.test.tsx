@@ -26,6 +26,7 @@ const setOverlayVisible = vi.fn()
 const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
+const setDraftWaypoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
 const setWindField = vi.fn()
@@ -49,6 +50,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setOverlayVisible,
     setUserLocationMarker,
     setWaypoints,
+    setDraftWaypoint,
     setTrackPreview,
     setMeasurePath,
     setWindField,
@@ -203,7 +205,7 @@ afterEach(async () => {
   useHeatmapStore.setState({ status: 'idle', enabled: false, cells: [], errorReason: null, selectedView: 'combined' })
   useWeatherMapStore.setState({ enabled: false, activeLayer: 'radar', status: 'idle', frames: [], frameIndex: 0, playing: false, cache: {} })
   useFieldModeStore.setState({ enabled: false, loaded: true })
-  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
+  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, draft: null, editingId: null })
   useTracksStore.setState({
     tracks: [],
     loaded: false,
@@ -444,81 +446,153 @@ describe('MapPage', () => {
     expect(setMeasurePath).toHaveBeenLastCalledWith(null)
   })
 
-  it('arms placing mode, creates a real waypoint on the next map click, and opens it for editing', async () => {
+  /** Arms placing, taps the map at `coordinate`, and opens the details form. */
+  async function placeDraft(
+    user: ReturnType<typeof userEvent.setup>,
+    coordinate = { lat: 46.8, lng: -71.2 },
+  ) {
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+    lastCreateMapOptions?.onMapClick?.(coordinate)
+    await user.click(await screen.findByRole('button', { name: 'Continuer' }))
+  }
+
+  it('placing a waypoint only opens an adjustable draft: nothing is saved before "Enregistrer"', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
     await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
     expect(screen.getByText('Touchez la carte pour placer un point de repère')).toBeInTheDocument()
 
-    // Simulate the map-engine click callback MapPage wired into createMap
-    // — there's no real MapLibre canvas to click in jsdom. onMapClick
-    // fires the (async) placeWaypointAt without awaiting it itself, so
-    // wait for its effect (the edit panel opening) rather than the call.
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
 
-    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+    expect(await screen.findByText('Nouveau point de repère')).toBeInTheDocument()
     expect(screen.queryByText('Touchez la carte pour placer un point de repère')).not.toBeInTheDocument()
-    expect(setWaypoints).toHaveBeenCalledWith(
+    expect(setDraftWaypoint).toHaveBeenLastCalledWith({ lat: 46.8, lng: -71.2 })
+    expect(await db.waypoints.count()).toBe(0)
+    expect(setWaypoints).not.toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ coordinate: { lat: 46.8, lng: -71.2 } })]),
     )
-
-    const persisted = await db.waypoints.toArray()
-    expect(persisted).toHaveLength(1)
   })
 
-  it('opens the edit panel for an existing waypoint via onWaypointClick, and deletes it', async () => {
-    const user = userEvent.setup()
-    render(<MapPage />)
-
-    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
-    await lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
-    const [waypoint] = await db.waypoints.toArray()
-
-    // Close the auto-opened editor, then reopen via onWaypointClick — as a
-    // real marker click would.
-    await user.click(screen.getByRole('button', { name: 'Close without saving' }))
-    expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
-
-    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
-    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
-    await vi.waitFor(async () => {
-      expect(await db.waypoints.toArray()).toEqual([])
-    })
-    // deleteWaypoint now also awaits deletePhotosForWaypoint before
-    // clearing editingId, one more microtask hop than the Dexie write
-    // alone — wait for the effect rather than asserting immediately.
-    await vi.waitFor(() => {
-      expect(screen.queryByRole('heading', { name: 'Waypoint' })).not.toBeInTheDocument()
-    })
-  })
-
-  it('persists a waypoint drag via onWaypointDragEnd (drag-to-move)', async () => {
+  it('the draft position can be adjusted by tapping the map or dragging its marker, then Save locks it', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
     await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
-    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+    await screen.findByText('Nouveau point de repère')
+
+    lastCreateMapOptions?.onMapClick?.({ lat: 46.81, lng: -71.21 }) // tap to adjust
+    await vi.waitFor(() =>
+      expect(setDraftWaypoint).toHaveBeenLastCalledWith({ lat: 46.81, lng: -71.21 }),
+    )
+    lastCreateMapOptions?.onDraftMove?.({ lat: 46.82, lng: -71.22 }) // drag the dashed marker
+    await vi.waitFor(() =>
+      expect(setDraftWaypoint).toHaveBeenLastCalledWith({ lat: 46.82, lng: -71.22 }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Continuer' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await vi.waitFor(async () => {
+      const [saved] = await db.waypoints.toArray()
+      expect(saved.coordinate).toEqual({ lat: 46.82, lng: -71.22 })
+    })
+    expect(setWaypoints).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ coordinate: { lat: 46.82, lng: -71.22 } })]),
+    )
+    expect(setDraftWaypoint).toHaveBeenLastCalledWith(null)
+  })
+
+  it('cancelling a creation leaves no waypoint and no draft marker', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await placeDraft(user)
+
+    await user.click(screen.getByRole('button', { name: 'Annuler' }))
+
+    expect(screen.queryByText('Nouveau point de repère')).not.toBeInTheDocument()
+    expect(setDraftWaypoint).toHaveBeenLastCalledWith(null)
+    expect(await db.waypoints.count()).toBe(0)
+  })
+
+  it('a failed save keeps the form open with the error visible and nothing half-saved', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await placeDraft(user)
+    const add = vi.spyOn(db.waypoints, 'add').mockRejectedValueOnce(new Error('disque plein'))
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('disque plein')
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeEnabled()
+    expect(await db.waypoints.count()).toBe(0)
+
+    add.mockRestore()
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+  })
+
+  it('opens a saved waypoint with its location shown read-only, and deletes it only after confirmation', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await placeDraft(user)
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
     const [waypoint] = await db.waypoints.toArray()
 
-    lastCreateMapOptions?.onWaypointDragEnd?.(waypoint.id, { lat: 47.1, lng: -72.5 })
+    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
+    expect(await screen.findByRole('heading', { name: 'Point de repère' })).toBeInTheDocument()
+    expect(screen.getByText(/Position verrouillée/)).toBeInTheDocument()
+    // No field to type coordinates, and no "move" control.
+    expect(screen.queryByLabelText(/latitude|longitude/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /déplacer|déverrouiller/i })).not.toBeInTheDocument()
 
-    // updateWaypoint is async — wait for the persisted write rather than
-    // asserting immediately after the synchronous callback.
-    await vi.waitFor(async () => {
-      const [reloaded] = await db.waypoints.toArray()
-      expect(reloaded.coordinate).toEqual({ lat: 47.1, lng: -72.5 })
-    })
+    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('irréversible')
+    expect(await db.waypoints.count()).toBe(1)
+
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Supprimer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.toArray()).toEqual([]))
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Point de repère' })).not.toBeInTheDocument(),
+    )
+  })
+
+  it('a saved waypoint cannot be moved: no drag callback, map taps and GPS updates leave it in place', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<MapPage />)
+    expect(lastCreateMapOptions).not.toHaveProperty('onWaypointDragEnd')
+
+    await placeDraft(user, { lat: 46.8, lng: -71.2 })
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+    const [waypoint] = await db.waypoints.toArray()
+
+    // Edit panel open on the saved waypoint, then taps on the map.
+    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
+    await screen.findByRole('heading', { name: 'Point de repère' })
+    lastCreateMapOptions?.onMapClick?.({ lat: 47.5, lng: -72.5 })
+    lastCreateMapOptions?.onDraftMove?.({ lat: 47.6, lng: -72.6 })
+
+    // A new GPS position arrives.
+    mockGpsReading = {
+      status: 'available',
+      value: { lat: 46.9, lng: -71.3, accuracyMeters: 5 },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    rerender(<MapPage />)
+
+    const [after] = await db.waypoints.toArray()
+    expect(after.coordinate).toEqual({ lat: 46.8, lng: -71.2 })
+    expect(setDraftWaypoint).toHaveBeenLastCalledWith(null)
   })
 
   it('saves per-waypoint optimal wind octants and flags whether the live wind matches', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
-    lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
-    expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
+    await placeDraft(user, { lat: 46.8139, lng: -71.208 })
+    expect(await screen.findByRole('heading', { name: 'Nouveau point de repère' })).toBeInTheDocument()
 
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
@@ -530,13 +604,13 @@ describe('MapPage', () => {
 
     // Mark north as optimal — the live wind (W) should read as a mismatch.
     await user.click(screen.getByRole('button', { name: 'N' }))
-    expect(await screen.findByText('W now')).toHaveClass('text-status-danger')
+    expect(await screen.findByText('W maintenant')).toHaveClass('text-status-danger')
 
     // Mark west too — now the live wind matches.
     await user.click(screen.getByRole('button', { name: 'W' }))
-    expect(await screen.findByText('W now')).toHaveClass('text-status-success')
+    expect(await screen.findByText('W maintenant')).toHaveClass('text-status-success')
 
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await vi.waitFor(async () => {
       const [waypoint] = await db.waypoints.toArray()
