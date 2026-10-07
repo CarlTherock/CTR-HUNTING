@@ -74,8 +74,15 @@ Conséquences :
 - Seul le niveau 4 garantit des tuiles sur une zone. Il est propre à **un fond
   de carte** (celui actif au moment du téléchargement) : une zone téléchargée en
   « Imagerie hybride » n'existe pas pour « Satellite ».
-- Les couches superposées (météo, radar, forêt, cadastre) ne sont pas dans le
-  téléchargement de zone.
+- Le téléchargement balaie la caméra sur la zone (la carte « saute » de tuile en
+  tuile, puis revient à la vue d'origine) et met en cache **les tuiles que le
+  moteur demande pendant ce balayage** : le fond actif, mais aussi les couches
+  visibles à ce moment-là. Le nombre « tuiles » affiché à la fin est celui des
+  tuiles réellement reçues, pas l'estimation de départ ; les deux peuvent
+  différer. Une tuile qui ne répond pas dans les 5 s est sautée sans message :
+  **la fin du téléchargement ne garantit donc pas une couverture complète.**
+  C'est pour cela que l'étape 7 ci-dessous (ouvrir hors ligne et regarder la
+  carte) est la seule vraie preuve.
 
 ### Tester une vraie zone hors ligne sur l'iPhone
 
