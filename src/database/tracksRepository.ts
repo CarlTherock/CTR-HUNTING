@@ -4,10 +4,11 @@ import type { Track } from '@/types'
 export interface CreateTrackInput {
   name: string
   startedAt: string
+  territoryId?: string
 }
 
 export type UpdateTrackInput = Partial<
-  Pick<Track, 'name' | 'points' | 'distanceMeters' | 'endedAt' | 'notes'>
+  Pick<Track, 'name' | 'points' | 'distanceMeters' | 'endedAt' | 'notes' | 'territoryId'>
 >
 
 /** Track CRUD against the local Dexie database — same real
@@ -25,6 +26,7 @@ export async function createTrack(input: CreateTrackInput): Promise<Track> {
     name: input.name,
     points: [],
     startedAt: input.startedAt,
+    territoryId: input.territoryId,
   }
   await db.tracks.add(track)
   return track

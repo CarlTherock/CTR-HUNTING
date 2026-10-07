@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Waypoint, Track, Observation, Photo, OfflineArea } from '@/types'
+import type { Waypoint, Track, Observation, Photo, OfflineArea, Territory } from '@/types'
 
 /**
  * Local-first persistence layer (IndexedDB via Dexie).
@@ -41,6 +41,8 @@ export class FieldTerrainDatabase extends Dexie {
    * tile bytes live in the Cache Storage API (`offline/tileCache.ts`),
    * not Dexie; see that file for why. */
   offlineAreas!: EntityTable<OfflineArea, 'id'>
+  /** Logical folders grouping waypoints/tracks/observations (v5). */
+  territories!: EntityTable<Territory, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -68,6 +70,19 @@ export class FieldTerrainDatabase extends Dexie {
     // `listPhotosForObservation`'s `.where(...)` query.
     this.version(4).stores({
       photos: 'id, waypointId, observationId, createdAt',
+    })
+
+    // Territories (logical folders). Purely ADDITIVE: a new table plus a new
+    // `territoryId` index on three existing tables. Dexie only creates the
+    // index; existing records are not rewritten, and they simply have no
+    // `territoryId` (= « Non classé »). Nothing is deleted or transformed,
+    // hence no `.upgrade()` callback. Index definitions are restated in
+    // full because Dexie replaces a table's whole schema when it is listed.
+    this.version(5).stores({
+      territories: 'id, name, createdAt',
+      waypoints: 'id, category, createdAt, territoryId',
+      tracks: 'id, startedAt, territoryId',
+      observations: 'id, waypointId, timestamp, territoryId',
     })
   }
 }
