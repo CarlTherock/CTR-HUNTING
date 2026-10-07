@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { buildCsp } from './build/csp.ts'
 
 // GitHub Pages serves this project from https://carltherock.github.io/CTR-HUNTING/,
 // a subpath — production assets must be built with that base, but the local
@@ -30,6 +31,21 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      // Build only: the dev server needs inline scripts for HMR.
+      name: 'ctr-csp',
+      apply: 'build',
+      transformIndexHtml() {
+        const extra = (process.env.CSP_EXTRA_HOSTS ?? '').split(',').filter(Boolean)
+        return [
+          {
+            tag: 'meta',
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: buildCsp(extra) },
+            injectTo: 'head-prepend',
+          },
+        ]
+      },
+    },
     tailwindcss(),
     // MapLibre's worker (maplibre-gl-worker.mjs) imports a sibling chunk
     // (maplibre-gl-shared.mjs) via a relative path. Vite's `?url` asset

@@ -35,7 +35,13 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         // WebGL in headless Chromium goes through SwiftShader.
-        launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
+        launchOptions: {
+          args: [
+            '--use-angle=swiftshader',
+            '--enable-unsafe-swiftshader',
+            '--ignore-gpu-blocklist',
+          ],
+        },
       },
     },
     ...(withWebkit ? [{ name: 'webkit', use: { ...devices['Desktop Safari'] } }] : []),
@@ -47,6 +53,9 @@ export default defineConfig({
     timeout: 240_000,
     env: {
       GITHUB_PAGES: 'true',
+      // The simulated backend's hosts, allowed in this E2E build only.
+      CSP_EXTRA_HOSTS:
+        'https://tiles.e2e.test,https://sprites.e2e.test,https://glyphs.e2e.test',
       VITE_MAP_TILES_API_KEY: 'e2e-fake-maptiler-key',
       VITE_ESRI_API_KEY: 'e2e-fake-esri-key',
     },

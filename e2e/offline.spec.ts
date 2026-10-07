@@ -17,7 +17,11 @@ import { expect, test } from './support/test'
  * MapTiler/Esri tiles of a real area were downloaded.
  */
 test.describe('démarrage à froid hors ligne', () => {
-  test('shell, moteur cartographique et contenu de la carte sans réseau', async ({ page, context, backend }) => {
+  test('shell, moteur cartographique et contenu de la carte sans réseau', async ({
+    page,
+    context,
+    backend,
+  }) => {
     const canvas = page.locator('canvas.maplibregl-canvas')
     const outdoorGreen = TILE_COLOR.outdoor ?? [0, 0, 0]
     const failedEngineRequests: string[] = []
@@ -29,7 +33,9 @@ test.describe('démarrage à froid hors ligne', () => {
       await page.goto('map')
       await expect(canvas).toBeVisible()
       await expect
-        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), { timeout: 20_000 })
+        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), {
+          timeout: 20_000,
+        })
         .toBe(true)
       const served = backend.served()
       expect(served.style).toBeGreaterThan(0)
@@ -39,7 +45,9 @@ test.describe('démarrage à froid hors ligne', () => {
     await test.step('le service worker contrôle la page (installation terminée)', async () => {
       await page.evaluate(() => navigator.serviceWorker.ready)
       await expect
-        .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null), { timeout: 20_000 })
+        .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null), {
+          timeout: 20_000,
+        })
         .toBe(true)
     })
 
@@ -66,15 +74,23 @@ test.describe('démarrage à froid hors ligne', () => {
           new URL('maplibre/maplibre-gl-worker.mjs', document.baseURI),
           { ignoreSearch: true },
         )
-        return response !== undefined && (await response.clone().arrayBuffer()).byteLength > 100_000
+        return (
+          response !== undefined &&
+          (await response.clone().arrayBuffer()).byteLength > 100_000
+        )
       })
-      expect(workerCached, 'maplibre-gl-worker.mjs absent du précache du service worker').toBe(true)
+      expect(
+        workerCached,
+        'maplibre-gl-worker.mjs absent du précache du service worker',
+      ).toBe(true)
       expect(failedEngineRequests, 'requêtes du moteur en échec hors ligne').toEqual([])
     })
 
     await test.step('3. contenu de la carte (style + tuiles) hors ligne', async () => {
       await expect
-        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), { timeout: 20_000 })
+        .poll(async () => colorsClose(await dominantColor(page, canvas), outdoorGreen), {
+          timeout: 20_000,
+        })
         .toBe(true)
       // Nothing was served by the (unreachable) provider: the pixels above
       // came from the local cache.

@@ -89,13 +89,19 @@ function mockStyle(kind: string) {
         id: 'marker',
         type: 'symbol',
         source: 'marker',
-        layout: { 'icon-image': 'dot', 'text-field': 'E2E', 'text-font': ['Mock Regular'] },
+        layout: {
+          'icon-image': 'dot',
+          'text-field': 'E2E',
+          'text-font': ['Mock Regular'],
+        },
       },
     ],
   }
 }
 
-export async function installMockMapBackend(context: BrowserContext): Promise<MockMapBackend> {
+export async function installMockMapBackend(
+  context: BrowserContext,
+): Promise<MockMapBackend> {
   let online = true
   let counts: Record<MockCategory, number> = { style: 0, tile: 0, sprite: 0, glyph: 0 }
   let refusedCount = 0
@@ -108,7 +114,11 @@ export async function installMockMapBackend(context: BrowserContext): Promise<Mo
 
   async function handle(route: Route) {
     const url = new URL(route.request().url())
-    if (LOCAL_HOSTS.has(url.hostname) || url.protocol === 'data:' || url.protocol === 'blob:') {
+    if (
+      LOCAL_HOSTS.has(url.hostname) ||
+      url.protocol === 'data:' ||
+      url.protocol === 'blob:'
+    ) {
       await route.fallback()
       return
     }
@@ -129,13 +139,23 @@ export async function installMockMapBackend(context: BrowserContext): Promise<Mo
         const kind = styleKind(url)
         styles.push(kind)
         counts.style++
-        await route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(mockStyle(kind)) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: cors,
+          body: JSON.stringify(mockStyle(kind)),
+        })
         return
       }
       case TILE_HOST: {
         counts.tile++
         const kind = url.pathname.split('/')[1] ?? 'default'
-        await route.fulfill({ status: 200, contentType: 'image/png', headers: cors, body: solidPng(256, 256, colorFor(kind)) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'image/png',
+          headers: cors,
+          body: solidPng(256, 256, colorFor(kind)),
+        })
         return
       }
       case SPRITE_HOST: {
@@ -145,17 +165,29 @@ export async function installMockMapBackend(context: BrowserContext): Promise<Mo
             status: 200,
             contentType: 'application/json',
             headers: cors,
-            body: JSON.stringify({ dot: { width: 8, height: 8, x: 0, y: 0, pixelRatio: 1 } }),
+            body: JSON.stringify({
+              dot: { width: 8, height: 8, x: 0, y: 0, pixelRatio: 1 },
+            }),
           })
         } else {
-          await route.fulfill({ status: 200, contentType: 'image/png', headers: cors, body: solidPng(8, 8, [255, 255, 255]) })
+          await route.fulfill({
+            status: 200,
+            contentType: 'image/png',
+            headers: cors,
+            body: solidPng(8, 8, [255, 255, 255]),
+          })
         }
         return
       }
       default: {
         // Glyph range: an empty (zero-glyph) but valid protobuf message.
         counts.glyph++
-        await route.fulfill({ status: 200, contentType: 'application/x-protobuf', headers: cors, body: Buffer.alloc(0) })
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/x-protobuf',
+          headers: cors,
+          body: Buffer.alloc(0),
+        })
       }
     }
   }

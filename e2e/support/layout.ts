@@ -19,8 +19,19 @@ export interface ControlInfo {
 }
 
 export interface LayoutMeasure {
-  viewport: { innerWidth: number; innerHeight: number; visualWidth: number; visualHeight: number; scale: number }
-  document: { scrollWidth: number; scrollHeight: number; clientWidth: number; clientHeight: number }
+  viewport: {
+    innerWidth: number
+    innerHeight: number
+    visualWidth: number
+    visualHeight: number
+    scale: number
+  }
+  document: {
+    scrollWidth: number
+    scrollHeight: number
+    clientWidth: number
+    clientHeight: number
+  }
   rects: Record<string, Rect | null>
   controls: ControlInfo[]
 }
@@ -34,17 +45,34 @@ export interface SafeArea {
   right: number
 }
 
-export const IPHONE_PORTRAIT_SAFE_AREA: SafeArea = { top: 47, bottom: 34, left: 0, right: 0 }
-export const IPHONE_LANDSCAPE_SAFE_AREA: SafeArea = { top: 0, bottom: 21, left: 47, right: 47 }
+export const IPHONE_PORTRAIT_SAFE_AREA: SafeArea = {
+  top: 47,
+  bottom: 34,
+  left: 0,
+  right: 0,
+}
+export const IPHONE_LANDSCAPE_SAFE_AREA: SafeArea = {
+  top: 0,
+  bottom: 21,
+  left: 47,
+  right: 47,
+}
 
-export async function applySafeArea(context: BrowserContext, page: Page, insets: SafeArea): Promise<void> {
+export async function applySafeArea(
+  context: BrowserContext,
+  page: Page,
+  insets: SafeArea,
+): Promise<void> {
   const session = await context.newCDPSession(page)
   await session.send('Emulation.setSafeAreaInsetsOverride', { insets })
 }
 
 /** Measures the real rectangles of the layout chain and of every
  * interactive control inside `main`, from the browser itself. */
-export async function measureLayout(page: Page, controlScope = 'main'): Promise<LayoutMeasure> {
+export async function measureLayout(
+  page: Page,
+  controlScope = 'main',
+): Promise<LayoutMeasure> {
   return page.evaluate((scope) => {
     const rect = (element: Element | null) => {
       if (!element) return null
@@ -56,18 +84,35 @@ export async function measureLayout(page: Page, controlScope = 'main'): Promise<
     const innerWidth = window.innerWidth
     const innerHeight = window.innerHeight
 
-    const controls = [...document.querySelectorAll(`${scope} button, ${scope} a[href], ${scope} [role="button"], ${scope} input, ${scope} select`)]
+    const controls = [
+      ...document.querySelectorAll(
+        `${scope} button, ${scope} a[href], ${scope} [role="button"], ${scope} input, ${scope} select`,
+      ),
+    ]
       .map((element) => {
         const r = element.getBoundingClientRect()
         const style = getComputedStyle(element)
         const rendered =
-          r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) !== 0
+          r.width > 0 &&
+          r.height > 0 &&
+          style.visibility !== 'hidden' &&
+          style.display !== 'none' &&
+          Number(style.opacity) !== 0
         const cx = r.x + r.width / 2
         const cy = r.y + r.height / 2
-        const inViewport = r.x >= -0.5 && r.y >= -0.5 && r.x + r.width <= innerWidth + 0.5 && r.y + r.height <= innerHeight + 0.5
-        const top = rendered && cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight ? document.elementFromPoint(cx, cy) : null
+        const inViewport =
+          r.x >= -0.5 &&
+          r.y >= -0.5 &&
+          r.x + r.width <= innerWidth + 0.5 &&
+          r.y + r.height <= innerHeight + 0.5
+        const top =
+          rendered && cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight
+            ? document.elementFromPoint(cx, cy)
+            : null
         const label =
-          element.getAttribute('aria-label') ?? element.getAttribute('title') ?? (element.textContent ?? '').trim().slice(0, 40)
+          element.getAttribute('aria-label') ??
+          element.getAttribute('title') ??
+          (element.textContent ?? '').trim().slice(0, 40)
         return {
           label,
           rect: { x: r.x, y: r.y, width: r.width, height: r.height },

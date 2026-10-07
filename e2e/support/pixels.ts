@@ -25,7 +25,10 @@ export async function dominantColor(page: Page, target: Locator): Promise<Rgb> {
     for (let i = 0; i < data.length; i += 4 * 7) {
       // Quantise to 5 bits per channel so anti-aliasing noise still lands
       // in the same bucket.
-      const key = (((data[i] ?? 0) >> 3) << 10) | (((data[i + 1] ?? 0) >> 3) << 5) | ((data[i + 2] ?? 0) >> 3)
+      const key =
+        (((data[i] ?? 0) >> 3) << 10) |
+        (((data[i + 1] ?? 0) >> 3) << 5) |
+        ((data[i + 2] ?? 0) >> 3)
       buckets.set(key, (buckets.get(key) ?? 0) + 1)
     }
     let best = 0
