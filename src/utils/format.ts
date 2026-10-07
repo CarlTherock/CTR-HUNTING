@@ -10,9 +10,11 @@ export function formatDuration(ms: number): string {
     : `${minutes}:${pad(seconds)}`
 }
 
-/** Meters below 1 km, kilometers (2 decimals) at or above. */
+/** Meters below 1 km, kilometers (2 decimals, French decimal comma) at or above. */
 export function formatDistanceMeters(meters: number): string {
-  return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`
+  return meters >= 1000
+    ? `${(meters / 1000).toFixed(2).replace('.', ',')} km`
+    : `${Math.round(meters)} m`
 }
 
 /** Bytes below 1 KB, KB below 1 MB (rounded), MB at or above (1 decimal). */

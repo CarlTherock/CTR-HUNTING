@@ -76,9 +76,6 @@ export function DashboardPage() {
               <Card className="hover:border-brand-500/50 flex h-full flex-col gap-2 p-4 transition-colors">
                 <item.icon size={20} className="text-brand-400" aria-hidden="true" />
                 <span className="text-ink-100 text-sm font-medium">{item.label}</span>
-                {item.phase !== null && (
-                  <span className="text-ink-500 text-xs">Phase {item.phase}</span>
-                )}
               </Card>
             </Link>
           ))}
