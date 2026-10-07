@@ -1,22 +1,15 @@
 import { useEffect } from 'react'
-import { Camera, MapPinned, Route, Trash2 } from 'lucide-react'
+import { Camera, MapPinned, Route } from 'lucide-react'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
-import { formatDistanceMeters, formatDuration } from '@/utils/format'
 import { CATEGORY_ICON, CATEGORY_LABEL, DEFAULT_WAYPOINT_COLOR } from '../categories'
 import { WaypointEditPanel } from '../components/WaypointEditPanel'
 import { WindComparisonPanel } from '../components/WindComparisonPanel'
+import { TrackList } from '../components/TrackList'
 import { useTracksStore } from '../state/tracksStore'
 import { useWaypointsStore } from '../state/waypointsStore'
-import type { Track } from '@/types'
 
 function formatCoordinate(lat: number, lng: number): string {
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
-}
-
-function trackDurationMs(track: Track, isRecording: boolean): number {
-  const start = new Date(track.startedAt).getTime()
-  const end = track.endedAt ? new Date(track.endedAt).getTime() : isRecording ? Date.now() : start
-  return end - start
 }
 
 /** Phase 2, slice 2.2/2.3: a dedicated list of every saved waypoint and
@@ -34,8 +27,6 @@ export function WaypointsPage() {
   const tracks = useTracksStore((state) => state.tracks)
   const tracksLoaded = useTracksStore((state) => state.loaded)
   const loadTracks = useTracksStore((state) => state.load)
-  const recordingId = useTracksStore((state) => state.recordingId)
-  const deleteTrack = useTracksStore((state) => state.deleteTrack)
 
   useEffect(() => {
     if (!waypointsLoaded) void loadWaypoints()
@@ -44,10 +35,6 @@ export function WaypointsPage() {
     // `loaded` flags — not on every store update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const sortedTracks = [...tracks].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,48 +103,7 @@ export function WaypointsPage() {
           <Route size={16} aria-hidden="true" />
           Tracks ({tracks.length})
         </h2>
-        {tracks.length === 0 ? (
-          <EmptyState
-            icon={<Route size={28} aria-hidden="true" />}
-            title="No tracks yet"
-            description="Open the Map page and tap the record button to start tracking a walk."
-          />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {sortedTracks.map((track) => {
-              const isRecording = track.id === recordingId
-              return (
-                <Card key={track.id} className="flex items-center justify-between gap-3 p-3">
-                  <div className="min-w-0">
-                    <span className="text-ink-100 block truncate text-sm font-medium">
-                      {track.name}
-                      {isRecording && (
-                        <span className="text-status-danger ml-2 text-xs font-normal">
-                          ● Recording
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-ink-500 block truncate text-xs">
-                      {formatDistanceMeters(track.distanceMeters ?? 0)} ·{' '}
-                      {formatDuration(trackDurationMs(track, isRecording))} ·{' '}
-                      {new Date(track.startedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void deleteTrack(track.id)}
-                    disabled={isRecording}
-                    aria-label={`Delete ${track.name}`}
-                    title={isRecording ? 'Stop recording before deleting' : 'Delete track'}
-                    className="text-ink-500 hover:text-status-danger shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </Card>
-              )
-            })}
-          </div>
-        )}
+        <TrackList />
       </div>
 
       <WaypointEditPanel />

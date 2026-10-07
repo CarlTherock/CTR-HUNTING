@@ -555,7 +555,7 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     await useTool(user, 'Enregistrer une trace GPS')
-    expect(screen.getByText('● Recording')).toBeInTheDocument()
+    expect(screen.getByText('● Enregistrement')).toBeInTheDocument()
 
     // The GPS effect (already firing on mount, since mockGpsReading is
     // 'available' from the start) feeds the recording — confirm the map
@@ -570,7 +570,7 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     await useTool(user, 'Enregistrer une trace GPS')
-    await user.click(screen.getByRole('button', { name: 'Stop and save track' }))
+    await user.click(screen.getByRole('button', { name: 'Arrêter et enregistrer la trace' }))
 
     // stop() awaits a fake-IndexedDB write before its state update lands —
     // userEvent's click only flushes React's own microtasks, not the
