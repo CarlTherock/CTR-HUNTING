@@ -3,7 +3,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { useOnboardingStore } from '@/features/onboarding/state/onboardingStore'
-import HelpPage, { HELP_TOPICS } from './HelpPage'
+import HelpPage from './HelpPage'
+import { HELP_TOPICS } from '../helpTopics'
 
 function renderPage() {
   return render(

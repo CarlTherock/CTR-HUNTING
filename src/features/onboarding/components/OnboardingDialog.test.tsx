@@ -8,7 +8,8 @@ import { db } from '@/database/db'
 import { getSetting } from '@/database/settingsRepository'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ONBOARDING_SETTING_KEY, useOnboardingStore } from '../state/onboardingStore'
-import { OnboardingDialog, ONBOARDING_STEPS } from './OnboardingDialog'
+import { OnboardingDialog } from './OnboardingDialog'
+import { ONBOARDING_STEPS } from '../onboardingSteps'
 
 /**
  * Presentation screens. Every browser permission API is replaced by a spy:

@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import { StartupFallback } from './StartupFallback'
 import { AppShell } from '@/components/layout'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { NotFoundPage } from '@/features/dashboard/pages/NotFoundPage'
@@ -9,14 +10,6 @@ import { TemporalPage } from '@/features/temporal/pages/TemporalPage'
 import { AnalysisPage } from '@/features/analytics/pages/AnalysisPage'
 import { JournalPage } from '@/features/journal/pages/JournalPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
-
-function StartupFallback() {
-  return (
-    <p className="text-ink-500 p-4 text-sm" role="status">
-      Chargement…
-    </p>
-  )
-}
 
 export const router = createBrowserRouter(
   [
