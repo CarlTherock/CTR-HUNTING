@@ -260,6 +260,22 @@ the potential-map analyzers (vegetation, observations) and their thresholds;
 it is not a second engine. Missing data are "non evaluable", never neutral.
 See `src/features/compare/README.md`.
 
+## Assistant (`src/features/ai/`, phase 14)
+
+Deterministic only. Layers: `pages/AssistantPage` (lazy route `/assistant`,
+secondary nav entry) -> components + `state/` (store, `useAssistantRecords`,
+abortable `useAssistantTask`) -> pure functions (`explainAnalysis`,
+`describeCacheComparison`, `summarizeTerritory`, `searchHistory`,
+`comparePeriods`) built with `ResultBuilder`, which enforces a nature label on
+every statement (`fait enregistré | calcul | estimation | interprétation IA`;
+the last is never produced) and a typed `AssistantContext`. Cited IDs open the
+item through the existing compare actions. `AssistantProvider` has a single
+implementation, `NullAssistantProvider`: no network, no key. The prompt
+envelope, minimization and consent preview exist but are inactive. Generative
+AI needs a server endpoint holding the key, auth/rate limits, a provider and
+cost decision, a privacy policy and user consent. See
+`src/features/ai/README.md`.
+
 ## Backup, restore and GPX (`src/features/backup/`)
 
 UI (Réglages › « Données et sauvegarde », lazy-loaded) → `state/` stores →

@@ -24,6 +24,18 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 ### Notes
 
 - Reporté : comptes, abonnement, paiement, identité visuelle finale, tests d'installation sur appareils réels.
+## Assistant déterministe (2026-10-07)
+
+### Added
+
+- Page `/assistant` (entrée secondaire, import à la demande) avec 5 outils : résumer un territoire, rechercher l'historique, comparer deux périodes (« données insuffisantes » sous 3 éléments par période), expliquer une cellule/analyse, mettre en forme une comparaison de caches existante.
+- Chaque énoncé est étiqueté (fait enregistré, calcul, estimation) et les résultats portent « Calcul / résumé automatique »; chaque identifiant cité ouvre l'élément; contexte consulté, facteurs et données manquantes visibles.
+- Boutons « Expliquer cette cellule » (fiche de cellule) et « Résumer {territoire} » (gestionnaire de territoires).
+- Interface `AssistantProvider` avec `NullAssistantProvider`, carte « Assistant génératif : non activé » listant ce qui manque, aperçu de consentement inactif (rien n'est envoyé, tout décoché).
+
+### Not done
+
+- Aucune IA générative : pas de réseau, de clé ni de fournisseur. Phase 14 non terminée.
 
 ## Comparateur de caches (2026-10-07)
 
