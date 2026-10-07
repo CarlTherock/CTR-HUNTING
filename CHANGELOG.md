@@ -16,6 +16,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 - Base locale Dexie version 5 : nouvelle table `territories` et index `territoryId`. Migration additive, sans modification des données existantes (testée v4 → v5).
 - Affecter un territoire à un waypoint ne modifie jamais sa position (verrouillage inchangé).
+
 ## Carte de potentiel : familles, heure, fiche de cellule (2026-10-07)
 
 ### Fixed
@@ -26,6 +27,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 - Familles Habitat / Conditions / Observations, texte de couverture, cellules hachurées (partielles) et pointillées (sans donnée).
 - Sélecteur d'heure sans requête supplémentaire, fiche de cellule, comparaison de deux créneaux, création de waypoint depuis une cellule.
+
 ## Outils de mesure distance / surface (2026-10-07)
 
 ### Added
@@ -33,6 +35,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 - Outil « Mesurer une distance » (longueur du tracé, distance à vol d'oiseau, distance 3D seulement si toutes les élévations sont réelles) et « Mesurer une surface » (aire géodésique en ha, m² et acres, périmètre, avertissement de polygone croisé). Mesures éphémères, non enregistrées.
 - `utils/geo.ts` : aire sphérique par excès sphérique, périmètre, détection d'auto-intersection ; `utils/format.ts` : nombres français (virgule, espace fine insécable). `MapInstance.setMeasureShape`.
 - Cône d'odeur : reporté (incertitude non représentable honnêtement sans modèle).
+
 ## Couches québécoises, LiDAR et territoires (2026-10-07)
 
 ### Added
