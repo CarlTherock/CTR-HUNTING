@@ -43,6 +43,7 @@ afterEach(() => {
   useWindStore.setState({
     status: 'idle',
     field: null,
+    fetchedAt: null,
     errorReason: null,
     enabled: false,
     selectedHourOffset: 0,
@@ -51,6 +52,15 @@ afterEach(() => {
 })
 
 describe('windStore', () => {
+  it('records when the field was fetched (so other features can judge its age)', async () => {
+    fetchWindField.mockResolvedValue(FIELD)
+    const before = Date.now()
+    await useWindStore.getState().fetch(BOUNDS)
+    const fetchedAt = useWindStore.getState().fetchedAt
+    expect(fetchedAt).not.toBeNull()
+    expect(Date.parse(fetchedAt as string)).toBeGreaterThanOrEqual(before)
+  })
+
   it('toggle(bounds) enables the layer and fetches a field when none is loaded', async () => {
     fetchWindField.mockResolvedValue(FIELD)
 

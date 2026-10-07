@@ -528,8 +528,8 @@ export function timeAnalyzer(
   )
 }
 
-const HISTORY_RADIUS_METERS = 400
-const SIGN_CATEGORIES = new Set(['game_sign', 'kill_site', 'trail_camera'])
+export const HISTORY_RADIUS_METERS = 400
+export const SIGN_CATEGORIES = new Set(['game_sign', 'kill_site', 'trail_camera'])
 
 export interface HistoryAnalyzerOptions {
   /** Rayon de recherche (m). Défaut 400 ; la carte de potentiel le porte à

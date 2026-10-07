@@ -136,4 +136,16 @@ describe('OverpassVegetationProvider.fetchVegetationGrid', () => {
 
     expect(samples.every((s) => Object.keys(s.categoryCounts).length === 0)).toBe(true)
   })
+
+  it('passes the abort signal to fetch', async () => {
+    stubFetch({ elements: [] })
+    const controller = new AbortController()
+    await new OverpassVegetationProvider().fetchVegetationGrid(
+      BOUNDS,
+      2,
+      controller.signal,
+    )
+    const init = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit
+    expect(init.signal).toBe(controller.signal)
+  })
 })

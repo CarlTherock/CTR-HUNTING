@@ -29,6 +29,10 @@ function prefersReducedMotion(): boolean {
 interface WindState {
   status: WindLayerStatus
   field: WindField | null
+  /** ISO time the current `field` was fetched; `null` before any fetch.
+   * Lets other features (e.g. the cache comparator) judge its age before
+   * reusing it instead of asking the provider again. */
+  fetchedAt: string | null
   errorReason: string | null
   /** Whether the flow-field layer is toggled on — kept separate from
    * `status` so turning it off doesn't discard the fetched field (no
@@ -68,6 +72,7 @@ interface WindState {
 export const useWindStore = create<WindState>((set, get) => ({
   status: 'idle',
   field: null,
+  fetchedAt: null,
   errorReason: null,
   enabled: false,
   selectedHourOffset: 0,
@@ -88,7 +93,12 @@ export const useWindStore = create<WindState>((set, get) => ({
     set({ status: 'loading' })
     try {
       const field = await windProvider.fetchWindField(bounds, GRID_SIZE)
-      set({ status: 'available', field, errorReason: null })
+      set({
+        status: 'available',
+        field,
+        fetchedAt: new Date().toISOString(),
+        errorReason: null,
+      })
     } catch (err) {
       set({
         status: 'error',

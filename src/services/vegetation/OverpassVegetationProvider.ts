@@ -117,6 +117,7 @@ export class OverpassVegetationProvider implements VegetationProvider {
   async fetchVegetationGrid(
     bounds: LngLatBounds,
     gridSize: number,
+    signal?: AbortSignal,
   ): Promise<VegetationSample[]> {
     const points = buildGrid(bounds, gridSize)
     // Half the average cell spacing — a reasonable "belongs to this
@@ -133,6 +134,7 @@ export class OverpassVegetationProvider implements VegetationProvider {
     const response = await fetch(OVERPASS_URL, {
       method: 'POST',
       body: new URLSearchParams({ data: buildBboxQuery(bounds) }),
+      signal,
     })
     if (!response.ok) {
       throw new Error(`Recherche de végétation échouée (${response.status})`)

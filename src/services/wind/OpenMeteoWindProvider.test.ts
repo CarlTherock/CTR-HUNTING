@@ -98,4 +98,16 @@ describe('OpenMeteoWindProvider', () => {
 
     await expect(provider.fetchWindField(BOUNDS, 2)).rejects.toThrow(/503/)
   })
+
+  it('passes the abort signal to fetch when one is given, and none otherwise', async () => {
+    stubFetch(FAKE_LOCATION)
+    const provider = new OpenMeteoWindProvider()
+    await provider.fetchWindField(BOUNDS, 1)
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls[0]).toHaveLength(1)
+
+    const controller = new AbortController()
+    await provider.fetchWindField(BOUNDS, 1, controller.signal)
+    const init = (fetch as ReturnType<typeof vi.fn>).mock.calls[1][1] as RequestInit
+    expect(init.signal).toBe(controller.signal)
+  })
 })

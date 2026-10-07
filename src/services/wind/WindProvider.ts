@@ -11,5 +11,11 @@ export interface WindProvider {
   /** Fetches a real grid of wind samples (`gridSize` × `gridSize` points)
    * covering `bounds`, in one batched request rather than `gridSize²`
    * separate ones. Throws on failure — callers handle the fallback. */
-  fetchWindField(bounds: LngLatBounds, gridSize: number): Promise<WindField>
+  fetchWindField(
+    bounds: LngLatBounds,
+    gridSize: number,
+    /** Optional: aborts the request (obsolete selection) — the call then
+     * rejects with an `AbortError`. */
+    signal?: AbortSignal,
+  ): Promise<WindField>
 }
