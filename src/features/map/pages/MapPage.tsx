@@ -41,6 +41,10 @@ import { canRetryArea } from '@/features/offline/areaStatus'
 import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
 import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
 import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
+import { MeasurePanel } from '@/features/measure/components/MeasurePanel'
+import { MeasureTools } from '@/features/measure/components/MeasureTools'
+import { useMeasureStore } from '@/features/measure/state/measureStore'
+import { useMeasureExclusivity } from '@/features/measure/useMeasureExclusivity'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
@@ -108,6 +112,8 @@ export function MapPage() {
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
+  const measureKind = useMeasureStore((state) => state.kind)
+  const measurePoints = useMeasureStore((state) => state.points)
   const windEnabled = useWindStore((state) => state.enabled)
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
@@ -123,6 +129,8 @@ export function MapPage() {
   const weatherMapOpacity = useWeatherMapStore((state) => state.opacity)
   const forestLayersEnabled = useForestLayersStore((state) => state.enabled)
   const forestLayersOpacity = useForestLayersStore((state) => state.opacity)
+
+  useMeasureExclusivity(fieldModeEnabled)
 
   // Field Mode's "low power draw" requirement: turning it on also turns
   // off the two continuously-animated canvas layers (wind flow field,
@@ -193,6 +201,8 @@ export function MapPage() {
           })
         } else if (terrainMode === 'profiling') {
           useTerrainToolsStore.getState().addProfilePoint(coordinate)
+        } else if (useMeasureStore.getState().active) {
+          useMeasureStore.getState().addPoint(coordinate)
         } else if (useAnalysisStore.getState().mode === 'analyzing') {
           const map = instanceRef.current
           if (!map) return
@@ -229,6 +239,9 @@ export function MapPage() {
     return () => {
       instanceRef.current = null
       useFollowStore.getState().stop()
+      // The measurement is ephemeral and dies with the map it was drawn on.
+      instance.setMeasureShape(null)
+      useMeasureStore.getState().close()
       instance.destroy()
     }
     // Mount once: the map manages its own camera after creation, and further
@@ -384,6 +397,14 @@ export function MapPage() {
     // so the chart's numbers stay visually tied to the path they describe.
     instanceRef.current?.setMeasurePath(profilePoints.length > 0 ? profilePoints : null)
   }, [profilePoints])
+
+  useEffect(() => {
+    instanceRef.current?.setMeasureShape(
+      measureKind && measurePoints.length > 0
+        ? { points: measurePoints, closed: measureKind === 'area' }
+        : null,
+    )
+  }, [measureKind, measurePoints])
 
   useEffect(() => {
     instanceRef.current?.setWindAnimationPaused?.(windPaused)
@@ -623,6 +644,13 @@ export function MapPage() {
             >
               <ResumeFollowButton />
               <GuidancePanel gpsReading={gpsReading} getMapInstance={getMapInstance} />
+              {!fieldModeEnabled && (
+                <MeasurePanel
+                  queryElevation={(coordinate) =>
+                    instanceRef.current?.queryElevation(coordinate) ?? null
+                  }
+                />
+              )}
             </div>
             <WaypointEditPanel gpsReading={gpsReading} />
             <SharedPointCard onCenter={centerOnSharedPoint} />
@@ -640,6 +668,7 @@ export function MapPage() {
                     instanceRef.current?.queryElevation(coordinate) ?? null
                   }
                 />
+                <MeasureTools />
                 <WeatherMapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}
                   isFrameReady={(key) =>

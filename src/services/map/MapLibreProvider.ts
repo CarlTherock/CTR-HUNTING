@@ -20,6 +20,7 @@ import type {
   DownloadAreaProgress,
   MapInstance,
   MapProvider,
+  MeasureShape,
 } from './MapProvider'
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
 import { createPathLayers } from './pathLayers'
@@ -209,6 +210,9 @@ export class MapLibreProvider implements MapProvider {
       },
       setMeasurePath(points: Coordinate[] | null) {
         pathLayers.setMeasurePath(points)
+      },
+      setMeasureShape(shape: MeasureShape | null) {
+        pathLayers.setMeasureShape(shape)
       },
       setGuidanceLine(line: readonly [Coordinate, Coordinate] | null) {
         pathLayers.setGuidanceLine(line)

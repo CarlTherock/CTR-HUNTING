@@ -100,7 +100,10 @@ export function polygonAreaSquareMeters(points: Coordinate[]): number {
   return Number.isFinite(area) ? area : 0
 }
 
-type Plane = { x: number; y: number }
+interface Plane {
+  x: number
+  y: number
+}
 
 function cross(o: Plane, a: Plane, b: Plane): number {
   return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)

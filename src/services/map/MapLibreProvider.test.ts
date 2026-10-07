@@ -729,6 +729,121 @@ describe('MapLibreProvider', () => {
     })
   })
 
+  describe('measure shape (distance / area tool)', () => {
+    interface Feature {
+      geometry: { type: string; coordinates: unknown }
+    }
+    const square = [
+      { lat: 46.8, lng: -71.2 },
+      { lat: 46.8, lng: -71.19 },
+      { lat: 46.81, lng: -71.19 },
+    ]
+
+    it('adds fill, line and point layers on style load, empty at first', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+
+      map.fire('style.load')
+
+      expect(map.layerIds).toEqual(
+        expect.arrayContaining([
+          'measure-shape-fill',
+          'measure-shape-line',
+          'measure-shape-points',
+        ]),
+      )
+      expect(map.sources['measure-shape'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
+    })
+
+    it('draws an open line and its dots, without any polygon fill', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasureShape({ points: square, closed: false })
+
+      const features = (map.sources['measure-shape'].data as { features: Feature[] })
+        .features
+      expect(features.filter((f) => f.geometry.type === 'Polygon')).toHaveLength(0)
+      expect(features.filter((f) => f.geometry.type === 'LineString')).toHaveLength(1)
+      expect(features.filter((f) => f.geometry.type === 'Point')).toHaveLength(3)
+    })
+
+    it('closes the ring (back to the first point) and fills it when closed with 3+ points', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasureShape({ points: square, closed: true })
+
+      const features = (map.sources['measure-shape'].data as { features: Feature[] })
+        .features
+      const polygon = features.find((f) => f.geometry.type === 'Polygon')
+      expect(polygon?.geometry.coordinates).toEqual([
+        [
+          [-71.2, 46.8],
+          [-71.19, 46.8],
+          [-71.19, 46.81],
+          [-71.2, 46.8],
+        ],
+      ])
+      const line = features.find((f) => f.geometry.type === 'LineString')
+      expect((line?.geometry.coordinates as number[][]).length).toBe(4)
+    })
+
+    it('never emits an invalid geometry for 1 or 2 points, even when closed', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setMeasureShape({ points: square.slice(0, 1), closed: true })
+      let features = (map.sources['measure-shape'].data as { features: Feature[] })
+        .features
+      expect(features.map((f) => f.geometry.type)).toEqual(['Point'])
+
+      instance.setMeasureShape({ points: square.slice(0, 2), closed: true })
+      features = (map.sources['measure-shape'].data as { features: Feature[] }).features
+      expect(features.map((f) => f.geometry.type)).toEqual([
+        'LineString',
+        'Point',
+        'Point',
+      ])
+    })
+
+    it('clears on null, leaves the elevation-profile path alone, and survives a style reload', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      const profileCalls = map.sources['measure-path'].setDataCalls.length
+
+      instance.setMeasureShape({ points: square, closed: true })
+      expect(map.sources['measure-path'].setDataCalls).toHaveLength(profileCalls)
+
+      instance.setBaseLayer('satellite')
+      map.layerIds = []
+      map.sources = {}
+      map.fire('style.load')
+      expect(map.layerIds).toContain('measure-shape-fill')
+      expect(
+        (map.sources['measure-shape'].data as { features: Feature[] }).features,
+      ).toHaveLength(5)
+
+      instance.setMeasureShape(null)
+      expect(map.sources['measure-shape'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
+    })
+  })
+
   describe('guidance line ("Aller à")', () => {
     const from = { lat: 46.8, lng: -71.2 }
     const to = { lat: 46.801, lng: -71.19 }

@@ -27,6 +27,13 @@ export interface DownloadAreaProgress {
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
  * MapLibre's `Map` class), so the engine stays swappable. */
+/** What the distance/area measure tool wants drawn. `closed` = polygon
+ * (fill + outline back to the first point) rather than an open line. */
+export interface MeasureShape {
+  points: Coordinate[]
+  closed: boolean
+}
+
 export interface MapInstance {
   /** Programmatically move the camera (e.g. "recenter on GPS"). */
   setView(view: Partial<MapViewState>): void
@@ -109,6 +116,12 @@ export interface MapInstance {
    * source/layers, independent of `setTrackPreview`, so drawing a
    * measurement never interferes with an in-progress GPS track. */
   setMeasurePath(points: Coordinate[] | null): void
+  /** Draws the distance/area measure tool: a dot per point, a line through
+   * them and, when `closed` with 3+ points, a translucent polygon fill. Own
+   * source/layers (teal), independent of `setMeasurePath` (elevation profile,
+   * amber) and of the track preview. `null` clears. The drawing is purely
+   * visual and ephemeral — never persisted. */
+  setMeasureShape(shape: MeasureShape | null): void
   /**
    * Renders (Phase 6) or clears (`null`) the Windy-style weather map
    * layer: `'wind'` draws an animated particle flow field (each particle

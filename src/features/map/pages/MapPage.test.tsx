@@ -10,6 +10,7 @@ import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
+import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
@@ -35,6 +36,7 @@ const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
+const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
 const setUserHeading = vi.fn()
 const setWindField = vi.fn()
@@ -61,6 +63,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSharedPoint,
     setTrackPreview,
     setMeasurePath,
+    setMeasureShape,
     setGuidanceLine,
     setUserHeading,
     setWindField,
@@ -223,6 +226,8 @@ afterEach(async () => {
     profilePoints: [],
     profileData: null,
   })
+  useMeasureStore.getState().close()
+  useMeasureStore.setState({ collapsed: false })
   useWindStore.setState({
     status: 'idle',
     field: null,
@@ -586,6 +591,124 @@ describe('MapPage', () => {
     await user.click(screen.getByRole('button', { name: 'Abandonner' }))
 
     expect(setMeasurePath).toHaveBeenLastCalledWith(null)
+  })
+
+  describe('distance / area measure tools', () => {
+    const BOX = [
+      { lat: 46.8, lng: -71.2 },
+      { lat: 46.8, lng: -71.19 },
+      { lat: 46.81, lng: -71.19 },
+      { lat: 46.81, lng: -71.2 },
+    ]
+
+    it('draws each tapped point through setMeasureShape, never through the elevation-profile path', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+
+      await useTool(user, 'Mesurer une surface')
+      expect(
+        screen.getByRole('region', { name: 'Mesure de surface' }),
+      ).toBeInTheDocument()
+      for (const p of BOX.slice(0, 3)) lastCreateMapOptions?.onMapClick?.(p)
+
+      await vi.waitFor(() =>
+        expect(setMeasureShape).toHaveBeenLastCalledWith({
+          points: BOX.slice(0, 3),
+          closed: true,
+        }),
+      )
+      expect(setMeasurePath).not.toHaveBeenCalledWith(expect.arrayContaining([BOX[0]]))
+      expect(await db.waypoints.count()).toBe(0)
+    })
+
+    it('a distance measure is an open line; clearing and quitting empty the map drawing', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+      await vi.waitFor(() =>
+        expect(setMeasureShape).toHaveBeenLastCalledWith({
+          points: BOX.slice(0, 2),
+          closed: false,
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Effacer' }))
+      await vi.waitFor(() => expect(setMeasureShape).toHaveBeenLastCalledWith(null))
+
+      lastCreateMapOptions?.onMapClick?.(BOX[2])
+      await user.click(screen.getByRole('button', { name: 'Quitter la mesure' }))
+      await vi.waitFor(() => expect(setMeasureShape).toHaveBeenLastCalledWith(null))
+      expect(useMeasureStore.getState().kind).toBeNull()
+    })
+
+    it('does not swallow waypoint placement: arming it pauses the measure, and the tap places a waypoint', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+
+      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      await vi.waitFor(() => expect(useMeasureStore.getState().active).toBe(false))
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+
+      expect(await screen.findByText('Nouveau point de repère')).toBeInTheDocument()
+      expect(useMeasureStore.getState().points).toEqual([BOX[0]])
+      expect(screen.getByTestId('measure-status')).toHaveTextContent('En pause')
+    })
+
+    it('starting a measure cancels waypoint placement, terrain tools and spot analysis', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      expect(useWaypointsStore.getState().isPlacing).toBe(true)
+
+      await useTool(user, 'Mesurer une surface')
+      expect(useWaypointsStore.getState().isPlacing).toBe(false)
+
+      await useTool(user, "Profil d'élévation")
+      expect(useTerrainToolsStore.getState().mode).toBe('profiling')
+      await vi.waitFor(() => expect(useMeasureStore.getState().active).toBe(false))
+
+      await useTool(user, 'Mesurer une distance')
+      expect(useTerrainToolsStore.getState().mode).toBe('idle')
+      expect(useMeasureStore.getState().active).toBe(true)
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      expect(useTerrainToolsStore.getState().profilePoints).toEqual([])
+      expect(useMeasureStore.getState().points).toEqual([BOX[0]])
+    })
+
+    it('shows 3D only with real elevations from the loaded terrain', async () => {
+      const user = userEvent.setup()
+      queryElevation.mockReturnValue(null)
+      render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+      expect(
+        await screen.findByText('indisponible : élévation non chargée'),
+      ).toBeInTheDocument()
+      queryElevation.mockReturnValue(null)
+    })
+
+    it('is dropped when the map unmounts (ephemeral) and hidden by Field Mode', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      expect(useMeasureStore.getState().points).toHaveLength(1)
+
+      act(() => useFieldModeStore.setState({ enabled: true }))
+      await vi.waitFor(() => expect(useMeasureStore.getState().kind).toBeNull())
+      expect(screen.queryByTestId('measure-panel')).not.toBeInTheDocument()
+
+      useMeasureStore.getState().start('area')
+      unmount()
+      expect(setMeasureShape).toHaveBeenLastCalledWith(null)
+      expect(useMeasureStore.getState().kind).toBeNull()
+    })
   })
 
   /** Arms placing, taps the map at `coordinate`, and opens the details form. */
