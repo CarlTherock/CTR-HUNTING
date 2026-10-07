@@ -1,5 +1,6 @@
 import type { MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { availableBaseLayers, mapProvider } from '@/services/map'
@@ -29,6 +30,7 @@ import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { GpsStatusBadge } from '@/features/gps/components/GpsStatusBadge'
 import { MyPositionControl } from '@/features/gps/components/MyPositionControl'
+import { GuidancePanel } from '@/features/guidance/components/GuidancePanel'
 import { SharedPointCard } from '@/features/share/components/SharedPointCard'
 import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import { useGeolocation } from '@/features/gps/useGeolocation'
@@ -49,6 +51,9 @@ import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditP
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
+import { useFollowStore } from '../state/followStore'
+import { useFollowPosition } from '../useFollowPosition'
+import { FollowControl, ResumeFollowButton } from '../components/FollowControl'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useImmersiveMode } from '../useImmersiveMode'
 import { sampleSlopeAspect } from '../terrainQuery'
@@ -61,6 +66,8 @@ import { ViewModeToggle } from '../components/ViewModeToggle'
  * that the previous recenter (pan only, no zoom change) left the view
  * too far out to actually be useful. */
 const GPS_LOCATE_ZOOM = 16
+/** Smallest width the bottom dock leaves on the right (7 rem). */
+const DOCK_MIN_RESERVE_PX = 112
 /** Zoom used to bring a shared point into view. */
 const SHARED_POINT_ZOOM = 15
 
@@ -77,6 +84,10 @@ export function MapPage() {
   const appliedOverlaysRef = useRef(overlays)
   const [railHost, setRailHost] = useState<HTMLDivElement | null>(null)
   const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null)
+  // Width the bottom dock leaves free for the tool rail, measured from the
+  // rail itself (it wraps into more columns on short screens). `null` until
+  // measured: the CSS default of the dock applies meanwhile.
+  const [dockReserve, setDockReserve] = useState<number | null>(null)
   const [toolsOpen, setToolsOpen] = useState(false)
   const closeTools = useCallback(() => setToolsOpen(false), [])
   const toolsContext = useMemo(
@@ -86,6 +97,7 @@ export function MapPage() {
   const { immersive, nativeSupported, nativeActive, toggleImmersive, toggleNative } =
     useImmersiveMode()
   const gpsReading = useGeolocation()
+  const getMapInstance = useCallback(() => instanceRef.current, [])
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
   const draftCoordinate = useWaypointsStore((state) => state.draft?.coordinate ?? null)
@@ -187,6 +199,8 @@ export function MapPage() {
             .analyze(coordinate, (c) => map.queryElevation(c))
         }
       },
+      // A drag / zoom / rotate by the user pauses "follow my position".
+      onUserInteraction: () => useFollowStore.getState().pauseForUserGesture(),
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
       onDraftMove: (coordinate) => useWaypointsStore.getState().moveDraft(coordinate),
       onBaseLayerError: (failed) => {
@@ -212,6 +226,7 @@ export function MapPage() {
 
     return () => {
       instanceRef.current = null
+      useFollowStore.getState().stop()
       instance.destroy()
     }
     // Mount once: the map manages its own camera after creation, and further
@@ -240,6 +255,36 @@ export function MapPage() {
       }
     }
   }, [overlays])
+
+  useEffect(() => {
+    const parent = railHost?.offsetParent
+    if (!railHost || !(parent instanceof HTMLElement)) return
+    if (typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      // The rail wraps into extra columns (or a row) that can overflow its own
+      // box on short screens, so measure the buttons themselves.
+      let left = Number.POSITIVE_INFINITY
+      for (const element of [railHost, ...Array.from(railHost.children)]) {
+        const rect = element.getBoundingClientRect()
+        if (rect.width > 0) left = Math.min(left, rect.left)
+      }
+      if (!Number.isFinite(left)) return
+      // + the rail's own right margin (0.5 rem) and the gap to the dock
+      // (0.5 rem), and never less than 7 rem: the MapLibre attribution pill
+      // sits under the rail and is about 100 px wide.
+      const reserve = parent.getBoundingClientRect().right - left + 8
+      setDockReserve(Math.max(DOCK_MIN_RESERVE_PX, Math.ceil(reserve)))
+    }
+    const resizeObserver = new ResizeObserver(measure)
+    resizeObserver.observe(railHost)
+    resizeObserver.observe(parent)
+    const mutationObserver = new MutationObserver(measure)
+    mutationObserver.observe(railHost, { childList: true })
+    return () => {
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+    }
+  }, [railHost])
 
   // The map container changes size when immersive mode toggles, the device
   // rotates or the on-screen keyboard opens. MapLibre only watches the
@@ -271,6 +316,8 @@ export function MapPage() {
       useTracksStore.getState().addPoint(gpsReading.value)
     }
   }, [gpsReading, trackStatus])
+
+  useFollowPosition(instanceRef, gpsReading)
 
   useEffect(() => {
     instanceRef.current?.setWaypoints(waypoints)
@@ -483,6 +530,11 @@ export function MapPage() {
             )}
             <MapToolRail setHost={setRailHost} />
             <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
+            <FollowControl
+              gpsReading={gpsReading}
+              onStart={locate}
+              large={fieldModeEnabled}
+            />
             <MyPositionControl reading={gpsReading} />
             <WaypointControl large={fieldModeEnabled} />
             <ToolTrigger
@@ -532,6 +584,20 @@ export function MapPage() {
               />
             )}
             <ToolsSheet open={toolsOpen} onClose={closeTools} setHost={setSheetHost} />
+            {/* Bottom-left dock: leaves the right-hand tool rail uncovered
+                (its measured width, at least 7 rem; 7 rem before it is measured). */}
+            <div
+              data-testid="map-bottom-dock"
+              style={
+                dockReserve === null
+                  ? undefined
+                  : ({ '--dock-reserve': `${dockReserve}px` } as CSSProperties)
+              }
+              className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-h-[75%] w-[calc(100%-0.5rem-var(--dock-reserve))] max-w-md flex-col items-start gap-2 [--dock-reserve:7rem]"
+            >
+              <ResumeFollowButton />
+              <GuidancePanel gpsReading={gpsReading} getMapInstance={getMapInstance} />
+            </div>
             <WaypointEditPanel gpsReading={gpsReading} />
             <SharedPointCard onCenter={centerOnSharedPoint} />
             <TrackRecorderControl />

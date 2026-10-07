@@ -44,11 +44,18 @@ const {
     lngLat: [number, number] | undefined
     element: HTMLElement | undefined
     draggable: boolean | undefined
+    rotation: number | undefined
+    options: Record<string, unknown> = {}
     handlers: Record<string, (() => void)[]> = {}
     constructor(options?: { element?: HTMLElement; draggable?: boolean }) {
       this.element = options?.element
       this.draggable = options?.draggable
+      this.options = { ...options }
       markerInstances.push(this)
+    }
+    setRotation(rotation: number) {
+      this.rotation = rotation
+      return this
     }
     setLngLat(lngLat: [number, number]) {
       calls.push('setLngLat')
@@ -719,6 +726,167 @@ describe('MapLibreProvider', () => {
 
       expect(map.layerIds).toContain('measure-path-points')
       expect(map.layerIds).toContain('measure-path-line')
+    })
+  })
+
+  describe('guidance line ("Aller à")', () => {
+    const from = { lat: 46.8, lng: -71.2 }
+    const to = { lat: 46.801, lng: -71.19 }
+
+    function colorOf(map: (typeof mapInstances)[number], id: string) {
+      const layer = map.addedLayers.find((l) => l.id === id)
+      return (layer?.paint as Record<string, unknown> | undefined)?.['line-color']
+    }
+
+    it('adds its own source and layers when the style loads, empty at first', () => {
+      mapInstances.length = 0
+      createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('guidance-line')
+      expect(map.layerIds).toContain('guidance-line-casing')
+      expect(map.sources['guidance-line'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
+    })
+
+    it('draws a dashed straight line between the two points and clears it with null', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+
+      instance.setGuidanceLine([from, to])
+      expect(map.sources['guidance-line'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [-71.2, 46.8],
+                [-71.19, 46.801],
+              ],
+            },
+          },
+        ],
+      })
+      const paint = map.addedLayers.find((l) => l.id === 'guidance-line')?.paint as Record<
+        string,
+        unknown
+      >
+      expect(paint['line-dasharray']).toBeDefined()
+
+      instance.setGuidanceLine(null)
+      expect(map.sources['guidance-line'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
+    })
+
+    it('is not a track: distinct colour, and the track and measure sources are untouched', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      const trackCalls = map.sources['track-preview'].setDataCalls.length
+      const measureCalls = map.sources['measure-path'].setDataCalls.length
+
+      instance.setGuidanceLine([from, to])
+
+      expect(map.sources['track-preview'].setDataCalls).toHaveLength(trackCalls)
+      expect(map.sources['measure-path'].setDataCalls).toHaveLength(measureCalls)
+      const guidanceColor = colorOf(map, 'guidance-line')
+      expect(guidanceColor).toBeDefined()
+      expect(guidanceColor).not.toBe(colorOf(map, 'track-preview-line'))
+      expect(guidanceColor).not.toBe(colorOf(map, 'measure-path-line'))
+    })
+
+    it('does not crash before the style has loaded, and shows the last line once it does', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      expect(() => instance.setGuidanceLine([from, to])).not.toThrow()
+
+      map.fire('style.load')
+      expect(
+        (map.sources['guidance-line'].data as { features: unknown[] }).features,
+      ).toHaveLength(1)
+    })
+
+    it('is re-added with the last line after a base layer switch reloads the style', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      instance.setGuidanceLine([from, to])
+
+      instance.setBaseLayer('satellite')
+      map.layerIds = []
+      map.addedLayers = []
+      map.sources = {}
+      map.fire('style.load')
+
+      expect(map.layerIds).toContain('guidance-line')
+      expect(
+        (map.sources['guidance-line'].data as { features: unknown[] }).features,
+      ).toHaveLength(1)
+    })
+  })
+
+  describe('user heading cone', () => {
+    it('is hidden until a heading is set, rotated by it with map alignment, hidden again with null', () => {
+      mapInstances.length = 0
+      markerInstances.length = 0
+      const instance = createTestMap()
+      instance.setUserLocationMarker({ lat: 46.8, lng: -71.2 })
+      const marker = markerInstances[0]
+      const cone = () =>
+        marker.element?.querySelector<HTMLElement>('[data-testid="user-heading-cone"]')
+      expect(cone()?.style.display).toBe('none')
+      expect(marker.options.rotationAlignment).toBe('map')
+
+      instance.setUserHeading(135)
+      expect(cone()?.style.display).toBe('block')
+      expect(marker.rotation).toBe(135)
+
+      instance.setUserHeading(null)
+      expect(cone()?.style.display).toBe('none')
+    })
+  })
+
+  describe('user interaction callback (follow mode)', () => {
+    function mapWithCallback() {
+      mapInstances.length = 0
+      const onUserInteraction = vi.fn()
+      new MapLibreProvider({ mapTiler: 'k' }).createMap({
+        container: document.createElement('div'),
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+        onUserInteraction,
+      })
+      return { map: mapInstances[0], onUserInteraction }
+    }
+
+    it.each(['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'])(
+      'reports a user %s gesture',
+      (gesture) => {
+        const { map, onUserInteraction } = mapWithCallback()
+        map.fire(gesture, { originalEvent: new Event('pointerdown') })
+        expect(onUserInteraction).toHaveBeenCalledTimes(1)
+      },
+    )
+
+    it('ignores camera moves the app made itself (no originalEvent)', () => {
+      const { map, onUserInteraction } = mapWithCallback()
+      map.fire('dragstart', {})
+      map.fire('zoomstart', { originalEvent: undefined })
+      expect(onUserInteraction).not.toHaveBeenCalled()
     })
   })
 

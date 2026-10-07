@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.5",
+    "geomagnetism": "0.2.0",
     "lucide-react": "^1.31.0",
     "maplibre-gl": "^6.13.0",
     "react": "^19.2.8",

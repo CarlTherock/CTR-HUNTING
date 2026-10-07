@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Lock, MapPin, Save, Trash2, Wind, X } from 'lucide-react'
+import { Lock, MapPin, Navigation, Save, Trash2, Wind, X } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
@@ -58,6 +59,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
   const cancelDraft = useWaypointsStore((state) => state.cancelDraft)
   const deleteWaypoint = useWaypointsStore((state) => state.deleteWaypoint)
   const closeEdit = useWaypointsStore((state) => state.closeEdit)
+  const startGuidance = useGuidanceStore((state) => state.start)
 
   const target = draft ? 'draft' : (waypoint?.id ?? null)
   const seedName = waypoint?.name ?? draft?.initialName ?? ''
@@ -206,7 +208,22 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
 
         <div className="flex flex-col gap-3">
           {waypoint && !draft ? (
-            <WaypointPositionBlock key={waypoint.id} waypoint={waypoint} />
+            <>
+              <WaypointPositionBlock key={waypoint.id} waypoint={waypoint} />
+              {/* Opens the bird's-eye guidance and closes this sheet so the
+                  map is visible. Read-only: the waypoint is not modified. */}
+              <Button
+                variant="primary"
+                size="md"
+                className="h-11 w-full"
+                onClick={() => {
+                  if (startGuidance(waypoint.id)) closeEdit()
+                }}
+              >
+                <Navigation size={16} aria-hidden="true" />
+                Aller à
+              </Button>
+            </>
           ) : (
             <div className="bg-surface-800 text-ink-300 flex items-start gap-2 rounded-md p-2 text-xs">
               <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />

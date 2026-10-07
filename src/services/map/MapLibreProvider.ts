@@ -63,6 +63,7 @@ export class MapLibreProvider implements MapProvider {
     onMapClick,
     onWaypointClick,
     onDraftMove,
+    onUserInteraction,
     onBaseLayerError,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
@@ -152,6 +153,17 @@ export class MapLibreProvider implements MapProvider {
       })
     }
 
+    if (onUserInteraction) {
+      // `originalEvent` is only set when the camera move comes from the
+      // user's input (pointer, touch, wheel, keyboard, nav buttons), not from
+      // a programmatic `setCenter`/`jumpTo` of ours.
+      for (const gesture of ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart']) {
+        map.on(gesture as 'dragstart', (event: { originalEvent?: unknown }) => {
+          if (event.originalEvent) onUserInteraction()
+        })
+      }
+    }
+
     if (onMapClick) {
       map.on('click', (e) => {
         onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })
@@ -197,6 +209,12 @@ export class MapLibreProvider implements MapProvider {
       },
       setMeasurePath(points: Coordinate[] | null) {
         pathLayers.setMeasurePath(points)
+      },
+      setGuidanceLine(line: readonly [Coordinate, Coordinate] | null) {
+        pathLayers.setGuidanceLine(line)
+      },
+      setUserHeading(trueHeadingDegrees: number | null) {
+        markers.setUserHeading(trueHeadingDegrees)
       },
       setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer) {
         windLayer.setField(field, hourOffset, layer)

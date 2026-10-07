@@ -8,9 +8,14 @@ const { markers, FakeMarker } = vi.hoisted(() => {
     lngLat: [number, number] | undefined
     element: HTMLElement | undefined
     removed = false
+    rotation: number | undefined
     constructor(options?: { element?: HTMLElement }) {
       this.element = options?.element
       markers.push(this)
+    }
+    setRotation(rotation: number) {
+      this.rotation = rotation
+      return this
     }
     // Same contract as MapLibre's LngLat constructor, which Marker.setLngLat
     // goes through: NaN throws.
@@ -99,6 +104,39 @@ describe('createMarkerController', () => {
 
     expect(markers).toHaveLength(1)
     expect(markers[0].removed).toBe(true)
+  })
+
+  describe('device marker direction cone', () => {
+    const cone = () =>
+      markers[0].element?.querySelector<HTMLElement>('[data-testid="user-heading-cone"]')
+
+    it('is a blue dot whose cone stays hidden without a heading', () => {
+      const controller = createMarkerController(map, {})
+      controller.setUserLocation({ lat: 46.8, lng: -71.2 })
+      expect(markers[0].element?.style.background).toMatch(/#2563eb|rgb\(37, 99, 235\)/)
+      expect(cone()?.style.display).toBe('none')
+      expect(markers[0].rotation).toBeUndefined()
+    })
+
+    it('shows the cone rotated by the TRUE heading (normalized) and hides it with null', () => {
+      const controller = createMarkerController(map, {})
+      controller.setUserLocation({ lat: 46.8, lng: -71.2 })
+      controller.setUserHeading(-10)
+      expect(cone()?.style.display).toBe('block')
+      expect(markers[0].rotation).toBe(350)
+      controller.setUserHeading(null)
+      expect(cone()?.style.display).toBe('none')
+      controller.setUserHeading(Number.NaN)
+      expect(cone()?.style.display).toBe('none')
+    })
+
+    it('remembers a heading set before the marker exists', () => {
+      const controller = createMarkerController(map, {})
+      controller.setUserHeading(90)
+      controller.setUserLocation({ lat: 46.8, lng: -71.2 })
+      expect(cone()?.style.display).toBe('block')
+      expect(markers[0].rotation).toBe(90)
+    })
   })
 
   it('ignores an invalid draft coordinate', () => {

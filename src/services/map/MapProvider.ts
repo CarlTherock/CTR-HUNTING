@@ -56,6 +56,17 @@ export interface MapInstance {
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
+  /** Draws (or clears, with `null`) the dashed straight line of "Aller à"
+   * between the device position and the destination. Its own source and
+   * layers, a colour distinct from the track preview and the measure path,
+   * re-added after a base-layer switch. It is a drawing only: never a track,
+   * never persisted. */
+  setGuidanceLine(line: readonly [Coordinate, Coordinate] | null): void
+  /** Sets the direction the phone points, in degrees clockwise from TRUE north,
+   * on the device-position marker (a cone, aligned with the MAP so a rotated
+   * map stays correct). `null` hides the cone: pass it unless the heading is
+   * reliable. Never pass a GPS travel course here. */
+  setUserHeading(trueHeadingDegrees: number | null): void
   /** Tells the engine its container changed size (immersive/fullscreen,
    * rotation, keyboard) so the canvas matches it again. */
   resize(): void
@@ -181,6 +192,11 @@ export interface CreateMapOptions {
    * not saved yet) to a new position. Saved waypoint markers are never
    * draggable: a saved waypoint's location is locked. */
   onDraftMove?: (coordinate: Coordinate) => void
+  /** Called when the USER moves the camera by gesture (drag, pinch/wheel/
+   * double-tap zoom, rotate, tilt, or the zoom/compass buttons) — never for
+   * a move made by the app itself (`setView`). Used to pause "follow my
+   * position" so the app never fights the user's hand. */
+  onUserInteraction?: () => void
   /** Called once per base-layer load attempt when the style itself (not an
    * individual tile) could not be loaded: provider unreachable, invalid key,
    * nothing cached offline. The caller decides the fallback. */

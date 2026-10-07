@@ -1,18 +1,46 @@
 import type { Waypoint, WaypointCategory } from '@/types'
 
-/** Small blue dot + white ring, the near-universal "you are here" marker
- * convention — distinct from the teardrop pins waypoints use (Phase 2), so
- * the two are never visually confused on the same map. Built as a plain
- * DOM element (not JSX) since MapLibre mounts markers outside React. */
+/** Blue dot + white ring, the near-universal "you are here" marker
+ * convention — distinct from the round pins waypoints use, so the two are never
+ * visually confused on the same map. A direction cone (hidden by default, see
+ * `setUserHeadingElement`) is added only when a RELIABLE phone heading exists.
+ * Built as a plain DOM element (not JSX) since MapLibre mounts markers outside
+ * React. */
+export const USER_LOCATION_COLOR = '#2563eb'
+
 export function createUserLocationElement(): HTMLDivElement {
   const el = document.createElement('div')
   el.style.width = '16px'
   el.style.height = '16px'
   el.style.borderRadius = '50%'
-  el.style.background = '#22c55e'
+  el.style.background = USER_LOCATION_COLOR
   el.style.border = '2px solid white'
-  el.style.boxShadow = '0 0 0 2px rgba(34, 197, 94, 0.35)'
+  el.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.35)'
+  el.setAttribute('data-testid', 'user-location-marker')
+  const cone = document.createElement('div')
+  cone.setAttribute('data-testid', 'user-heading-cone')
+  cone.style.cssText =
+    'display:none;position:absolute;left:50%;bottom:50%;transform:translateX(-50%);width:0;height:0;' +
+    'border-left:11px solid transparent;border-right:11px solid transparent;' +
+    'border-bottom:26px solid rgba(37,99,235,0.55);pointer-events:none;z-index:-1;'
+  el.appendChild(cone)
   return el
+}
+
+/** Shows the direction cone of the device marker, or hides it (`null`). */
+export function setUserHeadingElement(
+  el: HTMLElement,
+  trueHeadingDegrees: number | null,
+): void {
+  const cone = el.querySelector<HTMLElement>('[data-testid="user-heading-cone"]')
+  if (!cone) return
+  if (trueHeadingDegrees === null) {
+    cone.style.display = 'none'
+    el.removeAttribute('data-heading')
+    return
+  }
+  cone.style.display = 'block'
+  el.setAttribute('data-heading', String(Math.round(trueHeadingDegrees)))
 }
 
 const DEFAULT_WAYPOINT_COLOR = '#f59e0b'

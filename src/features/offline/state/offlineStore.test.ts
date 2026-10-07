@@ -27,6 +27,8 @@ function fakeMapInstance(
     setSharedPoint: vi.fn(),
     setTrackPreview: vi.fn(),
     setMeasurePath: vi.fn(),
+    setGuidanceLine: vi.fn(),
+    setUserHeading: vi.fn(),
     setWindField: vi.fn(),
     setAnalysisHeatmap: vi.fn(),
     setRasterOverlay: vi.fn(),

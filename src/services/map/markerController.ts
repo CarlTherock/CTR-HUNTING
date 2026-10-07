@@ -8,6 +8,7 @@ import {
   createUserLocationElement,
   createWaypointElement,
   renderWaypointElement,
+  setUserHeadingElement,
 } from './markerElements'
 
 export interface MarkerCallbacks {
@@ -22,12 +23,19 @@ export interface MarkerCallbacks {
  * MapLibre, whose `LngLat` constructor throws on NaN. */
 export function createMarkerController(map: MapLibreMap, callbacks: MarkerCallbacks) {
   let userMarker: Marker | null = null
+  let userHeading: number | null = null
   let draftMarker: Marker | null = null
   let sharedMarker: Marker | null = null
   let sharedKey: string | null = null
   const waypointMarkers = new Map<string, Marker>()
   const waypointData = new Map<string, Waypoint>()
   let selectedId: string | null = null
+
+  function applyUserHeading() {
+    if (!userMarker) return
+    setUserHeadingElement(userMarker.getElement(), userHeading)
+    if (userHeading !== null) userMarker.setRotation(userHeading)
+  }
 
   function paint(id: string) {
     const marker = waypointMarkers.get(id)
@@ -49,14 +57,28 @@ export function createMarkerController(map: MapLibreMap, callbacks: MarkerCallba
         // Marker.addTo() immediately positions itself from `_lngLat`, so
         // it must be set *before* adding — adding first crashes reading
         // `.lng` off the not-yet-set position.
-        userMarker = new Marker({ element: createUserLocationElement() }).setLngLat([
-          coordinate.lng,
-          coordinate.lat,
-        ])
+        // `rotationAlignment: 'map'` rotates the cone with the MAP, so a TRUE
+        // heading stays correct when the map itself is rotated; the dot is
+        // kept round when the map is tilted (`pitchAlignment: 'viewport'`).
+        userMarker = new Marker({
+          element: createUserLocationElement(),
+          rotationAlignment: 'map',
+          pitchAlignment: 'viewport',
+        }).setLngLat([coordinate.lng, coordinate.lat])
         userMarker.addTo(map)
+        applyUserHeading()
       } else {
         userMarker.setLngLat([coordinate.lng, coordinate.lat])
       }
+    },
+    /** Direction cone of the device marker, in degrees from TRUE north (`null`
+     * hides it). Remembered, so it applies as soon as the marker exists. */
+    setUserHeading(trueHeadingDegrees: number | null) {
+      userHeading =
+        trueHeadingDegrees !== null && Number.isFinite(trueHeadingDegrees)
+          ? ((trueHeadingDegrees % 360) + 360) % 360
+          : null
+      applyUserHeading()
     },
     setWaypoints(waypoints: Waypoint[]) {
       const seen = new Set<string>()
@@ -152,6 +174,7 @@ export function createMarkerController(map: MapLibreMap, callbacks: MarkerCallba
       }
     },
     destroy() {
+      userHeading = null
       userMarker?.remove()
       draftMarker?.remove()
       sharedMarker?.remove()

@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { useMapStore } from '../state/mapStore'
+import { useFollowStore } from '../state/followStore'
+import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
@@ -33,6 +35,8 @@ const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
+const setGuidanceLine = vi.fn()
+const setUserHeading = vi.fn()
 const setWindField = vi.fn()
 const setAnalysisHeatmap = vi.fn()
 const setRasterOverlay = vi.fn()
@@ -57,6 +61,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSharedPoint,
     setTrackPreview,
     setMeasurePath,
+    setGuidanceLine,
+    setUserHeading,
     setWindField,
     setAnalysisHeatmap,
     setRasterOverlay,
@@ -199,6 +205,8 @@ afterEach(async () => {
     reason: 'Geolocation is not supported by this browser.',
   }
   useSharedPointStore.setState({ point: null, notice: null })
+  useFollowStore.setState({ mode: 'off' })
+  useGuidanceStore.setState({ destinationId: null, collapsed: false, notice: null })
   useLayersStore.setState({
     baseLayer: 'outdoor',
     baseLayerChosenByUser: false,
@@ -1194,3 +1202,142 @@ describe('MapPage', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => {
+  const recentFix = (overrides: { lat?: number; ageMs?: number } = {}): GeolocationReading => ({
+    status: 'available',
+    value: {
+      lat: overrides.lat ?? 46.8,
+      lng: -71.2,
+      accuracyMeters: 8,
+      timestampMs: Date.now() - (overrides.ageMs ?? 0),
+    },
+    confidence: 'measured',
+    source: 'browser-geolocation',
+  })
+
+  /** Calls to the map's `setView` that only recentre (no zoom change). */
+  const centerOnlyCalls = () =>
+    setView.mock.calls.filter(
+      ([view]) => view && 'center' in view && !('zoom' in view),
+    )
+
+  it('cannot start without a GPS fix, with the reason as its tooltip', () => {
+    render(<MapPage />)
+    const button = screen.getByRole('button', { name: 'Suivre ma position' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', expect.stringContaining('Suivi indisponible'))
+  })
+
+  it('starts following: recentres once at field zoom, then on each recent fix without changing the zoom', async () => {
+    mockGpsReading = recentFix()
+    const user = userEvent.setup()
+    const { rerender } = render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Suivre ma position' }))
+    expect(useFollowStore.getState().mode).toBe('following')
+    expect(screen.getByRole('button', { name: 'Suivre ma position' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 }, zoom: 16 })
+
+    setView.mockClear()
+    mockGpsReading = recentFix({ lat: 46.8005 })
+    rerender(<MapPage />)
+    expect(centerOnlyCalls()).toEqual([[{ center: { lat: 46.8005, lng: -71.2 } }]])
+  })
+
+  it('pauses on a manual map gesture, stops recentring, and "Reprendre le suivi" resumes', async () => {
+    mockGpsReading = recentFix()
+    const user = userEvent.setup()
+    const { rerender } = render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Suivre ma position' }))
+    expect(screen.queryByRole('button', { name: 'Reprendre le suivi' })).toBeNull()
+
+    act(() => lastCreateMapOptions?.onUserInteraction?.())
+    expect(useFollowStore.getState().mode).toBe('paused')
+    expect(screen.getByRole('button', { name: 'Reprendre le suivi' })).toBeVisible()
+
+    setView.mockClear()
+    mockGpsReading = recentFix({ lat: 46.801 })
+    rerender(<MapPage />)
+    expect(centerOnlyCalls()).toEqual([]) // never fights the user's gesture
+
+    await user.click(screen.getByRole('button', { name: 'Reprendre le suivi' }))
+    expect(useFollowStore.getState().mode).toBe('following')
+    expect(centerOnlyCalls()).toEqual([[{ center: { lat: 46.801, lng: -71.2 } }]])
+    expect(screen.queryByRole('button', { name: 'Reprendre le suivi' })).toBeNull()
+  })
+
+  it('a gesture while not following does nothing', () => {
+    mockGpsReading = recentFix()
+    render(<MapPage />)
+    act(() => lastCreateMapOptions?.onUserInteraction?.())
+    expect(useFollowStore.getState().mode).toBe('off')
+  })
+
+  it('never recentres on an old or stale fix', async () => {
+    mockGpsReading = recentFix()
+    const user = userEvent.setup()
+    const { rerender } = render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Suivre ma position' }))
+
+    setView.mockClear()
+    mockGpsReading = recentFix({ lat: 46.81, ageMs: 10 * 60_000 })
+    rerender(<MapPage />)
+    mockGpsReading = recentFix({ lat: 46.82, ageMs: 60_000 })
+    rerender(<MapPage />)
+    expect(centerOnlyCalls()).toEqual([])
+  })
+
+  it('"Me localiser" still recentres once when not following', async () => {
+    mockGpsReading = recentFix()
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Me localiser' }))
+    expect(setView).toHaveBeenCalledWith({ center: { lat: 46.8, lng: -71.2 }, zoom: 16 })
+    expect(useFollowStore.getState().mode).toBe('off')
+  })
+
+  it('stops following when the map page is left', async () => {
+    mockGpsReading = recentFix()
+    const user = userEvent.setup()
+    const { unmount } = render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Suivre ma position' }))
+    unmount()
+    expect(useFollowStore.getState().mode).toBe('off')
+  })
+
+  it('"Aller à" draws the guidance line on the map, "Arrêter" clears it, and no track appears', async () => {
+    mockGpsReading = recentFix()
+    const saved = {
+      id: 'w1',
+      name: 'Mirador nord',
+      coordinate: { lat: 46.801, lng: -71.2 },
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    // The page loads waypoints from the database on mount.
+    await db.waypoints.add(saved)
+    useWaypointsStore.setState({ waypoints: [saved], loaded: true, editingId: 'w1' })
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aller à' }))
+    expect(screen.getByTestId('guidance-panel')).toBeVisible()
+    expect(useWaypointsStore.getState().editingId).toBeNull()
+    expect(setGuidanceLine).toHaveBeenLastCalledWith([
+      { lat: 46.8, lng: -71.2 },
+      { lat: 46.801, lng: -71.2 },
+    ])
+    expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+    expect(useTracksStore.getState().status).toBe('idle')
+
+    await user.click(screen.getByRole('button', { name: 'Arrêter le guidage' }))
+    expect(setGuidanceLine).toHaveBeenLastCalledWith(null)
+    expect(screen.queryByTestId('guidance-panel')).toBeNull()
+  })
+})
+
