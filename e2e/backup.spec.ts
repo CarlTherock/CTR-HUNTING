@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createWaypointViaUi, readWaypoints } from './support/waypointData'
 import { expect, test } from './support/test'
 
@@ -51,7 +52,23 @@ test.describe('sauvegarde et restauration', () => {
     )
     expect(await readWaypoints(page)).toHaveLength(0)
 
-    await page.getByLabel('Fichier de sauvegarde à restaurer').setInputFiles(file)
+    // Selecting the file: Playwright's own setInputFiles did not reach the
+    // React onChange of this hidden input in Chromium here (cause not
+    // established), so the real downloaded bytes are handed to the input
+    // through DataTransfer + a change event. The OS file picker itself is NOT
+    // exercised (check it on a physical iPhone).
+    const zipBase64 = readFileSync(file).toString('base64')
+    await page.evaluate((b64) => {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[aria-label="Fichier de sauvegarde à restaurer"]',
+      )
+      if (!input) throw new Error('input de restauration introuvable')
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([bytes], 'sauvegarde.zip', { type: 'application/zip' }))
+      input.files = transfer.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }, zipBase64)
     const preview = page.getByRole('region', { name: 'Aperçu de la restauration' })
     await expect(preview).toBeVisible()
     expect(await readWaypoints(page)).toHaveLength(0) // preview wrote nothing

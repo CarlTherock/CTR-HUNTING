@@ -24,6 +24,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 ### Notes
 
 - Reporté : comptes, abonnement, paiement, identité visuelle finale, tests d'installation sur appareils réels.
+
 ## Assistant déterministe (2026-10-07)
 
 ### Added

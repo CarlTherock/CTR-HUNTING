@@ -46,7 +46,7 @@ export const NATURE_HELP: Record<StatementNature, string> = {
   calcul:
     'Résultat d’une règle ou d’un calcul écrit dans l’application, appliqué aux données ci-dessus. Un énoncé qui mêle un fait et un calcul porte l’étiquette « calcul ».',
   estimation:
-    'Valeur modélisée (prévision, indice, agrégation) : plausible, non mesurée à cet endroit.',
+    'Valeur modélisée (prévision, indice, agrégation) : vraisemblable, non mesurée à cet endroit.',
   'interprétation IA':
     'Texte produit par un modèle d’IA distant. Aucune réponse de ce type n’existe dans cette version.',
 }
