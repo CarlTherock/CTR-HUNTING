@@ -23,3 +23,50 @@ export function formatBytes(bytes: number): string {
   if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} Ko`
   return `${bytes} o`
 }
+
+/** Narrow no-break space: French thousands separator (never breaks a number). */
+export const THIN_NBSP = ' '
+/** No-break space between a number and its unit. */
+export const NBSP = ' '
+
+/**
+ * French number: decimal comma, narrow no-break space every 3 digits of the
+ * integer part (`12 345,6`). Rounds half away from zero like `toFixed`, never
+ * yields `-0`, and returns `—` for NaN/Infinity instead of printing them.
+ */
+export function formatNumberFr(value: number, decimals = 0): string {
+  if (!Number.isFinite(value)) return '—'
+  const fixed = Math.abs(value).toFixed(decimals)
+  const [integer, fraction] = fixed.split('.')
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, THIN_NBSP)
+  const isZero = Number(fixed) === 0
+  const sign = value < 0 && !isZero ? '-' : ''
+  return `${sign}${grouped}${fraction ? `,${fraction}` : ''}`
+}
+
+/** `12 345,6 m` — metres with one decimal (measure tools need ~10 cm). */
+export function formatMetersFr(meters: number, decimals = 1): string {
+  return `${formatNumberFr(meters, decimals)}${NBSP}m`
+}
+
+/** `12,35 km` */
+export function formatKilometersFr(meters: number, decimals = 2): string {
+  return `${formatNumberFr(meters / 1000, decimals)}${NBSP}km`
+}
+
+/** `3,45 ha` */
+export function formatHectaresFr(squareMeters: number, decimals = 2): string {
+  return `${formatNumberFr(squareMeters / 10_000, decimals)}${NBSP}ha`
+}
+
+/** `34 500 m²` (whole square metres) */
+export function formatSquareMetersFr(squareMeters: number): string {
+  return `${formatNumberFr(squareMeters, 0)}${NBSP}m²`
+}
+
+/** `8,52 acres` (`1,00 acre`: French keeps the singular below 2). */
+export function formatAcresFr(squareMeters: number, decimals = 2): string {
+  const acres = squareMeters / 4046.8564224
+  const unit = Math.abs(acres) < 2 ? 'acre' : 'acres'
+  return `${formatNumberFr(acres, decimals)}${NBSP}${unit}`
+}
