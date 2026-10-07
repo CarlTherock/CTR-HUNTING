@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { db } from './db'
-import { createWaypoint, deleteWaypoint, listWaypoints, updateWaypoint } from './waypointsRepository'
+import {
+  createWaypoint,
+  deleteWaypoint,
+  listWaypoints,
+  updateWaypoint,
+} from './waypointsRepository'
 
 describe('waypointsRepository (IndexedDB via Dexie)', () => {
   afterEach(async () => {
@@ -30,7 +35,10 @@ describe('waypointsRepository (IndexedDB via Dexie)', () => {
       category: 'trailhead',
     })
 
-    await updateWaypoint(waypoint.id, { name: 'Main trailhead', notes: 'Parking for 3 trucks' })
+    await updateWaypoint(waypoint.id, {
+      name: 'Main trailhead',
+      notes: 'Parking for 3 trucks',
+    })
 
     const [reloaded] = await listWaypoints()
     expect(reloaded.name).toBe('Main trailhead')
@@ -85,9 +93,14 @@ describe('waypointsRepository — location lock', () => {
     })
 
     await expect(
-      updateWaypoint(waypoint.id, { coordinate: { lat: 0, lng: 0 } } as unknown as { name: string }),
+      updateWaypoint(waypoint.id, { coordinate: { lat: 0, lng: 0 } } as unknown as {
+        name: string
+      }),
     ).rejects.toThrow(/locked/)
 
-    expect((await db.waypoints.get(waypoint.id))?.coordinate).toEqual({ lat: 46.8, lng: -71.2 })
+    expect((await db.waypoints.get(waypoint.id))?.coordinate).toEqual({
+      lat: 46.8,
+      lng: -71.2,
+    })
   })
 })

@@ -8,17 +8,18 @@ like MétéoMédia / Windy, drawn from **real gridded data** only.
 Environment and Climate Change Canada, MSC GeoMet WMS 1.3.0
 (`https://geo.weather.gc.ca/geomet`, CORS `*`, no key).
 
-| Chip | WMS layer(s) | Kind | Step |
-|---|---|---|---|
-| Radar | `RADAR_1KM_RRAI` + `RADAR_1KM_RSNO` (stacked) | observed, 3 h back | 12 min shown (6 min native) |
-| Précip. | `HRDPS.CONTINENTAL.DIAG_PR_PT1H` | forecast | 1 h, ~48 h |
-| Temp. | `HRDPS.CONTINENTAL_TT` | forecast | 1 h |
-| Vent | `HRDPS.CONTINENTAL_WSPD` | forecast | 1 h |
-| Rafales | `HRDPS.CONTINENTAL_WGE` | forecast | 1 h |
-| Nuages | `HRDPS.CONTINENTAL_NT` | forecast | 1 h |
-| Pression | `HRDPS.CONTINENTAL_PN` | forecast (contours) | 1 h |
+| Chip     | WMS layer(s)                                  | Kind                | Step                        |
+| -------- | --------------------------------------------- | ------------------- | --------------------------- |
+| Radar    | `RADAR_1KM_RRAI` + `RADAR_1KM_RSNO` (stacked) | observed, 3 h back  | 12 min shown (6 min native) |
+| Précip.  | `HRDPS.CONTINENTAL.DIAG_PR_PT1H`              | forecast            | 1 h, ~48 h                  |
+| Temp.    | `HRDPS.CONTINENTAL_TT`                        | forecast            | 1 h                         |
+| Vent     | `HRDPS.CONTINENTAL_WSPD`                      | forecast            | 1 h                         |
+| Rafales  | `HRDPS.CONTINENTAL_WGE`                       | forecast            | 1 h                         |
+| Nuages   | `HRDPS.CONTINENTAL_NT`                        | forecast            | 1 h                         |
+| Pression | `HRDPS.CONTINENTAL_PN`                        | forecast (contours) | 1 h                         |
 
 Gotchas found while testing:
+
 - GeoMet rejects several layers in one GetMap (`InvalidLayersParameter`),
   so radar rain and snow are two stacked raster sources per frame.
 - The radar window rolls every 6 min; the 3 oldest instants are skipped

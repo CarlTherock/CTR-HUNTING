@@ -18,7 +18,9 @@ describe('WindCompass', () => {
     )
     expect(withOptimal.querySelector('.fill-status-success\\/20')).toBeTruthy()
 
-    const { container: withoutOptimal } = render(<WindCompass directionDegrees={270} speedKmh={20} />)
+    const { container: withoutOptimal } = render(
+      <WindCompass directionDegrees={270} speedKmh={20} />,
+    )
     expect(withoutOptimal.querySelector('.fill-status-success\\/20')).toBeNull()
   })
 })

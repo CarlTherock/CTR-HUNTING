@@ -50,7 +50,9 @@ describe('OpenMeteoWeatherProvider', () => {
 
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]
     const requested = new URL(String(url))
-    expect(requested.origin + requested.pathname).toBe('https://api.open-meteo.com/v1/forecast')
+    expect(requested.origin + requested.pathname).toBe(
+      'https://api.open-meteo.com/v1/forecast',
+    )
     expect(requested.searchParams.get('latitude')).toBe('46.8')
     expect(requested.searchParams.get('longitude')).toBe('-71.2')
     expect(requested.searchParams.get('current')).toContain('temperature_2m')

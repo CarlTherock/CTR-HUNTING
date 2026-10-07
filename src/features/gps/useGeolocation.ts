@@ -22,7 +22,10 @@ export function useGeolocation(): GeolocationReading {
   const [reading, setReading] = useState<GeolocationReading>(() =>
     typeof navigator !== 'undefined' && 'geolocation' in navigator
       ? { status: 'unavailable', reason: 'En attente d’un signal GPS.' }
-      : { status: 'unavailable', reason: 'La géolocalisation n’est pas prise en charge par ce navigateur.' },
+      : {
+          status: 'unavailable',
+          reason: 'La géolocalisation n’est pas prise en charge par ce navigateur.',
+        },
   )
 
   useEffect(() => {

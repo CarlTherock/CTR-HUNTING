@@ -79,7 +79,11 @@ export function tileCountForBounds(
 
 /** The north-west corner of tile (x, y) at `zoom` — the inverse of
  * `lngLatToTile`, same standard formula. */
-export function tileToLngLat(x: number, y: number, zoom: number): { lng: number; lat: number } {
+export function tileToLngLat(
+  x: number,
+  y: number,
+  zoom: number,
+): { lng: number; lat: number } {
   const n = 2 ** zoom
   const lng = (x / n) * 360 - 180
   const latRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n)))
@@ -89,7 +93,11 @@ export function tileToLngLat(x: number, y: number, zoom: number): { lng: number;
 /** The geographic center of tile (x, y) at `zoom` — used to point a
  * camera at a specific tile (e.g. while sweeping an offline-download
  * area), not just its corner. */
-export function tileCenterLngLat(x: number, y: number, zoom: number): { lng: number; lat: number } {
+export function tileCenterLngLat(
+  x: number,
+  y: number,
+  zoom: number,
+): { lng: number; lat: number } {
   const nw = tileToLngLat(x, y, zoom)
   const se = tileToLngLat(x + 1, y + 1, zoom)
   return { lng: (nw.lng + se.lng) / 2, lat: (nw.lat + se.lat) / 2 }

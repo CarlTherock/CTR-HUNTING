@@ -10,7 +10,13 @@ import { useJournalStore } from '../state/journalStore'
  * `features/waypoints/components/WaypointPhotos.tsx` (in-app camera +
  * file picker), just keyed by `observationId` instead of `waypointId`.
  * Data access and the object-URL lifecycle live in `usePhotoGallery`. */
-export function JournalPhotos({ observationId, photoIds }: { observationId: string; photoIds: string[] }) {
+export function JournalPhotos({
+  observationId,
+  photoIds,
+}: {
+  observationId: string
+  photoIds: string[]
+}) {
   const update = useJournalStore((state) => state.update)
   const [cameraOpen, setCameraOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -37,7 +43,10 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
       <span className="text-ink-500 text-xs font-medium">Photos</span>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {photos.map((photo) => (
-          <div key={photo.id} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+          <div
+            key={photo.id}
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md"
+          >
             <img src={photo.url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
@@ -68,7 +77,10 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
           <ImagePlus size={18} aria-hidden="true" />
         </button>
         {cameraOpen && (
-          <CameraCapture onSave={(captured) => void handleCameraSave(captured)} onClose={() => setCameraOpen(false)} />
+          <CameraCapture
+            onSave={(captured) => void handleCameraSave(captured)}
+            onClose={() => setCameraOpen(false)}
+          />
         )}
         <input
           ref={fileInputRef}

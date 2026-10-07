@@ -79,7 +79,13 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   cancel: () => set({ mode: 'idle' }),
 
   analyze: async (coordinate, queryElevation, optimalWindDirections) => {
-    set({ mode: 'idle', status: 'loading', coordinate, combined: null, errorReason: null })
+    set({
+      mode: 'idle',
+      status: 'loading',
+      coordinate,
+      combined: null,
+      errorReason: null,
+    })
 
     const slopeAspect = sampleSlopeAspect(queryElevation, coordinate)
     const terrain = terrainAnalyzer(slopeAspect)
@@ -109,17 +115,32 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const weather =
       weatherOutcome.status === 'fulfilled'
         ? weatherAnalyzer(weatherOutcome.value.current, weatherOutcome.value.hourly)
-        : unavailableResult('weather', weatherOutcome.reason instanceof Error ? weatherOutcome.reason.message : 'Échec de la recherche météo.')
+        : unavailableResult(
+            'weather',
+            weatherOutcome.reason instanceof Error
+              ? weatherOutcome.reason.message
+              : 'Échec de la recherche météo.',
+          )
 
     const wind =
       windOutcome.status === 'fulfilled' && windOutcome.value.samples[0]?.hourly[0]
         ? windAnalyzer(windOutcome.value.samples[0].hourly[0], optimalWindDirections)
-        : unavailableResult('wind', windOutcome.status === 'rejected' && windOutcome.reason instanceof Error ? windOutcome.reason.message : 'Échec de la recherche de vent.')
+        : unavailableResult(
+            'wind',
+            windOutcome.status === 'rejected' && windOutcome.reason instanceof Error
+              ? windOutcome.reason.message
+              : 'Échec de la recherche de vent.',
+          )
 
     const vegetation =
       vegetationOutcome.status === 'fulfilled'
         ? vegetationAnalyzer(vegetationOutcome.value)
-        : unavailableResult('vegetation', vegetationOutcome.reason instanceof Error ? vegetationOutcome.reason.message : 'Échec de la recherche de végétation.')
+        : unavailableResult(
+            'vegetation',
+            vegetationOutcome.reason instanceof Error
+              ? vegetationOutcome.reason.message
+              : 'Échec de la recherche de végétation.',
+          )
 
     const combined = combineAnalyses([terrain, vegetation, weather, wind, time, history])
     const recent = [{ coordinate, combined }, ...get().recent].slice(0, MAX_RECENT)
@@ -131,6 +152,11 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   recall: (index) => {
     const entry = get().recent[index]
     if (!entry) return
-    set({ status: 'ready', coordinate: entry.coordinate, combined: entry.combined, errorReason: null })
+    set({
+      status: 'ready',
+      coordinate: entry.coordinate,
+      combined: entry.combined,
+      errorReason: null,
+    })
   },
 }))

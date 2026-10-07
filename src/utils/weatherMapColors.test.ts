@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { LAYER_LEGEND, valueForLayer, weatherLayerColor, weatherLayerGradientCss } from './weatherMapColors'
+import {
+  LAYER_LEGEND,
+  valueForLayer,
+  weatherLayerColor,
+  weatherLayerGradientCss,
+} from './weatherMapColors'
 import type { WindHourlyReading } from '@/types'
 
 const READING: WindHourlyReading = {
@@ -46,7 +51,12 @@ describe('weatherLayerGradientCss', () => {
 
 describe('LAYER_LEGEND', () => {
   it('has real min/max/unit for every layer', () => {
-    expect(LAYER_LEGEND.wind).toEqual({ min: 0, max: 65, unit: 'km/h', label: 'Vitesse du vent' })
+    expect(LAYER_LEGEND.wind).toEqual({
+      min: 0,
+      max: 65,
+      unit: 'km/h',
+      label: 'Vitesse du vent',
+    })
     expect(LAYER_LEGEND.temperature.unit).toBe('°C')
     expect(LAYER_LEGEND.precipitation.unit).toBe('mm/h')
     expect(LAYER_LEGEND.clouds.max).toBe(100)

@@ -36,8 +36,14 @@ interface HeatmapState {
    * their analyzer is shown as unavailable, never guessed. */
   unavailableSources: string[]
 
-  toggle: (bounds: LngLatBounds, queryElevation: (coordinate: Coordinate) => number | null) => void
-  compute: (bounds: LngLatBounds, queryElevation: (coordinate: Coordinate) => number | null) => Promise<void>
+  toggle: (
+    bounds: LngLatBounds,
+    queryElevation: (coordinate: Coordinate) => number | null,
+  ) => void
+  compute: (
+    bounds: LngLatBounds,
+    queryElevation: (coordinate: Coordinate) => number | null,
+  ) => Promise<void>
   setSelectedView: (view: HeatmapView) => void
 }
 
@@ -77,7 +83,8 @@ export const useHeatmapStore = create<HeatmapState>((set, get) => ({
       ])
       const windField = windResult.status === 'fulfilled' ? windResult.value : null
       const weather = weatherResult.status === 'fulfilled' ? weatherResult.value : null
-      const vegetationSamples = vegetationResult.status === 'fulfilled' ? vegetationResult.value : []
+      const vegetationSamples =
+        vegetationResult.status === 'fulfilled' ? vegetationResult.value : []
       const unavailableSources = [
         windResult.status === 'rejected' ? 'Vent' : null,
         weatherResult.status === 'rejected' ? 'Météo' : null,
@@ -106,7 +113,10 @@ export const useHeatmapStore = create<HeatmapState>((set, get) => ({
       )
       set({ status: 'ready', cells, computedBounds: bounds, unavailableSources })
     } catch (err) {
-      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Erreur inconnue' })
+      set({
+        status: 'error',
+        errorReason: err instanceof Error ? err.message : 'Erreur inconnue',
+      })
     }
   },
 

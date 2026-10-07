@@ -15,7 +15,8 @@ import { useImmersiveStore } from '@/components/layout/immersiveStore'
 export function useImmersiveMode() {
   const immersive = useImmersiveStore((state) => state.immersive)
   const setImmersive = useImmersiveStore((state) => state.setImmersive)
-  const nativeSupported = typeof document !== 'undefined' && document.fullscreenEnabled === true
+  const nativeSupported =
+    typeof document !== 'undefined' && document.fullscreenEnabled === true
   const [nativeActive, setNativeActive] = useState(false)
   const nativeRequestedRef = useRef(false)
 
@@ -75,10 +76,18 @@ export function useImmersiveMode() {
   useEffect(
     () => () => {
       setImmersive(false)
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+      if (document.fullscreenElement)
+        void document.exitFullscreen().catch(() => undefined)
     },
     [setImmersive],
   )
 
-  return { immersive, nativeSupported, nativeActive, toggleImmersive, toggleNative, exitImmersive }
+  return {
+    immersive,
+    nativeSupported,
+    nativeActive,
+    toggleImmersive,
+    toggleNative,
+    exitImmersive,
+  }
 }

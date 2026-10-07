@@ -14,7 +14,10 @@ vi.mock('@/features/gps/useGeolocation', () => ({
 }))
 
 afterEach(() => {
-  mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
+  mockGpsReading = {
+    status: 'unavailable',
+    reason: 'Geolocation is not supported by this browser.',
+  }
   useWindStore.setState({ selectedHourOffset: 0 })
 })
 
@@ -22,12 +25,16 @@ describe('TemporalPage', () => {
   it('renders real sun, moon, and solunar data for the map-center fallback location', async () => {
     render(<TemporalPage />)
 
-    expect(screen.getByText('Position de la carte utilisée — GPS indisponible')).toBeInTheDocument()
+    expect(
+      screen.getByText('Position de la carte utilisée — GPS indisponible'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Soleil')).toBeInTheDocument()
     expect(screen.getByText('Lune')).toBeInTheDocument()
     // A real phase name (one of the 8) must be shown, not a placeholder.
     expect(
-      screen.getByText(/Nouvelle lune|Premier croissant|Premier quartier|Lune gibbeuse croissante|Pleine lune|Lune gibbeuse décroissante|Dernier quartier|Dernier croissant/),
+      screen.getByText(
+        /Nouvelle lune|Premier croissant|Premier quartier|Lune gibbeuse croissante|Pleine lune|Lune gibbeuse décroissante|Dernier quartier|Dernier croissant/,
+      ),
     ).toBeInTheDocument()
     expect(screen.getByText('Périodes solunaires')).toBeInTheDocument()
     expect(await screen.findAllByText(/Majeure|Mineure/)).not.toHaveLength(0)
@@ -42,7 +49,9 @@ describe('TemporalPage', () => {
     }
     render(<TemporalPage />)
 
-    expect(screen.queryByText('Position de la carte utilisée — GPS indisponible')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Position de la carte utilisée — GPS indisponible'),
+    ).not.toBeInTheDocument()
   })
 
   it('navigates to the next/previous day and updates the header label', async () => {
@@ -62,6 +71,8 @@ describe('TemporalPage', () => {
     useWindStore.setState({ selectedHourOffset: 15 }) // hour-of-day 15
     render(<TemporalPage />)
 
-    expect(screen.getByLabelText('Heure sélectionnée (curseur partagé de la ligne du temps)')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Heure sélectionnée (curseur partagé de la ligne du temps)'),
+    ).toBeInTheDocument()
   })
 })

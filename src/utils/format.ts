@@ -5,7 +5,9 @@ export function formatDuration(ms: number): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
   const pad = (n: number) => String(n).padStart(2, '0')
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`
+  return hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+    : `${minutes}:${pad(seconds)}`
 }
 
 /** Meters below 1 km, kilometers (2 decimals) at or above. */

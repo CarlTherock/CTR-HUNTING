@@ -64,7 +64,10 @@ export async function deleteTiles(urls: string[]): Promise<void> {
 /** Real, browser-reported storage usage/quota
  * (`navigator.storage.estimate()`) — `null` if the API isn't available
  * (older Safari). Never estimated/guessed client-side. */
-export async function estimateStorageUsage(): Promise<{ usage: number; quota: number } | null> {
+export async function estimateStorageUsage(): Promise<{
+  usage: number
+  quota: number
+} | null> {
   if (!navigator.storage?.estimate) return null
   const { usage, quota } = await navigator.storage.estimate()
   if (usage === undefined || quota === undefined) return null

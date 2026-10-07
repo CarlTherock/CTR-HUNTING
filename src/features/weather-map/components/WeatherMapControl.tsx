@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CloudSunRain, ListOrdered, Pause, Play, SkipBack, SkipForward, Wind, X } from 'lucide-react'
+import {
+  CloudSunRain,
+  ListOrdered,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  Wind,
+  X,
+} from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { GEOMET_LAYERS, geoMetLegendUrl, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
@@ -25,7 +34,11 @@ export interface WeatherMapControlProps {
  * valeur réelle au centre de la carte. Remplace les anciens contrôles
  * « vent » et « radar » séparés.
  */
-export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: WeatherMapControlProps) {
+export function WeatherMapControl({
+  getBounds,
+  isFrameReady,
+  viewCenter,
+}: WeatherMapControlProps) {
   const enabled = useWeatherMapStore((s) => s.enabled)
   const toggle = useWeatherMapStore((s) => s.toggle)
   const activeLayer = useWeatherMapStore((s) => s.activeLayer)
@@ -84,7 +97,9 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
               <h2 className="text-ink-100 text-sm font-semibold">Carte météo</h2>
               <div className="flex items-center gap-2">
                 <span className="text-ink-500 text-[10px]">
-                  {def.kind === 'observed' ? 'Radar observé · ECCC 1 km' : 'Prévision HRDPS 2,5 km · ECCC'}
+                  {def.kind === 'observed'
+                    ? 'Radar observé · ECCC 1 km'
+                    : 'Prévision HRDPS 2,5 km · ECCC'}
                 </span>
                 <button
                   type="button"
@@ -97,7 +112,11 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
               </div>
             </div>
 
-            <div className="-mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label="Couche météo">
+            <div
+              className="-mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-1"
+              role="radiogroup"
+              aria-label="Couche météo"
+            >
               {GEOMET_LAYERS.map((layer) => (
                 <button
                   key={layer.id}
@@ -117,11 +136,17 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
               ))}
             </div>
 
-            {status === 'loading' && <p className="text-ink-500 text-sm">Chargement des images…</p>}
+            {status === 'loading' && (
+              <p className="text-ink-500 text-sm">Chargement des images…</p>
+            )}
             {status === 'error' && (
               <p className="text-status-danger text-sm">
                 Couche indisponible — {errorReason}.{' '}
-                <button type="button" onClick={() => void loadFrames(true)} className="underline">
+                <button
+                  type="button"
+                  onClick={() => void loadFrames(true)}
+                  className="underline"
+                >
                   Réessayer
                 </button>
               </p>
@@ -133,7 +158,8 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                   <p className="text-ink-100 text-sm font-semibold tabular-nums">
                     {formatFrameClock(frame, now)}{' '}
                     <span className="text-ink-500 text-xs font-normal">
-                      · {frame.kind === 'observed' ? 'observé' : 'prévu'}, {formatFrameRelative(frame, now)}
+                      · {frame.kind === 'observed' ? 'observé' : 'prévu'},{' '}
+                      {formatFrameRelative(frame, now)}
                     </span>
                   </p>
                   <p className="text-ink-300 text-xs" aria-live="polite">
@@ -154,7 +180,7 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                     type="button"
                     onClick={() => step(-1)}
                     aria-label="Image précédente"
-                    className="text-ink-300 hover:text-ink-100 p-1 flex items-center justify-center pointer-coarse:size-11"
+                    className="text-ink-300 hover:text-ink-100 flex items-center justify-center p-1 pointer-coarse:size-11"
                   >
                     <SkipBack size={16} aria-hidden="true" />
                   </button>
@@ -163,14 +189,18 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                     onClick={() => setPlaying(!playing)}
                     className="bg-brand-500 text-surface-950 hover:bg-brand-400 flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold pointer-coarse:min-h-11"
                   >
-                    {playing ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+                    {playing ? (
+                      <Pause size={16} aria-hidden="true" />
+                    ) : (
+                      <Play size={16} aria-hidden="true" />
+                    )}
                     {playing ? 'Pause' : 'Lecture'}
                   </button>
                   <button
                     type="button"
                     onClick={() => step(1)}
                     aria-label="Image suivante"
-                    className="text-ink-300 hover:text-ink-100 p-1 flex items-center justify-center pointer-coarse:size-11"
+                    className="text-ink-300 hover:text-ink-100 flex items-center justify-center p-1 pointer-coarse:size-11"
                   >
                     <SkipForward size={16} aria-hidden="true" />
                   </button>
@@ -213,7 +243,9 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                 aria-pressed={legendOpen}
                 className={cn(
                   'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
-                  legendOpen ? 'border-brand-400 bg-brand-500/20 text-brand-300' : 'border-surface-600 text-ink-300',
+                  legendOpen
+                    ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+                    : 'border-surface-600 text-ink-300',
                 )}
               >
                 <ListOrdered size={14} aria-hidden="true" />
@@ -236,7 +268,10 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
             </div>
 
             {legendOpen && (
-              <div className="mx-auto mt-2 flex w-fit justify-center gap-2 rounded-md bg-white p-1" aria-label="Légende">
+              <div
+                className="mx-auto mt-2 flex w-fit justify-center gap-2 rounded-md bg-white p-1"
+                aria-label="Légende"
+              >
                 {def.wmsLayers.map((layer, i) => (
                   <img
                     key={layer}
@@ -255,17 +290,31 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                   onClick={() => setWindPaused(!windPaused)}
                   className="border-surface-600 text-ink-300 flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
                 >
-                  {windPaused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+                  {windPaused ? (
+                    <Play size={14} aria-hidden="true" />
+                  ) : (
+                    <Pause size={14} aria-hidden="true" />
+                  )}
                   {windPaused ? 'Lecture du vent' : 'Pause du vent'}
                 </button>
-                {windStatus === 'loading' && <p className="text-ink-500 text-xs">Chargement du vent…</p>}
-                {windStatus === 'error' && <p className="text-status-danger text-xs">Vent indisponible.</p>}
+                {windStatus === 'loading' && (
+                  <p className="text-ink-500 text-xs">Chargement du vent…</p>
+                )}
+                {windStatus === 'error' && (
+                  <p className="text-status-danger text-xs">Vent indisponible.</p>
+                )}
                 {windReading && (
                   <>
-                    <WindCompass directionDegrees={windReading.directionDegrees} speedKmh={windReading.speedKmh} />
+                    <WindCompass
+                      directionDegrees={windReading.directionDegrees}
+                      speedKmh={windReading.speedKmh}
+                    />
                     <p className="text-ink-300 text-xs">
-                      {Math.round(windReading.speedKmh)} km/h, rafales {Math.round(windReading.gustsKmh)} km/h
-                      <span className="text-ink-500 block">Open-Meteo, point de grille le plus proche</span>
+                      {Math.round(windReading.speedKmh)} km/h, rafales{' '}
+                      {Math.round(windReading.gustsKmh)} km/h
+                      <span className="text-ink-500 block">
+                        Open-Meteo, point de grille le plus proche
+                      </span>
                     </p>
                   </>
                 )}

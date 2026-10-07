@@ -81,7 +81,10 @@ export function WaypointsPage() {
                       </span>
                       <span className="text-ink-500 flex items-center gap-1 truncate text-xs">
                         {CATEGORY_LABEL[waypoint.category]} ·{' '}
-                        {formatCoordinate(waypoint.coordinate.lat, waypoint.coordinate.lng)}
+                        {formatCoordinate(
+                          waypoint.coordinate.lat,
+                          waypoint.coordinate.lng,
+                        )}
                         {photoCount > 0 && (
                           <span className="ml-1 inline-flex items-center gap-0.5">
                             <Camera size={11} aria-hidden="true" />

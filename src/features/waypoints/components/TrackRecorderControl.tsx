@@ -87,7 +87,9 @@ export function TrackRecorderControl() {
           {status === 'paused' ? 'En pause' : '● Enregistrement'}
         </span>
         <ElapsedTime startedAtIso={recordingStartedAt} />
-        <span className="text-ink-300 tabular-nums">{formatDistanceMeters(distanceMeters)}</span>
+        <span className="text-ink-300 tabular-nums">
+          {formatDistanceMeters(distanceMeters)}
+        </span>
         {status === 'recording' ? (
           <button
             type="button"

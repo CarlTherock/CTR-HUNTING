@@ -7,7 +7,11 @@ import { compassLabel } from '@/utils/terrain'
 import { isOptimalWind } from '@/utils/windField'
 import { WindCompass } from '@/features/wind/components/WindCompass'
 import type { WaypointCategory, WaypointColor } from '@/types'
-import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR } from '../categories'
+import {
+  CATEGORY_OPTIONS,
+  COLOR_OPTIONS,
+  DEFAULT_WAYPOINT_COLOR as DEFAULT_COLOR,
+} from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
 import { WaypointPhotos } from './WaypointPhotos'
 
@@ -54,7 +58,9 @@ export function WaypointEditPanel() {
 
   const target = draft ? 'draft' : (waypoint?.id ?? null)
   const [name, setName] = useState(waypoint?.name ?? '')
-  const [category, setCategory] = useState<WaypointCategory>(waypoint?.category ?? 'general')
+  const [category, setCategory] = useState<WaypointCategory>(
+    waypoint?.category ?? 'general',
+  )
   const [color, setColor] = useState<WaypointColor>(waypoint?.color ?? DEFAULT_COLOR)
   const [notes, setNotes] = useState(waypoint?.notes ?? '')
   const [optimalWindDirections, setOptimalWindDirections] = useState<number[]>(
@@ -90,7 +96,9 @@ export function WaypointEditPanel() {
 
   function toggleOctant(octant: number) {
     setOptimalWindDirections((current) =>
-      current.includes(octant) ? current.filter((o) => o !== octant) : [...current, octant],
+      current.includes(octant)
+        ? current.filter((o) => o !== octant)
+        : [...current, octant],
     )
   }
 
@@ -112,7 +120,9 @@ export function WaypointEditPanel() {
       })
       closeEdit()
     } catch {
-      setError('Enregistrement impossible : l’écriture sur l’appareil a échoué. Réessayez.')
+      setError(
+        'Enregistrement impossible : l’écriture sur l’appareil a échoué. Réessayez.',
+      )
     } finally {
       setSaving(false)
     }
@@ -140,7 +150,11 @@ export function WaypointEditPanel() {
   if (draft && !detailsOpen) {
     return (
       <div className={shell}>
-        <div className={card} role="region" aria-label="Position du nouveau point de repère">
+        <div
+          className={card}
+          role="region"
+          aria-label="Position du nouveau point de repère"
+        >
           <p className="text-ink-100 flex items-center gap-2 text-sm font-semibold">
             <MapPin size={16} aria-hidden="true" />
             Nouveau point de repère
@@ -149,8 +163,8 @@ export function WaypointEditPanel() {
             {formatCoordinate(position.lat, position.lng)}
           </p>
           <p className="text-ink-500 mt-1 text-xs">
-            Ajustez la position : touchez la carte ou faites glisser le repère en pointillés. Elle
-            sera verrouillée à l’enregistrement.
+            Ajustez la position : touchez la carte ou faites glisser le repère en
+            pointillés. Elle sera verrouillée à l’enregistrement.
           </p>
           <div className="mt-3 flex items-center justify-between gap-2">
             <Button variant="secondary" size="md" onClick={cancelDraft}>
@@ -175,7 +189,9 @@ export function WaypointEditPanel() {
           <button
             type="button"
             onClick={draft ? () => setDetailsOpen(false) : closeEdit}
-            aria-label={draft ? 'Retour à l’ajustement de la position' : 'Fermer sans enregistrer'}
+            aria-label={
+              draft ? 'Retour à l’ajustement de la position' : 'Fermer sans enregistrer'
+            }
             className="text-ink-500 hover:text-ink-100 flex h-11 w-11 items-center justify-center"
           >
             <X size={18} aria-hidden="true" />
@@ -239,7 +255,11 @@ export function WaypointEditPanel() {
 
           <div>
             <span className="text-ink-500 text-xs font-medium">Couleur</span>
-            <div role="radiogroup" aria-label="Couleur" className="mt-1.5 flex flex-wrap gap-1">
+            <div
+              role="radiogroup"
+              aria-label="Couleur"
+              className="mt-1.5 flex flex-wrap gap-1"
+            >
               {COLOR_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -352,11 +372,15 @@ export function WaypointEditPanel() {
             className="border-status-danger/50 mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm outline-none"
           >
             <p className="text-ink-100">
-              Supprimer définitivement « {waypoint.name} » et ses photos ? Cette action est
-              irréversible.
+              Supprimer définitivement « {waypoint.name} » et ses photos ? Cette action
+              est irréversible.
             </p>
             <div className="flex justify-between gap-2">
-              <Button variant="secondary" size="md" onClick={() => setConfirmingDelete(false)}>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setConfirmingDelete(false)}
+              >
                 Annuler
               </Button>
               <Button variant="danger" size="md" onClick={() => void handleDelete()}>
@@ -372,12 +396,21 @@ export function WaypointEditPanel() {
                 Annuler
               </Button>
             ) : (
-              <Button variant="danger" size="md" onClick={() => setConfirmingDelete(true)}>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => setConfirmingDelete(true)}
+              >
                 <Trash2 size={14} aria-hidden="true" />
                 Supprimer
               </Button>
             )}
-            <Button variant="primary" size="md" onClick={() => void handleSave()} disabled={busy}>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => void handleSave()}
+              disabled={busy}
+            >
               <Save size={14} aria-hidden="true" />
               {busy ? 'Enregistrement…' : 'Enregistrer'}
             </Button>

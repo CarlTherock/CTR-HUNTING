@@ -38,7 +38,7 @@ describe('resampleHourly', () => {
     expect(buckets[0].precipitationMm).toBe(3)
   })
 
-  it('uses the bucket\'s first real hour as its time, so real hour indices still line up', () => {
+  it("uses the bucket's first real hour as its time, so real hour indices still line up", () => {
     const hourly = makeHourly(6)
     const buckets = resampleHourly(hourly, '3h')
 

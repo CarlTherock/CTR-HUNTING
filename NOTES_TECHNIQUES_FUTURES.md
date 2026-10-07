@@ -17,6 +17,7 @@ le détail de chaque vérification.
 ## À reconsidérer, phase par phase
 
 ### Phase 3 — Offline
+
 - **PMTiles** pour le stockage local des tuiles (format single-file
   indexé, bien supporté par MapLibre via un protocole dédié) — alternative
   à évaluer face à un stockage IndexedDB/OPFS "maison" pour les tuiles.
@@ -37,6 +38,7 @@ le détail de chaque vérification.
   caching strategies... deferred to Phase 3") — à préciser à ce moment.
 
 ### Phase 4 — Terrain 3D
+
 - Utiliser `setTerrain` de MapLibre plutôt qu'une bibliothèque 3D externe
   (Three.js) — évite une dépendance lourde et garantit la synchronisation
   2D/3D. Bon réflexe, à appliquer telle quelle.
@@ -44,10 +46,12 @@ le détail de chaque vérification.
   partir d'un raster DEM).
 
 ### Phase 6 — Vent
+
 - Modèle de particules ("flow field") plutôt qu'un moteur physique
   (CFD) — visuellement suffisant, largement plus léger. Bonne approche.
 
 ### Phase 14 — IA
+
 - Approche hybride : modèle local léger (ex. ONNX Runtime Web) pour les
   tâches simples (tendances, classification), appel API pour les tâches
   complexes (synthèse, comparaison).
@@ -56,6 +60,7 @@ le détail de chaque vérification.
   couche de données existante. Voir `src/types/data-quality.ts`.
 
 ### Process / outillage (à évaluer si le projet grossit)
+
 - Commits au format Conventional Commits (`feat:`, `fix:`, `ci:`...) —
   déjà notre pratique de fait, pas besoin d'outillage pour l'instant.
 - Storybook/Ladle pour isoler et documenter le design system — à
@@ -63,7 +68,7 @@ le détail de chaque vérification.
   (probablement pas avant la Phase 11 ou 17). Prématuré aujourd'hui pour
   ~5 composants.
 - `standard-version`/`release-please` pour automatiser le changelog — à
-  peser : notre `CHANGELOG.md` actuel est narratif (explique le *pourquoi*
+  peser : notre `CHANGELOG.md` actuel est narratif (explique le _pourquoi_
   des décisions), plus riche que ce que ces outils génèrent automatiquement
   à partir des messages de commit. Pas un gain évident pour ce projet.
 - Environnements dev/staging/prod formalisés — à envisager seulement si
@@ -72,14 +77,14 @@ le détail de chaque vérification.
 
 ### Benchmarks de performance (référence pour Phase 16 — Tests & Optimisation)
 
-| Indicateur | Objectif |
-| --- | --- |
-| First Contentful Paint | < 1.5 s |
-| Time to Interactive (4G) | < 3 s |
-| Bundle JS (gzippé) | < 1.5 MB |
-| Rendu d'une vue carte | < 200 ms |
-| Consommation batterie | < 20 % / heure d'usage actif |
-| Taux de succès de synchronisation | > 99.9 % |
+| Indicateur                        | Objectif                     |
+| --------------------------------- | ---------------------------- |
+| First Contentful Paint            | < 1.5 s                      |
+| Time to Interactive (4G)          | < 3 s                        |
+| Bundle JS (gzippé)                | < 1.5 MB                     |
+| Rendu d'une vue carte             | < 200 ms                     |
+| Consommation batterie             | < 20 % / heure d'usage actif |
+| Taux de succès de synchronisation | > 99.9 %                     |
 
 À mesurer avec Lighthouse/Web Vitals et des tests Playwright automatisés,
 le moment venu.
@@ -111,6 +116,7 @@ le moment venu.
 **Origine :** captures d'écran onX Hunt fournies par l'utilisateur (page
 "What are Waypoints/Area Shapes/Line Distance/Tracking", "3D Hunting
 Maps") + recherche web sur HuntStand. Sources :
+
 - [onX Hunt — App Features](https://www.onxmaps.com/hunt/app/features)
 - [onX Hunt — Land Ownership Maps & Parcel Viewer](https://www.onxmaps.com/hunt/app/features/land-ownership-maps-parcel-viewer)
 - [HuntStand — Detailed Guide to App Tools](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
@@ -121,6 +127,7 @@ des précisions utiles à retenir), et les vraies idées absentes du plan
 actuel.
 
 ### Déjà couvert par la feuille de route — précisions à retenir
+
 - **Prévision d'activité du gibier basée météo/lune** (le "15-Day
   Whitetail Activity Forecast" de HuntStand) — confirme que Phase 7
   (données temporelles/lunaires) + Phase 8 (Analytics Engine) + Phase 9
@@ -137,11 +144,12 @@ actuel.
   trajet".
 - **Rayon autour d'un waypoint + vent relatif à ce point précis** — notre
   Phase 6 (vent) et les waypoints (Phase 2) existent déjà séparément ;
-  l'idée d'un indicateur de vent *relatif à un stand spécifique* (pas
+  l'idée d'un indicateur de vent _relatif à un stand spécifique_ (pas
   juste le vent global sur la carte) est une bonne précision pour quand
   ces deux pièces se rencontrent.
 
 ### Absent de la feuille de route actuelle — vraies nouvelles idées
+
 - **Limites de propriété + nom du propriétaire** (onX : "Land Ownership
   Maps & Parcel Viewer" — clique un lot, voit propriétaire/adresse
   fiscale/superficie). Fonctionnalité réellement absente des 17 phases
@@ -184,6 +192,7 @@ effectuée par un agent dédié ; toutes les affirmations ci-dessous ont une
 source vérifiée en 2026-08-16.
 
 ### onX Hunt — détails vérifiés (au-delà de ce qui était déjà noté)
+
 - **Hors ligne** : téléchargement à l'avance, GPS en temps réel sans
   réseau. Payant uniquement.
   [Source](https://www.onxmaps.com/hunt/app/faq)
@@ -219,11 +228,12 @@ source vérifiée en 2026-08-16.
   [Source](https://www.onxmaps.com/hunt/app/pricing)
 
 ### Apps déjà couvertes — approfondissement
+
 - **HuntStand** : synchronisation caméra limitée à Stealth Cam/Muddy
   (via GSM Command Pro) — plus étroit que l'approche multi-marques d'onX.
   Palier Pro (34,99 $/an) ajoute données de parcelle + imagerie mensuelle
-  + hors ligne.
-  [Source](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
+  - hors ligne.
+    [Source](https://www.huntstand.com/fieldnotes/deer/a-detailed-guide-to-huntstand-app-tools-for-deer-hunters/)
 
 ### Autres apps découvertes — vraiment pertinentes pour nous
 
@@ -280,6 +290,7 @@ source vérifiée en 2026-08-16.
   en tirer autrement.
 
 ### Synthèse — vraies nouvelles idées de cette recherche approfondie
+
 1. **iHunter et BetterHunts existent déjà comme précédents québécois** —
    à étudier directement plutôt que d'extrapoler seulement depuis onX/
    HuntStand, surtout pour la philosophie "données publiques uniquement,
@@ -407,6 +418,7 @@ cohérence avec la règle du projet de ne jamais fabriquer de donnée.
   [Source](https://www.ihunterapp.com/features/)
 
 ### Autres points relevés en passant (non approfondis)
+
 - **onX Hunt** : dépôt de waypoint depuis une montre intelligente (Apple
   Watch/Pixel Watch) sans sortir le téléphone — axe de développement
   actif selon les forums, à surveiller.
@@ -421,6 +433,7 @@ cohérence avec la règle du projet de ne jamais fabriquer de donnée.
   propre sélecteur.
 
 ### Lacunes de vérification à ne jamais traiter comme des faits
+
 1. Nombre exact d'icônes onX Hunt (92 non confirmé — "près de 100" est
    la seule formulation officielle).
 2. Liste individuelle des 45 icônes HuntStand (seuls les 4 noms de

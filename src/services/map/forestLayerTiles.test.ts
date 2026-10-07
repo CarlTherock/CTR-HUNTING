@@ -24,8 +24,12 @@ describe('forestLayerTileUrl', () => {
     expect(url).toContain('LAYERS=ori_pee_ori_prov')
   })
 
-  it('never URL-encodes the {bbox-epsg-3857} token, which would break MapLibre\'s substitution', () => {
-    for (const id of ['cadastre', 'coupes-forestieres', 'peuplements-ecoforestiers'] as const) {
+  it("never URL-encodes the {bbox-epsg-3857} token, which would break MapLibre's substitution", () => {
+    for (const id of [
+      'cadastre',
+      'coupes-forestieres',
+      'peuplements-ecoforestiers',
+    ] as const) {
       expect(forestLayerTileUrl(id)).not.toContain('%7Bbbox')
     }
   })

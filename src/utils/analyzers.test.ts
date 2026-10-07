@@ -8,7 +8,14 @@ import {
   weatherAnalyzer,
   windAnalyzer,
 } from './analyzers'
-import type { AnalyzerResult, TemporalData, Track, VegetationSample, WeatherConditions, Waypoint } from '@/types'
+import type {
+  AnalyzerResult,
+  TemporalData,
+  Track,
+  VegetationSample,
+  WeatherConditions,
+  Waypoint,
+} from '@/types'
 
 /** Asserts a real (non-null) score and hands it back as a plain number,
  * without a forbidden `!` non-null assertion. */
@@ -108,22 +115,39 @@ describe('weatherAnalyzer', () => {
 
   it('favors falling pressure and light-moderate wind', () => {
     const result = weatherAnalyzer(BASE, [
-      { ...BASE, time: '2026-08-17T13:00', surfacePressureHpa: 1010, visibilityMeters: 20000 },
+      {
+        ...BASE,
+        time: '2026-08-17T13:00',
+        surfacePressureHpa: 1010,
+        visibilityMeters: 20000,
+      },
     ])
     expect(expectScore(result)).toBeGreaterThan(50)
   })
 
   it('penalizes high wind and heavy precipitation', () => {
-    const result = weatherAnalyzer(
-      { ...BASE, windSpeedKmh: 50, precipitationMm: 8 },
-      [{ ...BASE, time: '2026-08-17T13:00', surfacePressureHpa: 1015, visibilityMeters: 20000 }],
-    )
+    const result = weatherAnalyzer({ ...BASE, windSpeedKmh: 50, precipitationMm: 8 }, [
+      {
+        ...BASE,
+        time: '2026-08-17T13:00',
+        surfacePressureHpa: 1015,
+        visibilityMeters: 20000,
+      },
+    ])
     expect(expectScore(result)).toBeLessThan(50)
   })
 })
 
 describe('windAnalyzer', () => {
-  const READING = { time: '2026-08-17T10:00', directionDegrees: 270, speedKmh: 15, gustsKmh: 20, temperatureCelsius: 18, precipitationMm: 0, cloudCoverPercent: 30 }
+  const READING = {
+    time: '2026-08-17T10:00',
+    directionDegrees: 270,
+    speedKmh: 15,
+    gustsKmh: 20,
+    temperatureCelsius: 18,
+    precipitationMm: 0,
+    cloudCoverPercent: 30,
+  }
 
   it('is unavailable with no reading', () => {
     expect(windAnalyzer(null, undefined).score).toBeNull()
@@ -160,7 +184,12 @@ describe('timeAnalyzer', () => {
       dayLengthMs: 14 * 3600_000,
     },
     moon: { rise: null, set: null, alwaysUp: false, alwaysDown: false },
-    illumination: { fraction: 0.2, phase: 0.1, waxing: true, phaseName: 'Premier croissant' },
+    illumination: {
+      fraction: 0.2,
+      phase: 0.1,
+      waxing: true,
+      phaseName: 'Premier croissant',
+    },
     solunarPeriods: [
       {
         type: 'major',
@@ -169,7 +198,10 @@ describe('timeAnalyzer', () => {
         peak: '2026-08-17T10:00:00.000Z',
       },
     ],
-    moonTransit: { overhead: '2026-08-17T10:00:00.000Z', underfoot: '2026-08-17T22:00:00.000Z' },
+    moonTransit: {
+      overhead: '2026-08-17T10:00:00.000Z',
+      underfoot: '2026-08-17T22:00:00.000Z',
+    },
   }
 
   it('scores higher within the dawn/dusk crepuscular window', () => {
@@ -180,11 +212,16 @@ describe('timeAnalyzer', () => {
 
   it('detects an active major solunar period', () => {
     const result = timeAnalyzer(DATA, new Date('2026-08-17T10:00:00.000Z'))
-    expect(result.factors.some((f) => f.label.includes('Période solunaire majeure'))).toBe(true)
+    expect(
+      result.factors.some((f) => f.label.includes('Période solunaire majeure')),
+    ).toBe(true)
   })
 
   it('flags near-full moon as a real (anecdotal) factor', () => {
-    const fullMoonData = { ...DATA, illumination: { ...DATA.illumination, fraction: 0.98 } }
+    const fullMoonData = {
+      ...DATA,
+      illumination: { ...DATA.illumination, fraction: 0.98 },
+    }
     const result = timeAnalyzer(fullMoonData, new Date('2026-08-17T16:00:00.000Z'))
     expect(result.factors.some((f) => f.label.includes('presque pleine'))).toBe(true)
   })
@@ -206,13 +243,18 @@ describe('historyAnalyzer', () => {
   }
 
   it('scores above baseline with nearby real game-sign waypoints', () => {
-    const waypoints = [makeWaypoint({ category: 'game_sign' }), makeWaypoint({ category: 'kill_site' })]
+    const waypoints = [
+      makeWaypoint({ category: 'game_sign' }),
+      makeWaypoint({ category: 'kill_site' }),
+    ]
     const result = historyAnalyzer(COORDINATE, waypoints, [])
     expect(expectScore(result)).toBeGreaterThan(50)
   })
 
   it('ignores game-sign waypoints far away', () => {
-    const waypoints = [makeWaypoint({ category: 'game_sign', coordinate: { lat: 10, lng: 10 } })]
+    const waypoints = [
+      makeWaypoint({ category: 'game_sign', coordinate: { lat: 10, lng: 10 } }),
+    ]
     const result = historyAnalyzer(COORDINATE, waypoints, [])
     expect(result.score).toBe(50)
   })
@@ -248,7 +290,10 @@ describe('combineAnalyses', () => {
   })
 
   it('is null when every analyzer is unavailable', () => {
-    const combined = combineAnalyses([terrainAnalyzer(null), windAnalyzer(null, undefined)])
+    const combined = combineAnalyses([
+      terrainAnalyzer(null),
+      windAnalyzer(null, undefined),
+    ])
     expect(combined.overallScore).toBeNull()
   })
 })

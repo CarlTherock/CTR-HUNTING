@@ -7,7 +7,7 @@ major/minor periods.
 Unlike Phases 5/6 (weather/wind), this phase needs **no external
 provider and no network call at all** — sun/moon positions are pure
 astronomy, computable client-side. Verified via live research before
-picking an approach: Open-Meteo's `daily=` API *does* expose
+picking an approach: Open-Meteo's `daily=` API _does_ expose
 `sunrise`/`sunset`/`moonrise`/`moonset`/`moon_phase`, but using it would
 mean a network dependency for data that doesn't need one — strictly worse
 for an offline-first app. Instead this uses
@@ -28,13 +28,13 @@ ISO strings and adding two things SunCalc doesn't provide directly:
 - `moonPhaseName()` — buckets SunCalc's real continuous 0–1 phase
   fraction into the 8 conventional named phases (New/Waxing Crescent/
   First Quarter/Waxing Gibbous/Full/Waning Gibbous/Last Quarter/Waning
-  Crescent). The bucket *widths* are a documented convention choice (the
+  Crescent). The bucket _widths_ are a documented convention choice (the
   4 exact instants get narrow bands, the 4 "between" phases get most of
   the cycle), not a fabricated astronomical fact — the phase value itself
   is always SunCalc's real number.
 - `computeSolunarPeriods()` — real moon-transit geometry per John Alden
   Knight's 1926 Solunar Theory (public domain — verified via research,
-  distinct from the *proprietary* activity-scoring some commercial apps
+  distinct from the _proprietary_ activity-scoring some commercial apps
   layer on top, which this app does not attempt to reproduce). "Major"
   periods center on the moon's real highest/lowest point that day (found
   by sampling `SunCalc.getMoonPosition`'s altitude every 10 minutes and

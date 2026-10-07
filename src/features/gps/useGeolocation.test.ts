@@ -32,7 +32,10 @@ describe('useGeolocation', () => {
 
   it('starts unavailable, waiting for a first fix', () => {
     const { result } = renderHook(() => useGeolocation())
-    expect(result.current).toEqual({ status: 'unavailable', reason: 'En attente d’un signal GPS.' })
+    expect(result.current).toEqual({
+      status: 'unavailable',
+      reason: 'En attente d’un signal GPS.',
+    })
   })
 
   it('reports a real fix as measured, available data', async () => {

@@ -7,13 +7,7 @@
  * interpolated or made up.
  */
 export type WeatherMapLayerId =
-  | 'radar'
-  | 'precipitation'
-  | 'temperature'
-  | 'wind'
-  | 'gusts'
-  | 'clouds'
-  | 'pressure'
+  'radar' | 'precipitation' | 'temperature' | 'wind' | 'gusts' | 'clouds' | 'pressure'
 
 /** `observed` = real radar measurement; `forecast` = HRDPS model output.
  * Always surfaced in the UI, never blurred together. */

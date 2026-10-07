@@ -47,7 +47,12 @@ describe('computeHeatmapCell', () => {
       () => 300,
       WIND_FIELD,
       WEATHER,
-      { coordinate: COORDINATE, radiusMeters: 300, categoryCounts: { forest: 1 }, source: 'openstreetmap' },
+      {
+        coordinate: COORDINATE,
+        radiusMeters: 300,
+        categoryCounts: { forest: 1 },
+        source: 'openstreetmap',
+      },
       [],
       [],
       new Date('2026-08-17T10:00:00.000Z'),

@@ -17,7 +17,10 @@ const GRID_SIZE = 5
  * then starts paused (a still frame) and the user must press Lecture. */
 function prefersReducedMotion(): boolean {
   try {
-    return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    return (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
   } catch {
     return false
   }
@@ -87,11 +90,15 @@ export const useWindStore = create<WindState>((set, get) => ({
       const field = await windProvider.fetchWindField(bounds, GRID_SIZE)
       set({ status: 'available', field, errorReason: null })
     } catch (err) {
-      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Erreur inconnue' })
+      set({
+        status: 'error',
+        errorReason: err instanceof Error ? err.message : 'Erreur inconnue',
+      })
     }
   },
 
-  setSelectedHourOffset: (offset) => set({ selectedHourOffset: Math.max(0, Math.min(47, offset)) }),
+  setSelectedHourOffset: (offset) =>
+    set({ selectedHourOffset: Math.max(0, Math.min(47, offset)) }),
 
   setActiveLayer: (layer) => set({ activeLayer: layer }),
 

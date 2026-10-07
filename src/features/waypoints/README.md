@@ -5,7 +5,7 @@ waypoints (2.1/2.2), categories, notes, a dedicated list
 page, GPS track recording (2.3), and waypoint photos (2.4), all with
 real local persistence.
 
-Waypoint/track *creation* still only happens from the Map page — a
+Waypoint/track _creation_ still only happens from the Map page — a
 waypoint needs a tap-on-map position (`components/WaypointControl.tsx`
 arms "placing" mode, a tap on the map calls
 `waypointsStore.placeWaypointAt`), and a track needs a live GPS feed
@@ -120,7 +120,7 @@ Two ways to add a photo, side by side: `features/camera/`'s
 adjustments/filters, GPS+timestamp tagging), or the original plain
 `<input type="file" accept="image/*" capture="environment">` delegating
 to the device's own camera/gallery picker — kept because it's still the
-only way to pick an *existing* photo rather than taking a new one. See
+only way to pick an _existing_ photo rather than taking a new one. See
 `features/camera/README.md` for the full camera design.
 
 `Waypoint.photoIds` (`src/types/geo.ts`) stays in sync with the `photos`
@@ -131,14 +131,14 @@ photos (`deletePhotosForWaypoint`) — without that they'd be orphaned in
 Dexie forever, since nothing else references them.
 
 `Photo` (`types/photo.ts`) was generalized in Phase 13 to belong to
-*either* a waypoint or a journal observation, never both — see
+_either_ a waypoint or a journal observation, never both — see
 `features/journal/README.md` for the full design.
 
 ## Optimal wind (Phase 6)
 
 `Waypoint.optimalWindDirections` — an 8-octant picker in
 `WaypointEditPanel.tsx`, right below Notes — lets a hunter mark which
-compass directions the wind should blow *from* for a spot to be worth
+compass directions the wind should blow _from_ for a spot to be worth
 sitting. While `features/wind/`'s flow-field layer is on, the panel shows
 the live reading nearest that waypoint and a green/red badge for whether
 it currently matches. See `features/wind/README.md` for the full design
@@ -146,7 +146,7 @@ it currently matches. See `features/wind/README.md` for the full design
 from this panel).
 
 `components/WindComparisonPanel.tsx` (shown on `WaypointsPage`, above the
-waypoint list) extends this into a side-by-side view across *every*
+waypoint list) extends this into a side-by-side view across _every_
 waypoint with a saved preference at once — modeled on onX Hunt's own
 "Wind Comparisons Tool" (verified via research). See
 `features/wind/README.md` for the full design.

@@ -44,7 +44,12 @@ describe('OverpassVegetationProvider', () => {
 
     const sample = await provider.fetchVegetation(COORDINATE, 300)
 
-    expect(sample?.categoryCounts).toEqual({ forest: 1, water: 1, agricultural: 1, developed: 1 })
+    expect(sample?.categoryCounts).toEqual({
+      forest: 1,
+      water: 1,
+      agricultural: 1,
+      developed: 1,
+    })
     expect(sample?.source).toBe('openstreetmap')
   })
 
@@ -114,7 +119,10 @@ describe('OverpassVegetationProvider.fetchVegetationGrid', () => {
 
     const samples = await provider.fetchVegetationGrid(BOUNDS, 2)
 
-    const totalForest = samples.reduce((sum, s) => sum + (s.categoryCounts.forest ?? 0), 0)
+    const totalForest = samples.reduce(
+      (sum, s) => sum + (s.categoryCounts.forest ?? 0),
+      0,
+    )
     const totalWater = samples.reduce((sum, s) => sum + (s.categoryCounts.water ?? 0), 0)
     expect(totalForest).toBe(1)
     expect(totalWater).toBe(1)

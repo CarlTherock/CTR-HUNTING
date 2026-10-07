@@ -15,7 +15,10 @@ function buildChartPath(points: ElevationProfilePoint[]): {
   min: number
   max: number
 } | null {
-  const valid = points.filter((p): p is { distanceMeters: number; elevationMeters: number } => p.elevationMeters !== null)
+  const valid = points.filter(
+    (p): p is { distanceMeters: number; elevationMeters: number } =>
+      p.elevationMeters !== null,
+  )
   if (valid.length < 2) return null
 
   const totalDistance = points.at(-1)?.distanceMeters || 1
@@ -62,13 +65,17 @@ export interface ElevationProfileControlProps {
  * hand-rolled inline SVG chart — no charting library added just for
  * this; a real dependency choice belongs to Phase 10 (Advanced Charts),
  * not this slice. */
-export function ElevationProfileControl({ queryElevation }: ElevationProfileControlProps) {
+export function ElevationProfileControl({
+  queryElevation,
+}: ElevationProfileControlProps) {
   const mode = useTerrainToolsStore((state) => state.mode)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
   const profileData = useTerrainToolsStore((state) => state.profileData)
   const startProfiling = useTerrainToolsStore((state) => state.startProfiling)
   const cancel = useTerrainToolsStore((state) => state.cancel)
-  const removeLastProfilePoint = useTerrainToolsStore((state) => state.removeLastProfilePoint)
+  const removeLastProfilePoint = useTerrainToolsStore(
+    (state) => state.removeLastProfilePoint,
+  )
   const finishProfile = useTerrainToolsStore((state) => state.finishProfile)
   const closeProfile = useTerrainToolsStore((state) => state.closeProfile)
 
@@ -81,14 +88,16 @@ export function ElevationProfileControl({ queryElevation }: ElevationProfileCont
           onClick={removeLastProfilePoint}
           disabled={profilePoints.length === 0}
           aria-label="Annuler le dernier point"
-          className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11 disabled:cursor-not-allowed disabled:opacity-40"
+          className="text-ink-500 hover:text-ink-100 flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:size-11"
         >
           <Undo2 size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
           disabled={profilePoints.length < 2}
-          onClick={() => finishProfile(sampleElevationProfile(queryElevation, profilePoints))}
+          onClick={() =>
+            finishProfile(sampleElevationProfile(queryElevation, profilePoints))
+          }
           className="text-brand-400 disabled:text-ink-700 text-xs font-medium disabled:cursor-not-allowed pointer-coarse:min-h-11"
         >
           Terminer
@@ -139,7 +148,12 @@ export function ElevationProfileControl({ queryElevation }: ElevationProfileCont
                   role="img"
                   aria-label="Graphique du profil d’élévation"
                 >
-                  <path d={chart.path} fill="none" stroke="currentColor" strokeWidth={2} />
+                  <path
+                    d={chart.path}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  />
                 </svg>
                 <div className="text-ink-300 mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                   <span>
@@ -159,10 +173,16 @@ export function ElevationProfileControl({ queryElevation }: ElevationProfileCont
                     return (
                       <>
                         <span>
-                          Dénivelé positif : <span className="text-ink-100 font-medium">{Math.round(gain)} m</span>
+                          Dénivelé positif :{' '}
+                          <span className="text-ink-100 font-medium">
+                            {Math.round(gain)} m
+                          </span>
                         </span>
                         <span>
-                          Dénivelé négatif : <span className="text-ink-100 font-medium">{Math.round(loss)} m</span>
+                          Dénivelé négatif :{' '}
+                          <span className="text-ink-100 font-medium">
+                            {Math.round(loss)} m
+                          </span>
                         </span>
                       </>
                     )
@@ -171,12 +191,17 @@ export function ElevationProfileControl({ queryElevation }: ElevationProfileCont
               </>
             ) : (
               <p className="text-ink-500 text-sm">
-                Données d’élévation indisponibles le long de ce tracé — essayez une zone dont le
-                terrain a déjà été téléchargé ou visité en ligne.
+                Données d’élévation indisponibles le long de ce tracé — essayez une zone
+                dont le terrain a déjà été téléchargé ou visité en ligne.
               </p>
             )}
 
-            <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={closeProfile}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-3 w-full"
+              onClick={closeProfile}
+            >
               Abandonner
             </Button>
           </div>

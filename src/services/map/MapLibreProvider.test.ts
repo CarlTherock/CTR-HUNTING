@@ -18,214 +18,221 @@ const {
   FakeNavigationControl,
   fakeAddProtocol,
 } = vi.hoisted(() => {
-    const calls: string[] = []
-    const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
-    const registeredProtocols: Record<
-      string,
-      (
-        params: { url: string; type?: string },
-        ac: AbortController,
-      ) => Promise<{ data: unknown }>
-    > = {}
-    const fakeAddProtocol = (name: string, handler: (typeof registeredProtocols)[string]) => {
-      registeredProtocols[name] = handler
-    }
+  const calls: string[] = []
+  const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
+  const registeredProtocols: Record<
+    string,
+    (
+      params: { url: string; type?: string },
+      ac: AbortController,
+    ) => Promise<{ data: unknown }>
+  > = {}
+  const fakeAddProtocol = (
+    name: string,
+    handler: (typeof registeredProtocols)[string],
+  ) => {
+    registeredProtocols[name] = handler
+  }
 
-    class FakeNavigationControl {
-      onAdd() {
-        return document.createElement('div')
-      }
+  class FakeNavigationControl {
+    onAdd() {
+      return document.createElement('div')
     }
+  }
 
-    class FakeMarker {
-      lngLat: [number, number] | undefined
-      element: HTMLElement | undefined
-      draggable: boolean | undefined
-      handlers: Record<string, (() => void)[]> = {}
-      constructor(options?: { element?: HTMLElement; draggable?: boolean }) {
-        this.element = options?.element
-        this.draggable = options?.draggable
-        markerInstances.push(this)
-      }
-      setLngLat(lngLat: [number, number]) {
-        calls.push('setLngLat')
-        this.lngLat = lngLat
-        return this
-      }
-      getLngLat() {
-        return { lng: this.lngLat?.[0] ?? 0, lat: this.lngLat?.[1] ?? 0 }
-      }
-      getElement() {
-        return this.element
-      }
-      addTo() {
-        calls.push('addTo')
-        // Mirrors the real bug: MapLibre's Marker.addTo() immediately reads
-        // `this.lngLat.lng` to position itself — throws if unset.
-        if (!this.lngLat) {
-          throw new TypeError("Cannot read properties of undefined (reading 'lng')")
-        }
-        return this
-      }
-      on(event: string, handler: () => void) {
-        ;(this.handlers[event] ??= []).push(handler)
-        return this
-      }
-      fire(event: string) {
-        for (const handler of this.handlers[event] ?? []) handler()
-      }
-      remove() {
-        calls.push('remove')
-        return this
-      }
+  class FakeMarker {
+    lngLat: [number, number] | undefined
+    element: HTMLElement | undefined
+    draggable: boolean | undefined
+    handlers: Record<string, (() => void)[]> = {}
+    constructor(options?: { element?: HTMLElement; draggable?: boolean }) {
+      this.element = options?.element
+      this.draggable = options?.draggable
+      markerInstances.push(this)
     }
+    setLngLat(lngLat: [number, number]) {
+      calls.push('setLngLat')
+      this.lngLat = lngLat
+      return this
+    }
+    getLngLat() {
+      return { lng: this.lngLat?.[0] ?? 0, lat: this.lngLat?.[1] ?? 0 }
+    }
+    getElement() {
+      return this.element
+    }
+    addTo() {
+      calls.push('addTo')
+      // Mirrors the real bug: MapLibre's Marker.addTo() immediately reads
+      // `this.lngLat.lng` to position itself — throws if unset.
+      if (!this.lngLat) {
+        throw new TypeError("Cannot read properties of undefined (reading 'lng')")
+      }
+      return this
+    }
+    on(event: string, handler: () => void) {
+      ;(this.handlers[event] ??= []).push(handler)
+      return this
+    }
+    fire(event: string) {
+      for (const handler of this.handlers[event] ?? []) handler()
+    }
+    remove() {
+      calls.push('remove')
+      return this
+    }
+  }
 
-    class FakeMap {
+  class FakeMap {
+    style: string
+    handlers: Record<string, ((...args: never[]) => void)[]> = {}
+    setStyleCalls: string[] = []
+    layoutProps: Record<string, string> = {}
+    sources: Record<string, { data: unknown; setDataCalls: unknown[]; raw: unknown }> = {}
+    layerIds: string[] = []
+    transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+    maxPitch?: number | null
+    constructor(options: {
       style: string
-      handlers: Record<string, ((...args: never[]) => void)[]> = {}
-      setStyleCalls: string[] = []
-      layoutProps: Record<string, string> = {}
-      sources: Record<string, { data: unknown; setDataCalls: unknown[]; raw: unknown }> = {}
-      layerIds: string[] = []
-      transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
+      transformRequest?: (
+        url: string,
+        resourceType?: string,
+      ) => { url: string } | undefined
       maxPitch?: number | null
-      constructor(options: {
-        style: string
-        transformRequest?: (url: string, resourceType?: string) => { url: string } | undefined
-        maxPitch?: number | null
-      }) {
-        this.style = options.style
-        this.transformRequest = options.transformRequest
-        this.maxPitch = options.maxPitch
-        mapInstances.push(this)
-      }
-      addControl() {
-        /* not under test */
-      }
-      addSource(id: string, source: { data: unknown }) {
-        this.sources[id] = { data: source.data, setDataCalls: [], raw: source }
-      }
-      getSource(id: string) {
-        const source = this.sources[id]
-        if (!source) return undefined
-        return {
-          setData: (data: unknown) => {
-            source.data = data
-            source.setDataCalls.push(data)
-          },
-        }
-      }
-      addLayer(layer: { id: string; source?: unknown; paint?: unknown }) {
-        this.layerIds.push(layer.id)
-        this.addedLayers.push(layer)
-      }
-      addedLayers: { id: string; source?: unknown; paint?: unknown }[] = []
-      removeLayer(id: string) {
-        this.layerIds = this.layerIds.filter((l) => l !== id)
-        this.addedLayers = this.addedLayers.filter((l) => l.id !== id)
-      }
-      removeSource(id: string) {
-        const { [id]: _removed, ...rest } = this.sources
-        this.sources = rest
-      }
-      on(event: string, handler: (...args: never[]) => void) {
-        ;(this.handlers[event] ??= []).push(handler)
-      }
-      off(event: string, handler: (...args: never[]) => void) {
-        this.handlers[event] = (this.handlers[event] ?? []).filter((h) => h !== handler)
-      }
-      paintCalls: { id: string; name: string; value: unknown }[] = []
-      setPaintProperty(id: string, name: string, value: unknown) {
-        this.paintCalls.push({ id, name, value })
-      }
-      isSourceLoaded(id: string) {
-        return id in this.sources
-      }
-      fire(event: string, ...args: unknown[]) {
-        for (const handler of this.handlers[event] ?? []) (handler as (...a: unknown[]) => void)(...args)
-      }
-      terrainCalls: unknown[] = []
-      elevationByLngLat: Record<string, number> = {}
-      setTerrain(options: unknown) {
-        this.terrainCalls.push(options)
-      }
-      queryTerrainElevation([lng, lat]: [number, number]) {
-        return this.elevationByLngLat[`${lng},${lat}`] ?? null
-      }
-      jumpToCalls: unknown[] = []
-      once(_event: string, handler: (...args: never[]) => void) {
-        // Resolves asynchronously (not synchronously) so callers awaiting
-        // a promise built from this — like `waitForIdle` — behave like
-        // they would against a real, async-settling map.
-        queueMicrotask(() => (handler as () => void)())
-      }
-      getCenter() {
-        return { lat: 0, lng: 0 }
-      }
-      getZoom() {
-        return 0
-      }
-      getPitch() {
-        return 0
-      }
-      getBearing() {
-        return 0
-      }
-      resize() {
-        // no-op: a size change has no observable effect on the fake map
-      }
-      getBounds() {
-        return {
-          getWest: () => -71.3,
-          getSouth: () => 46.7,
-          getEast: () => -71.1,
-          getNorth: () => 46.9,
-        }
-      }
-      jumpTo(view: unknown) {
-        this.jumpToCalls.push(view)
-      }
-      setCenter() {
-        /* not under test */
-      }
-      setZoom() {
-        /* not under test */
-      }
-      setPitch() {
-        /* not under test */
-      }
-      setBearing() {
-        /* not under test */
-      }
-      setStyle(url: string) {
-        this.style = url
-        this.setStyleCalls.push(url)
-      }
-      getLayer(id: string) {
-        return existingLayers.has(id) || this.layerIds.includes(id) ? {} : undefined
-      }
-      setLayoutProperty(id: string, _prop: string, value: string) {
-        this.layoutProps[id] = value
-      }
-      remove() {
-        /* not under test */
+    }) {
+      this.style = options.style
+      this.transformRequest = options.transformRequest
+      this.maxPitch = options.maxPitch
+      mapInstances.push(this)
+    }
+    addControl() {
+      /* not under test */
+    }
+    addSource(id: string, source: { data: unknown }) {
+      this.sources[id] = { data: source.data, setDataCalls: [], raw: source }
+    }
+    getSource(id: string) {
+      const source = this.sources[id]
+      if (!source) return undefined
+      return {
+        setData: (data: unknown) => {
+          source.data = data
+          source.setDataCalls.push(data)
+        },
       }
     }
-
-    const mapInstances: InstanceType<typeof FakeMap>[] = []
-    const markerInstances: InstanceType<typeof FakeMarker>[] = []
-
-    return {
-      calls,
-      mapInstances,
-      markerInstances,
-      registeredProtocols,
-      FakeMap,
-      FakeMarker,
-      FakeNavigationControl,
-      fakeAddProtocol,
+    addLayer(layer: { id: string; source?: unknown; paint?: unknown }) {
+      this.layerIds.push(layer.id)
+      this.addedLayers.push(layer)
     }
-  })
+    addedLayers: { id: string; source?: unknown; paint?: unknown }[] = []
+    removeLayer(id: string) {
+      this.layerIds = this.layerIds.filter((l) => l !== id)
+      this.addedLayers = this.addedLayers.filter((l) => l.id !== id)
+    }
+    removeSource(id: string) {
+      const { [id]: _removed, ...rest } = this.sources
+      this.sources = rest
+    }
+    on(event: string, handler: (...args: never[]) => void) {
+      ;(this.handlers[event] ??= []).push(handler)
+    }
+    off(event: string, handler: (...args: never[]) => void) {
+      this.handlers[event] = (this.handlers[event] ?? []).filter((h) => h !== handler)
+    }
+    paintCalls: { id: string; name: string; value: unknown }[] = []
+    setPaintProperty(id: string, name: string, value: unknown) {
+      this.paintCalls.push({ id, name, value })
+    }
+    isSourceLoaded(id: string) {
+      return id in this.sources
+    }
+    fire(event: string, ...args: unknown[]) {
+      for (const handler of this.handlers[event] ?? [])
+        (handler as (...a: unknown[]) => void)(...args)
+    }
+    terrainCalls: unknown[] = []
+    elevationByLngLat: Record<string, number> = {}
+    setTerrain(options: unknown) {
+      this.terrainCalls.push(options)
+    }
+    queryTerrainElevation([lng, lat]: [number, number]) {
+      return this.elevationByLngLat[`${lng},${lat}`] ?? null
+    }
+    jumpToCalls: unknown[] = []
+    once(_event: string, handler: (...args: never[]) => void) {
+      // Resolves asynchronously (not synchronously) so callers awaiting
+      // a promise built from this — like `waitForIdle` — behave like
+      // they would against a real, async-settling map.
+      queueMicrotask(() => (handler as () => void)())
+    }
+    getCenter() {
+      return { lat: 0, lng: 0 }
+    }
+    getZoom() {
+      return 0
+    }
+    getPitch() {
+      return 0
+    }
+    getBearing() {
+      return 0
+    }
+    resize() {
+      // no-op: a size change has no observable effect on the fake map
+    }
+    getBounds() {
+      return {
+        getWest: () => -71.3,
+        getSouth: () => 46.7,
+        getEast: () => -71.1,
+        getNorth: () => 46.9,
+      }
+    }
+    jumpTo(view: unknown) {
+      this.jumpToCalls.push(view)
+    }
+    setCenter() {
+      /* not under test */
+    }
+    setZoom() {
+      /* not under test */
+    }
+    setPitch() {
+      /* not under test */
+    }
+    setBearing() {
+      /* not under test */
+    }
+    setStyle(url: string) {
+      this.style = url
+      this.setStyleCalls.push(url)
+    }
+    getLayer(id: string) {
+      return existingLayers.has(id) || this.layerIds.includes(id) ? {} : undefined
+    }
+    setLayoutProperty(id: string, _prop: string, value: string) {
+      this.layoutProps[id] = value
+    }
+    remove() {
+      /* not under test */
+    }
+  }
+
+  const mapInstances: InstanceType<typeof FakeMap>[] = []
+  const markerInstances: InstanceType<typeof FakeMarker>[] = []
+
+  return {
+    calls,
+    mapInstances,
+    markerInstances,
+    registeredProtocols,
+    FakeMap,
+    FakeMarker,
+    FakeNavigationControl,
+    fakeAddProtocol,
+  }
+})
 
 vi.mock('maplibre-gl', () => ({
   Map: FakeMap,
@@ -236,7 +243,10 @@ vi.mock('maplibre-gl', () => ({
 }))
 
 function createTestMap(
-  provider = new MapLibreProvider({ mapTiler: 'maptiler-test-key', esri: 'esri-test-key' }),
+  provider = new MapLibreProvider({
+    mapTiler: 'maptiler-test-key',
+    esri: 'esri-test-key',
+  }),
 ) {
   return provider.createMap({
     container: document.createElement('div'),
@@ -247,7 +257,7 @@ function createTestMap(
 }
 
 describe('MapLibreProvider', () => {
-  it('raises maxPitch above MapLibre\'s 60° default so 3D can reach a near-eye-level tilt', () => {
+  it("raises maxPitch above MapLibre's 60° default so 3D can reach a near-eye-level tilt", () => {
     mapInstances.length = 0
     createTestMap()
     expect(mapInstances[0].maxPitch).toBe(85)
@@ -436,7 +446,9 @@ describe('MapLibreProvider', () => {
       })
 
       instance.setWaypoints([waypointA])
-      markerInstances[0].element?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      markerInstances[0].element?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      )
 
       expect(onWaypointClick).toHaveBeenCalledWith('a')
       expect(onMapClick).not.toHaveBeenCalled()
@@ -511,7 +523,10 @@ describe('MapLibreProvider', () => {
       map.fire('style.load')
 
       expect(map.layerIds).toContain('track-preview-line')
-      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(map.sources['track-preview'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
 
       // setTrackPreview before the style loads would find no source yet —
       // guard against a crash in that ordering.
@@ -525,7 +540,10 @@ describe('MapLibreProvider', () => {
       map.fire('style.load')
 
       instance.setTrackPreview([{ lat: 46.8, lng: -71.2 }])
-      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(map.sources['track-preview'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
 
       instance.setTrackPreview([
         { lat: 46.8, lng: -71.2 },
@@ -549,7 +567,10 @@ describe('MapLibreProvider', () => {
       })
 
       instance.setTrackPreview(null)
-      expect(map.sources['track-preview'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(map.sources['track-preview'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
     })
 
     it('re-adds the track preview layer after a base layer switch reloads the style', () => {
@@ -577,7 +598,10 @@ describe('MapLibreProvider', () => {
 
       expect(map.layerIds).toContain('measure-path-points')
       expect(map.layerIds).toContain('measure-path-line')
-      expect(map.sources['measure-path'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(map.sources['measure-path'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
       expect(() => instance.setMeasurePath([{ lat: 1, lng: 1 }])).not.toThrow()
     })
 
@@ -613,9 +637,13 @@ describe('MapLibreProvider', () => {
         { lat: 46.81, lng: -71.19 },
       ])
 
-      const data = map.sources['measure-path'].data as { features: { geometry: { type: string } }[] }
+      const data = map.sources['measure-path'].data as {
+        features: { geometry: { type: string } }[]
+      }
       expect(data.features.filter((f) => f.geometry.type === 'Point')).toHaveLength(3)
-      expect(data.features.filter((f) => f.geometry.type === 'LineString')).toHaveLength(1)
+      expect(data.features.filter((f) => f.geometry.type === 'LineString')).toHaveLength(
+        1,
+      )
     })
 
     it('clears both points and line when set to null', () => {
@@ -630,7 +658,10 @@ describe('MapLibreProvider', () => {
       ])
       instance.setMeasurePath(null)
 
-      expect(map.sources['measure-path'].data).toEqual({ type: 'FeatureCollection', features: [] })
+      expect(map.sources['measure-path'].data).toEqual({
+        type: 'FeatureCollection',
+        features: [],
+      })
     })
 
     it('re-adds the measure path layers after a base layer switch reloads the style', () => {
@@ -736,7 +767,14 @@ describe('MapLibreProvider', () => {
         coordinate: { lat: 0, lng: 0 },
         combined: {
           overallScore: 72,
-          results: [{ analyzer: 'terrain' as const, score: 72, confidence: 'calculated' as const, factors: [] }],
+          results: [
+            {
+              analyzer: 'terrain' as const,
+              score: 72,
+              confidence: 'calculated' as const,
+              factors: [],
+            },
+          ],
         },
       },
       {
@@ -785,11 +823,7 @@ describe('MapLibreProvider', () => {
 
       instance.setAnalysisHeatmap(CELLS)
       expect(() =>
-        instance.setWindField(
-          { timezone: 'UTC', samples: [] },
-          0,
-          'wind',
-        ),
+        instance.setWindField({ timezone: 'UTC', samples: [] }, 0, 'wind'),
       ).not.toThrow()
       expect(() => instance.setAnalysisHeatmap(null)).not.toThrow()
     })
@@ -905,7 +939,9 @@ describe('MapLibreProvider', () => {
 
       instance.setWeatherFrames(FRAMES, 7, 0.8)
 
-      const wxLayers = map.addedLayers.filter((l) => l.id.startsWith('wx-frame-') && l.id.endsWith('-0-layer'))
+      const wxLayers = map.addedLayers.filter(
+        (l) => l.id.startsWith('wx-frame-') && l.id.endsWith('-0-layer'),
+      )
       // Rain + snow: one stacked raster per WMS layer, per frame.
       expect(map.addedLayers.filter((l) => l.id.startsWith('wx-frame-'))).toHaveLength(10)
       // 1 behind + active + 3 ahead (wrapping around for looping playback).
@@ -917,8 +953,13 @@ describe('MapLibreProvider', () => {
         'wx-frame-radar-t7-0-layer',
       ])
       const active = wxLayers.find((l) => l.id === 'wx-frame-radar-t7-0-layer')
-      expect(active?.paint).toMatchObject({ 'raster-opacity': 0.8, 'raster-fade-duration': 0 })
-      expect(wxLayers.find((l) => l.id === 'wx-frame-radar-t0-0-layer')?.paint).toMatchObject({ 'raster-opacity': 0 })
+      expect(active?.paint).toMatchObject({
+        'raster-opacity': 0.8,
+        'raster-fade-duration': 0,
+      })
+      expect(
+        wxLayers.find((l) => l.id === 'wx-frame-radar-t0-0-layer')?.paint,
+      ).toMatchObject({ 'raster-opacity': 0 })
     })
 
     it('advancing swaps opacity in place, and drops frames that leave the window', () => {
@@ -929,8 +970,16 @@ describe('MapLibreProvider', () => {
       instance.setWeatherFrames(FRAMES, 1, 0.8)
       instance.setWeatherFrames(FRAMES, 2, 0.8)
 
-      expect(map.paintCalls).toContainEqual({ id: 'wx-frame-radar-t2-0-layer', name: 'raster-opacity', value: 0.8 })
-      expect(map.paintCalls).toContainEqual({ id: 'wx-frame-radar-t1-0-layer', name: 'raster-opacity', value: 0 })
+      expect(map.paintCalls).toContainEqual({
+        id: 'wx-frame-radar-t2-0-layer',
+        name: 'raster-opacity',
+        value: 0.8,
+      })
+      expect(map.paintCalls).toContainEqual({
+        id: 'wx-frame-radar-t1-0-layer',
+        name: 'raster-opacity',
+        value: 0,
+      })
       expect(map.getLayer('wx-frame-radar-t0-0-layer')).toBeUndefined()
       expect(map.getLayer('wx-frame-radar-t5-0-layer')).toBeDefined()
       expect(instance.isWeatherFrameReady('radar-t5')).toBe(true)
@@ -956,7 +1005,9 @@ describe('MapLibreProvider', () => {
       mapInstances.length = 0
       createTestMap()
       const map = mapInstances[0]
-      expect(map.transformRequest?.('https://geo.weather.gc.ca/geomet?x=1', 'Tile')).toBeUndefined()
+      expect(
+        map.transformRequest?.('https://geo.weather.gc.ca/geomet?x=1', 'Tile'),
+      ).toBeUndefined()
     })
   })
 
@@ -974,7 +1025,9 @@ describe('MapLibreProvider', () => {
 
       expect(map.sources['raster-overlay-radar'].raw).toEqual({
         type: 'raster',
-        tiles: ['https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png'],
+        tiles: [
+          'https://tilecache.rainviewer.com/v2/radar/123/256/{z}/{x}/{y}/2/1_1.png',
+        ],
         tileSize: 256,
       })
       expect(map.addedLayers.at(-1)).toEqual({
@@ -990,8 +1043,16 @@ describe('MapLibreProvider', () => {
       const instance = createTestMap()
       const map = mapInstances[0]
 
-      instance.setRasterOverlay('radar', 'https://example.com/radar/{bbox-epsg-3857}', 0.6)
-      instance.setRasterOverlay('cadastre', 'https://example.com/cadastre/{bbox-epsg-3857}', 0.7)
+      instance.setRasterOverlay(
+        'radar',
+        'https://example.com/radar/{bbox-epsg-3857}',
+        0.6,
+      )
+      instance.setRasterOverlay(
+        'cadastre',
+        'https://example.com/cadastre/{bbox-epsg-3857}',
+        0.7,
+      )
 
       expect(map.getLayer('raster-overlay-radar-layer')).toBeDefined()
       expect(map.getLayer('raster-overlay-cadastre-layer')).toBeDefined()
@@ -1055,7 +1116,10 @@ describe('MapLibreProvider', () => {
       createTestMap()
       const map = mapInstances[0]
 
-      const result = map.transformRequest?.('https://api.maptiler.com/tiles/v3/5/10/12.pbf', 'Tile')
+      const result = map.transformRequest?.(
+        'https://api.maptiler.com/tiles/v3/5/10/12.pbf',
+        'Tile',
+      )
       expect(result).toEqual({ url: 'ctrtile://api.maptiler.com/tiles/v3/5/10/12.pbf' })
     })
 
@@ -1171,7 +1235,10 @@ describe('MapLibreProvider', () => {
       createTestMap() // ensures the protocol is registered at least once
       const cache = installFakeCaches()
       const bytes = new Uint8Array(500)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(bytes, { status: 200 })))
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(bytes, { status: 200 })),
+      )
 
       const handler = registeredProtocols.ctrtile
       const result = await handler(
@@ -1183,7 +1250,9 @@ describe('MapLibreProvider', () => {
       // Node's Response come from different realms (Node 22), not a real bug.
       expect(Object.prototype.toString.call(result.data)).toBe('[object ArrayBuffer]')
       expect((result.data as ArrayBuffer).byteLength).toBe(500)
-      expect(await cache.match('https://api.maptiler.com/tiles/v3/5/10/12.pbf')).toBeDefined()
+      expect(
+        await cache.match('https://api.maptiler.com/tiles/v3/5/10/12.pbf'),
+      ).toBeDefined()
       expect(fetch).toHaveBeenCalledWith(
         'https://api.maptiler.com/tiles/v3/5/10/12.pbf',
         expect.anything(),
@@ -1219,7 +1288,13 @@ describe('MapLibreProvider', () => {
       const onProgress = vi.fn()
       const controller = new AbortController()
 
-      const result = await instance.downloadArea(bounds, 10, 10, onProgress, controller.signal)
+      const result = await instance.downloadArea(
+        bounds,
+        10,
+        10,
+        onProgress,
+        controller.signal,
+      )
 
       // One jumpTo per target tile at zoom 10, plus the final restore.
       expect(map.jumpToCalls.length).toBeGreaterThan(1)
@@ -1251,7 +1326,9 @@ describe('MapLibreProvider', () => {
       const instance = createTestMap()
       const setCenter = vi.spyOn(mapInstances[0], 'setCenter')
 
-      expect(() => instance.setView({ center: { lat: Number.NaN, lng: 0 }, zoom: 7 })).not.toThrow()
+      expect(() =>
+        instance.setView({ center: { lat: Number.NaN, lng: 0 }, zoom: 7 }),
+      ).not.toThrow()
       expect(setCenter).not.toHaveBeenCalled()
 
       instance.setView({ center: { lat: 46.8, lng: -71.2 } })
@@ -1261,9 +1338,11 @@ describe('MapLibreProvider', () => {
     it('queryElevation reports "unavailable" for a NaN coordinate instead of reaching the engine', () => {
       mapInstances.length = 0
       const instance = createTestMap()
-      const query = vi.spyOn(mapInstances[0], 'queryTerrainElevation').mockImplementation(() => {
-        throw new Error('Invalid LngLat object: (NaN, NaN)')
-      })
+      const query = vi
+        .spyOn(mapInstances[0], 'queryTerrainElevation')
+        .mockImplementation(() => {
+          throw new Error('Invalid LngLat object: (NaN, NaN)')
+        })
 
       expect(instance.queryElevation({ lat: Number.NaN, lng: Number.NaN })).toBeNull()
       expect(query).not.toHaveBeenCalled()

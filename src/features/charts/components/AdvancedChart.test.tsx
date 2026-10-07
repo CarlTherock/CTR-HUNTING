@@ -37,7 +37,14 @@ const FORECAST: WeatherForecast = {
 }
 
 afterEach(() => {
-  useWeatherStore.setState({ status: 'idle', forecast: null, coordinate: null, fetchedAt: null, isCached: false, errorReason: null })
+  useWeatherStore.setState({
+    status: 'idle',
+    forecast: null,
+    coordinate: null,
+    fetchedAt: null,
+    isCached: false,
+    errorReason: null,
+  })
   useWindStore.setState({
     status: 'idle',
     field: null,
@@ -58,7 +65,9 @@ describe('AdvancedChart', () => {
     useWeatherStore.setState({ forecast: FORECAST })
     render(<AdvancedChart />)
 
-    expect(screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' }),
+    ).toBeInTheDocument()
     for (const g of ['1h', '3h', '6h', '12h', '24h']) {
       expect(screen.getByRole('tab', { name: g })).toBeInTheDocument()
     }
@@ -70,7 +79,10 @@ describe('AdvancedChart', () => {
     render(<AdvancedChart />)
 
     await user.click(screen.getByRole('tab', { name: '24h' }))
-    expect(screen.getByRole('tab', { name: '24h' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '24h' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
 
     // Still the same real forecast in the store — resampling is a pure display transform.
     expect(useWeatherStore.getState().forecast?.hourly).toHaveLength(48)
@@ -81,7 +93,9 @@ describe('AdvancedChart', () => {
     useWeatherStore.setState({ forecast: FORECAST })
     render(<AdvancedChart />)
 
-    const svg = screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })
+    const svg = screen.getByRole('img', {
+      name: 'Graphique horaire de la température et du vent',
+    })
     await user.click(svg)
 
     // A real, valid hour index was set — not left at its default of 0
@@ -99,7 +113,9 @@ describe('AdvancedChart', () => {
     await user.click(screen.getByLabelText('Comparer le jour 1 et le jour 2'))
 
     // Two temperature paths now exist (day 1 solid + day 2 dashed).
-    const svg = screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })
+    const svg = screen.getByRole('img', {
+      name: 'Graphique horaire de la température et du vent',
+    })
     const dashedPaths = svg.querySelectorAll('path[stroke-dasharray]')
     expect(dashedPaths.length).toBeGreaterThan(0)
   })

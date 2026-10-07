@@ -46,7 +46,9 @@ describe('navigation', () => {
     const user = userEvent.setup()
     renderAt('/')
 
-    const links = await screen.findAllByRole('link', { name: /Points de repère et traces/i })
+    const links = await screen.findAllByRole('link', {
+      name: /Points de repère et traces/i,
+    })
     await user.click(links[0])
 
     expect(

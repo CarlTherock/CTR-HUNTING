@@ -14,13 +14,18 @@ export interface CreateWaypointInput {
  * a waypoint's position is fixed when it is first saved (to change it, delete
  * the waypoint and create a new one). */
 export type UpdateWaypointInput = Partial<
-  Pick<Waypoint, 'name' | 'category' | 'color' | 'notes' | 'photoIds' | 'optimalWindDirections'>
+  Pick<
+    Waypoint,
+    'name' | 'category' | 'color' | 'notes' | 'photoIds' | 'optimalWindDirections'
+  >
 >
 
 /** Thrown when code tries to change the position of a saved waypoint. */
 export class WaypointLockedError extends Error {
   constructor() {
-    super('A saved waypoint’s location is locked: delete it and create a new one to move it.')
+    super(
+      'A saved waypoint’s location is locked: delete it and create a new one to move it.',
+    )
     this.name = 'WaypointLockedError'
   }
 }
@@ -48,7 +53,10 @@ export async function createWaypoint(input: CreateWaypointInput): Promise<Waypoi
   return waypoint
 }
 
-export async function updateWaypoint(id: string, patch: UpdateWaypointInput): Promise<void> {
+export async function updateWaypoint(
+  id: string,
+  patch: UpdateWaypointInput,
+): Promise<void> {
   // The type already forbids it; this protects callers that bypass the type
   // system (casts, untyped data, future code paths).
   if ('coordinate' in patch) throw new WaypointLockedError()

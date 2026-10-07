@@ -1,7 +1,8 @@
 import type { Coordinate } from './geo'
 import type { DataConfidence } from './data-quality'
 
-export type AnalyzerId = 'terrain' | 'vegetation' | 'weather' | 'wind' | 'time' | 'history'
+export type AnalyzerId =
+  'terrain' | 'vegetation' | 'weather' | 'wind' | 'time' | 'history'
 
 /**
  * One real input's contribution to an analyzer's score — the mechanism

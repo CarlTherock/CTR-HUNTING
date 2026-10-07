@@ -132,7 +132,11 @@ export interface MapInstance {
    * shown. Frames near the active one are preloaded invisibly so playback
    * swaps instantly without flicker. `null` clears everything.
    */
-  setWeatherFrames(frames: WeatherTileFrame[] | null, activeIndex: number, opacity: number): void
+  setWeatherFrames(
+    frames: WeatherTileFrame[] | null,
+    activeIndex: number,
+    opacity: number,
+  ): void
   /** Whether a frame's tiles for the current view have finished loading —
    * playback waits on this so it never flashes an empty frame. */
   isWeatherFrameReady(key: string): boolean

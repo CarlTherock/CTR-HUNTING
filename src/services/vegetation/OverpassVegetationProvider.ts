@@ -34,7 +34,8 @@ interface OverpassResponse {
  * known point). */
 function elementCoordinate(element: OverpassElement): Coordinate | null {
   if (element.center) return { lat: element.center.lat, lng: element.center.lon }
-  if (element.lat !== undefined && element.lon !== undefined) return { lat: element.lat, lng: element.lon }
+  if (element.lat !== undefined && element.lon !== undefined)
+    return { lat: element.lat, lng: element.lon }
   return null
 }
 
@@ -46,14 +47,27 @@ function elementCoordinate(element: OverpassElement): Coordinate | null {
 function categorize(tags: Record<string, string>): VegetationCategory | null {
   if (tags.natural === 'wood' || tags.landuse === 'forest') return 'forest'
   if (tags.natural === 'wetland' || tags.landuse === 'wetland') return 'wetland'
-  if (['farmland', 'meadow', 'orchard', 'vineyard', 'allotments'].includes(tags.landuse ?? '')) {
+  if (
+    ['farmland', 'meadow', 'orchard', 'vineyard', 'allotments'].includes(
+      tags.landuse ?? '',
+    )
+  ) {
     return 'agricultural'
   }
-  if (tags.natural === 'grassland' || tags.landuse === 'grass' || tags.leisure === 'park') {
+  if (
+    tags.natural === 'grassland' ||
+    tags.landuse === 'grass' ||
+    tags.leisure === 'park'
+  ) {
     return 'grassland'
   }
-  if (tags.natural === 'water' || tags.landuse === 'reservoir' || tags.natural === 'bay') return 'water'
-  if (['residential', 'commercial', 'industrial', 'retail', 'construction'].includes(tags.landuse ?? '')) {
+  if (tags.natural === 'water' || tags.landuse === 'reservoir' || tags.natural === 'bay')
+    return 'water'
+  if (
+    ['residential', 'commercial', 'industrial', 'retail', 'construction'].includes(
+      tags.landuse ?? '',
+    )
+  ) {
     return 'developed'
   }
   if (tags.landuse || tags.natural || tags.leisure) return 'other'
@@ -76,7 +90,10 @@ function buildBboxQuery(bounds: LngLatBounds): string {
 }
 
 export class OverpassVegetationProvider implements VegetationProvider {
-  async fetchVegetation(coordinate: Coordinate, radiusMeters: number): Promise<VegetationSample | null> {
+  async fetchVegetation(
+    coordinate: Coordinate,
+    radiusMeters: number,
+  ): Promise<VegetationSample | null> {
     const response = await fetch(OVERPASS_URL, {
       method: 'POST',
       body: new URLSearchParams({ data: buildQuery(coordinate, radiusMeters) }),
@@ -97,14 +114,20 @@ export class OverpassVegetationProvider implements VegetationProvider {
     return { coordinate, radiusMeters, categoryCounts, source: 'openstreetmap' }
   }
 
-  async fetchVegetationGrid(bounds: LngLatBounds, gridSize: number): Promise<VegetationSample[]> {
+  async fetchVegetationGrid(
+    bounds: LngLatBounds,
+    gridSize: number,
+  ): Promise<VegetationSample[]> {
     const points = buildGrid(bounds, gridSize)
     // Half the average cell spacing — a reasonable "belongs to this
     // cell" radius derived from the actual grid, not an arbitrary number.
-    const cellSpacingMeters = haversineMeters(
-      { lat: bounds.south, lng: bounds.west },
-      { lat: bounds.north, lng: bounds.east },
-    ) / gridSize / Math.SQRT2
+    const cellSpacingMeters =
+      haversineMeters(
+        { lat: bounds.south, lng: bounds.west },
+        { lat: bounds.north, lng: bounds.east },
+      ) /
+      gridSize /
+      Math.SQRT2
     const radiusMeters = cellSpacingMeters / 2
 
     const response = await fetch(OVERPASS_URL, {

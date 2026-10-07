@@ -54,22 +54,40 @@ function scoreFromFactors(factors: AnalysisFactor[]): number {
   return Math.max(0, Math.min(100, 50 + average * 50))
 }
 
-function buildResult(analyzer: AnalyzerResult['analyzer'], factors: AnalysisFactor[]): AnalyzerResult {
+function buildResult(
+  analyzer: AnalyzerResult['analyzer'],
+  factors: AnalysisFactor[],
+): AnalyzerResult {
   return {
     analyzer,
     score: scoreFromFactors(factors),
-    confidence: factors.length > 0 ? weakestConfidence(factors.map((f) => f.confidence)) : 'unavailable',
+    confidence:
+      factors.length > 0
+        ? weakestConfidence(factors.map((f) => f.confidence))
+        : 'unavailable',
     factors,
   }
 }
 
-export function unavailableResult(analyzer: AnalyzerResult['analyzer'], reason: string): AnalyzerResult {
-  return { analyzer, score: null, confidence: 'unavailable', factors: [], unavailableReason: reason }
+export function unavailableResult(
+  analyzer: AnalyzerResult['analyzer'],
+  reason: string,
+): AnalyzerResult {
+  return {
+    analyzer,
+    score: null,
+    confidence: 'unavailable',
+    factors: [],
+    unavailableReason: reason,
+  }
 }
 
 export function terrainAnalyzer(slopeAspect: SlopeAspect | null): AnalyzerResult {
   if (!slopeAspect) {
-    return unavailableResult('terrain', 'Aucune donnée d’élévation chargée pour ce point (tuile de terrain non chargée).')
+    return unavailableResult(
+      'terrain',
+      'Aucune donnée d’élévation chargée pour ce point (tuile de terrain non chargée).',
+    )
   }
   const { slopeDegrees, aspectDegrees } = slopeAspect
   const factors: AnalysisFactor[] = []
@@ -139,7 +157,8 @@ export function vegetationAnalyzer(sample: VegetationSample | null): AnalyzerRes
     factors.push({
       label: 'Eau à proximité',
       contribution: 0.3,
-      explanation: 'Eau ou milieu humide cartographié à proximité — la proximité de l’eau est un attrait bien établi.',
+      explanation:
+        'Eau ou milieu humide cartographié à proximité — la proximité de l’eau est un attrait bien établi.',
       confidence: 'estimated',
     })
   }
@@ -148,7 +167,8 @@ export function vegetationAnalyzer(sample: VegetationSample | null): AnalyzerRes
     factors.push({
       label: 'Couvert forestier',
       contribution: 0.2,
-      explanation: 'Couvert forestier cartographié à proximité — il offre un abri de repos et de déplacement.',
+      explanation:
+        'Couvert forestier cartographié à proximité — il offre un abri de repos et de déplacement.',
       confidence: 'estimated',
     })
   }
@@ -157,7 +177,8 @@ export function vegetationAnalyzer(sample: VegetationSample | null): AnalyzerRes
     factors.push({
       label: 'Terrain aménagé à proximité',
       contribution: -0.3,
-      explanation: 'Terrains résidentiels, commerciaux ou industriels cartographiés à proximité — ils réduisent généralement l’activité du gibier.',
+      explanation:
+        'Terrains résidentiels, commerciaux ou industriels cartographiés à proximité — ils réduisent généralement l’activité du gibier.',
       confidence: 'estimated',
     })
   }
@@ -178,7 +199,8 @@ export function weatherAnalyzer(
   current: WeatherConditions | null,
   hourly: HourlyForecastEntry[],
 ): AnalyzerResult {
-  if (!current) return unavailableResult('weather', 'Aucune donnée météo chargée pour le moment.')
+  if (!current)
+    return unavailableResult('weather', 'Aucune donnée météo chargée pour le moment.')
 
   const factors: AnalysisFactor[] = []
 
@@ -197,7 +219,8 @@ export function weatherAnalyzer(
       factors.push({
         label: 'Pression en hausse',
         contribution: -0.1,
-        explanation: 'La pression devrait monter — les déplacements sont généralement plus calmes.',
+        explanation:
+          'La pression devrait monter — les déplacements sont généralement plus calmes.',
         confidence: 'estimated',
       })
     } else {
@@ -237,7 +260,8 @@ export function weatherAnalyzer(
     factors.push({
       label: 'Faibles précipitations',
       contribution: 0.1,
-      explanation: 'Faibles précipitations — certains chasseurs rapportent qu’elles aident à masquer les bruits et les odeurs (témoignages anecdotiques).',
+      explanation:
+        'Faibles précipitations — certains chasseurs rapportent qu’elles aident à masquer les bruits et les odeurs (témoignages anecdotiques).',
       confidence: 'measured',
     })
   }
@@ -249,7 +273,8 @@ export function windAnalyzer(
   reading: WindHourlyReading | null,
   optimalDirections: number[] | undefined,
 ): AnalyzerResult {
-  if (!reading) return unavailableResult('wind', 'Aucune donnée de vent chargée pour le moment.')
+  if (!reading)
+    return unavailableResult('wind', 'Aucune donnée de vent chargée pour le moment.')
 
   const factors: AnalysisFactor[] = []
 
@@ -269,7 +294,8 @@ export function windAnalyzer(
     factors.push({
       label: 'Très calme',
       contribution: -0.1,
-      explanation: 'Un vent très calme laisse les odeurs stagner de façon imprévisible au lieu de les porter de manière constante.',
+      explanation:
+        'Un vent très calme laisse les odeurs stagner de façon imprévisible au lieu de les porter de manière constante.',
       confidence: 'measured',
     })
   } else if (reading.speedKmh <= 25) {
@@ -295,23 +321,34 @@ export function timeAnalyzer(data: TemporalData, now: Date): AnalyzerResult {
   const factors: AnalysisFactor[] = []
   const CREPUSCULAR_WINDOW_MS = 60 * 60_000
 
-  const nearSunrise = data.sun.sunrise && Math.abs(now.getTime() - new Date(data.sun.sunrise).getTime()) <= CREPUSCULAR_WINDOW_MS
-  const nearSunset = data.sun.sunset && Math.abs(now.getTime() - new Date(data.sun.sunset).getTime()) <= CREPUSCULAR_WINDOW_MS
+  const nearSunrise =
+    data.sun.sunrise &&
+    Math.abs(now.getTime() - new Date(data.sun.sunrise).getTime()) <=
+      CREPUSCULAR_WINDOW_MS
+  const nearSunset =
+    data.sun.sunset &&
+    Math.abs(now.getTime() - new Date(data.sun.sunset).getTime()) <= CREPUSCULAR_WINDOW_MS
   if (nearSunrise || nearSunset) {
     factors.push({
       label: 'Fenêtre de l’aube et du crépuscule',
       contribution: 0.5,
-      explanation: 'À moins d’une heure du lever ou du coucher du soleil — période de déplacement privilégiée de la plupart des espèces de gibier (rythme d’activité crépusculaire bien documenté).',
+      explanation:
+        'À moins d’une heure du lever ou du coucher du soleil — période de déplacement privilégiée de la plupart des espèces de gibier (rythme d’activité crépusculaire bien documenté).',
       confidence: 'calculated',
     })
   }
 
   const activePeriod = data.solunarPeriods.find(
-    (p) => now.getTime() >= new Date(p.start).getTime() && now.getTime() <= new Date(p.end).getTime(),
+    (p) =>
+      now.getTime() >= new Date(p.start).getTime() &&
+      now.getTime() <= new Date(p.end).getTime(),
   )
   if (activePeriod) {
     factors.push({
-      label: activePeriod.type === 'major' ? 'Période solunaire majeure en cours' : 'Période solunaire mineure en cours',
+      label:
+        activePeriod.type === 'major'
+          ? 'Période solunaire majeure en cours'
+          : 'Période solunaire mineure en cours',
       contribution: activePeriod.type === 'major' ? 0.4 : 0.2,
       explanation: `Une période solunaire ${activePeriod.type === 'major' ? 'majeure' : 'mineure'} est en cours — selon la théorie solunaire de Knight (1926), un cadre populaire mais non vérifié scientifiquement.`,
       confidence: 'estimated',
@@ -341,7 +378,9 @@ export function historyAnalyzer(
   const factors: AnalysisFactor[] = []
 
   const nearbySignWaypoints = waypoints.filter(
-    (w) => SIGN_CATEGORIES.has(w.category) && haversineMeters(coordinate, w.coordinate) <= HISTORY_RADIUS_METERS,
+    (w) =>
+      SIGN_CATEGORIES.has(w.category) &&
+      haversineMeters(coordinate, w.coordinate) <= HISTORY_RADIUS_METERS,
   )
   if (nearbySignWaypoints.length > 0) {
     factors.push({
@@ -375,7 +414,9 @@ export function historyAnalyzer(
 }
 
 export function combineAnalyses(results: AnalyzerResult[]): CombinedAnalysis {
-  const withScores = results.filter((r): r is AnalyzerResult & { score: number } => r.score !== null)
+  const withScores = results.filter(
+    (r): r is AnalyzerResult & { score: number } => r.score !== null,
+  )
   if (withScores.length === 0) return { overallScore: null, results }
   const overallScore = withScores.reduce((sum, r) => sum + r.score, 0) / withScores.length
   return { overallScore, results }

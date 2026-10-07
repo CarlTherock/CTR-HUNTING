@@ -13,7 +13,10 @@ function makeFakeTrack(overrides: Partial<MediaStreamTrack> = {}): MediaStreamTr
 }
 
 function stubGetUserMedia(track: MediaStreamTrack) {
-  const stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream
+  const stream = {
+    getVideoTracks: () => [track],
+    getTracks: () => [track],
+  } as unknown as MediaStream
   vi.stubGlobal('navigator', {
     ...navigator,
     mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) },
@@ -53,7 +56,9 @@ describe('useCameraStream', () => {
   it('reports a real error reason when getUserMedia rejects (e.g. permission denied)', async () => {
     vi.stubGlobal('navigator', {
       ...navigator,
-      mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(new Error('Permission denied')) },
+      mediaDevices: {
+        getUserMedia: vi.fn().mockRejectedValue(new Error('Permission denied')),
+      },
     })
     const { result } = renderHook(() => useCameraStream())
 

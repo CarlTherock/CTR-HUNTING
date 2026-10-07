@@ -20,7 +20,9 @@ export async function listObservations(): Promise<Observation[]> {
   return db.observations.toArray()
 }
 
-export async function createObservation(input: CreateObservationInput): Promise<Observation> {
+export async function createObservation(
+  input: CreateObservationInput,
+): Promise<Observation> {
   const observation: Observation = {
     id: crypto.randomUUID(),
     coordinate: input.coordinate,
@@ -33,7 +35,10 @@ export async function createObservation(input: CreateObservationInput): Promise<
   return observation
 }
 
-export async function updateObservation(id: string, patch: UpdateObservationInput): Promise<void> {
+export async function updateObservation(
+  id: string,
+  patch: UpdateObservationInput,
+): Promise<void> {
   await db.observations.update(id, patch)
 }
 

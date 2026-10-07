@@ -40,18 +40,22 @@ export function WindComparisonPanel() {
       {!field ? (
         <Card className="p-3">
           <p className="text-ink-500 text-xs">
-            Activez la couche de vent depuis la page Carte pour comparer le vent en direct aux
-            directions optimales enregistrées pour ces points de repère.
+            Activez la couche de vent depuis la page Carte pour comparer le vent en direct
+            aux directions optimales enregistrées pour ces points de repère.
           </p>
         </Card>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {candidates.map((waypoint) => {
             const reading = windAt(waypoint.coordinate)
-            const matches = reading ? isOptimalWind(reading.directionDegrees, waypoint.optimalWindDirections) : null
+            const matches = reading
+              ? isOptimalWind(reading.directionDegrees, waypoint.optimalWindDirections)
+              : null
             return (
               <Card key={waypoint.id} className="flex flex-col gap-1 p-3">
-                <span className="text-ink-100 truncate text-xs font-medium">{waypoint.name}</span>
+                <span className="text-ink-100 truncate text-xs font-medium">
+                  {waypoint.name}
+                </span>
                 {reading ? (
                   <>
                     <span

@@ -1,4 +1,9 @@
-import type { Coordinate, HourlyForecastEntry, WeatherConditions, WeatherForecast } from '@/types'
+import type {
+  Coordinate,
+  HourlyForecastEntry,
+  WeatherConditions,
+  WeatherForecast,
+} from '@/types'
 import type { WeatherProvider } from './WeatherProvider'
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'

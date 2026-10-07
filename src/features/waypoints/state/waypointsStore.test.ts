@@ -93,7 +93,10 @@ describe('waypointsStore — draft, Save and cancel', () => {
     expect(state.draft).toBeNull()
     expect(state.waypoints).toHaveLength(1)
     const [persisted] = await db.waypoints.toArray()
-    expect(persisted).toMatchObject({ ...FIELDS, coordinate: { lat: 46.81234, lng: -71.20987 } })
+    expect(persisted).toMatchObject({
+      ...FIELDS,
+      coordinate: { lat: 46.81234, lng: -71.20987 },
+    })
     expect(state.waypoints[0]).toEqual(persisted)
   })
 
@@ -103,7 +106,10 @@ describe('waypointsStore — draft, Save and cancel', () => {
 
     await useWaypointsStore.getState().saveDraft(FIELDS)
 
-    expect((await db.waypoints.toArray())[0].coordinate).toEqual({ lat: 46.9, lng: -71.1 })
+    expect((await db.waypoints.toArray())[0].coordinate).toEqual({
+      lat: 46.9,
+      lng: -71.1,
+    })
   })
 
   it('cancelling a creation leaves no ghost waypoint anywhere', async () => {
@@ -118,7 +124,9 @@ describe('waypointsStore — draft, Save and cancel', () => {
 
   it('a failed save keeps the draft open with a visible error, and retrying creates exactly one waypoint', async () => {
     startDraftAt()
-    const add = vi.spyOn(db.waypoints, 'add').mockRejectedValueOnce(new Error('disque plein'))
+    const add = vi
+      .spyOn(db.waypoints, 'add')
+      .mockRejectedValueOnce(new Error('disque plein'))
 
     expect(await useWaypointsStore.getState().saveDraft(FIELDS)).toBe(false)
 
@@ -172,9 +180,9 @@ describe('waypointsStore — saved waypoints are locked in place', () => {
     const saved = await saveOne()
     const attempt = { coordinate: { lat: 10, lng: 10 } } as unknown as { name: string }
 
-    await expect(useWaypointsStore.getState().updateWaypoint(saved.id, attempt)).rejects.toBeInstanceOf(
-      WaypointLockedError,
-    )
+    await expect(
+      useWaypointsStore.getState().updateWaypoint(saved.id, attempt),
+    ).rejects.toBeInstanceOf(WaypointLockedError)
 
     expect((await db.waypoints.get(saved.id))?.coordinate).toEqual(HERE)
     expect(useWaypointsStore.getState().waypoints[0].coordinate).toEqual(HERE)
@@ -209,7 +217,9 @@ describe('waypointsStore — saved waypoints are locked in place', () => {
     await expect(
       useWaypointsStore
         .getState()
-        .updateWaypoint('legacy', { coordinate: { lat: 0, lng: 0 } } as unknown as { name: string }),
+        .updateWaypoint('legacy', { coordinate: { lat: 0, lng: 0 } } as unknown as {
+          name: string
+        }),
     ).rejects.toBeInstanceOf(WaypointLockedError)
     await useWaypointsStore.getState().updateWaypoint('legacy', { notes: 'ajout' })
 

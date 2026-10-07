@@ -38,7 +38,8 @@ const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
   { phase: 17, label: 'Lancement commercial', status: 'pending' },
 ]
 
-const currentPhase = ROADMAP.find((p) => p.status !== 'done') ?? ROADMAP[ROADMAP.length - 1]
+const currentPhase =
+  ROADMAP.find((p) => p.status !== 'done') ?? ROADMAP[ROADMAP.length - 1]
 
 export function DashboardPage() {
   const isOnline = useOnlineStatus()

@@ -96,20 +96,31 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
         downloadProgress: null,
         areas: state.areas.map((a) =>
           a.id === area.id
-            ? { ...a, status: 'complete', ...result, completedAt: new Date().toISOString() }
+            ? {
+                ...a,
+                status: 'complete',
+                ...result,
+                completedAt: new Date().toISOString(),
+              }
             : a,
         ),
       }))
     } catch (err) {
       const isCancelled = err instanceof DOMException && err.name === 'AbortError'
-      const progress = get().downloadProgress ?? { tilesDownloaded: 0, bytesDownloaded: 0, tileUrls: [] }
+      const progress = get().downloadProgress ?? {
+        tilesDownloaded: 0,
+        bytesDownloaded: 0,
+        tileUrls: [],
+      }
       const status: OfflineAreaStatus = isCancelled ? 'cancelled' : 'error'
       await persistProgress(progress, status)
       set((state) => ({
         mode: 'idle',
         activeAreaId: null,
         downloadProgress: null,
-        areas: state.areas.map((a) => (a.id === area.id ? { ...a, status, ...progress } : a)),
+        areas: state.areas.map((a) =>
+          a.id === area.id ? { ...a, status, ...progress } : a,
+        ),
       }))
       // Cancellation is a deliberate user action, not a failure — only
       // real errors should surface (e.g. to an error boundary/toast).
@@ -137,8 +148,10 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
 
     startSelecting: (bounds, zoom) =>
       set({ mode: 'selecting', selectedBounds: bounds, selectedZoom: zoom }),
-    cancelSelecting: () => set({ mode: 'idle', selectedBounds: null, selectedZoom: null }),
-    setExtraZoomLevels: (levels) => set({ extraZoomLevels: Math.max(0, Math.min(3, levels)) }),
+    cancelSelecting: () =>
+      set({ mode: 'idle', selectedBounds: null, selectedZoom: null }),
+    setExtraZoomLevels: (levels) =>
+      set({ extraZoomLevels: Math.max(0, Math.min(3, levels)) }),
 
     startDownload: async (map, baseLayer) => {
       const { selectedBounds: bounds, selectedZoom } = get()
@@ -156,7 +169,11 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
         baseLayer,
         tileCount,
       })
-      set((state) => ({ areas: [...state.areas, area], selectedBounds: null, selectedZoom: null }))
+      set((state) => ({
+        areas: [...state.areas, area],
+        selectedBounds: null,
+        selectedZoom: null,
+      }))
       await runDownload(map, area, bounds, minZoom, maxZoom)
     },
 

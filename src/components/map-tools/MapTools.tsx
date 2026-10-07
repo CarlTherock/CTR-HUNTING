@@ -88,7 +88,9 @@ export function ToolTrigger({
             ? 'border-brand-400 bg-brand-500/15 text-brand-400'
             : 'border-surface-600 text-ink-100 hover:bg-surface-800'),
         onRail &&
-          (active ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300 hover:bg-surface-800'),
+          (active
+            ? 'bg-brand-500/15 text-brand-400'
+            : 'text-ink-300 hover:bg-surface-800'),
         disabled && 'text-ink-700 cursor-not-allowed',
       )}
     >
@@ -103,7 +105,13 @@ export function ToolTrigger({
 }
 
 /** Renders arbitrary tool UI (not just a button) into the sheet. */
-export function ToolSlot({ children, order = 0 }: { children: ReactNode; order?: number }) {
+export function ToolSlot({
+  children,
+  order = 0,
+}: {
+  children: ReactNode
+  order?: number
+}) {
   const ctx = useContext(MapToolsContext)
   const content = <div style={{ order }}>{children}</div>
   if (!ctx) return content

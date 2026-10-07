@@ -10,12 +10,12 @@ des restrictions configurées chez le fournisseur.
 
 **À configurer manuellement (non vérifié depuis le dépôt, aucun accès aux consoles) :**
 
-- MapTiler → *Account → Keys* : restreindre la clé aux origines HTTP
+- MapTiler → _Account → Keys_ : restreindre la clé aux origines HTTP
   `https://carltherock.github.io` (et `http://localhost:*` pour une clé de
   développement séparée), régler un quota/alerte de consommation.
 - Esri / ArcGIS Location Platform → clé limitée au privilège **Basemaps**
   uniquement, restreinte au référent `https://carltherock.github.io/*`.
-- Ne jamais mettre de clé *service-role*, jeton privé ou mot de passe dans
+- Ne jamais mettre de clé _service-role_, jeton privé ou mot de passe dans
   le frontend. Les secrets GitHub (`secrets.VITE_*`) servent uniquement à
   injecter ces clés publiques au build.
 
@@ -28,7 +28,7 @@ Limites connues, inhérentes à GitHub Pages (pas d'en-têtes HTTP) :
 
 - `frame-ancestors`, `report-uri` et `sandbox` sont ignorés dans une balise meta ;
   la protection anti-clickjacking n'est donc pas assurée.
-- Pas de mode *Report-Only* : une règle trop stricte bloque réellement.
+- Pas de mode _Report-Only_ : une règle trop stricte bloque réellement.
 - `style-src 'unsafe-inline'` est nécessaire (attributs `style` de React et
   de MapLibre). Aucun script inline, aucun `eval`.
 - La liste d'hôtes est celle des appels réels du code. **Non vérifiée en

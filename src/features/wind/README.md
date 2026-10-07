@@ -44,7 +44,7 @@ not a CFD simulation:
   for a timestep.
 - The canvas itself lives entirely inside `MapLibreProvider.ts`
   (`createWindLayer()`) — `MapProvider.setWindField(field, hourOffset,
-  layer)` is the only surface feature code touches, keeping the raw
+layer)` is the only surface feature code touches, keeping the raw
   MapLibre engine out of `features/`. Particle speed is deliberately
   exaggerated for visual legibility — explicitly not physically accurate,
   matching the project's own design note above.
@@ -70,7 +70,7 @@ panel: the layer tabs above, current reading for whichever layer is
 active (a rotated compass icon + `compassLabel()`, reused from
 `utils/terrain.ts`, for wind; a plain value + unit for the others), the
 legend gradient bar, and a 24-hour range-slider timeline scrubber
-(`selectedHourOffset`) that re-reads the *same* fetched field at a
+(`selectedHourOffset`) that re-reads the _same_ fetched field at a
 different hour — no re-fetch per scrub, for any layer.
 
 ## Optimal Wind (per waypoint)
@@ -78,13 +78,13 @@ different hour — no re-fetch per scrub, for any layer.
 Directly sourced from this project's own competitive research on onX
 Hunt's "Optimal Wind" feature. `Waypoint.optimalWindDirections` (an array
 of the 8 compass octants — 0/45/90/…/315° — the hunter marks as good wind
-*from* for that spot) is editable from
+_from_ for that spot) is editable from
 `features/waypoints/components/WaypointEditPanel.tsx`. While the wind
 layer is on, the panel shows the live reading nearest that waypoint and
 whether it currently matches the saved octants
 (`utils/windField.ts`'s `isOptimalWind()`, which snaps any live direction
 to the nearest octant before comparing) — a green "matches" or red
-"mismatch" badge, letting a hunter check *before* walking in whether
+"mismatch" badge, letting a hunter check _before_ walking in whether
 today's wind actually favors a stand instead of blowing their scent
 toward where they expect deer to come from.
 

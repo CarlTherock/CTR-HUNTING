@@ -20,7 +20,10 @@ function formatCoordinate(lat: number, lng: number): string {
  * already has loaded (Phases 5/6) — only built when there's a genuine
  * reading for every field; otherwise `undefined`, never a partially
  * fabricated snapshot. */
-function snapshotConditions(coordinate: { lat: number; lng: number }): Observation['conditions'] {
+function snapshotConditions(coordinate: {
+  lat: number
+  lng: number
+}): Observation['conditions'] {
   const forecast = useWeatherStore.getState().forecast
   const windField = useWindStore.getState().field
   if (!forecast || !windField) return undefined
@@ -109,7 +112,9 @@ export function JournalPage() {
         }
       />
 
-      {!usingGps && <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>}
+      {!usingGps && (
+        <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>
+      )}
 
       {editing && (
         <Card className="p-4">
@@ -193,8 +198,12 @@ export function JournalPage() {
                 </span>
                 <span className="text-ink-500 flex items-center gap-2 text-xs">
                   {new Date(observation.timestamp).toLocaleString('fr-CA')} ·{' '}
-                  {formatCoordinate(observation.coordinate.lat, observation.coordinate.lng)}
-                  {(observation.photoIds?.length ?? 0) > 0 && ` · ${observation.photoIds?.length} photo(s)`}
+                  {formatCoordinate(
+                    observation.coordinate.lat,
+                    observation.coordinate.lng,
+                  )}
+                  {(observation.photoIds?.length ?? 0) > 0 &&
+                    ` · ${observation.photoIds?.length} photo(s)`}
                 </span>
               </button>
             </Card>

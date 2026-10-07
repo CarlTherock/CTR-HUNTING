@@ -101,7 +101,9 @@ describe('computeSolunarPeriods', () => {
   it('every period has start strictly before end', () => {
     const periods = computeSolunarPeriods(DATE, QUEBEC)
     for (const period of periods) {
-      expect(new Date(period.start).getTime()).toBeLessThan(new Date(period.end).getTime())
+      expect(new Date(period.start).getTime()).toBeLessThan(
+        new Date(period.end).getTime(),
+      )
     }
   })
 
@@ -117,16 +119,33 @@ describe('timeToPercent', () => {
 
   it('places midnight at 0 and the following midnight at 100', () => {
     expect(timeToPercent(dayStart.toISOString(), dayStart)).toBe(0)
-    expect(timeToPercent(new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString(), dayStart)).toBe(100)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(100)
   })
 
   it('places noon at 50', () => {
-    expect(timeToPercent(new Date(dayStart.getTime() + 12 * 60 * 60_000).toISOString(), dayStart)).toBe(50)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 12 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(50)
   })
 
   it('clamps times outside the 24h window', () => {
-    expect(timeToPercent(new Date(dayStart.getTime() - 60_000).toISOString(), dayStart)).toBe(0)
-    expect(timeToPercent(new Date(dayStart.getTime() + 25 * 60 * 60_000).toISOString(), dayStart)).toBe(100)
+    expect(
+      timeToPercent(new Date(dayStart.getTime() - 60_000).toISOString(), dayStart),
+    ).toBe(0)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 25 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(100)
   })
 })
 

@@ -22,7 +22,9 @@ describe('CompassDisplay', () => {
     vi.stubGlobal('DeviceOrientationEvent', FakeDeviceOrientationEvent)
     render(<CompassDisplay />)
 
-    expect(screen.getByRole('button', { name: 'Activer la boussole' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Activer la boussole' }),
+    ).toBeInTheDocument()
   })
 
   it('shows a real heading and compass label once a reading arrives', async () => {
@@ -34,7 +36,9 @@ describe('CompassDisplay', () => {
 
     await user.click(screen.getByRole('button', { name: 'Activer la boussole' }))
     act(() => {
-      const event = new Event('deviceorientation') as Event & { webkitCompassHeading?: number }
+      const event = new Event('deviceorientation') as Event & {
+        webkitCompassHeading?: number
+      }
       event.webkitCompassHeading = 90
       window.dispatchEvent(event)
     })

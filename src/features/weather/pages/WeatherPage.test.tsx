@@ -62,7 +62,10 @@ const FORECAST: WeatherForecast = {
 
 afterEach(async () => {
   vi.clearAllMocks()
-  mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
+  mockGpsReading = {
+    status: 'unavailable',
+    reason: 'Geolocation is not supported by this browser.',
+  }
   await db.settings.clear()
   useMapStore.setState({
     view: { center: { lat: 46.8139, lng: -71.208 }, zoom: 12, pitch: 0, bearing: 0 },
@@ -89,14 +92,18 @@ describe('WeatherPage', () => {
     expect(screen.getByText('10:00')).toBeInTheDocument()
     expect(screen.getByText('11:00')).toBeInTheDocument()
     expect(screen.getByText('Graphique avancé')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' }),
+    ).toBeInTheDocument()
   })
 
   it('fetches using the map center and flags it, when GPS is unavailable', async () => {
     fetchForecast.mockResolvedValue(FORECAST)
     render(<WeatherPage />)
 
-    expect(await screen.findByText('Position de la carte utilisée — GPS indisponible')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Position de la carte utilisée — GPS indisponible'),
+    ).toBeInTheDocument()
     expect(fetchForecast).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 })
   })
 
@@ -111,7 +118,9 @@ describe('WeatherPage', () => {
     render(<WeatherPage />)
 
     await screen.findByText('Conditions actuelles')
-    expect(screen.queryByText('Position de la carte utilisée — GPS indisponible')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Position de la carte utilisée — GPS indisponible'),
+    ).not.toBeInTheDocument()
     expect(fetchForecast).toHaveBeenCalledWith(
       expect.objectContaining({ lat: 47.1, lng: -70.5 }),
     )

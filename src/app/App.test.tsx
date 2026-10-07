@@ -10,7 +10,9 @@ describe('App startup', () => {
     expect(await screen.findByText('CTR HUNTING')).toBeInTheDocument()
 
     // Dashboard is the index route.
-    expect(await screen.findByRole('heading', { name: 'CTR Hunting' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'CTR Hunting' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Phase 14 — IA et assistant/i)).toBeInTheDocument()
   })
 

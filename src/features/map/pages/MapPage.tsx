@@ -106,7 +106,8 @@ export function MapPage() {
     if (!fieldModeEnabled) return
     if (useWindStore.getState().enabled) useWindStore.setState({ enabled: false })
     if (useHeatmapStore.getState().enabled) useHeatmapStore.setState({ enabled: false })
-    if (useWeatherMapStore.getState().enabled) useWeatherMapStore.setState({ enabled: false, playing: false })
+    if (useWeatherMapStore.getState().enabled)
+      useWeatherMapStore.setState({ enabled: false, playing: false })
   }, [fieldModeEnabled])
 
   useEffect(() => {
@@ -159,7 +160,9 @@ export function MapPage() {
         } else if (useAnalysisStore.getState().mode === 'analyzing') {
           const map = instanceRef.current
           if (!map) return
-          void useAnalysisStore.getState().analyze(coordinate, (c) => map.queryElevation(c))
+          void useAnalysisStore
+            .getState()
+            .analyze(coordinate, (c) => map.queryElevation(c))
         }
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
@@ -260,7 +263,11 @@ export function MapPage() {
   useEffect(() => {
     // Particles only — the colored weather surfaces are now real GeoMet
     // rasters (see the weather-map effect below).
-    instanceRef.current?.setWindField(windEnabled ? windField : null, windHourOffset, 'wind')
+    instanceRef.current?.setWindField(
+      windEnabled ? windField : null,
+      windHourOffset,
+      'wind',
+    )
   }, [windEnabled, windField, windHourOffset])
 
   useEffect(() => {
@@ -277,7 +284,13 @@ export function MapPage() {
       weatherMapFrameIndex,
       weatherMapOpacity,
     )
-  }, [weatherMapEnabled, weatherMapLayer, weatherMapFrames, weatherMapFrameIndex, weatherMapOpacity])
+  }, [
+    weatherMapEnabled,
+    weatherMapLayer,
+    weatherMapFrames,
+    weatherMapFrameIndex,
+    weatherMapOpacity,
+  ])
 
   useEffect(() => {
     for (const option of FOREST_LAYER_OPTIONS) {
@@ -304,7 +317,9 @@ export function MapPage() {
             ...cell,
             combined: {
               ...cell.combined,
-              overallScore: cell.combined.results.find((r) => r.analyzer === heatmapSelectedView)?.score ?? null,
+              overallScore:
+                cell.combined.results.find((r) => r.analyzer === heatmapSelectedView)
+                  ?.score ?? null,
             },
           }))
     instanceRef.current?.setAnalysisHeatmap(projected)
@@ -333,7 +348,10 @@ export function MapPage() {
     if (view.pitch > 0) {
       // Read back the clamped value rather than trusting the raw input —
       // the engine must always match what the UI is about to display.
-      instanceRef.current?.setTerrainEnabled(true, useMapStore.getState().terrainExaggeration)
+      instanceRef.current?.setTerrainEnabled(
+        true,
+        useMapStore.getState().terrainExaggeration,
+      )
     }
   }
 
@@ -367,7 +385,11 @@ export function MapPage() {
               !immersive && 'md:rounded-card md:border-surface-600 md:border',
             )}
           >
-            <div ref={containerRef} className="h-full w-full" data-testid="map-container" />
+            <div
+              ref={containerRef}
+              className="h-full w-full"
+              data-testid="map-container"
+            />
           </div>
           <MapToolsProvider value={toolsContext}>
             <div className="pointer-events-none absolute top-2 left-2 z-10 flex flex-wrap gap-1">
@@ -420,7 +442,11 @@ export function MapPage() {
             />
             {nativeSupported && (
               <ToolTrigger
-                label={nativeActive ? 'Quitter le plein écran du navigateur' : 'Plein écran du navigateur'}
+                label={
+                  nativeActive
+                    ? 'Quitter le plein écran du navigateur'
+                    : 'Plein écran du navigateur'
+                }
                 icon={
                   nativeActive ? (
                     <Minimize size={18} aria-hidden="true" />
@@ -451,7 +477,9 @@ export function MapPage() {
                 />
                 <WeatherMapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}
-                  isFrameReady={(key) => instanceRef.current?.isWeatherFrameReady(key) ?? false}
+                  isFrameReady={(key) =>
+                    instanceRef.current?.isWeatherFrameReady(key) ?? false
+                  }
                   viewCenter={view.center}
                 />
                 <ForestLayersControl />

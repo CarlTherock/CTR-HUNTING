@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Cloud, CloudDrizzle, CloudRain, Droplets, Eye, Gauge, RefreshCw, Sun, Thermometer, Wind } from 'lucide-react'
+import {
+  Cloud,
+  CloudDrizzle,
+  CloudRain,
+  Droplets,
+  Eye,
+  Gauge,
+  RefreshCw,
+  Sun,
+  Thermometer,
+  Wind,
+} from 'lucide-react'
 import {
   Badge,
   Card,
@@ -39,14 +50,25 @@ function next24Hours(forecast: WeatherForecast): HourlyForecastEntry[] {
  * fabricated "weather code" or condition string this app doesn't
  * receive. Thresholds are the same plain-language bands a MétéoMédia-style
  * hero display uses (light drizzle vs. rain, clear vs. overcast). */
-function conditionIcon(current: { cloudCoverPercent: number; precipitationMm: number }): LucideIcon {
+function conditionIcon(current: {
+  cloudCoverPercent: number
+  precipitationMm: number
+}): LucideIcon {
   if (current.precipitationMm >= 2.5) return CloudRain
   if (current.precipitationMm > 0) return CloudDrizzle
   if (current.cloudCoverPercent >= 60) return Cloud
   return Sun
 }
 
-function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
   return (
     <div className="flex items-center gap-2">
       <Icon size={18} className="text-brand-400 shrink-0" aria-hidden="true" />
@@ -117,7 +139,7 @@ export function WeatherPage() {
             disabled={status === 'loading'}
             aria-label="Actualiser la météo"
             title="Actualiser"
-            className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2 pointer-coarse:p-3 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:p-3"
           >
             <RefreshCw
               size={16}
@@ -143,7 +165,10 @@ export function WeatherPage() {
         <EmptyState
           icon={<CloudRain size={28} aria-hidden="true" />}
           title="Météo indisponible"
-          description={errorReason ?? 'Impossible de joindre le fournisseur météo, et aucune prévision en cache n’existe pour le moment.'}
+          description={
+            errorReason ??
+            'Impossible de joindre le fournisseur météo, et aucune prévision en cache n’existe pour le moment.'
+          }
         />
       )}
 
@@ -157,9 +182,13 @@ export function WeatherPage() {
             const ConditionIcon = conditionIcon(forecast.current)
             return (
               <Card className="flex items-center gap-4 p-5">
-                <ConditionIcon size={48} className="text-brand-400 shrink-0" aria-hidden="true" />
+                <ConditionIcon
+                  size={48}
+                  className="text-brand-400 shrink-0"
+                  aria-hidden="true"
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="text-ink-100 text-4xl font-bold leading-none">
+                  <p className="text-ink-100 text-4xl leading-none font-bold">
                     {Math.round(forecast.current.temperatureCelsius)}°
                   </p>
                   <p className="text-ink-500 mt-1.5 text-sm">
@@ -179,7 +208,8 @@ export function WeatherPage() {
             <CardHeader>
               <CardTitle>Conditions actuelles</CardTitle>
               <CardDescription>
-                {new Date(forecast.current.timestamp).toLocaleString('fr-CA')} · Open-Meteo
+                {new Date(forecast.current.timestamp).toLocaleString('fr-CA')} ·
+                Open-Meteo
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -231,7 +261,9 @@ export function WeatherPage() {
           </Card>
 
           <div>
-            <h2 className="text-ink-300 mb-3 text-sm font-semibold">24 prochaines heures</h2>
+            <h2 className="text-ink-300 mb-3 text-sm font-semibold">
+              24 prochaines heures
+            </h2>
             <div className="flex gap-2 overflow-x-auto pb-2">
               {next24Hours(forecast).map((hour) => (
                 <Card
@@ -243,9 +275,13 @@ export function WeatherPage() {
                     {Math.round(hour.temperatureCelsius)}°
                   </span>
                   <span className="text-ink-500 text-xs">
-                    {hour.precipitationMm > 0 ? `${hour.precipitationMm.toFixed(1)} mm` : '—'}
+                    {hour.precipitationMm > 0
+                      ? `${hour.precipitationMm.toFixed(1)} mm`
+                      : '—'}
                   </span>
-                  <span className="text-ink-500 text-xs">{Math.round(hour.windSpeedKmh)} km/h</span>
+                  <span className="text-ink-500 text-xs">
+                    {Math.round(hour.windSpeedKmh)} km/h
+                  </span>
                 </Card>
               ))}
             </div>
@@ -255,9 +291,9 @@ export function WeatherPage() {
             <CardHeader>
               <CardTitle>Graphique avancé</CardTitle>
               <CardDescription>
-                Touchez le graphique pour déplacer le curseur de la ligne du temps partagée — cela
-                déplace aussi l’heure de la couche de vent de la page Carte et le repère de la
-                page Soleil et lune.
+                Touchez le graphique pour déplacer le curseur de la ligne du temps
+                partagée — cela déplace aussi l’heure de la couche de vent de la page
+                Carte et le repère de la page Soleil et lune.
               </CardDescription>
             </CardHeader>
             <CardContent>

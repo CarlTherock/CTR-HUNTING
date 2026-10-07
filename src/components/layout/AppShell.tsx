@@ -45,9 +45,7 @@ export function AppShell() {
         <main
           className={cn(
             'min-h-0 flex-1',
-            isMapRoute
-              ? 'flex flex-col overflow-hidden'
-              : 'overflow-y-auto p-4 md:p-6',
+            isMapRoute ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-4 md:p-6',
           )}
         >
           <Outlet />

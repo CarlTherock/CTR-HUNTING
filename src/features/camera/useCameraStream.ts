@@ -26,10 +26,15 @@ export interface ZoomRange {
  * error keeps the browser's own diagnostic text rather than hiding it. */
 function describeCameraError(err: unknown): string {
   const name = err instanceof Error ? err.name : ''
-  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Accès à la caméra refusé.'
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'Aucune caméra compatible détectée.'
-  if (name === 'NotReadableError') return 'La caméra est utilisée par une autre application.'
-  return err instanceof Error && err.message ? err.message : 'Impossible d’accéder à la caméra.'
+  if (name === 'NotAllowedError' || name === 'SecurityError')
+    return 'Accès à la caméra refusé.'
+  if (name === 'NotFoundError' || name === 'OverconstrainedError')
+    return 'Aucune caméra compatible détectée.'
+  if (name === 'NotReadableError')
+    return 'La caméra est utilisée par une autre application.'
+  return err instanceof Error && err.message
+    ? err.message
+    : 'Impossible d’accéder à la caméra.'
 }
 
 export function useCameraStream() {
@@ -73,7 +78,8 @@ export function useCameraStream() {
       // reads it via a narrow, explicit cast rather than `any` — still a
       // real runtime feature check (`'zoom' in capabilities`), not an
       // assumption that it exists.
-      const capabilities = track?.getCapabilities?.() as (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined
+      const capabilities = track?.getCapabilities?.() as
+        (MediaTrackCapabilities & { zoom?: ZoomRange }) | undefined
       if (capabilities?.zoom) {
         setZoomRange(capabilities.zoom)
         const settings = track.getSettings() as MediaTrackSettings & { zoom?: number }
@@ -91,7 +97,9 @@ export function useCameraStream() {
     const track = trackRef.current
     if (!track) return
     try {
-      await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] })
+      await track.applyConstraints({
+        advanced: [{ zoom: value } as MediaTrackConstraintSet],
+      })
       setZoomValue(value)
     } catch {
       // Real constraint application failures (device rejected the

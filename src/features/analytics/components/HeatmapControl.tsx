@@ -40,7 +40,11 @@ function legendGradient(): string {
  * red/unfavorable through green/favorable, explicitly labeled a
  * probabilistic read, not a certainty.
  */
-export function HeatmapControl({ getBounds, queryElevation, viewCenter }: HeatmapControlProps) {
+export function HeatmapControl({
+  getBounds,
+  queryElevation,
+  viewCenter,
+}: HeatmapControlProps) {
   const enabled = useHeatmapStore((state) => state.enabled)
   const status = useHeatmapStore((state) => state.status)
   const errorReason = useHeatmapStore((state) => state.errorReason)
@@ -95,11 +99,17 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
               </button>
             </div>
 
-            {status === 'loading' && <p className="text-ink-500 text-sm">Analyse de la zone…</p>}
+            {status === 'loading' && (
+              <p className="text-ink-500 text-sm">Analyse de la zone…</p>
+            )}
             {status === 'error' && (
               <p className="text-status-danger text-sm">
                 Carte indisponible — {errorReason}.{' '}
-                <button type="button" onClick={refresh} className="underline pointer-coarse:min-h-11">
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="underline pointer-coarse:min-h-11"
+                >
                   Réessayer
                 </button>
               </p>
@@ -124,26 +134,34 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                 {areaChanged && (
                   <div className="bg-status-warning/15 text-status-warning mb-2 flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs">
                     <span>La carte a bougé hors de la zone analysée.</span>
-                    <button type="button" onClick={refresh} className="font-semibold underline pointer-coarse:min-h-11">
+                    <button
+                      type="button"
+                      onClick={refresh}
+                      className="font-semibold underline pointer-coarse:min-h-11"
+                    >
                       Recalculer
                     </button>
                   </div>
                 )}
                 {unavailableSources.length > 0 && (
                   <p className="text-ink-500 mb-2 text-xs">
-                    Indisponible pour l'instant : {unavailableSources.join(', ')} — ces analyseurs sont
-                    exclus du score.
+                    Indisponible pour l'instant : {unavailableSources.join(', ')} — ces
+                    analyseurs sont exclus du score.
                   </p>
                 )}
-                <div className="h-2 w-full rounded-full" style={{ background: legendGradient() }} aria-hidden="true" />
+                <div
+                  className="h-2 w-full rounded-full"
+                  style={{ background: legendGradient() }}
+                  aria-hidden="true"
+                />
                 <div className="text-ink-500 mt-0.5 flex justify-between text-[10px]">
                   <span>Défavorable</span>
                   <span>Neutre</span>
                   <span>Favorable</span>
                 </div>
                 <p className="text-ink-500 mt-2 text-xs">
-                  Lecture probabiliste des 6 mêmes analyseurs que « Analyser ce point », pas une
-                  garantie.
+                  Lecture probabiliste des 6 mêmes analyseurs que « Analyser ce point »,
+                  pas une garantie.
                 </p>
                 <button
                   type="button"

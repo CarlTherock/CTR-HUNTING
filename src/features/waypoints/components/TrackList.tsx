@@ -15,7 +15,11 @@ function focusOnMount(element: HTMLDivElement | null) {
 
 function trackDurationMs(track: Track, isRecording: boolean): number {
   const start = new Date(track.startedAt).getTime()
-  const end = track.endedAt ? new Date(track.endedAt).getTime() : isRecording ? Date.now() : start
+  const end = track.endedAt
+    ? new Date(track.endedAt).getTime()
+    : isRecording
+      ? Date.now()
+      : start
   return end - start
 }
 
@@ -100,7 +104,11 @@ export function TrackList() {
                     autoFocus
                     className="border-surface-600 bg-surface-900 text-ink-100 min-h-11 min-w-0 flex-1 rounded-lg border px-3 text-base"
                   />
-                  <button type="submit" aria-label="Enregistrer le nom" className={ACTION_BUTTON}>
+                  <button
+                    type="submit"
+                    aria-label="Enregistrer le nom"
+                    className={ACTION_BUTTON}
+                  >
                     <Check size={18} aria-hidden="true" />
                   </button>
                   <button
@@ -151,7 +159,11 @@ export function TrackList() {
                       onClick={() => setConfirmingId(track.id)}
                       disabled={isRecording}
                       aria-label={`Supprimer ${track.name}`}
-                      title={isRecording ? 'Arrêtez l’enregistrement avant de supprimer' : 'Supprimer la trace'}
+                      title={
+                        isRecording
+                          ? 'Arrêtez l’enregistrement avant de supprimer'
+                          : 'Supprimer la trace'
+                      }
                       className={`${ACTION_BUTTON} hover:text-status-danger`}
                     >
                       <Trash2 size={16} aria-hidden="true" />
@@ -164,10 +176,14 @@ export function TrackList() {
             {interrupted && (
               <div className="bg-surface-900 text-ink-300 flex flex-col gap-2 rounded-lg p-2 text-xs">
                 <p className="flex items-start gap-2">
-                  <AlertTriangle size={14} aria-hidden="true" className="text-status-warning mt-0.5 shrink-0" />
-                  L’enregistrement s’est arrêté avant d’être terminé ({track.points.length} points
-                  conservés). Reprendre relie le dernier point au suivant par une ligne droite, sans
-                  trajet réel entre les deux.
+                  <AlertTriangle
+                    size={14}
+                    aria-hidden="true"
+                    className="text-status-warning mt-0.5 shrink-0"
+                  />
+                  L’enregistrement s’est arrêté avant d’être terminé (
+                  {track.points.length} points conservés). Reprendre relie le dernier
+                  point au suivant par une ligne droite, sans trajet réel entre les deux.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -203,8 +219,8 @@ export function TrackList() {
                 className="border-status-danger/50 flex flex-col gap-2 rounded-lg border p-2 text-sm outline-none"
               >
                 <p className="text-ink-100">
-                  Supprimer définitivement « {track.name} » ({track.points.length} points) ? Cette
-                  action est irréversible.
+                  Supprimer définitivement « {track.name} » ({track.points.length} points)
+                  ? Cette action est irréversible.
                 </p>
                 <div className="flex gap-2">
                   <button

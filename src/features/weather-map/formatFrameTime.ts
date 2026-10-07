@@ -6,7 +6,8 @@ export function formatFrameClock(frame: WeatherMapFrame, now: Date): string {
   const sameDay = date.toDateString() === now.toDateString()
   const hours = date.getHours()
   const minutes = date.getMinutes()
-  const clock = minutes === 0 ? `${hours} h` : `${hours} h ${String(minutes).padStart(2, '0')}`
+  const clock =
+    minutes === 0 ? `${hours} h` : `${hours} h ${String(minutes).padStart(2, '0')}`
   if (sameDay) return clock
   const day = date.toLocaleDateString('fr-CA', { weekday: 'short' })
   return `${day} ${clock}`

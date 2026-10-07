@@ -38,7 +38,11 @@ function plotSeries(
   const xScale = scaleLinear(0, Math.max(1, buckets.length - 1), PLOT_LEFT, PLOT_RIGHT)
   return buckets.map((bucket, i) => {
     const realIndex = hourly.findIndex((h) => h.time === bucket.time)
-    return { bucket, realIndex: (realIndex === -1 ? 0 : realIndex) + indexOffset, x: xScale(i) }
+    return {
+      bucket,
+      realIndex: (realIndex === -1 ? 0 : realIndex) + indexOffset,
+      x: xScale(i),
+    }
   })
 }
 
@@ -75,21 +79,36 @@ export function AdvancedChart() {
   const day1Series = dayComparison
     ? plotSeries(resampleHourly(hourly.slice(0, 24), granularity), hourly, 0)
     : plotSeries(resampleHourly(hourly, granularity), hourly, 0)
-  const day2Series = dayComparison ? plotSeries(resampleHourly(hourly.slice(24, 48), granularity), hourly, 0) : []
+  const day2Series = dayComparison
+    ? plotSeries(resampleHourly(hourly.slice(24, 48), granularity), hourly, 0)
+    : []
 
   const allPlotted = [...day1Series, ...day2Series]
   const temps = allPlotted.map((s) => s.bucket.temperatureCelsius)
-  const tempScale = scaleLinear(Math.min(...temps) - 1, Math.max(...temps) + 1, PLOT_BOTTOM, PLOT_TOP)
+  const tempScale = scaleLinear(
+    Math.min(...temps) - 1,
+    Math.max(...temps) + 1,
+    PLOT_BOTTOM,
+    PLOT_TOP,
+  )
   const winds = allPlotted.map((s) => s.bucket.windSpeedKmh)
   const windScale = scaleLinear(0, Math.max(...winds, 1) + 2, PLOT_BOTTOM, PLOT_TOP)
   const maxPrecip = Math.max(...allPlotted.map((s) => s.bucket.precipitationMm), 1)
 
-  const tempPath = buildLinePath(day1Series.map((s) => ({ x: s.x, y: tempScale(s.bucket.temperatureCelsius) })))
-  const tempPath2 = buildLinePath(day2Series.map((s) => ({ x: s.x, y: tempScale(s.bucket.temperatureCelsius) })))
-  const windPath = buildLinePath(day1Series.map((s) => ({ x: s.x, y: windScale(s.bucket.windSpeedKmh) })))
+  const tempPath = buildLinePath(
+    day1Series.map((s) => ({ x: s.x, y: tempScale(s.bucket.temperatureCelsius) })),
+  )
+  const tempPath2 = buildLinePath(
+    day2Series.map((s) => ({ x: s.x, y: tempScale(s.bucket.temperatureCelsius) })),
+  )
+  const windPath = buildLinePath(
+    day1Series.map((s) => ({ x: s.x, y: windScale(s.bucket.windSpeedKmh) })),
+  )
 
   const cursorSeries = dayComparison
-    ? [...day1Series, ...day2Series].find((s) => s.realIndex % 24 === selectedHourOffset % 24)
+    ? [...day1Series, ...day2Series].find(
+        (s) => s.realIndex % 24 === selectedHourOffset % 24,
+      )
     : day1Series.find((s) => s.realIndex === selectedHourOffset)
 
   function handleChartClick(e: React.MouseEvent<SVGSVGElement>) {
@@ -120,7 +139,9 @@ export function AdvancedChart() {
               onClick={() => setGranularity(g)}
               className={cn(
                 'rounded-md px-2 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:px-3',
-                granularity === g ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300 hover:bg-surface-800',
+                granularity === g
+                  ? 'bg-brand-500/15 text-brand-400'
+                  : 'text-ink-300 hover:bg-surface-800',
               )}
             >
               {g}
@@ -145,7 +166,13 @@ export function AdvancedChart() {
           aria-label="Graphique horaire de la température et du vent"
           className="min-w-[500px] cursor-pointer"
         >
-          <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} className="stroke-surface-700" />
+          <line
+            x1={PLOT_LEFT}
+            y1={PLOT_BOTTOM}
+            x2={PLOT_RIGHT}
+            y2={PLOT_BOTTOM}
+            className="stroke-surface-700"
+          />
           {allPlotted.map((s, i) => (
             <rect
               key={i}
@@ -156,21 +183,48 @@ export function AdvancedChart() {
               className="fill-brand-500/40"
             />
           ))}
-          {tempPath && <path d={tempPath} fill="none" className="stroke-status-danger" strokeWidth={2} />}
-          {tempPath2 && (
-            <path d={tempPath2} fill="none" className="stroke-status-danger" strokeWidth={2} strokeDasharray="4 3" />
+          {tempPath && (
+            <path
+              d={tempPath}
+              fill="none"
+              className="stroke-status-danger"
+              strokeWidth={2}
+            />
           )}
-          {windPath && <path d={windPath} fill="none" className="stroke-brand-400" strokeWidth={2} />}
+          {tempPath2 && (
+            <path
+              d={tempPath2}
+              fill="none"
+              className="stroke-status-danger"
+              strokeWidth={2}
+              strokeDasharray="4 3"
+            />
+          )}
+          {windPath && (
+            <path d={windPath} fill="none" className="stroke-brand-400" strokeWidth={2} />
+          )}
           {/* Real markers at every plotted hour — a line alone reads as
               a trend, but each individual real reading (especially wind,
               which the user most needs to spot at a glance) should be
               directly visible as its own point, not just implied by the
               connecting line. */}
           {day1Series.map((s, i) => (
-            <circle key={`temp-${i}`} cx={s.x} cy={tempScale(s.bucket.temperatureCelsius)} r={3} className="fill-status-danger" />
+            <circle
+              key={`temp-${i}`}
+              cx={s.x}
+              cy={tempScale(s.bucket.temperatureCelsius)}
+              r={3}
+              className="fill-status-danger"
+            />
           ))}
           {day1Series.map((s, i) => (
-            <circle key={`wind-${i}`} cx={s.x} cy={windScale(s.bucket.windSpeedKmh)} r={3} className="fill-brand-400" />
+            <circle
+              key={`wind-${i}`}
+              cx={s.x}
+              cy={windScale(s.bucket.windSpeedKmh)}
+              r={3}
+              className="fill-brand-400"
+            />
           ))}
           {cursorSeries && (
             <line

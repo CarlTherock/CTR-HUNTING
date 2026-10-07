@@ -22,7 +22,10 @@ const APP_VERSION = '0.1.0'
 export function SettingsPage() {
   const isOnline = useOnlineStatus()
   const localStorageProbe = useLocalStorageProbe()
-  const [storageUsage, setStorageUsage] = useState<{ usage: number; quota: number } | null>(null)
+  const [storageUsage, setStorageUsage] = useState<{
+    usage: number
+    quota: number
+  } | null>(null)
 
   const areas = useOfflineStore((state) => state.areas)
   const loaded = useOfflineStore((state) => state.loaded)
@@ -49,7 +52,10 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Réglages" description="Informations sur l’application et préférences." />
+      <PageHeader
+        title="Réglages"
+        description="Informations sur l’application et préférences."
+      />
 
       <Card>
         <CardHeader>
@@ -89,14 +95,15 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>Cartes hors ligne</CardTitle>
           <CardDescription>
-            Téléchargées depuis la page Carte — stockées sur cet appareil seulement, et non dans un compte en ligne
+            Téléchargées depuis la page Carte — stockées sur cet appareil seulement, et
+            non dans un compte en ligne
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {storageUsage && (
             <p className="text-ink-500 text-xs">
-              {formatBytes(storageUsage.usage)} utilisés sur {formatBytes(storageUsage.quota)}{' '}
-              disponibles pour cette application
+              {formatBytes(storageUsage.usage)} utilisés sur{' '}
+              {formatBytes(storageUsage.quota)} disponibles pour cette application
             </p>
           )}
           {completedAreas.length === 0 ? (
@@ -115,15 +122,19 @@ export function SettingsPage() {
                     <span className="text-ink-100 block truncate text-sm font-medium">
                       {area.name}
                       {area.status === 'error' && (
-                        <span className="text-status-danger ml-2 text-xs font-normal">Échec</span>
+                        <span className="text-status-danger ml-2 text-xs font-normal">
+                          Échec
+                        </span>
                       )}
                       {area.status === 'cancelled' && (
-                        <span className="text-ink-500 ml-2 text-xs font-normal">Annulé</span>
+                        <span className="text-ink-500 ml-2 text-xs font-normal">
+                          Annulé
+                        </span>
                       )}
                     </span>
                     <span className="text-ink-500 block truncate text-xs">
-                      {area.tilesDownloaded} tuiles · {formatBytes(area.bytesDownloaded)} · zoom{' '}
-                      {area.minZoom}–{area.maxZoom}
+                      {area.tilesDownloaded} tuiles · {formatBytes(area.bytesDownloaded)}{' '}
+                      · zoom {area.minZoom}–{area.maxZoom}
                     </span>
                   </div>
                   <button
@@ -144,7 +155,9 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Stockage local</CardTitle>
-          <CardDescription>Basé sur IndexedDB, fonctionne entièrement hors ligne</CardDescription>
+          <CardDescription>
+            Basé sur IndexedDB, fonctionne entièrement hors ligne
+          </CardDescription>
         </CardHeader>
         <CardContent className="text-ink-300 text-sm">
           {localStorageProbe.status === 'checking'

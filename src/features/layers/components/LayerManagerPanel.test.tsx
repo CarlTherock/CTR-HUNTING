@@ -32,7 +32,10 @@ describe('LayerManagerPanel', () => {
     render(<LayerManagerPanel />)
 
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Couches' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Couches' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('only offers base layers whose vendor key is actually configured', async () => {
@@ -47,7 +50,12 @@ describe('LayerManagerPanel', () => {
   })
 
   it('shows Esri options, grouped under an "Esri" heading, once its key is configured', async () => {
-    mockAvailableBaseLayers = ['outdoor', 'satellite', 'esri-topographic', 'esri-hillshade']
+    mockAvailableBaseLayers = [
+      'outdoor',
+      'satellite',
+      'esri-topographic',
+      'esri-hillshade',
+    ]
     render(<LayerManagerPanel />)
     await openPanel()
 

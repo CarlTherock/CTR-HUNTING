@@ -92,7 +92,8 @@ export function ForestLayersControl() {
             )}
 
             <p className="text-ink-500 mt-2 text-[10px]">
-              Données réelles © Gouvernement du Québec (Forêt ouverte / MRNF, cadastre) — CC-BY 4.0.
+              Données réelles © Gouvernement du Québec (Forêt ouverte / MRNF, cadastre) —
+              CC-BY 4.0.
             </p>
           </div>
         </div>

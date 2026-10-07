@@ -18,7 +18,11 @@ vi.mock('../useCameraStream', () => ({
   useCameraStream: () => ({ ...mockCameraState, start, stop, setZoom }),
 }))
 
-let mockGpsReading: { status: 'available' | 'unavailable'; value?: unknown; reason?: string } = {
+let mockGpsReading: {
+  status: 'available' | 'unavailable'
+  value?: unknown
+  reason?: string
+} = {
   status: 'unavailable',
   reason: 'no fix',
 }
@@ -28,7 +32,13 @@ vi.mock('@/features/gps/useGeolocation', () => ({
 
 afterEach(() => {
   vi.clearAllMocks()
-  mockCameraState = { status: 'streaming', errorReason: null, stream: null, zoomRange: null, zoom: null }
+  mockCameraState = {
+    status: 'streaming',
+    errorReason: null,
+    stream: null,
+    zoomRange: null,
+    zoom: null,
+  }
   mockGpsReading = { status: 'unavailable', reason: 'no fix' }
 })
 
@@ -42,7 +52,13 @@ describe('CameraCapture', () => {
   })
 
   it('shows the real error reason when the camera is unavailable', () => {
-    mockCameraState = { status: 'error', errorReason: 'Permission denied', stream: null, zoomRange: null, zoom: null }
+    mockCameraState = {
+      status: 'error',
+      errorReason: 'Permission denied',
+      stream: null,
+      zoomRange: null,
+      zoom: null,
+    }
     render(<CameraCapture onSave={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByText('Permission denied')).toBeInTheDocument()
@@ -69,7 +85,13 @@ describe('CameraCapture', () => {
   })
 
   it('disables the capture button until the stream is genuinely live', () => {
-    mockCameraState = { status: 'starting', errorReason: null, stream: null, zoomRange: null, zoom: null }
+    mockCameraState = {
+      status: 'starting',
+      errorReason: null,
+      stream: null,
+      zoomRange: null,
+      zoom: null,
+    }
     render(<CameraCapture onSave={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'Prendre la photo' })).toBeDisabled()

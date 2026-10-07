@@ -7,7 +7,7 @@ manual resync (3.4).
 
 Everything here lives on the **Map page** — a downloaded area needs a
 live map to sweep for real tiles, so there's no separate "Offline" nav
-page for *creating* areas. `SettingsPage` is the read/delete counterpart
+page for _creating_ areas. `SettingsPage` is the read/delete counterpart
 (same "creation stays where the live resource is, management is
 elsewhere" split as Phase 2's waypoints/tracks).
 
@@ -42,7 +42,7 @@ URLs ourselves, `MapLibreProvider.downloadArea()`:
 not silently assumed to work): MapLibre's own docs note a custom
 protocol registered on the main thread may also need registering inside
 its worker for requests the worker itself issues — vector tile parsing
-runs there, and this app copies MapLibre's *stock* worker unmodified
+runs there, and this app copies MapLibre's _stock_ worker unmodified
 (`vite.config.ts`). If real-device testing shows vector tiles bypass the
 cache, that worker-side registration is the fix.
 

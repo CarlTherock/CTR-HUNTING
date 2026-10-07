@@ -22,7 +22,11 @@ export interface OfflineAreaControlProps {
  * (calculated, not fabricated) tile count, then downloads with live
  * progress. Opposite corner from `TrackRecorderControl`'s idle button so
  * neither overlaps the other. */
-export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: OfflineAreaControlProps) {
+export function OfflineAreaControl({
+  getMapInstance,
+  baseLayer,
+  currentZoom,
+}: OfflineAreaControlProps) {
   const mode = useOfflineStore((state) => state.mode)
   const extraZoomLevels = useOfflineStore((state) => state.extraZoomLevels)
   const selectedBounds = useOfflineStore((state) => state.selectedBounds)
@@ -41,7 +45,9 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
     // for a manual re-download (e.g. after reconnecting) rather than any
     // automatic background refresh, which would need a lot more
     // infrastructure (Background Sync) than this slice warrants.
-    const refreshable = areas.filter((a) => a.baseLayer === baseLayer && a.status === 'complete')
+    const refreshable = areas.filter(
+      (a) => a.baseLayer === baseLayer && a.status === 'complete',
+    )
 
     return (
       <>
@@ -99,24 +105,28 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
           </p>
 
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-ink-500 text-xs font-medium">Niveaux de zoom supplémentaires</span>
+            <span className="text-ink-500 text-xs font-medium">
+              Niveaux de zoom supplémentaires
+            </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setExtraZoomLevels(extraZoomLevels - 1)}
                 disabled={extraZoomLevels <= 0}
                 aria-label="Moins de niveaux de zoom"
-                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 pointer-coarse:p-3.5 disabled:cursor-not-allowed disabled:opacity-40"
+                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:p-3.5"
               >
                 <Minus size={14} aria-hidden="true" />
               </button>
-              <span className="text-ink-100 w-4 text-center text-sm">{extraZoomLevels}</span>
+              <span className="text-ink-100 w-4 text-center text-sm">
+                {extraZoomLevels}
+              </span>
               <button
                 type="button"
                 onClick={() => setExtraZoomLevels(extraZoomLevels + 1)}
                 disabled={extraZoomLevels >= 3}
                 aria-label="Plus de niveaux de zoom"
-                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 pointer-coarse:p-3.5 disabled:cursor-not-allowed disabled:opacity-40"
+                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:p-3.5"
               >
                 <Plus size={14} aria-hidden="true" />
               </button>

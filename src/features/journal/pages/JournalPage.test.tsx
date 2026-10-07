@@ -33,17 +33,36 @@ function renderPage() {
 afterEach(async () => {
   await db.observations.clear()
   await db.photos.clear()
-  mockGpsReading = { status: 'unavailable', reason: 'Geolocation is not supported by this browser.' }
+  mockGpsReading = {
+    status: 'unavailable',
+    reason: 'Geolocation is not supported by this browser.',
+  }
   useJournalStore.setState({ observations: [], loaded: false, editingId: null })
-  useWeatherStore.setState({ status: 'idle', forecast: null, coordinate: null, fetchedAt: null, isCached: false, errorReason: null })
-  useWindStore.setState({ status: 'idle', field: null, errorReason: null, enabled: false, selectedHourOffset: 0, activeLayer: 'wind' })
+  useWeatherStore.setState({
+    status: 'idle',
+    forecast: null,
+    coordinate: null,
+    fetchedAt: null,
+    isCached: false,
+    errorReason: null,
+  })
+  useWindStore.setState({
+    status: 'idle',
+    field: null,
+    errorReason: null,
+    enabled: false,
+    selectedHourOffset: 0,
+    activeLayer: 'wind',
+  })
 })
 
 describe('JournalPage', () => {
   it('shows the empty state with no entries', async () => {
     renderPage()
 
-    expect(await screen.findByText('Aucune entrée de journal pour le moment')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Aucune entrée de journal pour le moment'),
+    ).toBeInTheDocument()
   })
 
   it('creates a real entry at the map-center fallback when GPS is unavailable, with no conditions snapshot when nothing is loaded', async () => {
@@ -123,7 +142,10 @@ describe('JournalPage', () => {
     await user.click(screen.getByRole('button', { name: 'Nouvelle entrée' }))
     await screen.findByPlaceholderText('Qu’avez-vous observé ?')
 
-    await user.type(screen.getByPlaceholderText('Qu’avez-vous observé ?'), 'Fresh rub line')
+    await user.type(
+      screen.getByPlaceholderText('Qu’avez-vous observé ?'),
+      'Fresh rub line',
+    )
     await user.click(screen.getByRole('button', { name: 'Fermer' }))
 
     expect(await screen.findByText('Fresh rub line')).toBeInTheDocument()
@@ -140,6 +162,8 @@ describe('JournalPage', () => {
     await vi.waitFor(async () => {
       expect(await db.observations.count()).toBe(0)
     })
-    expect(await screen.findByText('Aucune entrée de journal pour le moment')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Aucune entrée de journal pour le moment'),
+    ).toBeInTheDocument()
   })
 })

@@ -9,4 +9,3 @@ export interface MapToolsContextValue {
 export const MapToolsContext = createContext<MapToolsContextValue | null>(null)
 
 export const MapToolsProvider = MapToolsContext.Provider
-

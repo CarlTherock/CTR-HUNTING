@@ -41,7 +41,9 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
         className="flex w-full items-center justify-between text-left pointer-coarse:min-h-11"
         aria-expanded={expanded}
       >
-        <span className="text-ink-100 text-sm font-medium">{ANALYZER_LABEL[result.analyzer]}</span>
+        <span className="text-ink-100 text-sm font-medium">
+          {ANALYZER_LABEL[result.analyzer]}
+        </span>
         <span className="flex items-center gap-2">
           {result.score !== null ? (
             <span className="text-ink-300 text-xs">{Math.round(result.score)}/100</span>
@@ -65,7 +67,9 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
               <div key={i} className="text-xs">
                 <p className="text-ink-200 font-medium">
                   {factor.label}
-                  <span className="text-ink-600 ml-1 font-normal">({CONFIDENCE_LABEL[factor.confidence]})</span>
+                  <span className="text-ink-600 ml-1 font-normal">
+                    ({CONFIDENCE_LABEL[factor.confidence]})
+                  </span>
                 </p>
                 <p className="text-ink-500">{factor.explanation}</p>
               </div>
@@ -151,7 +155,8 @@ export function AnalysisControl() {
               >
                 {recent.map((entry, i) => {
                   const isActive =
-                    coordinate?.lat === entry.coordinate.lat && coordinate.lng === entry.coordinate.lng
+                    coordinate?.lat === entry.coordinate.lat &&
+                    coordinate.lng === entry.coordinate.lng
                   return (
                     <button
                       key={`${entry.coordinate.lat}-${entry.coordinate.lng}-${i}`}
@@ -159,12 +164,17 @@ export function AnalysisControl() {
                       onClick={() => recall(i)}
                       className={cn(
                         'shrink-0 rounded-md border px-2 py-1 text-xs pointer-coarse:min-h-11',
-                        isActive ? 'border-brand-500 text-brand-400' : 'border-surface-700 text-ink-300',
+                        isActive
+                          ? 'border-brand-500 text-brand-400'
+                          : 'border-surface-700 text-ink-300',
                       )}
                     >
-                      {entry.combined.overallScore !== null ? `${Math.round(entry.combined.overallScore)}/100` : '—'}
+                      {entry.combined.overallScore !== null
+                        ? `${Math.round(entry.combined.overallScore)}/100`
+                        : '—'}
                       <span className="text-ink-600 ml-1">
-                        {entry.coordinate.lat.toFixed(3)},{entry.coordinate.lng.toFixed(3)}
+                        {entry.coordinate.lat.toFixed(3)},
+                        {entry.coordinate.lng.toFixed(3)}
                       </span>
                     </button>
                   )
@@ -172,7 +182,9 @@ export function AnalysisControl() {
               </div>
             )}
 
-            {status === 'loading' && <p className="text-ink-500 text-sm">Analyse en cours…</p>}
+            {status === 'loading' && (
+              <p className="text-ink-500 text-sm">Analyse en cours…</p>
+            )}
 
             {status === 'ready' && combined && (
               <>
@@ -182,18 +194,26 @@ export function AnalysisControl() {
                       <p
                         className={cn(
                           'text-lg font-semibold',
-                          combined.overallScore >= 55 ? 'text-status-success' : combined.overallScore <= 45 ? 'text-status-danger' : 'text-ink-100',
+                          combined.overallScore >= 55
+                            ? 'text-status-success'
+                            : combined.overallScore <= 45
+                              ? 'text-status-danger'
+                              : 'text-ink-100',
                         )}
                       >
-                        {Math.round(combined.overallScore)}/100 — {scoreLabel(combined.overallScore)}
+                        {Math.round(combined.overallScore)}/100 —{' '}
+                        {scoreLabel(combined.overallScore)}
                       </p>
                       <p className="text-ink-500 text-xs">
-                        Estimation probabiliste fondée sur les facteurs ci-dessous, et non une
-                        garantie — déployez chaque analyseur pour voir exactement pourquoi.
+                        Estimation probabiliste fondée sur les facteurs ci-dessous, et non
+                        une garantie — déployez chaque analyseur pour voir exactement
+                        pourquoi.
                       </p>
                     </>
                   ) : (
-                    <p className="text-ink-500 text-sm">Aucun analyseur n’avait assez de données pour cet endroit.</p>
+                    <p className="text-ink-500 text-sm">
+                      Aucun analyseur n’avait assez de données pour cet endroit.
+                    </p>
                   )}
                 </div>
 

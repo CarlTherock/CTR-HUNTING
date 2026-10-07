@@ -25,7 +25,9 @@ export async function listOfflineAreas(): Promise<OfflineArea[]> {
   return db.offlineAreas.toArray()
 }
 
-export async function createOfflineArea(input: CreateOfflineAreaInput): Promise<OfflineArea> {
+export async function createOfflineArea(
+  input: CreateOfflineAreaInput,
+): Promise<OfflineArea> {
   const area: OfflineArea = {
     id: crypto.randomUUID(),
     name: input.name,
@@ -44,7 +46,10 @@ export async function createOfflineArea(input: CreateOfflineAreaInput): Promise<
   return area
 }
 
-export async function updateOfflineArea(id: string, patch: UpdateOfflineAreaInput): Promise<void> {
+export async function updateOfflineArea(
+  id: string,
+  patch: UpdateOfflineAreaInput,
+): Promise<void> {
   await db.offlineAreas.update(id, patch)
 }
 

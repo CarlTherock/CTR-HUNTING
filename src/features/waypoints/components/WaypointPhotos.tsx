@@ -46,7 +46,10 @@ export function WaypointPhotos({
       <span className="text-ink-500 text-xs font-medium">Photos</span>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {photos.map((photo) => (
-          <div key={photo.id} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+          <div
+            key={photo.id}
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md"
+          >
             <img src={photo.url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
@@ -77,7 +80,10 @@ export function WaypointPhotos({
           <ImagePlus size={18} aria-hidden="true" />
         </button>
         {cameraOpen && (
-          <CameraCapture onSave={(captured) => void handleCameraSave(captured)} onClose={() => setCameraOpen(false)} />
+          <CameraCapture
+            onSave={(captured) => void handleCameraSave(captured)}
+            onClose={() => setCameraOpen(false)}
+          />
         )}
         <input
           ref={fileInputRef}

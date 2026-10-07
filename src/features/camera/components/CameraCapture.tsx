@@ -34,7 +34,8 @@ const FILTERS: { value: ImageAdjustments['filter']; label: string }[] = [
  * `filter` string onto a *separate* canvas for the edited version.
  */
 export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
-  const { status, errorReason, stream, zoomRange, zoom, setZoom, start, stop } = useCameraStream()
+  const { status, errorReason, stream, zoomRange, zoom, setZoom, start, stop } =
+    useCameraStream()
   const gpsReading = useGeolocation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [originalBlob, setOriginalBlob] = useState<Blob | null>(null)
@@ -77,11 +78,15 @@ export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(video, 0, 0)
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      setOriginalBlob(blob)
-      setPreviewUrl(URL.createObjectURL(blob))
-    }, 'image/jpeg', 0.92)
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return
+        setOriginalBlob(blob)
+        setPreviewUrl(URL.createObjectURL(blob))
+      },
+      'image/jpeg',
+      0.92,
+    )
   }
 
   function retake() {
@@ -101,14 +106,18 @@ export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
     if (!ctx) return
     ctx.filter = buildCanvasFilter(adjustments)
     ctx.drawImage(image, 0, 0)
-    canvas.toBlob((editedBlob) => {
-      if (!editedBlob) return
-      onSave({
-        originalBlob,
-        editedBlob,
-        coordinate: gpsReading.status === 'available' ? gpsReading.value : undefined,
-      })
-    }, 'image/jpeg', 0.92)
+    canvas.toBlob(
+      (editedBlob) => {
+        if (!editedBlob) return
+        onSave({
+          originalBlob,
+          editedBlob,
+          coordinate: gpsReading.status === 'available' ? gpsReading.value : undefined,
+        })
+      },
+      'image/jpeg',
+      0.92,
+    )
   }
 
   return (
@@ -122,8 +131,12 @@ export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
     >
       <div className="flex items-center justify-between p-3">
         <span className="text-ink-100 text-sm font-medium">Caméra</span>
-        <button type="button" onClick={onClose} aria-label="Fermer la caméra"
-          className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer la caméra"
+          className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
+        >
           <X size={20} aria-hidden="true" />
         </button>
       </div>
@@ -197,7 +210,10 @@ export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
                   max={150}
                   value={adjustments.brightnessPercent}
                   onChange={(e) =>
-                    setAdjustments((a) => ({ ...a, brightnessPercent: Number(e.target.value) }))
+                    setAdjustments((a) => ({
+                      ...a,
+                      brightnessPercent: Number(e.target.value),
+                    }))
                   }
                   className="accent-brand-500 flex-1"
                 />
@@ -210,7 +226,10 @@ export function CameraCapture({ onSave, onClose }: CameraCaptureProps) {
                   max={150}
                   value={adjustments.contrastPercent}
                   onChange={(e) =>
-                    setAdjustments((a) => ({ ...a, contrastPercent: Number(e.target.value) }))
+                    setAdjustments((a) => ({
+                      ...a,
+                      contrastPercent: Number(e.target.value),
+                    }))
                   }
                   className="accent-brand-500 flex-1"
                 />

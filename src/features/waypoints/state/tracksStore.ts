@@ -87,7 +87,9 @@ export const useTracksStore = create<TracksState>((set, get) => {
           set({ persistError: null })
         }
       } catch (error) {
-        set({ persistError: `Trace non enregistrée sur l’appareil : ${describeError(error)}.` })
+        set({
+          persistError: `Trace non enregistrée sur l’appareil : ${describeError(error)}.`,
+        })
       } finally {
         persistInFlight = null
       }
@@ -114,7 +116,10 @@ export const useTracksStore = create<TracksState>((set, get) => {
     start: async () => {
       const startedAt = new Date().toISOString()
       try {
-        const track = await createTrack({ name: `Trace ${nextDefaultNumber++}`, startedAt })
+        const track = await createTrack({
+          name: `Trace ${nextDefaultNumber++}`,
+          startedAt,
+        })
         set((state) => ({
           status: 'recording',
           recordingId: track.id,
@@ -164,7 +169,9 @@ export const useTracksStore = create<TracksState>((set, get) => {
         await updateTrackRecord(recordingId, { points, distanceMeters, endedAt })
       } catch (error) {
         // Keep recording state so nothing in memory is lost and the user can retry.
-        set({ persistError: `Trace non enregistrée sur l’appareil : ${describeError(error)}.` })
+        set({
+          persistError: `Trace non enregistrée sur l’appareil : ${describeError(error)}.`,
+        })
         return
       }
       set((state) => ({
@@ -228,7 +235,9 @@ export const useTracksStore = create<TracksState>((set, get) => {
       const distanceMeters = track.distanceMeters ?? totalDistanceMeters(track.points)
       await updateTrackRecord(id, { endedAt, distanceMeters })
       set((state) => ({
-        tracks: state.tracks.map((t) => (t.id === id ? { ...t, endedAt, distanceMeters } : t)),
+        tracks: state.tracks.map((t) =>
+          t.id === id ? { ...t, endedAt, distanceMeters } : t,
+        ),
       }))
     },
 

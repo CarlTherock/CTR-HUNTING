@@ -6,13 +6,13 @@ validation sur un vrai iPhone.
 
 ## Ce qui est exécuté
 
-| Niveau | Outil | Environnement |
-| --- | --- | --- |
-| Types | `npx tsc -b` | Node 24 |
-| Lint | `npx eslint .` | Node 24 |
-| Unitaires / composants | `npx vitest run` | jsdom |
-| E2E | `npm run e2e` (Playwright, build de production servi en local) | **Chromium uniquement** |
-| Dépendances | `npm audit --omit=dev --audit-level=high` | registre npm |
+| Niveau                 | Outil                                                          | Environnement           |
+| ---------------------- | -------------------------------------------------------------- | ----------------------- |
+| Types                  | `npx tsc -b`                                                   | Node 24                 |
+| Lint                   | `npx eslint .`                                                 | Node 24                 |
+| Unitaires / composants | `npx vitest run`                                               | jsdom                   |
+| E2E                    | `npm run e2e` (Playwright, build de production servi en local) | **Chromium uniquement** |
+| Dépendances            | `npm audit --omit=dev --audit-level=high`                      | registre npm            |
 
 ## Limites assumées des E2E
 

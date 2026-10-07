@@ -48,9 +48,15 @@ export function useCompassHeading(): {
   const [reading, setReading] = useState<CompassReading>(() =>
     supportsOrientation()
       ? { status: 'unavailable', reason: 'En attente d’une lecture de la boussole.' }
-      : { status: 'unavailable', reason: 'L’orientation de l’appareil n’est pas prise en charge par ce navigateur.' },
+      : {
+          status: 'unavailable',
+          reason:
+            'L’orientation de l’appareil n’est pas prise en charge par ce navigateur.',
+        },
   )
-  const [started, setStarted] = useState(() => !needsExplicitPermission() && supportsOrientation())
+  const [started, setStarted] = useState(
+    () => !needsExplicitPermission() && supportsOrientation(),
+  )
 
   const requestPermission = useCallback(async () => {
     if (!supportsOrientation()) return
@@ -59,11 +65,17 @@ export function useCompassHeading(): {
       try {
         const result = await ctor.requestPermission()
         if (result !== 'granted') {
-          setReading({ status: 'unavailable', reason: 'Autorisation de la boussole refusée.' })
+          setReading({
+            status: 'unavailable',
+            reason: 'Autorisation de la boussole refusée.',
+          })
           return
         }
       } catch {
-        setReading({ status: 'unavailable', reason: 'Impossible de demander l’autorisation de la boussole.' })
+        setReading({
+          status: 'unavailable',
+          reason: 'Impossible de demander l’autorisation de la boussole.',
+        })
         return
       }
     }
@@ -84,7 +96,10 @@ export function useCompassHeading(): {
         })
         return
       }
-      if (e.alpha !== null && (e as DeviceOrientationEvent & { absolute?: boolean }).absolute) {
+      if (
+        e.alpha !== null &&
+        (e as DeviceOrientationEvent & { absolute?: boolean }).absolute
+      ) {
         setReading({
           status: 'available',
           value: (360 - e.alpha) % 360,
@@ -102,5 +117,9 @@ export function useCompassHeading(): {
     }
   }, [started])
 
-  return { reading, needsPermission: needsExplicitPermission() && !started, requestPermission }
+  return {
+    reading,
+    needsPermission: needsExplicitPermission() && !started,
+    requestPermission,
+  }
 }

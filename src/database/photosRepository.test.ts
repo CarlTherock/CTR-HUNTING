@@ -82,7 +82,7 @@ describe('photosRepository (IndexedDB via Dexie)', () => {
     expect(await listPhotosForWaypoint('w1')).toHaveLength(1)
   })
 
-  it('deletePhotosForObservation removes only that observation\'s photos', async () => {
+  it("deletePhotosForObservation removes only that observation's photos", async () => {
     await addPhoto({ observationId: 'o1', blob: fakeBlob('a') })
     await addPhoto({ observationId: 'o2', blob: fakeBlob('b') })
 

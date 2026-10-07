@@ -53,7 +53,9 @@ describe('WaypointPhotos', () => {
       expect(photo.waypointId).toBe('wp-1')
       expect(photo.coordinate).toEqual(coordinate)
     })
-    expect(updateWaypoint).toHaveBeenCalledWith('wp-1', { photoIds: [expect.any(String)] })
+    expect(updateWaypoint).toHaveBeenCalledWith('wp-1', {
+      photoIds: [expect.any(String)],
+    })
   })
 
   it('closes the camera modal after saving', async () => {

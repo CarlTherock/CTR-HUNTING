@@ -12,7 +12,10 @@ describe('tracksRepository (IndexedDB via Dexie)', () => {
   })
 
   it('creates a track with a generated id and no points yet', async () => {
-    const track = await createTrack({ name: 'Morning hunt', startedAt: '2026-08-16T10:00:00.000Z' })
+    const track = await createTrack({
+      name: 'Morning hunt',
+      startedAt: '2026-08-16T10:00:00.000Z',
+    })
 
     expect(track.id).toBeTruthy()
     expect(track.points).toEqual([])
@@ -20,7 +23,10 @@ describe('tracksRepository (IndexedDB via Dexie)', () => {
   })
 
   it('persists point/distance updates as recording progresses', async () => {
-    const track = await createTrack({ name: 'Track', startedAt: '2026-08-16T10:00:00.000Z' })
+    const track = await createTrack({
+      name: 'Track',
+      startedAt: '2026-08-16T10:00:00.000Z',
+    })
 
     await updateTrack(track.id, {
       points: [{ lat: 46.8, lng: -71.2, timestamp: '2026-08-16T10:00:05.000Z' }],
@@ -40,7 +46,10 @@ describe('tracksRepository (IndexedDB via Dexie)', () => {
   })
 
   it('marks a track ended', async () => {
-    const track = await createTrack({ name: 'Track', startedAt: '2026-08-16T10:00:00.000Z' })
+    const track = await createTrack({
+      name: 'Track',
+      startedAt: '2026-08-16T10:00:00.000Z',
+    })
 
     await updateTrack(track.id, { endedAt: '2026-08-16T11:00:00.000Z' })
 
@@ -49,7 +58,10 @@ describe('tracksRepository (IndexedDB via Dexie)', () => {
   })
 
   it('deletes a track', async () => {
-    const track = await createTrack({ name: 'Track', startedAt: '2026-08-16T10:00:00.000Z' })
+    const track = await createTrack({
+      name: 'Track',
+      startedAt: '2026-08-16T10:00:00.000Z',
+    })
 
     await deleteTrack(track.id)
     expect(await listTracks()).toEqual([])

@@ -18,7 +18,13 @@ export interface DayTimelineBarProps {
  * bar spanning local midnight to midnight: night/dawn/day/dusk shading
  * from real sun times, major/minor solunar period bands, and a "now"
  * marker. All positions come from `timeToPercent`, never hand-tuned. */
-export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHour }: DayTimelineBarProps) {
+export function DayTimelineBar({
+  dayStart,
+  sun,
+  solunarPeriods,
+  now,
+  selectedHour,
+}: DayTimelineBarProps) {
   const dawn = sun.dawn ? timeToPercent(sun.dawn, dayStart) : null
   const sunrise = sun.sunrise ? timeToPercent(sun.sunrise, dayStart) : null
   const sunset = sun.sunset ? timeToPercent(sun.sunset, dayStart) : null
@@ -40,7 +46,10 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
         {dayBandStart !== null && dayBandEnd !== null && (
           <div
             className="bg-brand-500/25 absolute inset-y-0"
-            style={{ left: `${dayBandStart}%`, width: `${Math.max(0, dayBandEnd - dayBandStart)}%` }}
+            style={{
+              left: `${dayBandStart}%`,
+              width: `${Math.max(0, dayBandEnd - dayBandStart)}%`,
+            }}
             aria-hidden="true"
           />
         )}
@@ -101,11 +110,11 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
           Jour
         </span>
         <span className="flex items-center gap-1">
-          <span className="bg-amber-500/80 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/80" aria-hidden="true" />
           Solunaire majeure
         </span>
         <span className="flex items-center gap-1">
-          <span className="bg-amber-500/40 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/40" aria-hidden="true" />
           Solunaire mineure
         </span>
         <span className="flex items-center gap-1">

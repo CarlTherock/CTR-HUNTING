@@ -17,7 +17,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Sections de l’application">
+      <nav
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+        aria-label="Sections de l’application"
+      >
         {navItems.map((item) => (
           <NavLink
             key={item.path}

@@ -20,5 +20,7 @@ export function scaleLinear(
  * `null` for fewer than 2 points, since a line needs at least two. */
 export function buildLinePath(points: { x: number; y: number }[]): string | null {
   if (points.length < 2) return null
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  return points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(' ')
 }

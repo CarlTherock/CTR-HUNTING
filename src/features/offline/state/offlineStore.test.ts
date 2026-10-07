@@ -12,7 +12,11 @@ const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
 function fakeMapInstance(
   downloadArea: MapInstance['downloadArea'] = vi
     .fn()
-    .mockResolvedValue({ tilesDownloaded: 4, bytesDownloaded: 40_000, tileUrls: ['a', 'b', 'c', 'd'] }),
+    .mockResolvedValue({
+      tilesDownloaded: 4,
+      bytesDownloaded: 40_000,
+      tileUrls: ['a', 'b', 'c', 'd'],
+    }),
 ): MapInstance {
   return {
     setView: vi.fn(),
@@ -134,7 +138,11 @@ describe('offlineStore', () => {
       vi.fn().mockImplementation((_b, _min, _max, onProgress) => {
         capturedOnProgress = onProgress
         onProgress({ tilesDownloaded: 1, bytesDownloaded: 500, tileUrls: ['a'] })
-        return Promise.resolve({ tilesDownloaded: 1, bytesDownloaded: 500, tileUrls: ['a'] })
+        return Promise.resolve({
+          tilesDownloaded: 1,
+          bytesDownloaded: 500,
+          tileUrls: ['a'],
+        })
       }),
     )
     useOfflineStore.getState().startSelecting(BOUNDS, 12)
@@ -152,7 +160,9 @@ describe('offlineStore', () => {
     )
     useOfflineStore.getState().startSelecting(BOUNDS, 12)
 
-    await expect(useOfflineStore.getState().startDownload(map, 'outdoor')).resolves.toBeUndefined()
+    await expect(
+      useOfflineStore.getState().startDownload(map, 'outdoor'),
+    ).resolves.toBeUndefined()
 
     const state = useOfflineStore.getState()
     expect(state.areas[0].status).toBe('cancelled')
@@ -163,9 +173,9 @@ describe('offlineStore', () => {
     const map = fakeMapInstance(vi.fn().mockRejectedValue(new Error('network down')))
     useOfflineStore.getState().startSelecting(BOUNDS, 12)
 
-    await expect(useOfflineStore.getState().startDownload(map, 'outdoor')).rejects.toThrow(
-      'network down',
-    )
+    await expect(
+      useOfflineStore.getState().startDownload(map, 'outdoor'),
+    ).rejects.toThrow('network down')
 
     expect(useOfflineStore.getState().areas[0].status).toBe('error')
   })
@@ -199,7 +209,11 @@ describe('offlineStore', () => {
     const refreshMap = fakeMapInstance(
       vi
         .fn()
-        .mockResolvedValue({ tilesDownloaded: 9, bytesDownloaded: 90_000, tileUrls: ['x', 'y'] }),
+        .mockResolvedValue({
+          tilesDownloaded: 9,
+          bytesDownloaded: 90_000,
+          tileUrls: ['x', 'y'],
+        }),
     )
     await useOfflineStore.getState().refreshArea(refreshMap, existing)
 

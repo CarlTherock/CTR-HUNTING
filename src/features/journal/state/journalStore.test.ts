@@ -25,7 +25,9 @@ describe('journalStore', () => {
   })
 
   it('create() persists a real observation and opens it for editing', async () => {
-    const observation = await useJournalStore.getState().create({ coordinate: COORDINATE, notes: 'New entry' })
+    const observation = await useJournalStore
+      .getState()
+      .create({ coordinate: COORDINATE, notes: 'New entry' })
 
     expect(useJournalStore.getState().observations).toContainEqual(
       expect.objectContaining({ id: observation.id, notes: 'New entry' }),
@@ -35,18 +37,22 @@ describe('journalStore', () => {
   })
 
   it('update() patches both the store and Dexie', async () => {
-    const observation = await useJournalStore.getState().create({ coordinate: COORDINATE, notes: 'Draft' })
+    const observation = await useJournalStore
+      .getState()
+      .create({ coordinate: COORDINATE, notes: 'Draft' })
 
     await useJournalStore.getState().update(observation.id, { notes: 'Final' })
 
-    expect(useJournalStore.getState().observations.find((o) => o.id === observation.id)?.notes).toBe(
-      'Final',
-    )
+    expect(
+      useJournalStore.getState().observations.find((o) => o.id === observation.id)?.notes,
+    ).toBe('Final')
     expect((await db.observations.get(observation.id))?.notes).toBe('Final')
   })
 
   it('remove() deletes a real observation from both the store and Dexie', async () => {
-    const observation = await useJournalStore.getState().create({ coordinate: COORDINATE, notes: '' })
+    const observation = await useJournalStore
+      .getState()
+      .create({ coordinate: COORDINATE, notes: '' })
 
     await useJournalStore.getState().remove(observation.id)
 

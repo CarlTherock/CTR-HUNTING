@@ -29,7 +29,8 @@ function isoOrNull(date: Date | null | undefined): string | null {
 
 export function getSunTimes(date: Date, coordinate: Coordinate): SunTimes {
   const t = SunCalc.getTimes(date, coordinate.lat, coordinate.lng)
-  const dayLengthMs = t.sunrise && t.sunset ? t.sunset.getTime() - t.sunrise.getTime() : null
+  const dayLengthMs =
+    t.sunrise && t.sunset ? t.sunset.getTime() - t.sunrise.getTime() : null
   return {
     sunrise: isoOrNull(t.sunrise),
     sunset: isoOrNull(t.sunset),
@@ -76,7 +77,12 @@ export function moonPhaseName(phase: number): MoonPhaseName {
 
 export function getMoonIllumination(date: Date): MoonIllumination {
   const i = SunCalc.getMoonIllumination(date)
-  return { fraction: i.fraction, phase: i.phase, waxing: i.waxing, phaseName: moonPhaseName(i.phase) }
+  return {
+    fraction: i.fraction,
+    phase: i.phase,
+    waxing: i.waxing,
+    phaseName: moonPhaseName(i.phase),
+  }
 }
 
 /** ±90 min around moon transit/anti-transit — roughly the major-period
@@ -107,7 +113,10 @@ const SAMPLE_INTERVAL_MS = 10 * 60_000
 function findMoonExtremes(
   date: Date,
   coordinate: Coordinate,
-): { highest: { time: Date; altitude: number }; lowest: { time: Date; altitude: number } } {
+): {
+  highest: { time: Date; altitude: number }
+  lowest: { time: Date; altitude: number }
+} {
   const dayStart = new Date(date)
   dayStart.setHours(0, 0, 0, 0)
 
@@ -170,7 +179,8 @@ export function computeSolunarPeriods(
  * dawn/dusk/solunar time can technically fall just outside that window.
  * Powers `DayTimelineBar`'s day/night shading and period markers. */
 export function timeToPercent(iso: string, dayStart: Date): number {
-  const percent = ((new Date(iso).getTime() - dayStart.getTime()) / (24 * 60 * 60_000)) * 100
+  const percent =
+    ((new Date(iso).getTime() - dayStart.getTime()) / (24 * 60 * 60_000)) * 100
   return Math.max(0, Math.min(100, percent))
 }
 

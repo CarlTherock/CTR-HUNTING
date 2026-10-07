@@ -15,7 +15,7 @@ were simple enough not to justify one; `utils/chartScale.ts`'s
   averaged would understate it) — a real `calculated` value, never a
   fabricated one.
 - **Pan**: the chart scrolls horizontally in its container (`overflow-x-
-  auto`) at fine granularities, the same established pattern this app's
+auto`) at fine granularities, the same established pattern this app's
   hourly forecast strip already uses, rather than a custom drag gesture.
 - **Cursor / hour selection**: click anywhere on the chart to move the
   shared timeline cursor. This reuses `windStore.selectedHourOffset`

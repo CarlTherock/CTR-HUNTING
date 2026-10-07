@@ -38,7 +38,12 @@ const FIELD: WindField = {
 }
 
 afterEach(() => {
-  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
+  useWaypointsStore.setState({
+    waypoints: [],
+    loaded: false,
+    isPlacing: false,
+    editingId: null,
+  })
   useWindStore.setState({
     status: 'idle',
     field: null,
@@ -51,7 +56,9 @@ afterEach(() => {
 
 describe('WindComparisonPanel', () => {
   it('renders nothing when no waypoint has an optimal wind preference set', () => {
-    useWaypointsStore.setState({ waypoints: [makeWaypoint({ optimalWindDirections: undefined })] })
+    useWaypointsStore.setState({
+      waypoints: [makeWaypoint({ optimalWindDirections: undefined })],
+    })
 
     const { container } = render(<WindComparisonPanel />)
 
@@ -59,7 +66,9 @@ describe('WindComparisonPanel', () => {
   })
 
   it('prompts to enable the wind layer when candidates exist but no field is loaded', () => {
-    useWaypointsStore.setState({ waypoints: [makeWaypoint({ optimalWindDirections: [0, 45] })] })
+    useWaypointsStore.setState({
+      waypoints: [makeWaypoint({ optimalWindDirections: [0, 45] })],
+    })
 
     render(<WindComparisonPanel />)
 

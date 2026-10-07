@@ -45,7 +45,7 @@ A full-screen live preview → capture → review flow:
    each time a slider moves, so adjustments are always non-destructive
    previews, never applied to `originalBlob` itself.
 4. Saving redraws the original once more with the final filter onto a
-   *separate* canvas, producing `editedBlob` — both blobs are handed to
+   _separate_ canvas, producing `editedBlob` — both blobs are handed to
    the caller.
 
 Real GPS (`useGeolocation`) is attached at save time, when a fix is

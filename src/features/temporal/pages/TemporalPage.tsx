@@ -1,6 +1,22 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownToLine, ArrowUpToLine, ChevronLeft, ChevronRight, Moon, Sunrise, Sunset } from 'lucide-react'
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from '@/components/ui'
+import {
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sunrise,
+  Sunset,
+} from 'lucide-react'
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+} from '@/components/ui'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
 import { useWindStore } from '@/features/wind/state/windStore'
@@ -63,7 +79,8 @@ function nextEvent(data: TemporalData, now: Date): UpcomingEvent | null {
     if (!candidate.iso) continue
     const msUntil = new Date(candidate.iso).getTime() - now.getTime()
     if (msUntil <= 0) continue
-    if (!best || msUntil < best.msUntil) best = { kind: candidate.kind, label: candidate.label, iso: candidate.iso, msUntil }
+    if (!best || msUntil < best.msUntil)
+      best = { kind: candidate.kind, label: candidate.label, iso: candidate.iso, msUntil }
   }
   return best
 }
@@ -112,7 +129,12 @@ export function TemporalPage() {
               <ChevronLeft size={16} aria-hidden="true" />
             </button>
             <span className="text-ink-100 min-w-[6.5rem] text-center text-sm font-medium">
-              {isToday ? 'Aujourd’hui' : selectedDay.toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' })}
+              {isToday
+                ? 'Aujourd’hui'
+                : selectedDay.toLocaleDateString('fr-CA', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
             </span>
             <button
               type="button"
@@ -126,7 +148,9 @@ export function TemporalPage() {
         }
       />
 
-      {!usingGps && <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>}
+      {!usingGps && (
+        <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>
+      )}
 
       {upcoming && (
         <Card className="flex items-center gap-3 p-4">
@@ -160,29 +184,39 @@ export function TemporalPage() {
         <Card>
           <CardHeader>
             <CardTitle>Soleil</CardTitle>
-            <CardDescription>Durée du jour : {formatDuration(data.sun.dayLengthMs)}</CardDescription>
+            <CardDescription>
+              Durée du jour : {formatDuration(data.sun.dayLengthMs)}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
               <Sunrise size={18} className="text-brand-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.sunrise)}</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.sun.sunrise)}
+                </p>
                 <p className="text-ink-500 text-xs">Lever du soleil</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Sunset size={18} className="text-brand-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.sunset)}</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.sun.sunset)}
+                </p>
                 <p className="text-ink-500 text-xs">Coucher du soleil</p>
               </div>
             </div>
             <div>
-              <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.dawn)}</p>
+              <p className="text-ink-100 text-sm font-medium">
+                {formatTime(data.sun.dawn)}
+              </p>
               <p className="text-ink-500 text-xs">Aube</p>
             </div>
             <div>
-              <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.dusk)}</p>
+              <p className="text-ink-100 text-sm font-medium">
+                {formatTime(data.sun.dusk)}
+              </p>
               <p className="text-ink-500 text-xs">Crépuscule</p>
             </div>
           </CardContent>
@@ -194,7 +228,11 @@ export function TemporalPage() {
             <CardDescription>{data.illumination.phaseName}</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            <MoonPhaseIcon phase={data.illumination.phase} waxing={data.illumination.waxing} size={48} />
+            <MoonPhaseIcon
+              phase={data.illumination.phase}
+              waxing={data.illumination.waxing}
+              size={48}
+            />
             <div className="grid flex-1 grid-cols-2 gap-3">
               <div>
                 <p className="text-ink-100 text-sm font-medium">
@@ -204,27 +242,45 @@ export function TemporalPage() {
               </div>
               <div className="flex items-center gap-1">
                 <Moon size={14} className="text-ink-500" aria-hidden="true" />
-                <span className="text-ink-500 text-xs">{data.illumination.waxing ? 'Croissante' : 'Décroissante'}</span>
+                <span className="text-ink-500 text-xs">
+                  {data.illumination.waxing ? 'Croissante' : 'Décroissante'}
+                </span>
               </div>
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.moon.rise)}</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.moon.rise)}
+                </p>
                 <p className="text-ink-500 text-xs">Lever de la lune</p>
               </div>
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.moon.set)}</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.moon.set)}
+                </p>
                 <p className="text-ink-500 text-xs">Coucher de la lune</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <ArrowUpToLine size={14} className="text-status-success shrink-0" aria-hidden="true" />
+                <ArrowUpToLine
+                  size={14}
+                  className="text-status-success shrink-0"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.overhead)}</p>
+                  <p className="text-ink-100 text-sm font-medium">
+                    {formatTime(data.moonTransit.overhead)}
+                  </p>
                   <p className="text-ink-500 text-xs">Au zénith</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <ArrowDownToLine size={14} className="text-brand-400 shrink-0" aria-hidden="true" />
+                <ArrowDownToLine
+                  size={14}
+                  className="text-brand-400 shrink-0"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.underfoot)}</p>
+                  <p className="text-ink-100 text-sm font-medium">
+                    {formatTime(data.moonTransit.underfoot)}
+                  </p>
                   <p className="text-ink-500 text-xs">Au nadir</p>
                 </div>
               </div>
@@ -237,15 +293,19 @@ export function TemporalPage() {
         <CardHeader>
           <CardTitle>Périodes solunaires</CardTitle>
           <CardDescription>
-            Périodes majeures (lune au zénith ou au nadir) et mineures (près du lever ou du
-            coucher de la lune), selon la géométrie de la théorie solunaire publique — et non
-            un pointage d’activité propriétaire.
+            Périodes majeures (lune au zénith ou au nadir) et mineures (près du lever ou
+            du coucher de la lune), selon la géométrie de la théorie solunaire publique —
+            et non un pointage d’activité propriétaire.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {data.solunarPeriods.map((period, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
-              <span className={period.type === 'major' ? 'text-ink-100 font-medium' : 'text-ink-300'}>
+              <span
+                className={
+                  period.type === 'major' ? 'text-ink-100 font-medium' : 'text-ink-300'
+                }
+              >
                 {period.type === 'major' ? 'Majeure' : 'Mineure'}
               </span>
               <span className="text-ink-500 text-xs">

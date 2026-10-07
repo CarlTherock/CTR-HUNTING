@@ -4,7 +4,12 @@ import { chooseStartupBaseLayer, resolveInitialBaseLayer } from './startupBaseLa
 describe('chooseStartupBaseLayer', () => {
   it('prefers Esri Imagery Hybrid when its key is configured', () => {
     expect(
-      chooseStartupBaseLayer(['outdoor', 'satellite', 'esri-topographic', 'esri-imagery']),
+      chooseStartupBaseLayer([
+        'outdoor',
+        'satellite',
+        'esri-topographic',
+        'esri-imagery',
+      ]),
     ).toBe('esri-imagery')
   })
 
@@ -13,7 +18,9 @@ describe('chooseStartupBaseLayer', () => {
   })
 
   it('falls back to the first available layer otherwise', () => {
-    expect(chooseStartupBaseLayer(['esri-topographic', 'esri-terrain'])).toBe('esri-topographic')
+    expect(chooseStartupBaseLayer(['esri-topographic', 'esri-terrain'])).toBe(
+      'esri-topographic',
+    )
   })
 
   it('returns null when nothing is configured', () => {

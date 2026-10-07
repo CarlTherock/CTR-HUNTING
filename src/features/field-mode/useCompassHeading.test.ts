@@ -22,7 +22,9 @@ describe('useCompassHeading', () => {
     expect(result.current.needsPermission).toBe(false)
 
     act(() => {
-      const event = new Event('deviceorientation') as Event & { webkitCompassHeading?: number }
+      const event = new Event('deviceorientation') as Event & {
+        webkitCompassHeading?: number
+      }
       event.webkitCompassHeading = 123
       window.dispatchEvent(event)
     })
@@ -72,7 +74,10 @@ describe('useCompassHeading', () => {
     })
 
     expect(requestPermission).toHaveBeenCalledOnce()
-    expect(result.current.reading).toEqual({ status: 'unavailable', reason: 'Autorisation de la boussole refusée.' })
+    expect(result.current.reading).toEqual({
+      status: 'unavailable',
+      reason: 'Autorisation de la boussole refusée.',
+    })
   })
 
   it('starts listening for real orientation events once permission is granted', async () => {
@@ -88,7 +93,9 @@ describe('useCompassHeading', () => {
     })
 
     act(() => {
-      const event = new Event('deviceorientation') as Event & { webkitCompassHeading?: number }
+      const event = new Event('deviceorientation') as Event & {
+        webkitCompassHeading?: number
+      }
       event.webkitCompassHeading = 45
       window.dispatchEvent(event)
     })
