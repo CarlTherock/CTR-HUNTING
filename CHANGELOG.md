@@ -3,6 +3,28 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Finition produit (2026-10-07)
+
+### Added
+
+- Accueil terrain (remplace l'accueil de développement) : météo et vent réels (« actuel » ou « prévision » avec l'heure, sinon « indisponible » et un bouton), accès à la carte, guidage actif (Reprendre / Arrêter), territoire sélectionné, dernière sortie du journal, cartes hors ligne, état des données et rappel de sauvegarde, états vides utiles.
+- Présentation de 4 écrans au premier lancement : passable, rejouable depuis Réglages ou l'aide, état enregistré dans les réglages ; elle ne demande aucune permission (GPS, caméra, boussole).
+- Pages Aide (`/help`), Confidentialité (`/privacy`) et À propos (`/about`), chargées à la demande et accessibles depuis Réglages (pas dans la barre principale). À propos : version du paquet, date de build, état honnête des phases, recherche de mise à jour du service worker existant, crédits, liens vers la documentation.
+- Confidentialité : description technique du stockage local et des requêtes réseau réelles (un test échoue si un hôte de la CSP manque sur la page), absence d'analytique et de compte. Ce n'est pas un avis juridique.
+- Suppression totale des données locales en deux étapes (résumé, option de sauvegarde préalable, mot de confirmation) : une seule transaction Dexie, puis effacement des caches hors ligne. Rien n'est supprimé sans confirmation.
+- Invite d'installation honnête : seulement si `beforeinstallprompt` existe ou sur iOS non installé, refus mémorisé.
+- `weatherStore.loadCached()` : relit la dernière prévision enregistrée sans requête réseau.
+- Variable `E2E_PORT` pour lancer les tests E2E sur un autre port.
+
+### Changed
+
+- Nom unique « CTR Hunting » (manifeste, index.html, barre, menu). Les infobulles des commandes MapLibre sont en français.
+- CSP : retrait des hôtes RainViewer, jamais utilisés par le code.
+
+### Notes
+
+- Reporté : comptes, abonnement, paiement, identité visuelle finale, tests d'installation sur appareils réels.
+
 ## Comparateur de caches (2026-10-07)
 
 ### Added

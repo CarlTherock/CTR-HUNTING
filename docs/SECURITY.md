@@ -45,3 +45,5 @@ Limites connues, inhérentes à GitHub Pages (pas d'en-têtes HTTP) :
 - La CI de validation (`ci.yml`) n'utilise aucun secret et un jeton en
   lecture seule ; le déploiement (`deploy.yml`) est séparé et seul le job
   `deploy` a les permissions Pages.
+
+Les hôtes RainViewer ont été retirés de la CSP (T8) : aucun code ne les utilise. La page Confidentialité et `build/csp.ts` sont comparées par `src/features/privacy/networkProviders.test.ts`.

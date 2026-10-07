@@ -273,3 +273,18 @@ cancellation instead. The engine takes the `Dexie` instance as a parameter
 and only includes tables that exist (`territories` arrives with schema v5).
 Format and duplicate policy: `docs/BACKUP_FORMAT.md`. Sync is not built:
 `docs/SYNC_PREPARATION.md`.
+
+## Product finish (T8)
+
+`features/dashboard` (field home: cards fed by the existing stores, summaries
+in `summary.ts`), `features/onboarding` (store + dialog; setting
+`onboardingCompletedAt`; never calls a permission API), `features/install`
+(`beforeinstallprompt` store, honest iOS steps), `features/help`,
+`features/privacy` and `features/about`. Help, Privacy and About are
+`React.lazy` routes, reachable from Réglages and not in the main navigation.
+The privacy page is generated from `features/privacy/networkProviders.ts`,
+which a test compares with `PROVIDER_HOSTS` in `build/csp.ts` and with the
+URLs in `src/services`. Total deletion lives in `database/wipeRepository.ts`
+(one Dexie transaction) and `offline/clearOfflineCaches.ts`, driven by
+`dataDeletionStore` (two confirmation steps). Version and build date come
+from `package.json` and a Vite `define` (`__APP_BUILD_DATE__`).
