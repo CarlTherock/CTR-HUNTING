@@ -104,8 +104,8 @@ export function AnalysisPage() {
       </div>
 
       <p className="text-ink-500 text-xs">
-        Chaque pointage est une estimation probabiliste fondée sur des données réelles,
-        jamais présentée comme une certitude — déployez les facteurs d’un analyseur pour
+        Chaque pointage est un indice de repère calculé à partir de données réelles — ce
+        n’est ni une probabilité ni une certitude. Déployez les facteurs d’un groupe pour
         voir exactement ce qui l’a produit.
       </p>
     </div>

@@ -16,6 +16,7 @@ import { cn } from '@/utils/cn'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
 import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
+import { projectHeatmapCells } from '@/features/analytics/heatmapProjection'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { CompassDisplay } from '@/features/field-mode/components/CompassDisplay'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
@@ -115,6 +116,7 @@ export function MapPage() {
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
+  const heatmapSelectedCell = useHeatmapStore((state) => state.selectedCellIndex)
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
   const weatherMapEnabled = useWeatherMapStore((state) => state.enabled)
   const weatherMapLayer = useWeatherMapStore((state) => state.activeLayer)
@@ -196,9 +198,20 @@ export function MapPage() {
         } else if (useAnalysisStore.getState().mode === 'analyzing') {
           const map = instanceRef.current
           if (!map) return
+          // Même heure que la carte de potentiel quand elle est affichée.
+          const heat = useHeatmapStore.getState()
           void useAnalysisStore
             .getState()
-            .analyze(coordinate, (c) => map.queryElevation(c))
+            .analyze(
+              coordinate,
+              (c) => map.queryElevation(c),
+              undefined,
+              heat.enabled ? heat.selectedHourKey : null,
+            )
+        } else if (useHeatmapStore.getState().enabled) {
+          // Un toucher sur une cellule de la carte de potentiel ouvre sa
+          // fiche (hors de la zone analysée : ferme la fiche).
+          useHeatmapStore.getState().selectCellAt(coordinate)
         }
       },
       // A drag / zoom / rotate by the user pauses "follow my position".
@@ -436,23 +449,16 @@ export function MapPage() {
       instanceRef.current?.setAnalysisHeatmap(null)
       return
     }
-    // Re-projecting to a single analyzer's score is a pure client-side
+    // Re-projecting to a family / single analyzer is a pure client-side
     // transform of the already-computed cells — never a re-fetch, same
     // "instant, no re-fetch" principle as the Phase 6 layer switcher.
-    const projected =
-      heatmapSelectedView === 'combined'
-        ? heatmapCells
-        : heatmapCells.map((cell) => ({
-            ...cell,
-            combined: {
-              ...cell.combined,
-              overallScore:
-                cell.combined.results.find((r) => r.analyzer === heatmapSelectedView)
-                  ?.score ?? null,
-            },
-          }))
+    const projected = projectHeatmapCells(
+      heatmapCells,
+      heatmapSelectedView,
+      heatmapSelectedCell,
+    )
     instanceRef.current?.setAnalysisHeatmap(projected)
-  }, [heatmapEnabled, heatmapCells, heatmapSelectedView])
+  }, [heatmapEnabled, heatmapCells, heatmapSelectedView, heatmapSelectedCell])
 
   function locate() {
     if (gpsReading.status !== 'available') return
