@@ -1,7 +1,7 @@
 # features/waypoints
 
-**Status:** Phase 2 complete — all four slices done: create/edit/delete/
-drag-to-move waypoints (2.1/2.2), categories, notes, a dedicated list
+**Status:** Phase 2 complete — all four slices done: create/edit/delete
+waypoints (2.1/2.2), categories, notes, a dedicated list
 page, GPS track recording (2.3), and waypoint photos (2.4), all with
 real local persistence.
 
@@ -18,11 +18,19 @@ for review — tapping a waypoint row opens the same
 `state/waypointsStore.ts` (zustand) holds the in-memory waypoint list plus
 UI state (`isPlacing`, `editingId`); every mutation writes through to
 `src/database/waypointsRepository.ts` (Dexie) first, so the store is never
-out of sync with what's actually persisted. There is no separate "unsaved
-draft" concept — tapping the map creates a real, persisted waypoint
-immediately (default name, category "general"), then opens
-`components/WaypointEditPanel.tsx` to customize or delete it. That panel
-holds its own local draft while open; only "Save" writes it through.
+out of sync with what's actually persisted. Creation is an explicit **draft** (`waypointsStore.draft`, in memory only):
+tapping the map after arming "placing" mode places a draft marker whose
+position can still be adjusted (map tap or drag of the dashed marker).
+**Save** writes the waypoint once and **locks its location**; **Cancel**
+leaves nothing behind; a failed save keeps the draft and shows the error.
+
+**Location lock.** After Save a waypoint cannot be moved: no drag, no
+map-tap repositioning, no coordinate fields, and the GPS position never
+overrides it. To change a position, delete the waypoint (with confirmation)
+and create a new one. The guard lives in the repository
+(`WaypointLockedError` if a patch contains `coordinate`), so it also
+protects waypoints saved before this rule, with no data migration. Name,
+notes, category, colour, photos and wind preferences stay editable.
 
 Markers are rendered by `MapInstance.setWaypoints()`
 (`src/services/map/`) — a white circle with a black category icon inside

@@ -1245,4 +1245,28 @@ describe('MapLibreProvider', () => {
       expect(map.jumpToCalls).toHaveLength(1)
     })
   })
+  describe('invalid coordinates', () => {
+    it('does not move the camera to a NaN center (MapLibre would throw)', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const setCenter = vi.spyOn(mapInstances[0], 'setCenter')
+
+      expect(() => instance.setView({ center: { lat: Number.NaN, lng: 0 }, zoom: 7 })).not.toThrow()
+      expect(setCenter).not.toHaveBeenCalled()
+
+      instance.setView({ center: { lat: 46.8, lng: -71.2 } })
+      expect(setCenter).toHaveBeenCalledWith([-71.2, 46.8])
+    })
+
+    it('queryElevation reports "unavailable" for a NaN coordinate instead of reaching the engine', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const query = vi.spyOn(mapInstances[0], 'queryTerrainElevation').mockImplementation(() => {
+        throw new Error('Invalid LngLat object: (NaN, NaN)')
+      })
+
+      expect(instance.queryElevation({ lat: Number.NaN, lng: Number.NaN })).toBeNull()
+      expect(query).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsPage } from './SettingsPage'
+import { estimateStorageUsage } from '@/offline/tileCache'
+import { trackUnhandledRejections } from '@/test/unhandledRejections'
 import { db } from '@/database/db'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
@@ -50,6 +52,18 @@ afterEach(async () => {
 })
 
 describe('SettingsPage', () => {
+  it('hides the storage figures, without an unhandled rejection, when the storage estimate fails', async () => {
+    const tracker = trackUnhandledRejections()
+    vi.mocked(estimateStorageUsage).mockRejectedValueOnce(new Error('estimate failed'))
+
+    await renderSettled()
+    await tracker.settle()
+    tracker.stop()
+
+    expect(screen.queryByText(/utilisés sur/)).not.toBeInTheDocument()
+    expect(tracker.reasons).toEqual([])
+  })
+
   it('shows the empty state when there are no offline areas', async () => {
     await renderSettled()
 

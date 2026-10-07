@@ -12,7 +12,7 @@ import {
 } from '@/components/ui'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { estimateStorageUsage } from '@/offline/tileCache'
-import { getSetting, setSetting } from '@/database/settingsRepository'
+import { useLocalStorageProbe } from '../state/useLocalStorageProbe'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { formatBytes } from '@/utils/format'
@@ -21,7 +21,7 @@ const APP_VERSION = '0.1.0'
 
 export function SettingsPage() {
   const isOnline = useOnlineStatus()
-  const [installedBefore, setInstalledBefore] = useState<boolean | null>(null)
+  const localStorageProbe = useLocalStorageProbe()
   const [storageUsage, setStorageUsage] = useState<{ usage: number; quota: number } | null>(null)
 
   const areas = useOfflineStore((state) => state.areas)
@@ -34,19 +34,11 @@ export function SettingsPage() {
   const loadFieldMode = useFieldModeStore((state) => state.load)
   const toggleFieldMode = useFieldModeStore((state) => state.toggle)
 
-  // Exercises the local persistence layer end-to-end (round-trips through
-  // IndexedDB) so Phase 0 ships with at least one real offline read/write,
-  // not just a stub.
-  useEffect(() => {
-    void getSetting('hasOpenedSettings', false).then((value) => {
-      setInstalledBefore(value)
-      void setSetting('hasOpenedSettings', true)
-    })
-  }, [])
-
   useEffect(() => {
     if (!loaded) void load()
-    void estimateStorageUsage().then(setStorageUsage)
+    // Storage usage is informational: when the estimate fails it simply
+    // stays hidden (unavailable), never an unhandled rejection.
+    estimateStorageUsage().then(setStorageUsage, () => setStorageUsage(null))
   }, [loaded, load])
 
   useEffect(() => {
@@ -155,11 +147,13 @@ export function SettingsPage() {
           <CardDescription>Basé sur IndexedDB, fonctionne entièrement hors ligne</CardDescription>
         </CardHeader>
         <CardContent className="text-ink-300 text-sm">
-          {installedBefore === null
+          {localStorageProbe.status === 'checking'
             ? 'Vérification de la base de données locale…'
-            : installedBefore
-              ? 'La base de données locale est accessible — session déjà ouverte auparavant.'
-              : 'La base de données locale est accessible — c’est la première ouverture des réglages.'}
+            : localStorageProbe.status === 'error'
+              ? 'La base de données locale est inaccessible.'
+              : localStorageProbe.openedBefore
+                ? 'La base de données locale est accessible — session déjà ouverte auparavant.'
+                : 'La base de données locale est accessible — c’est la première ouverture des réglages.'}
         </CardContent>
       </Card>
 
