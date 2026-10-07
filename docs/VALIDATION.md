@@ -67,6 +67,7 @@ contrôles visibles et non masqués, cibles tactiles ≥ 44 px (écrans tactiles
 - `shared-link.spec.ts` : ouverture à froid d'un lien `?p=lat,lng&n=nom` sous `/CTR-HUNTING/`, lien invalide, tentative d'injection, aucun enregistrement automatique.
 - `guidance.spec.ts` : « Aller à » (distance, relèvement, ligne, mise à jour, arrêt), GPS refusé / ancien, hors ligne, aucune trace créée, coexistence avec un suivi explicitement démarré, mise en page aux 7 tailles et rotation.
 - `territories.spec.ts` : créer un territoire, y classer un waypoint (position inchangée), filtrer la liste et la carte (indicateur « masqué par le filtre », persistance après rechargement), supprimer avec confirmation (contenu déplacé vers « Non classé », rien de supprimé) ; page Points de repère avec gestionnaire ouvert aux 7 tailles + 568×320 : pas de défilement horizontal, cibles ≥ 44 px.
+- `measure.spec.ts` : outils de mesure (3 points → aire comparée à un calcul sphérique indépendant par vecteurs, annuler, terminer, effacer, rien en base ; distance : 3 libellés, 3D seulement avec élévation réelle du MNT simulé à 0 m ; pause quand un point de repère est placé) et panneau compact aux 7 tailles + 568×320. Le MNT est simulé : l'altitude réelle d'un terrain n'est pas validée ici.
 - `screenshots-panels.spec.ts` : captures des nouveaux panneaux (uniquement avec `E2E_SCREENSHOTS=1`).
 
 ## Régénérer les captures « après »

@@ -7,6 +7,7 @@ export type {
   MapInstance,
   CreateMapOptions,
   DownloadAreaProgress,
+  MeasureShape,
 } from './MapProvider'
 
 const mapTilerApiKey = import.meta.env.VITE_MAP_TILES_API_KEY as string | undefined

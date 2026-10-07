@@ -1,5 +1,6 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { Coordinate } from '@/types'
+import type { MeasureShape } from './MapProvider'
 
 export const TRACK_PREVIEW_SOURCE_ID = 'track-preview'
 export const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
@@ -84,6 +85,57 @@ export function measurePathGeoJson(points: Coordinate[] | null) {
   }
 }
 
+/** Teal: distinct from the elevation-profile path (amber), the track
+ * preview (blue) and the guidance line (fuchsia). */
+export const MEASURE_SHAPE_COLOR = '#14b8a6'
+export const MEASURE_SHAPE_SOURCE_ID = 'measure-shape'
+export const MEASURE_SHAPE_FILL_LAYER_ID = 'measure-shape-fill'
+export const MEASURE_SHAPE_LINE_LAYER_ID = 'measure-shape-line'
+export const MEASURE_SHAPE_POINT_LAYER_ID = 'measure-shape-points'
+
+/** Polygon fill (closed, 3+ points), outline LineString (open: through the
+ * points; closed: back to the first one) and one Point per vertex. Fewer
+ * points than a geometry needs simply yield fewer features, never an invalid
+ * geometry. */
+export function measureShapeGeoJson(shape: MeasureShape | null) {
+  const points = shape?.points ?? []
+  const ring = points.map((p) => [p.lng, p.lat])
+  const closed = Boolean(shape?.closed)
+  const features: {
+    type: 'Feature'
+    properties: Record<string, never>
+    geometry:
+      | { type: 'Polygon'; coordinates: number[][][] }
+      | { type: 'LineString'; coordinates: number[][] }
+      | { type: 'Point'; coordinates: number[] }
+  }[] = []
+  if (closed && points.length >= 3) {
+    features.push({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Polygon', coordinates: [[...ring, ring[0]]] },
+    })
+  }
+  if (points.length >= 2) {
+    features.push({
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: closed && points.length >= 3 ? [...ring, ring[0]] : ring,
+      },
+    })
+  }
+  for (const coordinates of ring) {
+    features.push({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Point', coordinates },
+    })
+  }
+  return { type: 'FeatureCollection' as const, features }
+}
+
 /** Owns the GeoJSON line/point overlays drawn above the base style — the
  * live GPS track preview, the elevation-profile measurement path (Phase 4)
  * and the dashed "Aller à" guidance line, each with its own source/layers so drawing a measurement
@@ -94,6 +146,7 @@ export function createPathLayers(map: MapLibreMap) {
   let trackPreviewPoints: Coordinate[] | null = null
   let measurePathPoints: Coordinate[] | null = null
   let guidanceLine: readonly [Coordinate, Coordinate] | null = null
+  let measureShape: MeasureShape | null = null
 
   return {
     /** Call on every `style.load`. */
@@ -133,6 +186,37 @@ export function createPathLayers(map: MapLibreMap) {
           'circle-stroke-color': '#ffffff',
         },
       })
+      map.addSource(MEASURE_SHAPE_SOURCE_ID, {
+        type: 'geojson',
+        data: measureShapeGeoJson(measureShape),
+      })
+      map.addLayer({
+        id: MEASURE_SHAPE_FILL_LAYER_ID,
+        type: 'fill',
+        source: MEASURE_SHAPE_SOURCE_ID,
+        filter: ['==', ['geometry-type'], 'Polygon'],
+        paint: { 'fill-color': MEASURE_SHAPE_COLOR, 'fill-opacity': 0.25 },
+      })
+      map.addLayer({
+        id: MEASURE_SHAPE_LINE_LAYER_ID,
+        type: 'line',
+        source: MEASURE_SHAPE_SOURCE_ID,
+        filter: ['==', ['geometry-type'], 'LineString'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': MEASURE_SHAPE_COLOR, 'line-width': 3 },
+      })
+      map.addLayer({
+        id: MEASURE_SHAPE_POINT_LAYER_ID,
+        type: 'circle',
+        source: MEASURE_SHAPE_SOURCE_ID,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+          'circle-radius': 6,
+          'circle-color': MEASURE_SHAPE_COLOR,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      })
       map.addSource(GUIDANCE_SOURCE_ID, {
         type: 'geojson',
         data: guidanceLineGeoJson(guidanceLine),
@@ -165,6 +249,11 @@ export function createPathLayers(map: MapLibreMap) {
       guidanceLine = line
       const source = map.getSource(GUIDANCE_SOURCE_ID) as GeoJSONSource | undefined
       source?.setData(guidanceLineGeoJson(line))
+    },
+    setMeasureShape(shape: MeasureShape | null) {
+      measureShape = shape
+      const source = map.getSource(MEASURE_SHAPE_SOURCE_ID) as GeoJSONSource | undefined
+      source?.setData(measureShapeGeoJson(shape))
     },
     setMeasurePath(points: Coordinate[] | null) {
       measurePathPoints = points
