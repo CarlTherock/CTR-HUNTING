@@ -15,6 +15,9 @@ const base = process.env.GITHUB_PAGES === 'true' ? '/CTR-HUNTING/' : '/'
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  // Local `vite preview` only (never part of the deployed site): lets a Cloudflare
+  // quick tunnel reach it so a branch can be tried on a phone over HTTPS.
+  preview: { allowedHosts: ['.trycloudflare.com'] },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
