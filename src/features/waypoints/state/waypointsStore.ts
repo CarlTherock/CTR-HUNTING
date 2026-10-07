@@ -7,6 +7,7 @@ import {
   updateWaypoint as updateWaypointRecord,
 } from '@/database/waypointsRepository'
 import type { UpdateWaypointInput } from '@/database/waypointsRepository'
+import { onTerritoryDeleted } from '@/features/territories/state/territoriesStore'
 import type { Coordinate, Waypoint, WaypointCategory, WaypointColor } from '@/types'
 
 /** Metadata a user can set on a waypoint — never its position. */
@@ -16,6 +17,8 @@ export interface WaypointFields {
   color: WaypointColor
   notes: string
   optimalWindDirections: number[]
+  /** Folder to file the waypoint in; `undefined` = « Non classé ». */
+  territoryId?: string
 }
 
 /** A waypoint being created: it exists only in memory until the user saves.
@@ -127,6 +130,7 @@ export const useWaypointsStore = create<WaypointsState>((set, get) => ({
         color: fields.color,
         notes: fields.notes,
         optimalWindDirections: fields.optimalWindDirections,
+        territoryId: fields.territoryId,
       })
       nextDefaultNumber++
       set((state) => ({
@@ -170,3 +174,17 @@ export const useWaypointsStore = create<WaypointsState>((set, get) => ({
     }))
   },
 }))
+
+// A deleted territory's waypoints were moved to « Non classé » in the
+// database; mirror that in memory (coordinates and everything else are
+// untouched).
+onTerritoryDeleted((territoryId) => {
+  useWaypointsStore.setState((state) => ({
+    waypoints: state.waypoints.map((w) => {
+      if (w.territoryId !== territoryId) return w
+      const released = { ...w }
+      delete released.territoryId
+      return released
+    }),
+  }))
+})

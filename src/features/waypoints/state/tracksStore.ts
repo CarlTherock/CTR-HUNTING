@@ -5,6 +5,10 @@ import {
   listTracks,
   updateTrack as updateTrackRecord,
 } from '@/database/tracksRepository'
+import {
+  getActiveTerritoryId,
+  onTerritoryDeleted,
+} from '@/features/territories/state/territoriesStore'
 import { haversineMeters, totalDistanceMeters } from '@/utils/geo'
 import type { Coordinate, Track, TrackPoint } from '@/types'
 
@@ -40,6 +44,9 @@ interface TracksState {
   deleteTrack: (id: string) => Promise<void>
   /** Renames a track. Returns `false` (and changes nothing) for an empty name. */
   renameTrack: (id: string, name: string) => Promise<boolean>
+  /** Files a track in a territory (`undefined` = « Non classé »). Only the
+   * folder changes; points and times are untouched. */
+  setTerritory: (id: string, territoryId: string | undefined) => Promise<void>
   /** Continues recording into a track that was cut short (app closed, phone
    * locked, crash). The straight line across the gap is NOT real movement. */
   resumeInterrupted: (id: string) => void
@@ -119,6 +126,8 @@ export const useTracksStore = create<TracksState>((set, get) => {
         const track = await createTrack({
           name: `Trace ${nextDefaultNumber++}`,
           startedAt,
+          // New tracks go in the territory the user is working in, if any.
+          territoryId: getActiveTerritoryId(),
         })
         set((state) => ({
           status: 'recording',
@@ -213,6 +222,19 @@ export const useTracksStore = create<TracksState>((set, get) => {
       return true
     },
 
+    setTerritory: async (id, territoryId) => {
+      // `undefined` removes the field in Dexie (back to « Non classé »).
+      await updateTrackRecord(id, { territoryId })
+      set((state) => ({
+        tracks: state.tracks.map((t) => {
+          if (t.id !== id) return t
+          const updated = { ...t, territoryId }
+          if (territoryId === undefined) delete updated.territoryId
+          return updated
+        }),
+      }))
+    },
+
     resumeInterrupted: (id) => {
       const { status, tracks } = get()
       const track = tracks.find((t) => t.id === id)
@@ -245,4 +267,17 @@ export const useTracksStore = create<TracksState>((set, get) => {
       if (get().recordingId) await persistCurrent()
     },
   }
+})
+
+// A deleted territory's tracks were moved to « Non classé » in the database;
+// mirror that in memory without touching the recording state.
+onTerritoryDeleted((territoryId) => {
+  useTracksStore.setState((state) => ({
+    tracks: state.tracks.map((t) => {
+      if (t.territoryId !== territoryId) return t
+      const released = { ...t }
+      delete released.territoryId
+      return released
+    }),
+  }))
 })
