@@ -1,6 +1,7 @@
 import type {
   AnalysisHeatmapCell,
   Coordinate,
+  DownloadSummary,
   MapBaseLayerId,
   MapOverlayId,
   MapViewState,
@@ -12,9 +13,15 @@ import type {
 import type { LngLatBounds } from '@/utils/tiles'
 
 export interface DownloadAreaProgress {
+  /** Tiles available for the area after this run: fetched now + already
+   * cached (`summary.succeeded + summary.reused`). */
   tilesDownloaded: number
+  /** Bytes fetched from the network during this run (reused tiles: 0). */
   bytesDownloaded: number
+  /** Tiles this run fetched itself — the ones the area owns for deletion. */
   tileUrls: string[]
+  /** Honest ledger of the run: requests, retries, failures, sweep steps. */
+  summary: DownloadSummary
 }
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
@@ -54,8 +61,12 @@ export interface MapInstance {
    * issues its own real tile requests — this never has to know or guess a
    * vendor's tile URL template) while a request interceptor captures and
    * caches whatever tiles that triggers. `onProgress` fires after each
-   * newly-cached tile with the running totals; `signal` cancels the sweep
-   * (already-cached tiles are kept, not rolled back).
+   * change of the ledger (tile fetched / reused / failed / absent / retried,
+   * sweep step done or timed out) with the running totals; `signal` cancels
+   * the sweep (already-cached tiles are kept, not rolled back).
+   * The result's `summary` is what decides whether the download was complete:
+   * a step that never reaches `idle` or a request that fails is recorded,
+   * never skipped silently. Rejects if the map style is not loaded.
    */
   downloadArea(
     bounds: LngLatBounds,

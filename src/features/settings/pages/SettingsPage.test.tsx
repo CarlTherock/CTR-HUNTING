@@ -7,6 +7,7 @@ import { trackUnhandledRejections } from '@/test/unhandledRejections'
 import { db } from '@/database/db'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
+import { summaryFixture } from '@/test/downloadFixtures'
 
 // jsdom has no Cache Storage API — `deleteArea` (via tileCache.ts)
 // touches it to remove a deleted area's tiles, which is exercised for
@@ -95,25 +96,101 @@ describe('SettingsPage', () => {
   })
 
   it('excludes in-progress downloads from the list (they show on the Map page instead)', async () => {
+    useOfflineStore.setState({
+      loaded: true,
+      areas: [
+        {
+          id: 'a1',
+          name: 'Still downloading',
+          bounds: BOUNDS,
+          minZoom: 12,
+          maxZoom: 14,
+          baseLayer: 'outdoor',
+          status: 'downloading',
+          tileCount: 40,
+          tilesDownloaded: 5,
+          bytesDownloaded: 50_000,
+          tileUrls: [],
+          createdAt: '2026-08-16T00:00:00.000Z',
+        },
+      ],
+    })
+    render(<SettingsPage />)
+
+    expect(screen.getByText('Aucune zone hors ligne pour le moment')).toBeInTheDocument()
+    expect(screen.queryByText('Still downloading')).not.toBeInTheDocument()
+  })
+
+  it('shows a legacy "complete" area as unverified, never as simply ready', async () => {
     await db.offlineAreas.add({
-      id: 'a1',
-      name: 'Still downloading',
+      id: 'old',
+      name: 'Ancienne zone',
       bounds: BOUNDS,
       minZoom: 12,
       maxZoom: 14,
       baseLayer: 'outdoor',
-      status: 'downloading',
+      status: 'complete',
       tileCount: 40,
-      tilesDownloaded: 5,
-      bytesDownloaded: 50_000,
+      tilesDownloaded: 40,
+      bytesDownloaded: 400_000,
+      tileUrls: [],
+      createdAt: '2026-08-16T00:00:00.000Z',
+    })
+    await db.offlineAreas.add({
+      id: 'old2',
+      name: 'Zone annulée',
+      bounds: BOUNDS,
+      minZoom: 12,
+      maxZoom: 14,
+      baseLayer: 'outdoor',
+      status: 'cancelled',
+      tileCount: 40,
+      tilesDownloaded: 3,
+      bytesDownloaded: 3_000,
       tileUrls: [],
       createdAt: '2026-08-16T00:00:00.000Z',
     })
 
     await renderSettled()
 
-    expect(screen.getByText('Aucune zone hors ligne pour le moment')).toBeInTheDocument()
-    expect(screen.queryByText('Still downloading')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Terminée (ancienne version, non vérifiée)'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Interrompue')).toBeInTheDocument()
+  })
+
+  it('shows request counts and failures of an incomplete area, plus the retry hint', async () => {
+    await db.offlineAreas.add({
+      id: 'inc',
+      name: 'Zone partielle',
+      bounds: BOUNDS,
+      minZoom: 12,
+      maxZoom: 13,
+      baseLayer: 'outdoor',
+      status: 'incomplete',
+      tileCount: 10,
+      tilesDownloaded: 7,
+      bytesDownloaded: 7_000,
+      tileUrls: [],
+      createdAt: '2026-08-16T00:00:00.000Z',
+      summary: summaryFixture({
+        requested: 10,
+        succeeded: 7,
+        failed: 3,
+        retried: 6,
+        failures: [{ url: 'https://tiles.test/12/1/2.pbf', reason: 'HTTP 503' }],
+      }),
+    })
+
+    await renderSettled()
+
+    expect(screen.getByText('Incomplète')).toBeInTheDocument()
+    expect(screen.getByText(/7 requêtes réussies · 3 échecs/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Échec · HTTP 503 · https:\/\/tiles\.test\/12\/1\/2\.pbf/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Pour réessayer/)).toBeInTheDocument()
+    expect(screen.queryByText(/prête/i)).not.toBeInTheDocument()
   })
 
   it('deleting an area removes it from the list and from Dexie', async () => {

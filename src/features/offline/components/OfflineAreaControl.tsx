@@ -3,9 +3,18 @@ import { ToolSlot, ToolTrigger } from '@/components/map-tools'
 import { Button } from '@/components/ui'
 import { formatBytes } from '@/utils/format'
 import { tileCountForBounds } from '@/utils/tiles'
+import { baseLayerLabel } from '@/features/layers/baseLayerOptions'
+import {
+  AREA_STATUS_LABEL,
+  OFFLINE_DOWNLOAD_EXPLANATION,
+  canRetryArea,
+  describeRequests,
+  describeSteps,
+  effectiveAreaStatus,
+} from '../areaStatus'
 import { useOfflineStore } from '../state/offlineStore'
 import type { MapInstance } from '@/services/map'
-import type { MapBaseLayerId } from '@/types'
+import type { MapBaseLayerId, OfflineArea } from '@/types'
 
 export interface OfflineAreaControlProps {
   /** A getter, not the instance directly — the map may not exist yet on
@@ -39,6 +48,9 @@ export function OfflineAreaControl({
   const startDownload = useOfflineStore((state) => state.startDownload)
   const cancelDownload = useOfflineStore((state) => state.cancelDownload)
   const refreshArea = useOfflineStore((state) => state.refreshArea)
+  const retryArea = useOfflineStore((state) => state.retryArea)
+  const lastResultAreaId = useOfflineStore((state) => state.lastResultAreaId)
+  const dismissResult = useOfflineStore((state) => state.dismissResult)
 
   if (mode === 'idle') {
     // Areas already downloaded for the layer currently on screen — offered
@@ -49,15 +61,96 @@ export function OfflineAreaControl({
       (a) => a.baseLayer === baseLayer && a.status === 'complete',
     )
 
+    // Same base layer only: the sweep caches the tiles of the ACTIVE layer.
+    const retryable = areas.filter((a) => a.baseLayer === baseLayer && canRetryArea(a))
+    const resultArea = areas.find((a) => a.id === lastResultAreaId)
+    const retry = (area: OfflineArea) => {
+      const map = getMapInstance()
+      if (map) void retryArea(map, area).catch(() => undefined)
+    }
+
     return (
       <>
+        {resultArea && (
+          <div
+            role="status"
+            className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+          >
+            <div className="border-surface-600 bg-surface-900 text-ink-100 w-full max-w-sm rounded-lg border p-3 shadow-2xl">
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold">
+                  « {resultArea.name} » :{' '}
+                  {AREA_STATUS_LABEL[effectiveAreaStatus(resultArea)]}
+                </p>
+                <button
+                  type="button"
+                  onClick={dismissResult}
+                  aria-label="Fermer le résultat du téléchargement"
+                  className="text-ink-500 hover:text-ink-100 flex shrink-0 items-center justify-center pointer-coarse:size-11"
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+              {resultArea.summary && (
+                <p className="text-ink-300 text-xs">
+                  {describeRequests(resultArea.summary)}
+                  <br />
+                  {describeSteps(resultArea.summary)}
+                </p>
+              )}
+              {resultArea.lastError && (
+                <p className="text-status-danger text-xs">{resultArea.lastError}</p>
+              )}
+              {effectiveAreaStatus(resultArea) === 'complete' && (
+                <p className="text-ink-500 mt-1 text-xs">
+                  Toutes les requêtes du balayage ont réussi (fond «{' '}
+                  {baseLayerLabel(resultArea.baseLayer)} », zoom {resultArea.minZoom}–
+                  {resultArea.maxZoom}). Ce n’est pas une garantie de couverture tuile par
+                  tuile.
+                </p>
+              )}
+              {canRetryArea(resultArea) && resultArea.baseLayer === baseLayer && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={() => {
+                    dismissResult()
+                    retry(resultArea)
+                  }}
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  Réessayer le téléchargement
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {retryable.map((area) => (
+          <ToolSlot key={area.id} order={22}>
+            <button
+              type="button"
+              onClick={() => retry(area)}
+              title={`Réessayer le téléchargement de « ${area.name} »`}
+              className="border-surface-600 text-ink-300 hover:bg-surface-800 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm transition-colors"
+            >
+              <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
+              <span className="min-w-0">
+                <span className="block truncate">Réessayer le téléchargement</span>
+                <span className="text-ink-500 block truncate text-xs">
+                  « {area.name} » · {AREA_STATUS_LABEL[effectiveAreaStatus(area)]}
+                </span>
+              </span>
+            </button>
+          </ToolSlot>
+        ))}
         {refreshable.map((area) => (
           <ToolSlot key={area.id} order={21}>
             <button
               type="button"
               onClick={() => {
                 const map = getMapInstance()
-                if (map) void refreshArea(map, area)
+                if (map) void refreshArea(map, area).catch(() => undefined)
               }}
               title={`Actualiser « ${area.name} »`}
               className="border-surface-600 text-ink-300 hover:bg-surface-800 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm transition-colors"
@@ -100,9 +193,11 @@ export function OfflineAreaControl({
             </button>
           </div>
 
-          <p className="text-ink-500 mb-3 text-xs">
-            Télécharge la zone actuellement affichée pour l’utiliser hors ligne.
+          <p className="text-ink-500 mb-2 text-xs">
+            Télécharge la zone actuellement affichée pour l’utiliser hors ligne. Fond de
+            carte : « {baseLayerLabel(baseLayer)} ».
           </p>
+          <p className="text-ink-500 mb-3 text-xs">{OFFLINE_DOWNLOAD_EXPLANATION}</p>
 
           <div className="mb-3 flex items-center justify-between">
             <span className="text-ink-500 text-xs font-medium">
@@ -143,7 +238,7 @@ export function OfflineAreaControl({
             className="w-full"
             onClick={() => {
               const map = getMapInstance()
-              if (map) void startDownload(map, baseLayer)
+              if (map) void startDownload(map, baseLayer).catch(() => undefined)
             }}
           >
             <Download size={14} aria-hidden="true" />
@@ -159,8 +254,18 @@ export function OfflineAreaControl({
       <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="border-surface-600 bg-surface-900/95 text-ink-100 flex w-full max-w-sm items-center justify-between gap-3 rounded-lg border p-3 shadow-2xl">
           <span className="text-sm">
-            Téléchargement… {downloadProgress?.tilesDownloaded ?? 0} tuiles (
-            {formatBytes(downloadProgress?.bytesDownloaded ?? 0)})
+            Téléchargement…{' '}
+            {downloadProgress
+              ? describeRequests(downloadProgress.summary)
+              : '0 requête réussie · 0 échec'}{' '}
+            ({formatBytes(downloadProgress?.bytesDownloaded ?? 0)})
+            {downloadProgress && downloadProgress.summary.stepsTotal > 0 && (
+              <span className="text-ink-500 block text-xs">
+                {describeSteps(downloadProgress.summary)}
+                {downloadProgress.summary.retried > 0 &&
+                  ` · ${downloadProgress.summary.retried} nouvelle(s) tentative(s)`}
+              </span>
+            )}
           </span>
           <button
             type="button"

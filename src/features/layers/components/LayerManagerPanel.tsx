@@ -5,22 +5,7 @@ import { availableBaseLayers } from '@/services/map'
 import type { MapBaseLayerOption, MapOverlayOption } from '@/types'
 import { cn } from '@/utils/cn'
 import { useLayersStore } from '../state/layersStore'
-
-const MAPTILER_LAYERS: MapBaseLayerOption[] = [
-  { id: 'outdoor', label: 'Plein air (topo)' },
-  { id: 'satellite', label: 'Satellite' },
-]
-
-const ESRI_LAYERS: MapBaseLayerOption[] = [
-  { id: 'esri-topographic', label: 'Topographique' },
-  { id: 'esri-imagery', label: 'Imagerie hybride' },
-  { id: 'esri-imagery-standard', label: 'Imagerie' },
-  { id: 'esri-terrain', label: 'Relief' },
-  { id: 'esri-hillshade', label: 'Ombrage du relief' },
-  { id: 'esri-light-gray', label: 'Gris clair' },
-  { id: 'esri-dark-gray', label: 'Gris foncé' },
-  { id: 'esri-navigation', label: 'Navigation' },
-]
+import { ESRI_LAYERS, MAPTILER_LAYERS } from '../baseLayerOptions'
 
 const OVERLAYS: MapOverlayOption[] = [
   { id: 'trails', label: 'Sentiers' },

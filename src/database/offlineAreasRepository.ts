@@ -14,7 +14,15 @@ export interface CreateOfflineAreaInput {
 export type UpdateOfflineAreaInput = Partial<
   Pick<
     OfflineArea,
-    'status' | 'tilesDownloaded' | 'bytesDownloaded' | 'tileUrls' | 'completedAt'
+    | 'status'
+    | 'tilesDownloaded'
+    | 'bytesDownloaded'
+    | 'tileUrls'
+    | 'completedAt'
+    | 'summary'
+    | 'attempts'
+    | 'lastAttemptAt'
+    | 'lastError'
   >
 >
 

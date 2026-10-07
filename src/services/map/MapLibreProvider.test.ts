@@ -160,6 +160,9 @@ const {
       return this.elevationByLngLat[`${lng},${lat}`] ?? null
     }
     jumpToCalls: unknown[] = []
+    isStyleLoaded() {
+      return true
+    }
     once(_event: string, handler: (...args: never[]) => void) {
       // Resolves asynchronously (not synchronously) so callers awaiting
       // a promise built from this — like `waitForIdle` — behave like

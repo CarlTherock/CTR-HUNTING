@@ -33,6 +33,13 @@ export interface MockMapBackend {
   /** Makes the style of one layer kind (e.g. 'esri-imagery') answer HTTP
    * 403, as an invalid key would. `null` restores normal answers. */
   failStyle(kind: string | null): void
+  /** Makes tile requests answer HTTP `status` (default 503) while active:
+   * a predicate chooses which tiles fail, a number fails the next N tile
+   * requests, `null` restores normal answers. Failed requests are counted
+   * separately from `served()`. */
+  failTiles(spec: ((url: URL) => boolean) | number | null, status?: number): void
+  /** Tile requests refused through `failTiles` since the last reset. */
+  failedTiles(): number
   /** Style kinds requested (in order) since the last reset. */
   styleRequests(): string[]
   /** Requests to hosts the app was not expected to call. */
@@ -45,12 +52,15 @@ const STYLE_HOST_ESRI = 'basemapstyles-api.arcgis.com'
 const TILE_HOST = 'tiles.e2e.test'
 const SPRITE_HOST = 'sprites.e2e.test'
 const GLYPH_HOST = 'glyphs.e2e.test'
+// Real host of the terrain DEM (src/services/map/terrain.ts); always loaded.
+const DEM_HOST = 's3.amazonaws.com'
 const MOCKED_HOSTS = new Set([
   STYLE_HOST_MAPTILER,
   STYLE_HOST_ESRI,
   TILE_HOST,
   SPRITE_HOST,
   GLYPH_HOST,
+  DEM_HOST,
 ])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 
@@ -107,6 +117,9 @@ export async function installMockMapBackend(
 ): Promise<MockMapBackend> {
   let online = true
   let failingStyle: string | null = null
+  let tileFailure: ((url: URL) => boolean) | null = null
+  let tileFailureStatus = 503
+  let failedTileCount = 0
   let counts: Record<MockCategory, number> = { style: 0, tile: 0, sprite: 0, glyph: 0 }
   let refusedCount = 0
   let styles: string[] = []
@@ -156,6 +169,11 @@ export async function installMockMapBackend(
         return
       }
       case TILE_HOST: {
+        if (tileFailure?.(url)) {
+          failedTileCount++
+          await route.fulfill({ status: tileFailureStatus, headers: cors, body: 'down' })
+          return
+        }
         counts.tile++
         const kind = url.pathname.split('/')[1] ?? 'default'
         await route.fulfill({
@@ -163,6 +181,17 @@ export async function installMockMapBackend(
           contentType: 'image/png',
           headers: cors,
           body: solidPng(256, 256, colorFor(kind)),
+        })
+        return
+      }
+      case DEM_HOST: {
+        // Terrarium-encoded DEM tile: R=128, G=0, B=0 decodes to 0 m.
+        counts.tile++
+        await route.fulfill({
+          status: 200,
+          contentType: 'image/png',
+          headers: cors,
+          body: solidPng(256, 256, [128, 0, 0]),
         })
         return
       }
@@ -209,6 +238,16 @@ export async function installMockMapBackend(
     failStyle(kind) {
       failingStyle = kind
     },
+    failTiles(spec, status = 503) {
+      tileFailureStatus = status
+      if (typeof spec === 'number') {
+        let remaining = spec
+        tileFailure = () => remaining-- > 0
+      } else {
+        tileFailure = spec
+      }
+    },
+    failedTiles: () => failedTileCount,
     served: () => ({ ...counts }),
     refused: () => refusedCount,
     styleRequests: () => [...styles],
@@ -216,6 +255,7 @@ export async function installMockMapBackend(
     reset() {
       counts = { style: 0, tile: 0, sprite: 0, glyph: 0 }
       refusedCount = 0
+      failedTileCount = 0
       styles = []
       unexpected = []
     },

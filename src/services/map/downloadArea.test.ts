@@ -25,7 +25,7 @@ describe('waitForIdle', () => {
     const { map, listeners } = fakeMap()
     const promise = waitForIdle(map, 5000)
     for (const handler of [...listeners]) handler()
-    await promise
+    expect(await promise).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -36,7 +36,7 @@ describe('waitForIdle', () => {
     expect(listeners.size).toBe(1)
 
     await vi.advanceTimersByTimeAsync(5000)
-    await promise
+    expect(await promise).toBe(false) // a timeout is never reported as idle
 
     expect(listeners.size).toBe(0)
   })

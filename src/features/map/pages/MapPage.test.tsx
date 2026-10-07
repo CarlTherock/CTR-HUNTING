@@ -16,6 +16,7 @@ import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { db } from '@/database/db'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
+import { progressFixture } from '@/test/downloadFixtures'
 
 // jsdom has no WebGL context, so MapLibre GL JS cannot run in tests — the
 // point of the MapProvider adapter is that feature code (and its tests)
@@ -38,11 +39,7 @@ const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const resize = vi.fn()
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
-const downloadArea = vi.fn().mockResolvedValue({
-  tilesDownloaded: 4,
-  bytesDownloaded: 40_000,
-  tileUrls: ['a', 'b', 'c', 'd'],
-})
+const downloadArea = vi.fn().mockResolvedValue(progressFixture())
 let lastCreateMapOptions: CreateMapOptions | undefined
 const createMap = vi.fn((options: CreateMapOptions) => {
   lastCreateMapOptions = options
@@ -833,7 +830,7 @@ describe('MapPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Lancer le téléchargement' }))
 
-    expect(downloadArea).toHaveBeenCalledOnce()
+    await vi.waitFor(() => expect(downloadArea).toHaveBeenCalledOnce())
     await vi.waitFor(() => {
       expect(useOfflineStore.getState().areas.at(-1)?.status).toBe('complete')
     })

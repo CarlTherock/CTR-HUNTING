@@ -112,4 +112,44 @@ test.describe('couche de départ', () => {
     expect(backend.styleRequests()).toContain('esri-imagery')
     expect(backend.styleRequests()).toContain('satellite')
   })
+
+  test('style hybride déjà en cache mais refusé (403) : le cache ne masque pas le repli sur Satellite', async ({
+    page,
+    backend,
+  }) => {
+    const canvas = page.locator('canvas.maplibregl-canvas')
+    const hybrid = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
+    const satellite = TILE_COLOR.satellite ?? [0, 0, 0]
+
+    // First visit: the hybrid style is fetched and cached locally.
+    await page.goto('map')
+    await expect
+      .poll(async () => colorsClose(await dominantColor(page, canvas), hybrid), {
+        timeout: 20_000,
+      })
+      .toBe(true)
+    const cached = await page.evaluate(async () => {
+      const keys = await caches.keys()
+      for (const key of keys) {
+        const requests = await (await caches.open(key)).keys()
+        if (requests.some((r) => /basemapstyles-api\.arcgis\.com/.test(r.url)))
+          return true
+      }
+      return false
+    })
+    expect(cached, 'le style hybride devait être en cache').toBe(true)
+
+    // The key is now refused; cold reload must fall back, not reuse the cache.
+    backend.reset()
+    backend.failStyle('esri-imagery')
+    await page.reload()
+    await expect(page.getByRole('status')).toContainText('repli sur « Satellite »')
+    await expect
+      .poll(async () => colorsClose(await dominantColor(page, canvas), satellite), {
+        timeout: 20_000,
+      })
+      .toBe(true)
+    expect(backend.styleRequests()).toContain('esri-imagery')
+    expect(backend.styleRequests()).toContain('satellite')
+  })
 })

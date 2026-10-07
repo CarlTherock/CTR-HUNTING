@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/database/db'
 import { useOfflineStore } from './offlineStore'
 import type { DownloadAreaProgress, MapInstance } from '@/services/map'
+import { deleteTiles } from '@/offline/tileCache'
+import { progressFixture, summaryFixture } from '@/test/downloadFixtures'
 
 vi.mock('@/offline/tileCache', () => ({
   deleteTiles: vi.fn().mockResolvedValue(undefined),
@@ -12,11 +14,7 @@ const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
 function fakeMapInstance(
   downloadArea: MapInstance['downloadArea'] = vi
     .fn()
-    .mockResolvedValue({
-      tilesDownloaded: 4,
-      bytesDownloaded: 40_000,
-      tileUrls: ['a', 'b', 'c', 'd'],
-    }),
+    .mockResolvedValue(progressFixture()),
 ): MapInstance {
   return {
     setView: vi.fn(),
@@ -50,6 +48,7 @@ const RESET_STATE = {
   selectedZoom: null,
   activeAreaId: null,
   downloadProgress: null,
+  lastResultAreaId: null,
 }
 
 afterEach(async () => {
@@ -137,12 +136,14 @@ describe('offlineStore', () => {
     const map = fakeMapInstance(
       vi.fn().mockImplementation((_b, _min, _max, onProgress) => {
         capturedOnProgress = onProgress
-        onProgress({ tilesDownloaded: 1, bytesDownloaded: 500, tileUrls: ['a'] })
-        return Promise.resolve({
+        const progress = progressFixture({
           tilesDownloaded: 1,
           bytesDownloaded: 500,
           tileUrls: ['a'],
+          summary: { requested: 1, succeeded: 1 },
         })
+        onProgress(progress)
+        return Promise.resolve(progress)
       }),
     )
     useOfflineStore.getState().startSelecting(BOUNDS, 12)
@@ -154,7 +155,7 @@ describe('offlineStore', () => {
     expect(persisted.tilesDownloaded).toBe(1)
   })
 
-  it('marks an area cancelled (not an error) when the download is aborted, and does not throw', async () => {
+  it('marks an area interrupted (not an error) when the download is aborted, and does not throw', async () => {
     const map = fakeMapInstance(
       vi.fn().mockRejectedValue(new DOMException('cancelled', 'AbortError')),
     )
@@ -165,7 +166,7 @@ describe('offlineStore', () => {
     ).resolves.toBeUndefined()
 
     const state = useOfflineStore.getState()
-    expect(state.areas[0].status).toBe('cancelled')
+    expect(state.areas[0].status).toBe('interrupted')
     expect(state.mode).toBe('idle')
   })
 
@@ -185,18 +186,22 @@ describe('offlineStore', () => {
     const map = fakeMapInstance(
       vi.fn().mockImplementation((_b, _min, _max, _onProgress, signal: AbortSignal) => {
         capturedSignal = signal
-        return new Promise(() => {
-          /* never resolves — cancellation is asserted directly on the signal */
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () =>
+            reject(new DOMException('cancelled', 'AbortError')),
+          )
         })
       }),
     )
     useOfflineStore.getState().startSelecting(BOUNDS, 12)
 
-    void useOfflineStore.getState().startDownload(map, 'outdoor')
+    const running = useOfflineStore.getState().startDownload(map, 'outdoor')
     await vi.waitFor(() => expect(capturedSignal).toBeDefined())
 
     useOfflineStore.getState().cancelDownload()
     expect(capturedSignal?.aborted).toBe(true)
+    await running
+    expect(useOfflineStore.getState().areas[0].status).toBe('interrupted')
   })
 
   it('refreshArea re-downloads an existing area using its own saved bounds/zoom, overwriting it in place', async () => {
@@ -207,13 +212,13 @@ describe('offlineStore', () => {
     const existingId = existing.id
 
     const refreshMap = fakeMapInstance(
-      vi
-        .fn()
-        .mockResolvedValue({
+      vi.fn().mockResolvedValue(
+        progressFixture({
           tilesDownloaded: 9,
           bytesDownloaded: 90_000,
           tileUrls: ['x', 'y'],
         }),
+      ),
     )
     await useOfflineStore.getState().refreshArea(refreshMap, existing)
 
@@ -228,7 +233,10 @@ describe('offlineStore', () => {
     expect(state.areas).toHaveLength(1) // overwritten, not duplicated
     expect(state.areas[0].id).toBe(existingId)
     expect(state.areas[0].tilesDownloaded).toBe(9)
-    expect(state.areas[0].bytesDownloaded).toBe(90_000)
+    // Bytes are cumulative: what earlier runs cached is still in the cache.
+    expect(state.areas[0].bytesDownloaded).toBe(130_000)
+    // tileUrls are merged (union), never replaced.
+    expect(state.areas[0].tileUrls.sort()).toEqual(['a', 'b', 'c', 'd', 'x', 'y'])
   })
 
   it('deleteArea removes the Dexie record and its tiles, and updates state', async () => {
@@ -241,5 +249,200 @@ describe('offlineStore', () => {
 
     expect(useOfflineStore.getState().areas).toEqual([])
     expect(await db.offlineAreas.get(id)).toBeUndefined()
+  })
+
+  describe('honest download status', () => {
+    async function download(result: DownloadAreaProgress | Error) {
+      const map = fakeMapInstance(
+        result instanceof Error
+          ? vi.fn().mockRejectedValue(result)
+          : vi.fn().mockResolvedValue(result),
+      )
+      useOfflineStore.getState().startSelecting(BOUNDS, 12)
+      await useOfflineStore
+        .getState()
+        .startDownload(map, 'outdoor')
+        .catch(() => undefined)
+      return map
+    }
+
+    it.each([
+      ['a failed request', { failed: 1, failures: [{ url: 'u', reason: 'timeout' }] }],
+      ['a timed-out step', { stepsCompleted: 1, stepsTimedOut: 1 }],
+      [
+        'an essential resource failure',
+        {
+          essentialFailures: [{ url: 'u', reason: 'HTTP 500' }],
+        },
+      ],
+      ['an unfinished sweep', { stepsCompleted: 1 }],
+      ['no tile at all', { succeeded: 0, reused: 0, requested: 0 }],
+    ])('never grants "complete" with %s', async (_label, summary) => {
+      await download(progressFixture({ summary }))
+      const [area] = useOfflineStore.getState().areas
+      expect(area.status).toBe('incomplete')
+      expect(area.completedAt).toBeUndefined()
+      expect((await db.offlineAreas.toArray())[0].status).toBe('incomplete')
+    })
+
+    it('absent tiles (404/204) and reused tiles do not block "complete"', async () => {
+      await download(
+        progressFixture({
+          summary: { succeeded: 0, reused: 3, absent: 2, absentUrls: ['x', 'y'] },
+        }),
+      )
+      expect(useOfflineStore.getState().areas[0].status).toBe('complete')
+    })
+
+    it('cancelling mid-sweep marks the area interrupted, keeps the partial ledger and deletes no tile', async () => {
+      const partial = progressFixture({
+        tilesDownloaded: 2,
+        tileUrls: ['t1', 't2'],
+        summary: { succeeded: 2, stepsCompleted: 1 },
+      })
+      const map = fakeMapInstance(
+        vi.fn().mockImplementation((_b, _min, _max, onProgress) => {
+          onProgress(partial)
+          return Promise.reject(new DOMException('cancelled', 'AbortError'))
+        }),
+      )
+      useOfflineStore.getState().startSelecting(BOUNDS, 12)
+      await useOfflineStore.getState().startDownload(map, 'outdoor')
+
+      const [area] = useOfflineStore.getState().areas
+      expect(area.status).toBe('interrupted')
+      expect(area.tileUrls).toEqual(['t1', 't2'])
+      expect(area.summary?.stepsCompleted).toBe(1)
+      expect((await db.offlineAreas.toArray())[0].tileUrls).toEqual(['t1', 't2'])
+      expect(deleteTiles).not.toHaveBeenCalled()
+    })
+
+    it('an exception marks the area "error" with its message, keeping tiles', async () => {
+      await download(new Error('Le style de la carte n’est pas chargé'))
+      const [area] = useOfflineStore.getState().areas
+      expect(area.status).toBe('error')
+      expect(area.lastError).toMatch(/style/)
+      expect(deleteTiles).not.toHaveBeenCalled()
+    })
+
+    it('retryArea resumes the SAME record: attempts counted, tileUrls unioned, completes once failures are gone', async () => {
+      const first = progressFixture({
+        tilesDownloaded: 3,
+        bytesDownloaded: 30_000,
+        tileUrls: ['t1', 't2', 't3'],
+        summary: {
+          requested: 4,
+          succeeded: 3,
+          failed: 1,
+          failures: [{ url: 'https://x/t4', reason: 'HTTP 503' }],
+        },
+      })
+      await download(first)
+      const incomplete = useOfflineStore.getState().areas[0]
+      expect(incomplete.status).toBe('incomplete')
+      expect(incomplete.attempts).toBe(1)
+
+      // Second run: t1..t3 come from the cache (reused), only t4 is fetched.
+      const retryMap = fakeMapInstance(
+        vi.fn().mockResolvedValue(
+          progressFixture({
+            tilesDownloaded: 4,
+            bytesDownloaded: 10_000,
+            tileUrls: ['t4'],
+            summary: { requested: 4, succeeded: 1, reused: 3 },
+          }),
+        ),
+      )
+      await useOfflineStore.getState().retryArea(retryMap, incomplete)
+
+      const state = useOfflineStore.getState()
+      expect(state.areas).toHaveLength(1)
+      const [area] = state.areas
+      expect(area.id).toBe(incomplete.id)
+      expect(area.status).toBe('complete')
+      expect(area.attempts).toBe(2)
+      expect(area.lastAttemptAt).toBeDefined()
+      expect(area.tileUrls.sort()).toEqual(['t1', 't2', 't3', 't4'])
+      expect(area.bytesDownloaded).toBe(40_000)
+      expect(area.tilesDownloaded).toBe(4)
+      expect(area.summary?.reused).toBe(3)
+      expect((await db.offlineAreas.toArray())[0].attempts).toBe(2)
+      expect(state.lastResultAreaId).toBe(incomplete.id)
+    })
+
+    it('refuses to start a second download while one is running', async () => {
+      let release: (p: DownloadAreaProgress) => void = () => undefined
+      const slow = fakeMapInstance(
+        vi.fn().mockReturnValue(new Promise<DownloadAreaProgress>((r) => (release = r))),
+      )
+      useOfflineStore.getState().startSelecting(BOUNDS, 12)
+      const running = useOfflineStore.getState().startDownload(slow, 'outdoor')
+      await vi.waitFor(() => expect(slow.downloadArea).toHaveBeenCalled())
+
+      const other = fakeMapInstance()
+      await useOfflineStore
+        .getState()
+        .retryArea(other, useOfflineStore.getState().areas[0])
+      expect(other.downloadArea).not.toHaveBeenCalled()
+
+      release(progressFixture())
+      await running
+    })
+  })
+
+  describe('load() recovery', () => {
+    const base = {
+      bounds: BOUNDS,
+      minZoom: 10,
+      maxZoom: 12,
+      baseLayer: 'outdoor' as const,
+      tileCount: 10,
+      tilesDownloaded: 2,
+      bytesDownloaded: 1000,
+      tileUrls: ['kept'],
+      createdAt: '2026-08-16T00:00:00.000Z',
+    }
+
+    it('a record stuck in "downloading" with no active download becomes "interrupted", persisted, tiles untouched', async () => {
+      await db.offlineAreas.add({
+        ...base,
+        id: 'stuck',
+        name: 'Stuck',
+        status: 'downloading',
+      })
+      await db.offlineAreas.add({
+        ...base,
+        id: 'ok',
+        name: 'Fine',
+        status: 'complete',
+        summary: summaryFixture(),
+      })
+
+      await useOfflineStore.getState().load()
+
+      const byId = Object.fromEntries(
+        useOfflineStore.getState().areas.map((a) => [a.id, a.status]),
+      )
+      expect(byId).toEqual({ stuck: 'interrupted', ok: 'complete' })
+      expect((await db.offlineAreas.get('stuck'))?.status).toBe('interrupted')
+      expect((await db.offlineAreas.get('stuck'))?.tileUrls).toEqual(['kept'])
+      expect(deleteTiles).not.toHaveBeenCalled()
+    })
+
+    it('does not touch a "downloading" record while a download is really running', async () => {
+      let release: (p: DownloadAreaProgress) => void = () => undefined
+      const slow = fakeMapInstance(
+        vi.fn().mockReturnValue(new Promise<DownloadAreaProgress>((r) => (release = r))),
+      )
+      useOfflineStore.getState().startSelecting(BOUNDS, 12)
+      const running = useOfflineStore.getState().startDownload(slow, 'outdoor')
+      await vi.waitFor(() => expect(slow.downloadArea).toHaveBeenCalled())
+
+      await useOfflineStore.getState().load()
+      expect(useOfflineStore.getState().areas[0].status).toBe('downloading')
+
+      release(progressFixture())
+      await running
+    })
   })
 })

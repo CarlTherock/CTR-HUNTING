@@ -16,8 +16,30 @@ import { useLocalStorageProbe } from '../state/useLocalStorageProbe'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { formatBytes } from '@/utils/format'
+import { baseLayerLabel } from '@/features/layers/baseLayerOptions'
+import {
+  AREA_STATUS_LABEL,
+  OFFLINE_DOWNLOAD_EXPLANATION,
+  canRetryArea,
+  describeRequests,
+  describeSteps,
+  effectiveAreaStatus,
+  type EffectiveAreaStatus,
+} from '@/features/offline/areaStatus'
 
 const APP_VERSION = '0.1.0'
+
+const STATUS_BADGE_VARIANT: Record<
+  EffectiveAreaStatus,
+  'success' | 'warning' | 'danger' | 'neutral'
+> = {
+  downloading: 'neutral',
+  complete: 'success',
+  'complete-unverified': 'neutral',
+  incomplete: 'warning',
+  interrupted: 'warning',
+  error: 'danger',
+}
 
 export function SettingsPage() {
   const isOnline = useOnlineStatus()
@@ -98,6 +120,7 @@ export function SettingsPage() {
             Téléchargées depuis la page Carte — stockées sur cet appareil seulement, et
             non dans un compte en ligne
           </CardDescription>
+          <p className="text-ink-500 mt-2 text-xs">{OFFLINE_DOWNLOAD_EXPLANATION}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {storageUsage && (
@@ -121,21 +144,64 @@ export function SettingsPage() {
                   <div className="min-w-0">
                     <span className="text-ink-100 block truncate text-sm font-medium">
                       {area.name}
-                      {area.status === 'error' && (
-                        <span className="text-status-danger ml-2 text-xs font-normal">
-                          Échec
-                        </span>
-                      )}
-                      {area.status === 'cancelled' && (
-                        <span className="text-ink-500 ml-2 text-xs font-normal">
-                          Annulé
-                        </span>
-                      )}
                     </span>
-                    <span className="text-ink-500 block truncate text-xs">
-                      {area.tilesDownloaded} tuiles · {formatBytes(area.bytesDownloaded)}{' '}
-                      · zoom {area.minZoom}–{area.maxZoom}
+                    <Badge variant={STATUS_BADGE_VARIANT[effectiveAreaStatus(area)]}>
+                      {AREA_STATUS_LABEL[effectiveAreaStatus(area)]}
+                    </Badge>
+                    <span className="text-ink-500 mt-1 block text-xs">
+                      {area.summary
+                        ? `${area.tilesDownloaded} tuiles disponibles · `
+                        : `${area.tilesDownloaded} tuiles · `}
+                      {formatBytes(area.bytesDownloaded)} · zoom {area.minZoom}–
+                      {area.maxZoom} · fond « {baseLayerLabel(area.baseLayer)} »
                     </span>
+                    {area.summary && (
+                      <span className="text-ink-500 block text-xs">
+                        {describeRequests(area.summary)} · {describeSteps(area.summary)}
+                        {area.summary.retried > 0 &&
+                          ` · ${area.summary.retried} nouvelle(s) tentative(s)`}
+                      </span>
+                    )}
+                    {area.lastError && (
+                      <span className="text-status-danger block text-xs">
+                        {area.lastError}
+                      </span>
+                    )}
+                    {canRetryArea(area) && (
+                      <span className="text-ink-500 block text-xs">
+                        Pour réessayer : ouvrez la page Carte avec le fond «{' '}
+                        {baseLayerLabel(area.baseLayer)} ».
+                      </span>
+                    )}
+                    {area.summary &&
+                      (area.summary.failures.length > 0 ||
+                        area.summary.essentialFailures.length > 0 ||
+                        area.summary.absentUrls.length > 0) && (
+                        <details className="text-ink-500 mt-1 text-xs">
+                          <summary className="cursor-pointer">Détails</summary>
+                          <ul className="mt-1 space-y-0.5 break-all">
+                            {area.summary.essentialFailures.map((f) => (
+                              <li key={`e-${f.url}`}>
+                                Ressource essentielle · {f.reason} · {f.url}
+                              </li>
+                            ))}
+                            {area.summary.failures.map((f) => (
+                              <li key={`f-${f.url}`}>
+                                Échec · {f.reason} · {f.url}
+                              </li>
+                            ))}
+                            {area.summary.absentUrls.map((u) => (
+                              <li key={`a-${u}`}>Tuile absente · {u}</li>
+                            ))}
+                          </ul>
+                          {area.summary.failed > area.summary.failures.length && (
+                            <p>
+                              … et {area.summary.failed - area.summary.failures.length}{' '}
+                              autre(s) échec(s) non listé(s).
+                            </p>
+                          )}
+                        </details>
+                      )}
                   </div>
                   <button
                     type="button"
