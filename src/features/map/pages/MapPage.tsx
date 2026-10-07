@@ -35,6 +35,11 @@ import { GuidancePanel } from '@/features/guidance/components/GuidancePanel'
 import { SharedPointCard } from '@/features/share/components/SharedPointCard'
 import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import { useGeolocation } from '@/features/gps/useGeolocation'
+import { HiddenByFilterNotice } from '@/features/territories/components/HiddenByFilterNotice'
+import { TerritoryMapControl } from '@/features/territories/components/TerritoryMapControl'
+import { filterItems } from '@/features/territories/filter'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
+import { useEnsureTerritories } from '@/features/territories/useEnsureTerritories'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { canRetryArea } from '@/features/offline/areaStatus'
@@ -102,6 +107,17 @@ export function MapPage() {
   const getMapInstance = useCallback(() => instanceRef.current, [])
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
+  useEnsureTerritories()
+  const territories = useTerritoriesStore((state) => state.territories)
+  const territoryFilter = useTerritoriesStore((state) => state.filter)
+  // The map shows only the waypoints the territory filter lets through. Saved
+  // tracks are not drawn on the map (only the recording in progress, which is
+  // never filtered), so only waypoints can be hidden here.
+  const visibleWaypoints = useMemo(
+    () => filterItems(waypoints, territoryFilter, territories),
+    [waypoints, territoryFilter, territories],
+  )
+  const hiddenWaypointCount = waypoints.length - visibleWaypoints.length
   const draftCoordinate = useWaypointsStore((state) => state.draft?.coordinate ?? null)
   const editingWaypointId = useWaypointsStore((state) => state.editingId)
   const sharedPoint = useSharedPointStore((state) => state.point)
@@ -346,8 +362,8 @@ export function MapPage() {
   useFollowPosition(instanceRef, gpsReading)
 
   useEffect(() => {
-    instanceRef.current?.setWaypoints(waypoints)
-  }, [waypoints])
+    instanceRef.current?.setWaypoints(visibleWaypoints)
+  }, [visibleWaypoints])
 
   useEffect(() => {
     instanceRef.current?.setDraftWaypoint(draftCoordinate)
@@ -499,6 +515,7 @@ export function MapPage() {
     <>
       {!isOnline && <Badge variant="warning">Hors ligne — cartes en cache</Badge>}
       <GpsStatusBadge reading={gpsReading} />
+      <HiddenByFilterNotice hiddenCount={hiddenWaypointCount} />
     </>
   )
 
@@ -648,6 +665,7 @@ export function MapPage() {
                   viewCenter={view.center}
                 />
                 <ForestLayersControl />
+                <TerritoryMapControl />
                 <AnalysisControl />
                 <HeatmapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}

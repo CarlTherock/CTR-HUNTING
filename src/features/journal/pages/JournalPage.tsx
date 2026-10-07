@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, NotebookPen, Trash2 } from 'lucide-react'
 import { Badge, Card, EmptyState, PageHeader } from '@/components/ui'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
+import { TerritoryFilterBar } from '@/features/territories/components/TerritoryFilterBar'
+import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
+import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { useWeatherStore } from '@/features/weather/state/weatherStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { windAt } from '@/utils/windField'
@@ -77,7 +81,15 @@ export function JournalPage() {
     navigate('/map')
   }
 
-  const sorted = [...observations].sort(
+  const territories = useTerritoriesStore((state) => state.territories)
+  const territoryFilter = useTerritoriesStore((state) => state.filter)
+  const visibleObservations = useMemo(
+    () => filterItems(observations, territoryFilter, territories),
+    [observations, territoryFilter, territories],
+  )
+  const hiddenCount = observations.length - visibleObservations.length
+
+  const sorted = [...visibleObservations].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   )
   const editing = observations.find((o) => o.id === editingId)
@@ -111,6 +123,8 @@ export function JournalPage() {
           </button>
         }
       />
+
+      <TerritoryFilterBar />
 
       {!usingGps && (
         <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>
@@ -153,6 +167,11 @@ export function JournalPage() {
             rows={3}
             className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 mb-3 w-full resize-none rounded-md border px-2.5 py-1.5 text-sm outline-none focus-visible:outline-2"
           />
+          <TerritorySelect
+            className="mb-3"
+            value={editing.territoryId}
+            onChange={(territoryId) => void update(editing.id, { territoryId })}
+          />
           <JournalPhotos observationId={editing.id} photoIds={editing.photoIds ?? []} />
           <div className="mt-3 flex items-center justify-between">
             <button
@@ -175,7 +194,13 @@ export function JournalPage() {
         </Card>
       )}
 
-      {sorted.length === 0 ? (
+      {sorted.length === 0 && observations.length > 0 ? (
+        <EmptyState
+          icon={<NotebookPen size={28} aria-hidden="true" />}
+          title="Aucune entrée dans ce territoire"
+          description={`${hiddenByFilterMessage(hiddenCount)}. Changez le filtre « Territoire » pour les voir.`}
+        />
+      ) : sorted.length === 0 ? (
         <EmptyState
           icon={<NotebookPen size={28} aria-hidden="true" />}
           title="Aucune entrée de journal pour le moment"
@@ -183,6 +208,9 @@ export function JournalPage() {
         />
       ) : (
         <div className="flex flex-col gap-2">
+          {hiddenCount > 0 && (
+            <p className="text-ink-500 text-xs">{hiddenByFilterMessage(hiddenCount)}</p>
+          )}
           {sorted.map((observation) => (
             <Card
               key={observation.id}

@@ -8,6 +8,7 @@ import { useFollowStore } from '../state/followStore'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useWindStore } from '@/features/wind/state/windStore'
@@ -271,6 +272,13 @@ afterEach(async () => {
     points: [],
     distanceMeters: 0,
   })
+  useTerritoriesStore.setState({
+    territories: [],
+    loaded: false,
+    filter: { kind: 'all' },
+    pendingDelete: null,
+    error: null,
+  })
   useOfflineStore.setState({
     areas: [],
     loaded: false,
@@ -283,6 +291,8 @@ afterEach(async () => {
   })
   await db.waypoints.clear()
   await db.tracks.clear()
+  await db.territories.clear()
+  await db.settings.delete('territoryFilter')
   await db.offlineAreas.clear()
   await db.settings.delete('fieldModeEnabled')
   lastCreateMapOptions = undefined
@@ -1338,5 +1348,87 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
     await user.click(screen.getByRole('button', { name: 'Arrêter le guidage' }))
     expect(setGuidanceLine).toHaveBeenLastCalledWith(null)
     expect(screen.queryByTestId('guidance-panel')).toBeNull()
+  })
+  describe('territory filter', () => {
+    const base = {
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const territory = {
+      id: 'nord',
+      name: 'Secteur nord',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const inNord = {
+      ...base,
+      id: 'w1',
+      name: 'Nord',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      territoryId: 'nord',
+    }
+    const loose = {
+      ...base,
+      id: 'w2',
+      name: 'Libre',
+      coordinate: { lat: 46.9, lng: -71.3 },
+    }
+
+    async function seedTerritories(filter: 'all' | 'nord') {
+      // The page reloads waypoints from the database on mount.
+      await db.territories.add(territory)
+      await db.waypoints.bulkAdd([inNord, loose])
+      useTerritoriesStore.setState({
+        territories: [territory],
+        loaded: true,
+        filter: filter === 'all' ? { kind: 'all' } : { kind: 'territory', id: 'nord' },
+      })
+      useWaypointsStore.setState({ waypoints: [inNord, loose], loaded: true })
+    }
+
+    it('shows every waypoint and no notice when nothing is filtered', async () => {
+      await seedTerritories('all')
+      render(<MapPage />)
+      await vi.waitFor(() =>
+        expect(setWaypoints).toHaveBeenLastCalledWith([inNord, loose]),
+      )
+      expect(screen.queryByText(/masqué/)).not.toBeInTheDocument()
+    })
+
+    it('draws only the waypoints of the filtered territory and says how many are hidden', async () => {
+      await seedTerritories('nord')
+      render(<MapPage />)
+      await vi.waitFor(() => expect(setWaypoints).toHaveBeenLastCalledWith([inNord]))
+      expect(screen.getByText('1 élément masqué par le filtre')).toBeInTheDocument()
+    })
+
+    it('« Tout afficher » clears the filter and brings the waypoints back', async () => {
+      await seedTerritories('nord')
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await user.click(
+        await screen.findByRole('button', { name: /masqué par le filtre/ }),
+      )
+      await vi.waitFor(() =>
+        expect(setWaypoints).toHaveBeenLastCalledWith([inNord, loose]),
+      )
+      expect(screen.queryByText(/masqué/)).not.toBeInTheDocument()
+      expect(useTerritoriesStore.getState().filter).toEqual({ kind: 'all' })
+    })
+
+    it('never hides the recording in progress: the track preview is not filtered', async () => {
+      await seedTerritories('nord')
+      useTracksStore.setState({
+        status: 'recording',
+        points: [{ lat: 1, lng: 2, timestamp: 'x' }],
+      })
+      render(<MapPage />)
+      await vi.waitFor(() =>
+        expect(setTrackPreview).toHaveBeenLastCalledWith([
+          { lat: 1, lng: 2, timestamp: 'x' },
+        ]),
+      )
+    })
   })
 })

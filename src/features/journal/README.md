@@ -63,3 +63,9 @@ exactly this reason.
 real entry at the map-center fallback, typed multi-word notes without
 corruption (confirming the above fix), closed it, and confirmed it
 listed correctly with its real timestamp/coordinate.
+
+## Territoires
+
+Une entrée peut être classée dans un territoire (sélecteur « Territoire » dans
+sa fiche ; les nouvelles entrées reçoivent le territoire actif). La liste suit
+le filtre « Territoire » commun. Voir `src/features/territories/README.md`.
