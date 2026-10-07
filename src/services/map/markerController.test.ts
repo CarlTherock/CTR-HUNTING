@@ -106,4 +106,112 @@ describe('createMarkerController', () => {
     expect(() => controller.setDraft({ lat: Number.NaN, lng: 0 })).not.toThrow()
     expect(markers).toHaveLength(0)
   })
+
+  describe('selected waypoint highlight', () => {
+    function elementOf(index: number): HTMLElement {
+      const el = markers[index].element
+      if (!el) throw new Error('marker without element')
+      return el
+    }
+
+    it('highlights only the selected marker, without moving it', () => {
+      const controller = createMarkerController(map, {})
+      controller.setWaypoints([waypoint('a', 1, 1), waypoint('b', 2, 2)])
+      const sizeBefore = elementOf(0).style.width
+
+      controller.setSelectedWaypoint('a')
+
+      expect(elementOf(0).getAttribute('data-selected')).toBe('true')
+      expect(elementOf(1).hasAttribute('data-selected')).toBe(false)
+      expect(parseInt(elementOf(0).style.width)).toBeGreaterThan(parseInt(sizeBefore))
+      expect(elementOf(0).style.boxShadow).toContain('#0ea5e9')
+      // Position untouched.
+      expect(markers[0].lngLat).toEqual([1, 1])
+      expect(markers[1].lngLat).toEqual([2, 2])
+    })
+
+    it('moves the highlight when another waypoint is selected and clears it with null', () => {
+      const controller = createMarkerController(map, {})
+      controller.setWaypoints([waypoint('a', 1, 1), waypoint('b', 2, 2)])
+
+      controller.setSelectedWaypoint('a')
+      controller.setSelectedWaypoint('b')
+      expect(elementOf(0).hasAttribute('data-selected')).toBe(false)
+      expect(elementOf(1).getAttribute('data-selected')).toBe('true')
+
+      controller.setSelectedWaypoint(null)
+      expect(elementOf(1).hasAttribute('data-selected')).toBe(false)
+      expect(elementOf(1).style.width).toBe(elementOf(0).style.width)
+    })
+
+    it('keeps the highlight across list refreshes and applies it to a marker created later', () => {
+      const controller = createMarkerController(map, {})
+      controller.setSelectedWaypoint('late')
+      controller.setWaypoints([waypoint('a', 1, 1)])
+      expect(elementOf(0).hasAttribute('data-selected')).toBe(false)
+
+      controller.setWaypoints([waypoint('a', 1, 1), waypoint('late', 3, 3)])
+      expect(elementOf(1).getAttribute('data-selected')).toBe('true')
+
+      controller.setWaypoints([waypoint('a', 1, 1), waypoint('late', 3, 3)])
+      expect(elementOf(1).getAttribute('data-selected')).toBe('true')
+    })
+
+    it('keeps a 44 px touch target on every marker, and clicks still reach the callback', () => {
+      const onWaypointClick = vi.fn()
+      const controller = createMarkerController(map, { onWaypointClick })
+      controller.setWaypoints([waypoint('a', 1, 1), waypoint('b', 2, 2)])
+      controller.setSelectedWaypoint('a')
+
+      for (const index of [0, 1]) {
+        const hit = elementOf(index).querySelector<HTMLElement>('[data-hit-area]')
+        expect(hit?.style.width).toBe('44px')
+        expect(hit?.style.height).toBe('44px')
+      }
+      elementOf(1).click()
+      expect(onWaypointClick).toHaveBeenCalledWith('b')
+    })
+  })
+
+  describe('shared point preview', () => {
+    it('shows a non-draggable preview marker that is not a waypoint', () => {
+      const controller = createMarkerController(map, {})
+      controller.setSharedPoint({ lat: 46.8, lng: -71.2 }, 'Mirador')
+
+      expect(markers).toHaveLength(1)
+      expect(markers[0].lngLat).toEqual([-71.2, 46.8])
+      expect(markers[0].element?.getAttribute('data-testid')).toBe('shared-point-marker')
+      expect(markers[0].element?.getAttribute('aria-label')).toContain('Mirador')
+    })
+
+    it('renders the name as text only, never as HTML', () => {
+      const controller = createMarkerController(map, {})
+      controller.setSharedPoint({ lat: 1, lng: 2 }, '<img src=x onerror=alert(1)>')
+      const el = markers[0].element
+      expect(el?.querySelector('img')).toBeNull()
+      expect(el?.innerHTML).not.toContain('<img')
+    })
+
+    it('replaces the preview when the point changes and removes it with null', () => {
+      const controller = createMarkerController(map, {})
+      controller.setSharedPoint({ lat: 1, lng: 2 }, 'A')
+      controller.setSharedPoint({ lat: 1, lng: 2 }, 'A')
+      expect(markers).toHaveLength(1)
+
+      controller.setSharedPoint({ lat: 3, lng: 4 }, 'B')
+      expect(markers).toHaveLength(2)
+      expect(markers[0].removed).toBe(true)
+
+      controller.setSharedPoint(null, '')
+      expect(markers[1].removed).toBe(true)
+    })
+
+    it('ignores an unusable coordinate', () => {
+      const controller = createMarkerController(map, {})
+      expect(() =>
+        controller.setSharedPoint({ lat: Number.NaN, lng: 0 }, 'x'),
+      ).not.toThrow()
+      expect(markers).toHaveLength(0)
+    })
+  })
 })

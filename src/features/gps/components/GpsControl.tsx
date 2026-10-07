@@ -1,5 +1,7 @@
 import { LocateFixed, LocateOff } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
+import { gpsStatusView } from '../gpsStatus'
+import { useGpsClock } from '../useGpsClock'
 import type { GeolocationReading } from '../useGeolocation'
 
 export interface GpsControlProps {
@@ -16,12 +18,16 @@ export interface GpsControlProps {
 export function GpsControl({ reading, onLocate, large }: GpsControlProps) {
   const available = reading.status === 'available'
   const size = large ? 32 : 20
+  const view = gpsStatusView(reading, useGpsClock())
+  const title = available
+    ? `Centrer la carte sur ma position — ${view.label}, ${view.accuracyText}, ${view.ageText}`
+    : `Ma position : ${view.label} — ${view.reason ?? ''}`.trim()
 
   return (
     <ToolTrigger
       placement="rail"
       label="Me localiser"
-      title={available ? 'Centrer la carte sur ma position' : reading.reason}
+      title={title}
       icon={
         available ? (
           <LocateFixed size={size} aria-hidden="true" />

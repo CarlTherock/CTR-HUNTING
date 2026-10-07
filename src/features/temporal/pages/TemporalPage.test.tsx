@@ -7,6 +7,7 @@ import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
+  kind: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
 }
 vi.mock('@/features/gps/useGeolocation', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/features/gps/useGeolocation', () => ({
 afterEach(() => {
   mockGpsReading = {
     status: 'unavailable',
+    kind: 'unavailable',
     reason: 'Geolocation is not supported by this browser.',
   }
   useWindStore.setState({ selectedHourOffset: 0 })
@@ -43,7 +45,7 @@ describe('TemporalPage', () => {
   it('does not show the GPS-unavailable badge once a GPS fix is available', () => {
     mockGpsReading = {
       status: 'available',
-      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5 },
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5, timestampMs: Date.now() },
       confidence: 'measured',
       source: 'browser-geolocation',
     }

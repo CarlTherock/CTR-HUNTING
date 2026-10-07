@@ -14,6 +14,9 @@ import {
 } from '../categories'
 import { useWaypointsStore } from '../state/waypointsStore'
 import { WaypointPhotos } from './WaypointPhotos'
+import { WaypointPositionBlock } from './WaypointPositionBlock'
+import { MyPositionBlock } from '@/features/gps/components/MyPositionBlock'
+import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 /** Stable ref callback: moves focus into the confirmation dialog when it opens. */
 function focusOnMount(element: HTMLDivElement | null) {
@@ -44,7 +47,7 @@ function formatCoordinate(lat: number, lng: number): string {
  *    and wind preferences are editable; the position is shown read-only and
  *    cannot be changed — to move a spot, delete it and create a new one.
  */
-export function WaypointEditPanel() {
+export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationReading }) {
   const editingId = useWaypointsStore((state) => state.editingId)
   const draft = useWaypointsStore((state) => state.draft)
   const waypoint = useWaypointsStore((state) =>
@@ -57,7 +60,8 @@ export function WaypointEditPanel() {
   const closeEdit = useWaypointsStore((state) => state.closeEdit)
 
   const target = draft ? 'draft' : (waypoint?.id ?? null)
-  const [name, setName] = useState(waypoint?.name ?? '')
+  const seedName = waypoint?.name ?? draft?.initialName ?? ''
+  const [name, setName] = useState(seedName)
   const [category, setCategory] = useState<WaypointCategory>(
     waypoint?.category ?? 'general',
   )
@@ -81,7 +85,7 @@ export function WaypointEditPanel() {
   // but not on every store update, or edits in progress would be clobbered.
   if (openedFor !== target) {
     setOpenedFor(target)
-    setName(waypoint?.name ?? '')
+    setName(seedName)
     setCategory(waypoint?.category ?? 'general')
     setColor(waypoint?.color ?? DEFAULT_COLOR)
     setNotes(waypoint?.notes ?? '')
@@ -138,10 +142,12 @@ export function WaypointEditPanel() {
     }
   }
 
+  // The full-width wrapper lets map taps/marker clicks through; only the
+  // card itself captures pointer events.
   const shell =
-    'fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
+    'pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
   const card =
-    'border-surface-600 bg-surface-900 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-lg border p-4 shadow-2xl'
+    'pointer-events-auto border-surface-600 bg-surface-900 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-lg border p-4 shadow-2xl'
   const draftError = draft?.error ?? null
   const shownError = error ?? draftError
   const busy = saving || (draft?.saving ?? false)
@@ -199,19 +205,19 @@ export function WaypointEditPanel() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <div className="bg-surface-800 text-ink-300 flex items-start gap-2 rounded-md p-2 text-xs">
-            <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-            <div>
-              <p className="text-ink-100 tabular-nums">
-                {formatCoordinate(position.lat, position.lng)}
-              </p>
-              <p>
-                {draft
-                  ? 'La position sera verrouillée à l’enregistrement.'
-                  : 'Position verrouillée. Pour la changer, supprimez ce point et créez-en un nouveau.'}
-              </p>
+          {waypoint && !draft ? (
+            <WaypointPositionBlock key={waypoint.id} waypoint={waypoint} />
+          ) : (
+            <div className="bg-surface-800 text-ink-300 flex items-start gap-2 rounded-md p-2 text-xs">
+              <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <div>
+                <p className="text-ink-100 tabular-nums">
+                  {formatCoordinate(position.lat, position.lng)}
+                </p>
+                <p>La position sera verrouillée à l’enregistrement.</p>
+              </div>
             </div>
-          </div>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-ink-500 text-xs font-medium">Nom</span>
@@ -355,6 +361,8 @@ export function WaypointEditPanel() {
               Les photos pourront être ajoutées une fois le point enregistré.
             </p>
           )}
+
+          {waypoint && !draft && gpsReading && <MyPositionBlock reading={gpsReading} />}
         </div>
 
         {shownError && (

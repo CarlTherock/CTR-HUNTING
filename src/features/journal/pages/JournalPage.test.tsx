@@ -12,6 +12,7 @@ import type { GeolocationReading } from '@/features/gps/useGeolocation'
 
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
+  kind: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
 }
 vi.mock('@/features/gps/useGeolocation', () => ({
@@ -35,6 +36,7 @@ afterEach(async () => {
   await db.photos.clear()
   mockGpsReading = {
     status: 'unavailable',
+    kind: 'unavailable',
     reason: 'Geolocation is not supported by this browser.',
   }
   useJournalStore.setState({ observations: [], loaded: false, editingId: null })

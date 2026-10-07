@@ -517,6 +517,45 @@ describe('MapLibreProvider', () => {
     })
   })
 
+  describe('selected waypoint and shared point (adapter wiring)', () => {
+    const waypoint = {
+      id: 'sel',
+      name: 'sel',
+      coordinate: { lat: 5, lng: 6 },
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    it('setSelectedWaypoint highlights the marker and null clears it, without moving it', () => {
+      markerInstances.length = 0
+      const instance = createTestMap()
+      instance.setWaypoints([waypoint])
+
+      instance.setSelectedWaypoint('sel')
+      expect(markerInstances[0].element?.getAttribute('data-selected')).toBe('true')
+      expect(markerInstances[0].lngLat).toEqual([6, 5])
+      expect(markerInstances[0].draggable).toBe(false)
+
+      instance.setSelectedWaypoint(null)
+      expect(markerInstances[0].element?.hasAttribute('data-selected')).toBe(false)
+    })
+
+    it('setSharedPoint adds one non-draggable preview marker and removes it with null', () => {
+      markerInstances.length = 0
+      calls.length = 0
+      const instance = createTestMap()
+
+      instance.setSharedPoint({ lat: 46.8, lng: -71.2 }, 'Mirador')
+      expect(markerInstances).toHaveLength(1)
+      expect(markerInstances[0].draggable).toBe(false)
+      expect(markerInstances[0].lngLat).toEqual([-71.2, 46.8])
+
+      instance.setSharedPoint(null, '')
+      expect(calls).toContain('remove')
+    })
+  })
+
   describe('track preview', () => {
     it('adds the live track line layer once the style has loaded', () => {
       mapInstances.length = 0

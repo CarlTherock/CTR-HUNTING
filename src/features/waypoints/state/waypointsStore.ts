@@ -25,6 +25,9 @@ export interface WaypointDraft {
   saving: boolean
   /** Why the last save failed; the draft stays open so nothing is lost. */
   error: string | null
+  /** Name to pre-fill the form with (e.g. from a shared link). The user can
+   * still change it; nothing is saved until they press Save. */
+  initialName?: string
 }
 
 interface WaypointsState {
@@ -42,6 +45,10 @@ interface WaypointsState {
   cancelPlacing: () => void
   /** Starts a draft at `coordinate`. Nothing is written to the database yet. */
   placeWaypointAt: (coordinate: Coordinate) => void
+  /** Starts a draft right away (no "placing" step) — used when saving a point
+   * received through a shared link. Always a NEW waypoint; existing ones are
+   * never touched. Nothing is written until `saveDraft`. */
+  startDraftAt: (coordinate: Coordinate, initialName?: string) => void
   /** Adjusts the draft's position (map tap or marker drag) — drafts only. */
   moveDraft: (coordinate: Coordinate) => void
   /** Discards the draft; no waypoint is created. */
@@ -90,6 +97,13 @@ export const useWaypointsStore = create<WaypointsState>((set, get) => ({
       draft: { coordinate, saving: false, error: null },
     })
   },
+
+  startDraftAt: (coordinate, initialName) =>
+    set({
+      isPlacing: false,
+      editingId: null,
+      draft: { coordinate, saving: false, error: null, initialName },
+    }),
 
   moveDraft: (coordinate) => {
     const { draft } = get()

@@ -186,6 +186,12 @@ export class MapLibreProvider implements MapProvider {
       setDraftWaypoint(coordinate: Coordinate | null) {
         markers.setDraft(coordinate)
       },
+      setSelectedWaypoint(id: string | null) {
+        markers.setSelectedWaypoint(id)
+      },
+      setSharedPoint(coordinate: Coordinate | null, name: string) {
+        markers.setSharedPoint(coordinate, name)
+      },
       setTrackPreview(points: Coordinate[] | null) {
         pathLayers.setTrackPreview(points)
       },

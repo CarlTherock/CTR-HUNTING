@@ -59,26 +59,82 @@ const CATEGORY_ICON_INNER: Record<WaypointCategory, string> = {
  * are never confused when both are on screen. `anchor: 'center'` (a
  * plain circle, not a teardrop) since the ring color already draws the
  * eye to the exact point. */
-export function createWaypointElement(waypoint: Waypoint): HTMLDivElement {
+export function createWaypointElement(
+  waypoint: Waypoint,
+  selected = false,
+): HTMLDivElement {
   const el = document.createElement('div')
-  renderWaypointElement(el, waypoint)
+  renderWaypointElement(el, waypoint, selected)
   return el
 }
 
-export function renderWaypointElement(el: HTMLDivElement, waypoint: Waypoint): void {
+export function renderWaypointElement(
+  el: HTMLDivElement,
+  waypoint: Waypoint,
+  selected = false,
+): void {
   const color = waypoint.color ?? DEFAULT_WAYPOINT_COLOR
   const icon = CATEGORY_ICON_INNER[waypoint.category] ?? CATEGORY_ICON_INNER.general
-  el.style.width = '30px'
-  el.style.height = '30px'
+  // The selected waypoint is slightly larger and gets a white + blue double
+  // ring (visible on any background). The size grows around the centre
+  // (`anchor: 'center'`), so the coordinate never moves.
+  const size = selected ? 38 : 30
+  el.style.width = `${size}px`
+  el.style.height = `${size}px`
   el.style.cursor = 'pointer'
   el.style.borderRadius = '50%'
   el.style.background = 'white'
   el.style.border = `3px solid ${color}`
-  el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.45)'
+  el.style.boxShadow = selected
+    ? `0 0 0 3px white, 0 0 0 6px ${SELECTED_RING_COLOR}, 0 2px 8px rgba(0,0,0,0.6)`
+    : '0 1px 4px rgba(0,0,0,0.45)'
   el.style.display = 'flex'
   el.style.alignItems = 'center'
   el.style.justifyContent = 'center'
+  // Keep the selected marker above its neighbours without hiding them.
+  el.style.zIndex = selected ? '2' : '1'
+  if (selected) el.setAttribute('data-selected', 'true')
+  else el.removeAttribute('data-selected')
+  el.setAttribute('data-testid', 'waypoint-marker')
   el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>`
+  // Invisible 44 px touch target centred on the marker: the pin looks the
+  // same but a fingertip does not have to hit 30 px exactly. Clicks on it
+  // bubble to the marker element.
+  const hit = document.createElement('span')
+  hit.setAttribute('data-hit-area', 'true')
+  hit.style.cssText =
+    'position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:50%;'
+  el.appendChild(hit)
+}
+
+/** Ring colour of the selected waypoint (sky blue: not one of the 8 pin colours). */
+const SELECTED_RING_COLOR = '#0ea5e9'
+
+/** Preview marker of a point received through a shared link: a sky-blue
+ * diamond with a "share" glyph — clearly neither a saved waypoint (round
+ * pin), nor the draft (dashed amber ring), nor the GPS dot. Not draggable;
+ * the name is set as a text attribute, never as HTML. */
+export function createSharedPointElement(name: string): HTMLDivElement {
+  const el = document.createElement('div')
+  el.style.width = '34px'
+  el.style.height = '34px'
+  el.style.display = 'flex'
+  el.style.alignItems = 'center'
+  el.style.justifyContent = 'center'
+  el.style.background = '#0ea5e9'
+  el.style.border = '3px solid white'
+  el.style.borderRadius = '6px'
+  el.style.transform = 'rotate(45deg)'
+  el.style.boxShadow = '0 0 0 3px rgba(14,165,233,0.4), 0 2px 8px rgba(0,0,0,0.6)'
+  el.setAttribute('data-testid', 'shared-point-marker')
+  el.setAttribute('role', 'img')
+  el.setAttribute('aria-label', `Point partagé (aperçu) : ${name}`)
+  el.title = `Point partagé (aperçu) : ${name}`
+  const dot = document.createElement('span')
+  dot.style.cssText =
+    'width:8px;height:8px;border-radius:50%;background:white;display:block;'
+  el.appendChild(dot)
+  return el
 }
 
 /** Marker of a waypoint that is not saved yet: a dashed ring, visibly

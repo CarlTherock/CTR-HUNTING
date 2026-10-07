@@ -1,5 +1,6 @@
 import { Outlet, useMatch } from 'react-router-dom'
 import { cn } from '@/utils/cn'
+import { SharedPointHandler } from '@/features/share/components/SharedPointHandler'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { TopBar } from './TopBar'
@@ -39,6 +40,7 @@ export function AppShell() {
         paddingBottom: immersive ? 'env(safe-area-inset-bottom)' : undefined,
       }}
     >
+      <SharedPointHandler />
       {!immersive && <Sidebar />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {!immersive && <TopBar />}

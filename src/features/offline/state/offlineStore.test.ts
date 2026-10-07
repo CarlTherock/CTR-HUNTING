@@ -23,6 +23,8 @@ function fakeMapInstance(
     setUserLocationMarker: vi.fn(),
     setWaypoints: vi.fn(),
     setDraftWaypoint: vi.fn(),
+    setSelectedWaypoint: vi.fn(),
+    setSharedPoint: vi.fn(),
     setTrackPreview: vi.fn(),
     setMeasurePath: vi.fn(),
     setWindField: vi.fn(),

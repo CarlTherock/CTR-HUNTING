@@ -27,6 +27,10 @@ import {
 } from '@/features/layers/startupBaseLayer'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
+import { GpsStatusBadge } from '@/features/gps/components/GpsStatusBadge'
+import { MyPositionControl } from '@/features/gps/components/MyPositionControl'
+import { SharedPointCard } from '@/features/share/components/SharedPointCard'
+import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
@@ -57,6 +61,8 @@ import { ViewModeToggle } from '../components/ViewModeToggle'
  * that the previous recenter (pan only, no zoom change) left the view
  * too far out to actually be useful. */
 const GPS_LOCATE_ZOOM = 16
+/** Zoom used to bring a shared point into view. */
+const SHARED_POINT_ZOOM = 15
 
 export function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -83,6 +89,8 @@ export function MapPage() {
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
   const draftCoordinate = useWaypointsStore((state) => state.draft?.coordinate ?? null)
+  const editingWaypointId = useWaypointsStore((state) => state.editingId)
+  const sharedPoint = useSharedPointStore((state) => state.point)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
@@ -272,6 +280,26 @@ export function MapPage() {
     instanceRef.current?.setDraftWaypoint(draftCoordinate)
   }, [draftCoordinate])
 
+  // The waypoint whose sheet is open is highlighted on the map.
+  useEffect(() => {
+    instanceRef.current?.setSelectedWaypoint(editingWaypointId)
+  }, [editingWaypointId])
+
+  // Preview of a point received through a shared link (never a saved
+  // waypoint). A newly received point is brought into view once.
+  useEffect(() => {
+    instanceRef.current?.setSharedPoint(
+      sharedPoint?.coordinate ?? null,
+      sharedPoint?.name ?? '',
+    )
+    if (sharedPoint) {
+      const zoom = Math.max(useMapStore.getState().view.zoom, SHARED_POINT_ZOOM)
+      const nextView = { center: sharedPoint.coordinate, zoom }
+      useMapStore.getState().setView(nextView)
+      instanceRef.current?.setView(nextView)
+    }
+  }, [sharedPoint])
+
   useEffect(() => {
     instanceRef.current?.setTrackPreview(trackStatus === 'idle' ? null : trackPoints)
   }, [trackPoints, trackStatus])
@@ -365,6 +393,15 @@ export function MapPage() {
     instanceRef.current?.setView(nextView)
   }
 
+  function centerOnSharedPoint() {
+    const point = useSharedPointStore.getState().point
+    if (!point) return
+    const zoom = Math.max(view.zoom, SHARED_POINT_ZOOM)
+    const nextView = { center: point.coordinate, zoom }
+    setView(nextView)
+    instanceRef.current?.setView(nextView)
+  }
+
   function setViewMode(pitch: number, bearing: number) {
     setView({ pitch, bearing })
     instanceRef.current?.setView({ pitch, bearing })
@@ -388,11 +425,7 @@ export function MapPage() {
   const statusBadges = (
     <>
       {!isOnline && <Badge variant="warning">Hors ligne — cartes en cache</Badge>}
-      <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
-        {gpsReading.status === 'available'
-          ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
-          : 'GPS indisponible'}
-      </Badge>
+      <GpsStatusBadge reading={gpsReading} />
     </>
   )
 
@@ -450,6 +483,7 @@ export function MapPage() {
             )}
             <MapToolRail setHost={setRailHost} />
             <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
+            <MyPositionControl reading={gpsReading} />
             <WaypointControl large={fieldModeEnabled} />
             <ToolTrigger
               placement="rail"
@@ -498,7 +532,8 @@ export function MapPage() {
               />
             )}
             <ToolsSheet open={toolsOpen} onClose={closeTools} setHost={setSheetHost} />
-            <WaypointEditPanel />
+            <WaypointEditPanel gpsReading={gpsReading} />
+            <SharedPointCard onCenter={centerOnSharedPoint} />
             <TrackRecorderControl />
             {!fieldModeEnabled && (
               <>

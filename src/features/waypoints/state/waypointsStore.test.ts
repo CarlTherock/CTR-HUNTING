@@ -253,3 +253,38 @@ describe('waypointsStore — saved waypoints are locked in place', () => {
     expect(await db.waypoints.get(saved.id)).toBeUndefined()
   })
 })
+
+describe('startDraftAt (point received through a shared link)', () => {
+  it('opens a new draft with a pre-filled name and writes nothing', async () => {
+    useWaypointsStore.getState().startDraftAt(HERE, 'Mirador')
+
+    expect(useWaypointsStore.getState().draft).toEqual({
+      coordinate: HERE,
+      saving: false,
+      error: null,
+      initialName: 'Mirador',
+    })
+    expect(await db.waypoints.count()).toBe(0)
+  })
+
+  it('saving creates a NEW waypoint and leaves the existing ones untouched', async () => {
+    const existing = await db.waypoints.put({
+      ...LEGACY,
+      id: 'keep',
+      name: 'Existant',
+    })
+    expect(existing).toBe('keep')
+    await useWaypointsStore.getState().load()
+
+    useWaypointsStore.getState().startDraftAt(HERE, 'Mirador')
+    await useWaypointsStore.getState().saveDraft({ ...FIELDS, name: 'Mirador' })
+
+    const all = await db.waypoints.toArray()
+    expect(all).toHaveLength(2)
+    expect(all.find((w) => w.id === 'keep')).toMatchObject({ name: 'Existant' })
+    expect(all.find((w) => w.id !== 'keep')).toMatchObject({
+      name: 'Mirador',
+      coordinate: HERE,
+    })
+  })
+})

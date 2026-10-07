@@ -14,6 +14,7 @@ import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { db } from '@/database/db'
+import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import type { CreateMapOptions } from '@/services/map'
 import { progressFixture } from '@/test/downloadFixtures'
@@ -28,6 +29,8 @@ const setView = vi.fn()
 const setUserLocationMarker = vi.fn()
 const setWaypoints = vi.fn()
 const setDraftWaypoint = vi.fn()
+const setSelectedWaypoint = vi.fn()
+const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
 const setWindField = vi.fn()
@@ -50,6 +53,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setUserLocationMarker,
     setWaypoints,
     setDraftWaypoint,
+    setSelectedWaypoint,
+    setSharedPoint,
     setTrackPreview,
     setMeasurePath,
     setWindField,
@@ -169,8 +174,12 @@ vi.mock('@/services/vegetation', () => ({
   },
 }))
 
+/** Time of the simulated fixes (kept recent so the badge says "GPS ±N m"). */
+const FIX_TIME_MS = Date.now()
+
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
+  kind: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
 }
 
@@ -186,8 +195,10 @@ afterEach(async () => {
   mockAvailableBaseLayers = ALL_BASE_LAYERS
   mockGpsReading = {
     status: 'unavailable',
+    kind: 'unavailable',
     reason: 'Geolocation is not supported by this browser.',
   }
+  useSharedPointStore.setState({ point: null, notice: null })
   useLayersStore.setState({
     baseLayer: 'outdoor',
     baseLayerChosenByUser: false,
@@ -421,7 +432,7 @@ describe('MapPage', () => {
   it('shows the accuracy badge, marks the map and recenters on a real GPS fix', async () => {
     mockGpsReading = {
       status: 'available',
-      value: { lat: 46.8, lng: -71.2, accuracyMeters: 12 },
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 12, timestampMs: FIX_TIME_MS },
       confidence: 'measured',
       source: 'browser-geolocation',
     }
@@ -433,6 +444,7 @@ describe('MapPage', () => {
       lat: 46.8,
       lng: -71.2,
       accuracyMeters: 12,
+      timestampMs: FIX_TIME_MS,
     })
 
     const locateButton = screen.getByRole('button', { name: 'Me localiser' })
@@ -698,6 +710,123 @@ describe('MapPage', () => {
     )
   })
 
+  it('highlights on the map the waypoint whose sheet is open, and clears it on close', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await placeDraft(user)
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+    const [waypoint] = await db.waypoints.toArray()
+    expect(setSelectedWaypoint).toHaveBeenLastCalledWith(null)
+
+    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
+    await screen.findByRole('heading', { name: 'Point de repère' })
+    expect(setSelectedWaypoint).toHaveBeenLastCalledWith(waypoint.id)
+
+    await user.click(screen.getByRole('button', { name: 'Fermer sans enregistrer' }))
+    expect(setSelectedWaypoint).toHaveBeenLastCalledWith(null)
+  })
+
+  it('shows the saved waypoint big coordinates in the sheet, plus the separate "Ma position" block', async () => {
+    mockGpsReading = {
+      status: 'unavailable',
+      kind: 'denied',
+      reason: 'Autorisation de localisation refusée.',
+    }
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await placeDraft(user, { lat: 46.8, lng: -71.2 })
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+    const [waypoint] = await db.waypoints.toArray()
+
+    lastCreateMapOptions?.onWaypointClick?.(waypoint.id)
+    await screen.findByRole('heading', { name: 'Point de repère' })
+
+    expect(screen.getByTestId('waypoint-latitude')).toHaveTextContent('46,80000° N')
+    expect(screen.getByTestId('waypoint-longitude')).toHaveTextContent('71,20000° O')
+    const mine = screen.getByTestId('my-position')
+    expect(within(mine).getByTestId('gps-state')).toHaveTextContent('Refusé')
+    // No GPS fix: the map centre is never substituted.
+    expect(within(mine).queryByText(/°/)).not.toBeInTheDocument()
+  })
+
+  it('previews a shared point as a distinct marker, writes nothing, and saves only on request', async () => {
+    useSharedPointStore.setState({
+      point: { coordinate: { lat: 46.8139, lng: -71.208 }, name: 'Mirador' },
+    })
+    const user = userEvent.setup()
+    render(<MapPage />)
+
+    expect(setSharedPoint).toHaveBeenLastCalledWith(
+      { lat: 46.8139, lng: -71.208 },
+      'Mirador',
+    )
+    expect(setView).toHaveBeenCalledWith(
+      expect.objectContaining({ center: { lat: 46.8139, lng: -71.208 } }),
+    )
+    expect(screen.getByText('Point partagé : Mirador')).toBeInTheDocument()
+    expect(await db.waypoints.count()).toBe(0)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Enregistrer comme point de repère' }),
+    )
+    // Only the usual new-waypoint draft opens; the preview is gone; still nothing saved.
+    expect(
+      screen.getByRole('region', { name: 'Position du nouveau point de repère' }),
+    ).toBeInTheDocument()
+    expect(setSharedPoint).toHaveBeenLastCalledWith(null, '')
+    expect(await db.waypoints.count()).toBe(0)
+
+    await user.click(screen.getByRole('button', { name: 'Continuer' }))
+    expect(screen.getByLabelText('Nom')).toHaveValue('Mirador')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await vi.waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+    const [saved] = await db.waypoints.toArray()
+    expect(saved).toMatchObject({
+      name: 'Mirador',
+      coordinate: { lat: 46.8139, lng: -71.208 },
+    })
+  })
+
+  it('Ignorer removes the shared-point preview from the map', async () => {
+    useSharedPointStore.setState({
+      point: { coordinate: { lat: 1, lng: 2 }, name: 'X' },
+    })
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Ignorer' }))
+    expect(setSharedPoint).toHaveBeenLastCalledWith(null, '')
+    expect(screen.queryByText('Point partagé : X')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['searching', 'GPS : recherche…'],
+    ['denied', 'GPS refusé'],
+    ['timeout', 'GPS indisponible'],
+  ] as const)('shows the %s GPS state in the badge, with no position', (kind, text) => {
+    mockGpsReading = { status: 'unavailable', kind, reason: 'raison' }
+    render(<MapPage />)
+    expect(screen.getByText(text)).toBeInTheDocument()
+    expect(setUserLocationMarker).toHaveBeenLastCalledWith(null)
+  })
+
+  it('flags an old GPS fix in the badge', () => {
+    mockGpsReading = {
+      status: 'available',
+      value: {
+        lat: 46.8,
+        lng: -71.2,
+        accuracyMeters: 9,
+        timestampMs: Date.now() - 60_000,
+      },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    render(<MapPage />)
+    expect(screen.getByText('GPS ancien ±9 m')).toBeInTheDocument()
+  })
+
   it('a saved waypoint cannot be moved: no drag callback, map taps and GPS updates leave it in place', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<MapPage />)
@@ -717,7 +846,7 @@ describe('MapPage', () => {
     // A new GPS position arrives.
     mockGpsReading = {
       status: 'available',
-      value: { lat: 46.9, lng: -71.3, accuracyMeters: 5 },
+      value: { lat: 46.9, lng: -71.3, accuracyMeters: 5, timestampMs: FIX_TIME_MS },
       confidence: 'measured',
       source: 'browser-geolocation',
     }
@@ -766,7 +895,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     mockGpsReading = {
       status: 'available',
-      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5 },
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5, timestampMs: FIX_TIME_MS },
       confidence: 'measured',
       source: 'browser-geolocation',
     }

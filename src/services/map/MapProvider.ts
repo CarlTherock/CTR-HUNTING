@@ -45,6 +45,14 @@ export interface MapInstance {
    * waypoint being created. Not part of `setWaypoints` on purpose: saved
    * markers are fixed, only this one can be adjusted before Save. */
   setDraftWaypoint(coordinate: Coordinate | null): void
+  /** Highlights the saved waypoint with this id (larger, double ring) so the
+   * open waypoint sheet and the map visibly refer to the same marker. `null`
+   * clears it. Presentation only: never moves a marker or blocks the others. */
+  setSelectedWaypoint(id: string | null): void
+  /** Shows (or removes, with `null`) the PREVIEW of a point received through
+   * a shared link: a distinct, non-draggable marker that is not a saved
+   * waypoint. `name` is plain text. */
+  setSharedPoint(coordinate: Coordinate | null, name: string): void
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void

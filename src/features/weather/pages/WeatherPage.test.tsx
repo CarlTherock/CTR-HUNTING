@@ -15,6 +15,7 @@ vi.mock('@/services/weather', () => ({
 
 let mockGpsReading: GeolocationReading = {
   status: 'unavailable',
+  kind: 'unavailable',
   reason: 'Geolocation is not supported by this browser.',
 }
 vi.mock('@/features/gps/useGeolocation', () => ({
@@ -64,6 +65,7 @@ afterEach(async () => {
   vi.clearAllMocks()
   mockGpsReading = {
     status: 'unavailable',
+    kind: 'unavailable',
     reason: 'Geolocation is not supported by this browser.',
   }
   await db.settings.clear()
@@ -110,7 +112,7 @@ describe('WeatherPage', () => {
   it('fetches using the real GPS position, and does not show the fallback badge, when GPS is available', async () => {
     mockGpsReading = {
       status: 'available',
-      value: { lat: 47.1, lng: -70.5, accuracyMeters: 5 },
+      value: { lat: 47.1, lng: -70.5, accuracyMeters: 5, timestampMs: Date.now() },
       confidence: 'measured',
       source: 'browser-geolocation',
     }
