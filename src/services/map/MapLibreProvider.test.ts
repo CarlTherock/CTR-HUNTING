@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MapLibreProvider } from './MapLibreProvider'
 
 // jsdom has no WebGL, so the real maplibre-gl Map can't initialize — mock
@@ -22,7 +22,10 @@ const {
     const existingLayers = new Set(['contour', 'contour_index', 'contour_label', 'water'])
     const registeredProtocols: Record<
       string,
-      (params: { url: string }, ac: AbortController) => Promise<{ data: ArrayBuffer }>
+      (
+        params: { url: string; type?: string },
+        ac: AbortController,
+      ) => Promise<{ data: unknown }>
     > = {}
     const fakeAddProtocol = (name: string, handler: (typeof registeredProtocols)[string]) => {
       registeredProtocols[name] = handler
@@ -1015,14 +1018,90 @@ describe('MapLibreProvider', () => {
       expect(result).toEqual({ url: 'ctrtile://api.maptiler.com/tiles/v3/5/10/12.pbf' })
     })
 
-    it('leaves non-Tile requests (style, sprite, glyphs) untouched', () => {
+    it.each([
+      ['Style', 'https://api.maptiler.com/maps/outdoor/style.json?key=k', 'ctrfresh'],
+      ['Source', 'https://api.maptiler.com/tiles/v3/tiles.json?key=k', 'ctrfresh'],
+      ['SpriteJSON', 'https://api.maptiler.com/maps/outdoor/sprite.json', 'ctrfresh'],
+      ['SpriteImage', 'https://api.maptiler.com/maps/outdoor/sprite.png', 'ctrstatic'],
+      ['Glyphs', 'https://api.maptiler.com/fonts/Noto/0-255.pbf', 'ctrstatic'],
+    ])('routes %s requests through the %s:// protocol', (type, url, protocol) => {
+      mapInstances.length = 0
+      createTestMap()
+      const result = mapInstances[0].transformRequest?.(url, type)
+      expect(result).toEqual({ url: url.replace('https://', `${protocol}://`) })
+    })
+
+    it('never caches live weather imagery or unknown resource types', () => {
       mapInstances.length = 0
       createTestMap()
       const map = mapInstances[0]
-
       expect(
-        map.transformRequest?.('https://api.maptiler.com/maps/outdoor/style.json', 'Style'),
+        map.transformRequest?.('https://geo.weather.gc.ca/geomet?x=1', 'Tile'),
       ).toBeUndefined()
+      expect(map.transformRequest?.('https://example.com/a', 'Unknown')).toBeUndefined()
+      expect(map.transformRequest?.('data:image/png;base64,AA', 'Image')).toBeUndefined()
+    })
+  })
+
+  describe('ctrfresh:// and ctrstatic:// handlers', () => {
+    const styleUrl = 'https://api.maptiler.com/maps/outdoor/style.json?key=k'
+    const resources = new Map<string, Response>()
+    beforeEach(() => {
+      resources.clear()
+      vi.stubGlobal('caches', {
+        open: async () => ({
+          match: async (u: string) => resources.get(u)?.clone(),
+          put: async (u: string, r: Response) => void resources.set(u, r),
+        }),
+      })
+    })
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('ctrfresh serves the network answer and keeps a copy', async () => {
+      createTestMap()
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"version":8}')))
+      const result = await registeredProtocols.ctrfresh(
+        { url: styleUrl.replace('https://', 'ctrfresh://'), type: 'json' },
+        new AbortController(),
+      )
+      expect(result.data).toEqual({ version: 8 })
+      expect(resources.has(styleUrl)).toBe(true)
+    })
+
+    it('ctrfresh falls back to the cached copy when offline', async () => {
+      createTestMap()
+      resources.set(styleUrl, new Response('{"version":8,"name":"cached"}'))
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+      const result = await registeredProtocols.ctrfresh(
+        { url: styleUrl.replace('https://', 'ctrfresh://'), type: 'json' },
+        new AbortController(),
+      )
+      expect(result.data).toEqual({ version: 8, name: 'cached' })
+    })
+
+    it('ctrfresh fails visibly when offline with nothing cached', async () => {
+      createTestMap()
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+      await expect(
+        registeredProtocols.ctrfresh(
+          { url: styleUrl.replace('https://', 'ctrfresh://'), type: 'json' },
+          new AbortController(),
+        ),
+      ).rejects.toThrow()
+    })
+
+    it('ctrstatic is cache-first and does not touch the network on a hit', async () => {
+      createTestMap()
+      const glyphs = 'https://api.maptiler.com/fonts/Noto/0-255.pbf'
+      resources.set(glyphs, new Response(new Uint8Array(7)))
+      const fetchSpy = vi.fn()
+      vi.stubGlobal('fetch', fetchSpy)
+      const result = await registeredProtocols.ctrstatic(
+        { url: glyphs.replace('https://', 'ctrstatic://'), type: 'arrayBuffer' },
+        new AbortController(),
+      )
+      expect((result.data as ArrayBuffer).byteLength).toBe(7)
+      expect(fetchSpy).not.toHaveBeenCalled()
     })
   })
 
@@ -1059,7 +1138,9 @@ describe('MapLibreProvider', () => {
         new AbortController(),
       )
 
-      expect(result.data).toBeInstanceOf(ArrayBuffer)
+      // Realm-independent check: `instanceof ArrayBuffer` fails when jsdom and
+      // Node's Response come from different realms (Node 22), not a real bug.
+      expect(Object.prototype.toString.call(result.data)).toBe('[object ArrayBuffer]')
       expect((result.data as ArrayBuffer).byteLength).toBe(500)
       expect(await cache.match('https://api.maptiler.com/tiles/v3/5/10/12.pbf')).toBeDefined()
       expect(fetch).toHaveBeenCalledWith(

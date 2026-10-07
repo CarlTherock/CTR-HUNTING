@@ -85,9 +85,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Phase 0: cache the app shell only. Map tile / large asset caching
-        // strategies are introduced in Phase 3 (Offline architecture).
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // App shell + the MapLibre engine. The worker (`maplibre/*.mjs`) is
+        // loaded by `setWorkerUrl` at runtime, so without `mjs` here a cold
+        // start offline has a shell but no map engine. The main bundle is
+        // above Workbox's 2 MiB default, so the limit is raised explicitly.
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/api\//],
       },
       devOptions: {
