@@ -188,7 +188,7 @@ Phase 0 coverage, mapped to the project's minimum testing list:
 | Waypoint creation   | Not applicable yet — no waypoint feature exists; added in Phase 2                                                  |
 | Local persistence   | `src/database/settingsRepository.test.ts` (real IndexedDB round-trip)                                              |
 | Offline behavior    | `src/offline/useOnlineStatus.test.ts`                                                                              |
-| Synchronization     | Not applicable yet — Phase 15                                                                                      |
+| Synchronization     | Not applicable yet — Phase 15 (backup/restore round trips are tested: `src/features/backup/`)                      |
 | Important analytics | Not applicable yet — Phase 8                                                                                       |
 
 Testing a placeholder page beyond "it renders and is labeled as not built"
@@ -259,3 +259,16 @@ pros/cons, ranking with reasons) that the future assistant reuses. It reuses
 the potential-map analyzers (vegetation, observations) and their thresholds;
 it is not a second engine. Missing data are "non evaluable", never neutral.
 See `src/features/compare/README.md`.
+## Backup, restore and GPX (`src/features/backup/`)
+
+UI (Réglages › « Données et sauvegarde », lazy-loaded) → `state/` stores →
+`engine/` (create, read, plan, apply) and `gpx/` → Dexie. The restore is
+three separate steps — read and verify the archive, plan against the local
+database (read-only, drives the preview), apply in one Dexie transaction —
+so nothing is written before the user confirms. `fflate` is imported
+dynamically, only on backup/restore. No Web Worker: photo bytes are stored
+(not compressed), so work is cut into ~12 ms slices with progress and
+cancellation instead. The engine takes the `Dexie` instance as a parameter
+and only includes tables that exist (`territories` arrives with schema v5).
+Format and duplicate policy: `docs/BACKUP_FORMAT.md`. Sync is not built:
+`docs/SYNC_PREPARATION.md`.

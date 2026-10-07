@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -27,6 +27,11 @@ import {
   effectiveAreaStatus,
   type EffectiveAreaStatus,
 } from '@/features/offline/areaStatus'
+
+// Heavy backup/GPX code (and fflate) is only fetched when this section renders.
+const DataBackupSection = lazy(
+  () => import('@/features/backup/components/DataBackupSection'),
+)
 
 const APP_VERSION = '0.1.0'
 
@@ -252,6 +257,14 @@ export function SettingsPage() {
                 : 'La base de données locale est accessible — c’est la première ouverture des réglages.'}
         </CardContent>
       </Card>
+
+      <Suspense
+        fallback={
+          <p className="text-ink-500 text-sm">Chargement de « Données et sauvegarde »…</p>
+        }
+      >
+        <DataBackupSection />
+      </Suspense>
 
       <Card>
         <CardHeader>
