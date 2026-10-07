@@ -473,7 +473,7 @@ export function searchHistory(
 export async function searchHistoryAsync(
   records: AssistantRecords,
   criteria: SearchCriteria,
-  options: ChunkOptions & { now?: Date } = {},
+  options: ChunkOptions & { at?: Date } = {},
 ): Promise<SearchOutput> {
   const compiled = compileCriteria(criteria)
   const { kinds, notes } = eligibleKinds(compiled)
@@ -495,6 +495,6 @@ export async function searchHistoryAsync(
     notes,
     windMissing,
     raw,
-    options.now ?? new Date(),
+    options.at ?? new Date(),
   )
 }
