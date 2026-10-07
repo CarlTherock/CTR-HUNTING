@@ -1,4 +1,5 @@
-import { MapPinPlus, X } from 'lucide-react'
+import { ListChecks, MapPinPlus, X } from 'lucide-react'
+import { OpenAssistantButton } from '@/features/ai/components/OpenAssistantButton'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { FAMILY_ORDER } from '@/utils/analysisFamilies'
 import { cellSizeMeters, formatCellMeters } from '@/utils/grid'
@@ -166,6 +167,11 @@ export function HeatmapCellSheet() {
               puis « Enregistrer » la verrouille.
             </p>
           </div>
+
+          <OpenAssistantButton tool="explain" testId="explain-cell">
+            <ListChecks size={16} aria-hidden="true" />
+            Expliquer cette cellule
+          </OpenAssistantButton>
 
           <p className="text-ink-600 text-[11px]">
             Aucune donnée structurée « animal observé » n’existe dans l’application : les

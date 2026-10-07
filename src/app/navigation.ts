@@ -7,6 +7,7 @@ import {
   Moon,
   BarChart3,
   NotebookPen,
+  ListChecks,
   Settings,
 } from 'lucide-react'
 
@@ -58,5 +59,7 @@ export const navItems: NavItem[] = [
   { path: '/temporal', label: 'Soleil et lune', icon: Moon, phase: 7 },
   { path: '/analysis', label: 'Analyse du terrain', icon: BarChart3, phase: null },
   { path: '/journal', label: 'Journal', icon: NotebookPen, phase: null },
+  // Entrée secondaire (hors barre du bas) : résumés et recherches calculés.
+  { path: '/assistant', label: 'Assistant', icon: ListChecks, phase: 14 },
   { path: '/settings', label: 'Réglages', icon: Settings, phase: null, primary: true },
 ]

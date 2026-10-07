@@ -34,6 +34,14 @@ export const router = createBrowserRouter(
         { path: 'temporal', element: <TemporalPage /> },
         { path: 'analysis', element: <AnalysisPage /> },
         { path: 'journal', element: <JournalPage /> },
+        {
+          // Page chargée à la demande : le moteur de l'assistant et ses
+          // composants ne pèsent pas sur le démarrage de l'application.
+          path: 'assistant',
+          lazy: async () => ({
+            Component: (await import('@/features/ai/pages/AssistantPage')).AssistantPage,
+          }),
+        },
         { path: 'settings', element: <SettingsPage /> },
         // Secondary pages: reached from Réglages, the home page and the help
         // links (not from the navigation bars) and loaded on demand so they

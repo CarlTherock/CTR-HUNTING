@@ -4,11 +4,13 @@ import {
   ArchiveRestore,
   Check,
   FolderOpen,
+  ListChecks,
   Pencil,
   Trash2,
   X,
 } from 'lucide-react'
 import { Button, Card } from '@/components/ui'
+import { OpenAssistantButton } from '@/features/ai/components/OpenAssistantButton'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { UNCLASSIFIED_LABEL, sortTerritories } from '../filter'
@@ -148,6 +150,14 @@ export function TerritoryManager() {
               <span className="text-ink-500 block text-xs">{countsOf(territory.id)}</span>
             </div>
             <div className="flex shrink-0 items-center">
+              <OpenAssistantButton
+                tool="territory-summary"
+                summaryScope={{ kind: 'territory', id: territory.id }}
+                ariaLabel={`Résumer ${territory.name}`}
+                className={ICON_BUTTON}
+              >
+                <ListChecks size={16} aria-hidden="true" />
+              </OpenAssistantButton>
               <button
                 type="button"
                 onClick={() => {
@@ -306,6 +316,14 @@ export function TerritoryManager() {
             </span>
             <span className="text-ink-500 block text-xs">{countsOf(undefined)}</span>
           </div>
+          <OpenAssistantButton
+            tool="territory-summary"
+            summaryScope={{ kind: 'unclassified' }}
+            ariaLabel={`Résumer ${UNCLASSIFIED_LABEL}`}
+            className={`${ICON_BUTTON} ml-auto`}
+          >
+            <ListChecks size={16} aria-hidden="true" />
+          </OpenAssistantButton>
         </li>
       </ul>
 
