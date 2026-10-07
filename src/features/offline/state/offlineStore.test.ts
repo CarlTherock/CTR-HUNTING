@@ -29,6 +29,7 @@ function fakeMapInstance(
     isWeatherFrameReady: vi.fn().mockReturnValue(true),
     setTerrainEnabled: vi.fn(),
     queryElevation: vi.fn().mockReturnValue(null),
+    resize: vi.fn(),
     getBounds: vi.fn().mockReturnValue(BOUNDS),
     downloadArea,
     destroy: vi.fn(),

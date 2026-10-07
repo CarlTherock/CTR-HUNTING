@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CloudSunRain, ListOrdered, Pause, Play, SkipBack, SkipForward, Wind, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { GEOMET_LAYERS, geoMetLegendUrl, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { WindCompass } from '@/features/wind/components/WindCompass'
@@ -63,19 +64,16 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
 
   return (
     <>
-      <button
-        type="button"
-        onClick={toggle}
-        aria-pressed={enabled}
+      <ToolTrigger
+        placement="rail"
+        label="Météo et radar"
         title="Carte météo (radar, vent, pluie…)"
-        aria-label="Toggle weather map"
-        className={cn(
-          'border-surface-600 bg-surface-900/90 hover:bg-surface-800 absolute top-[33rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors',
-          enabled ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300',
-        )}
-      >
-        <CloudSunRain size={18} aria-hidden="true" />
-      </button>
+        icon={<CloudSunRain size={20} aria-hidden="true" />}
+        onClick={toggle}
+        pressed={enabled}
+        active={enabled}
+        order={30}
+      />
 
       {enabled && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

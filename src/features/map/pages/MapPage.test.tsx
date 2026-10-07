@@ -35,6 +35,7 @@ const setWeatherFrames = vi.fn()
 const isWeatherFrameReady = vi.fn(() => true)
 const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
+const resize = vi.fn()
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
 const downloadArea = vi
   .fn()
@@ -58,6 +59,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setTerrainEnabled,
     queryElevation,
     getBounds,
+    resize,
     downloadArea,
     destroy,
   }
@@ -228,6 +230,22 @@ afterEach(async () => {
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
 })
 
+/** Opens the "Outils" bottom sheet. */
+async function openTools(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Outils' }))
+}
+
+/** Opens the "Outils" sheet and taps one of its tools (the sheet then closes). */
+async function useTool(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await openTools(user)
+  await user.click(screen.getByRole('button', { name }))
+}
+
+/** Opens the (collapsed by default) "Couches" panel. */
+async function openLayers(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Couches' }))
+}
+
 describe('MapPage', () => {
   it('mounts the map via the provider adapter and tears it down on unmount', () => {
     const { unmount } = render(<MapPage />)
@@ -246,13 +264,14 @@ describe('MapPage', () => {
     mockProvider = null
     render(<MapPage />)
 
-    expect(screen.getByText('Map unavailable')).toBeInTheDocument()
+    expect(screen.getByText('Carte indisponible')).toBeInTheDocument()
     expect(createMap).not.toHaveBeenCalled()
   })
 
   it('switches the base layer via the layer manager panel without recreating the map', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
+    await openLayers(user)
 
     await user.click(screen.getByRole('radio', { name: 'Satellite' }))
 
@@ -264,8 +283,8 @@ describe('MapPage', () => {
   it('shows an unavailable GPS badge and a disabled locate button with no fix', () => {
     render(<MapPage />)
 
-    expect(screen.getByText('GPS unavailable')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Center on my position' })).toBeDisabled()
+    expect(screen.getByText('GPS indisponible')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Me localiser' })).toBeDisabled()
   })
 
   it('shows the accuracy badge, marks the map and recenters on a real GPS fix', async () => {
@@ -281,7 +300,7 @@ describe('MapPage', () => {
     expect(screen.getByText('GPS ±12 m')).toBeInTheDocument()
     expect(setUserLocationMarker).toHaveBeenCalledWith({ lat: 46.8, lng: -71.2, accuracyMeters: 12 })
 
-    const locateButton = screen.getByRole('button', { name: 'Center on my position' })
+    const locateButton = screen.getByRole('button', { name: 'Me localiser' })
     expect(locateButton).toBeEnabled()
 
     await user.click(locateButton)
@@ -293,8 +312,9 @@ describe('MapPage', () => {
   it('toggles an overlay via the layer manager panel', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
+    await openLayers(user)
 
-    const contoursToggle = screen.getByRole('checkbox', { name: 'Contour lines' })
+    const contoursToggle = screen.getByRole('checkbox', { name: 'Courbes de niveau' })
     expect(contoursToggle).toBeEnabled()
 
     await user.click(contoursToggle)
@@ -303,18 +323,21 @@ describe('MapPage', () => {
     expect(setOverlayVisible).toHaveBeenCalledWith('contours', false)
   })
 
-  it('disables overlay toggles while the Satellite base layer is active', () => {
+  it('disables overlay toggles while the Satellite base layer is active', async () => {
+    const user = userEvent.setup()
     useLayersStore.setState({ baseLayer: 'satellite' })
     render(<MapPage />)
+    await openLayers(user)
 
-    expect(screen.getByRole('checkbox', { name: 'Contour lines' })).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'Trails' })).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'Hydrography' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Courbes de niveau' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Sentiers' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Hydrographie' })).toBeDisabled()
   })
 
   it('switches to the 3D camera preset and back without recreating the map', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
+    await openTools(user)
 
     const button3D = screen.getByRole('button', { name: '3D' })
     const button2D = screen.getByRole('button', { name: '2D' })
@@ -332,6 +355,7 @@ describe('MapPage', () => {
   it('enables real terrain relief when switching to 3D, and disables it back in 2D', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
+    await openTools(user)
 
     await user.click(screen.getByRole('button', { name: '3D' }))
     expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 2)
@@ -343,11 +367,12 @@ describe('MapPage', () => {
   it('the exaggeration stepper only appears in 3D, and updates the engine live', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
+    await openTools(user)
 
-    expect(screen.queryByLabelText('More terrain exaggeration')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Augmenter l'exagération du relief")).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '3D' }))
-    await user.click(screen.getByRole('button', { name: 'More terrain exaggeration' }))
+    await user.click(screen.getByRole('button', { name: "Augmenter l'exagération du relief" }))
 
     expect(setTerrainEnabled).toHaveBeenLastCalledWith(true, 3)
     expect(screen.getByText('3×')).toBeInTheDocument()
@@ -358,9 +383,7 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(312)
     render(<MapPage />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'Get elevation, slope and aspect at a point' }),
-    )
+    await useTool(user, 'Altitude, pente et exposition')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
 
     expect(await screen.findByText('312 m')).toBeInTheDocument()
@@ -372,9 +395,7 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'Draw a path to see its elevation profile' }),
-    )
+    await useTool(user, "Profil d'élévation")
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     lastCreateMapOptions?.onMapClick?.({ lat: 46.81, lng: -71.2 })
 
@@ -387,9 +408,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'Draw a path to see its elevation profile' }),
-    )
+    await useTool(user, "Profil d'élévation")
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     await vi.waitFor(() => {
       expect(setMeasurePath).toHaveBeenLastCalledWith([{ lat: 46.8, lng: -71.2 }])
@@ -413,8 +432,8 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
-    expect(screen.getByText('Tap the map to place a waypoint')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+    expect(screen.getByText('Touchez la carte pour placer un point de repère')).toBeInTheDocument()
 
     // Simulate the map-engine click callback MapPage wired into createMap
     // — there's no real MapLibre canvas to click in jsdom. onMapClick
@@ -423,7 +442,7 @@ describe('MapPage', () => {
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
 
     expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
-    expect(screen.queryByText('Tap the map to place a waypoint')).not.toBeInTheDocument()
+    expect(screen.queryByText('Touchez la carte pour placer un point de repère')).not.toBeInTheDocument()
     expect(setWaypoints).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ coordinate: { lat: 46.8, lng: -71.2 } })]),
     )
@@ -436,7 +455,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
     await lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     const [waypoint] = await db.waypoints.toArray()
 
@@ -463,7 +482,7 @@ describe('MapPage', () => {
   it('persists a waypoint drag via onWaypointDragEnd (drag-to-move)', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
     const [waypoint] = await db.waypoints.toArray()
@@ -481,13 +500,13 @@ describe('MapPage', () => {
   it('saves per-waypoint optimal wind octants and flags whether the live wind matches', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Add waypoint' }))
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
     expect(await screen.findByRole('heading', { name: 'Waypoint' })).toBeInTheDocument()
 
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
-    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
     await vi.waitFor(() => {
       expect(screen.getAllByRole('img', { name: 'Wind compass' }).length).toBeGreaterThan(0)
@@ -519,7 +538,7 @@ describe('MapPage', () => {
     }
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Record a GPS track' }))
+    await useTool(user, 'Enregistrer une trace GPS')
     expect(screen.getByText('● Recording')).toBeInTheDocument()
 
     // The GPS effect (already firing on mount, since mockGpsReading is
@@ -534,7 +553,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Record a GPS track' }))
+    await useTool(user, 'Enregistrer une trace GPS')
     await user.click(screen.getByRole('button', { name: 'Stop and save track' }))
 
     // stop() awaits a fake-IndexedDB write before its state update lands —
@@ -544,25 +563,26 @@ describe('MapPage', () => {
     await vi.waitFor(() => {
       expect(setTrackPreview).toHaveBeenLastCalledWith(null)
     })
-    expect(screen.getByRole('button', { name: 'Record a GPS track' })).toBeInTheDocument()
+    await openTools(user)
+    expect(screen.getByRole('button', { name: 'Enregistrer une trace GPS' })).toBeInTheDocument()
   })
 
   it('shows an offline badge when navigator.onLine is false, not when online', () => {
     Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false })
     const { unmount } = render(<MapPage />)
-    expect(screen.getByText('Offline — showing cached maps')).toBeInTheDocument()
+    expect(screen.getByText('Hors ligne — cartes en cache')).toBeInTheDocument()
     unmount()
 
     Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
     render(<MapPage />)
-    expect(screen.queryByText('Offline — showing cached maps')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hors ligne — cartes en cache')).not.toBeInTheDocument()
   })
 
   it('selects the current viewport as an offline area, shows a real tile count, and downloads it', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Download this area for offline use' }))
+    await useTool(user, 'Télécharger cette zone hors ligne')
     expect(getBounds).toHaveBeenCalled()
     // Real tile-math count for this bbox/zoom-range, not a placeholder.
     expect(screen.getByText(/\d+ tiles? \(zoom/)).toBeInTheDocument()
@@ -581,7 +601,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
 
     expect(fetchWindField).toHaveBeenCalledWith(
@@ -605,7 +625,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
 
     await vi.waitFor(() => {
       expect(setWeatherFrames).toHaveBeenLastCalledWith(
@@ -644,12 +664,12 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
+    await useTool(user, 'Analyser cet endroit')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
     await screen.findByRole('heading', { name: 'Spot analysis' })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(1))
 
-    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
+    await useTool(user, 'Analyser cet endroit')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.82, lng: -71.21 })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(2))
     await vi.waitFor(() => {
@@ -671,8 +691,8 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Analyze this spot' }))
-    expect(screen.getByText('Tap the map to analyze that spot')).toBeInTheDocument()
+    await useTool(user, 'Analyser cet endroit')
+    expect(screen.getByText('Touchez la carte pour analyser cet endroit')).toBeInTheDocument()
 
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
 
@@ -698,7 +718,7 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+    await useTool(user, 'Carte de potentiel')
 
     await vi.waitFor(() => {
       expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(
@@ -717,7 +737,7 @@ describe('MapPage', () => {
     )
     expect(screen.getByText(/Lecture probabiliste/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+    await useTool(user, 'Carte de potentiel')
     expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(null)
   })
 
@@ -726,7 +746,7 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Toggle analysis heatmap' }))
+    await useTool(user, 'Carte de potentiel')
     await vi.waitFor(() => {
       expect(setAnalysisHeatmap).toHaveBeenCalled()
     })
@@ -752,7 +772,7 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Toggle weather map' }))
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
     await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
     expect(screen.getByRole('button', { name: 'Toggle wind flow field' })).toBeInTheDocument()
 
@@ -761,8 +781,8 @@ describe('MapPage', () => {
     await vi.waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Toggle wind flow field' })).not.toBeInTheDocument()
     })
-    expect(screen.queryByRole('button', { name: 'Toggle analysis heatmap' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Analyze this spot' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Carte de potentiel' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Analyser cet endroit' })).not.toBeInTheDocument()
     // Real CompassDisplay is now shown instead — jsdom has no orientation
     // API, so it honestly reports unavailable rather than a fake heading.
     expect(screen.getByText(/not supported/)).toBeInTheDocument()

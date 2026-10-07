@@ -20,48 +20,62 @@ afterEach(() => {
   })
 })
 
+async function openPanel() {
+  const { default: userEvent } = await import('@testing-library/user-event')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Couches' }))
+  return user
+}
+
 describe('LayerManagerPanel', () => {
-  it('only offers base layers whose vendor key is actually configured', () => {
-    mockAvailableBaseLayers = ['outdoor', 'satellite']
+  it('is collapsed by default so it never covers the map at startup', () => {
     render(<LayerManagerPanel />)
 
-    expect(screen.getByRole('radio', { name: 'Outdoor (topo)' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Couches' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('only offers base layers whose vendor key is actually configured', async () => {
+    mockAvailableBaseLayers = ['outdoor', 'satellite']
+    render(<LayerManagerPanel />)
+    await openPanel()
+
+    expect(screen.getByRole('radio', { name: 'Plein air (topo)' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Satellite' })).toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: 'Topographic' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Topographique' })).not.toBeInTheDocument()
     expect(screen.queryByText('Esri')).not.toBeInTheDocument()
   })
 
-  it('shows Esri options, grouped under an "Esri" heading, once its key is configured', () => {
+  it('shows Esri options, grouped under an "Esri" heading, once its key is configured', async () => {
     mockAvailableBaseLayers = ['outdoor', 'satellite', 'esri-topographic', 'esri-hillshade']
     render(<LayerManagerPanel />)
+    await openPanel()
 
     expect(screen.getByText('MapTiler')).toBeInTheDocument()
     expect(screen.getByText('Esri')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Topographic' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Hillshade' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Topographique' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Ombrage du relief' })).toBeInTheDocument()
     // Not configured — must not appear even though it's a known option.
     expect(screen.queryByRole('radio', { name: 'Navigation' })).not.toBeInTheDocument()
   })
 
   it('selecting an Esri base layer updates the store', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
     mockAvailableBaseLayers = ['outdoor', 'esri-terrain']
-    const user = userEvent.setup()
     render(<LayerManagerPanel />)
+    const user = await openPanel()
 
-    await user.click(screen.getByRole('radio', { name: 'Terrain' }))
+    await user.click(screen.getByRole('radio', { name: 'Relief' }))
     expect(useLayersStore.getState().baseLayer).toBe('esri-terrain')
   })
 
   it('collapses to a reopen button after picking a base layer, so it stops covering the map', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
-    const user = userEvent.setup()
     render(<LayerManagerPanel />)
+    const user = await openPanel()
 
     await user.click(screen.getByRole('radio', { name: 'Satellite' }))
 
     expect(screen.queryByRole('radio', { name: 'Satellite' })).not.toBeInTheDocument()
-    const reopenButton = screen.getByRole('button', { name: 'Choose base layer' })
+    const reopenButton = screen.getByRole('button', { name: 'Couches' })
     expect(reopenButton).toBeInTheDocument()
 
     await user.click(reopenButton)
@@ -69,11 +83,10 @@ describe('LayerManagerPanel', () => {
   })
 
   it('does not collapse when toggling an overlay', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
-    const user = userEvent.setup()
     render(<LayerManagerPanel />)
+    const user = await openPanel()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Trails' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Sentiers' }))
 
     expect(screen.getByRole('radio', { name: 'Satellite' })).toBeInTheDocument()
   })

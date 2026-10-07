@@ -171,6 +171,9 @@ const {
       getBearing() {
         return 0
       }
+      resize() {
+        // no-op: a size change has no observable effect on the fake map
+      }
       getBounds() {
         return {
           getWest: () => -71.3,

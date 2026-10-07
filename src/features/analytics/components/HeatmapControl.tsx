@@ -1,6 +1,6 @@
 import { LayoutGrid, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { analysisHeatmapColor } from '@/utils/analysisHeatmapColors'
-import { cn } from '@/utils/cn'
 import { useHeatmapStore } from '../state/heatmapStore'
 import type { HeatmapView } from '../state/heatmapStore'
 import type { Coordinate } from '@/types'
@@ -71,19 +71,14 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
 
   return (
     <>
-      <button
-        type="button"
+      <ToolTrigger
+        label="Carte de potentiel"
+        icon={<LayoutGrid size={18} aria-hidden="true" />}
         onClick={handleToggle}
-        aria-pressed={enabled}
-        title="Carte de potentiel"
-        aria-label="Toggle analysis heatmap"
-        className={cn(
-          'border-surface-600 bg-surface-900/90 hover:bg-surface-800 absolute top-[44rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors',
-          enabled ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300',
-        )}
-      >
-        <LayoutGrid size={18} aria-hidden="true" />
-      </button>
+        pressed={enabled}
+        active={enabled}
+        order={41}
+      />
 
       {enabled && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

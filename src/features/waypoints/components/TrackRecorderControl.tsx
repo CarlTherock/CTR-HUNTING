@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pause, Play, Square } from 'lucide-react'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
+import { ToolTrigger } from '@/components/map-tools'
 import { useTracksStore } from '../state/tracksStore'
 
 /** Ticks every second while mounted, showing elapsed time since
@@ -35,15 +36,12 @@ export function TrackRecorderControl() {
 
   if (status === 'idle' || !recordingStartedAt) {
     return (
-      <button
-        type="button"
+      <ToolTrigger
+        label="Enregistrer une trace GPS"
+        icon={<Play size={18} aria-hidden="true" />}
         onClick={() => void start()}
-        title="Record a GPS track"
-        aria-label="Record a GPS track"
-        className="border-surface-600 bg-surface-900/90 text-brand-400 hover:bg-surface-800 absolute top-56 right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
-      >
-        <Play size={18} aria-hidden="true" />
-      </button>
+        order={10}
+      />
     )
   }
 

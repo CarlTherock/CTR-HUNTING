@@ -1,4 +1,5 @@
 import { Box, Minus, Plus, Square } from 'lucide-react'
+import { ToolSlot } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 
 /** Camera preset for the "3D" mode — tilts/rotates the flat map, and (as
@@ -38,69 +39,75 @@ export function ViewModeToggle({
     // the 2D/3D toggle (only appearing in 3D), never below it — stacking
     // it below previously grew this control downward into
     // `WaypointControl`'s button at top-44, making it untappable.
-    <div className="absolute top-32 right-3 z-10 flex items-center gap-1.5">
-      {is3D && (
+    <ToolSlot order={5}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {is3D && (
+          <div
+            role="group"
+            aria-label="Exagération du relief"
+            className="border-surface-600 bg-surface-900/90 flex items-center gap-1.5 rounded-lg border px-1.5 py-1 shadow-lg backdrop-blur-sm"
+          >
+            <button
+              type="button"
+              onClick={() => onTerrainExaggerationChange(terrainExaggeration - 1)}
+              disabled={terrainExaggeration <= 1}
+              aria-label="Réduire l'exagération du relief"
+              className="text-ink-300 hover:bg-surface-800 flex h-11 w-11 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Minus size={16} aria-hidden="true" />
+            </button>
+            <span className="text-ink-100 w-6 text-center text-xs tabular-nums">
+              {terrainExaggeration.toFixed(0)}×
+            </span>
+            <button
+              type="button"
+              onClick={() => onTerrainExaggerationChange(terrainExaggeration + 1)}
+              disabled={terrainExaggeration >= MAX_EXAGGERATION}
+              aria-label="Augmenter l'exagération du relief"
+              className="text-ink-300 hover:bg-surface-800 flex h-11 w-11 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
         <div
           role="group"
-          aria-label="Terrain exaggeration"
-          className="border-surface-600 bg-surface-900/90 flex items-center gap-1.5 rounded-lg border px-1.5 py-1 shadow-lg backdrop-blur-sm"
+          aria-label="Mode d'affichage"
+          className="border-surface-600 bg-surface-900/90 flex overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
         >
           <button
             type="button"
-            onClick={() => onTerrainExaggerationChange(terrainExaggeration - 1)}
-            disabled={terrainExaggeration <= 1}
-            aria-label="Less terrain exaggeration"
-            className="text-ink-300 hover:bg-surface-800 rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-pressed={!is3D}
+            title="2D"
+            onClick={() => onChange(0, 0)}
+            className={cn(
+              'flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium transition-colors',
+              !is3D
+                ? 'bg-brand-500/15 text-brand-400'
+                : 'text-ink-300 hover:bg-surface-800',
+            )}
           >
-            <Minus size={12} aria-hidden="true" />
+            <Square size={14} aria-hidden="true" />
+            2D
           </button>
-          <span className="text-ink-100 w-6 text-center text-xs tabular-nums">
-            {terrainExaggeration.toFixed(0)}×
-          </span>
           <button
             type="button"
-            onClick={() => onTerrainExaggerationChange(terrainExaggeration + 1)}
-            disabled={terrainExaggeration >= MAX_EXAGGERATION}
-            aria-label="More terrain exaggeration"
-            className="text-ink-300 hover:bg-surface-800 rounded-md p-1 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-pressed={is3D}
+            title="3D"
+            onClick={() => onChange(THREE_D_PITCH, THREE_D_BEARING)}
+            className={cn(
+              'border-surface-600 flex min-h-11 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors',
+              is3D
+                ? 'bg-brand-500/15 text-brand-400'
+                : 'text-ink-300 hover:bg-surface-800',
+            )}
           >
-            <Plus size={12} aria-hidden="true" />
+            <Box size={14} aria-hidden="true" />
+            3D
           </button>
         </div>
-      )}
-
-      <div
-        role="group"
-        aria-label="View mode"
-        className="border-surface-600 bg-surface-900/90 flex overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
-      >
-        <button
-          type="button"
-          aria-pressed={!is3D}
-          title="2D"
-          onClick={() => onChange(0, 0)}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium transition-colors',
-            !is3D ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300 hover:bg-surface-800',
-          )}
-        >
-          <Square size={14} aria-hidden="true" />
-          2D
-        </button>
-        <button
-          type="button"
-          aria-pressed={is3D}
-          title="3D"
-          onClick={() => onChange(THREE_D_PITCH, THREE_D_BEARING)}
-          className={cn(
-            'border-surface-600 flex items-center gap-1.5 border-l px-2.5 py-2 text-xs font-medium transition-colors',
-            is3D ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300 hover:bg-surface-800',
-          )}
-        >
-          <Box size={14} aria-hidden="true" />
-          3D
-        </button>
       </div>
-    </div>
+    </ToolSlot>
   )
 }

@@ -11,7 +11,8 @@ export function TopBar() {
   )
 
   return (
-    <header className="border-surface-800 bg-surface-900/60 flex h-14 shrink-0 items-center justify-between border-b px-4 md:hidden">
+    <header className="border-surface-800 bg-surface-900 flex min-h-12 shrink-0 items-center justify-between border-b px-4 md:hidden"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <p className="text-ink-100 text-sm font-semibold">
         {current?.label ?? 'CTR Hunting'}
       </p>

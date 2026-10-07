@@ -1,30 +1,31 @@
 import { useState } from 'react'
 import { Layers as LayersIcon, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { availableBaseLayers } from '@/services/map'
 import type { MapBaseLayerOption, MapOverlayOption } from '@/types'
 import { cn } from '@/utils/cn'
 import { useLayersStore } from '../state/layersStore'
 
 const MAPTILER_LAYERS: MapBaseLayerOption[] = [
-  { id: 'outdoor', label: 'Outdoor (topo)' },
+  { id: 'outdoor', label: 'Plein air (topo)' },
   { id: 'satellite', label: 'Satellite' },
 ]
 
 const ESRI_LAYERS: MapBaseLayerOption[] = [
-  { id: 'esri-topographic', label: 'Topographic' },
-  { id: 'esri-imagery', label: 'Imagery Hybrid' },
-  { id: 'esri-imagery-standard', label: 'Imagery' },
-  { id: 'esri-terrain', label: 'Terrain' },
-  { id: 'esri-hillshade', label: 'Hillshade' },
-  { id: 'esri-light-gray', label: 'Light Gray' },
-  { id: 'esri-dark-gray', label: 'Dark Gray' },
+  { id: 'esri-topographic', label: 'Topographique' },
+  { id: 'esri-imagery', label: 'Imagerie hybride' },
+  { id: 'esri-imagery-standard', label: 'Imagerie' },
+  { id: 'esri-terrain', label: 'Relief' },
+  { id: 'esri-hillshade', label: 'Ombrage du relief' },
+  { id: 'esri-light-gray', label: 'Gris clair' },
+  { id: 'esri-dark-gray', label: 'Gris foncé' },
   { id: 'esri-navigation', label: 'Navigation' },
 ]
 
 const OVERLAYS: MapOverlayOption[] = [
-  { id: 'trails', label: 'Trails' },
-  { id: 'hydrography', label: 'Hydrography' },
-  { id: 'contours', label: 'Contour lines' },
+  { id: 'trails', label: 'Sentiers' },
+  { id: 'hydrography', label: 'Hydrographie' },
+  { id: 'contours', label: 'Courbes de niveau' },
 ]
 
 /** Floating panel over the map: base layer picker (grouped by vendor —
@@ -40,7 +41,9 @@ const OVERLAYS: MapOverlayOption[] = [
  * don't collapse it: those are more of a "flip a few, one at a time"
  * action than a single choice. */
 export function LayerManagerPanel() {
-  const [isOpen, setIsOpen] = useState(true)
+  // Collapsed by default: a ten-option list must never cover the map at
+  // startup. It is opened from the "Couches" button.
+  const [isOpen, setIsOpen] = useState(false)
   const baseLayer = useLayersStore((state) => state.baseLayer)
   const setBaseLayer = useLayersStore((state) => state.setBaseLayer)
   const overlays = useLayersStore((state) => state.overlays)
@@ -55,38 +58,40 @@ export function LayerManagerPanel() {
     setIsOpen(false)
   }
 
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        title="Choose base layer"
-        aria-label="Choose base layer"
-        className="border-surface-600 bg-surface-900/90 text-ink-300 hover:text-brand-400 absolute top-3 left-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
-      >
-        <LayersIcon size={18} aria-hidden="true" />
-      </button>
-    )
-  }
+  const trigger = (
+    <ToolTrigger
+      placement="rail"
+      label="Couches"
+      icon={<LayersIcon size={20} aria-hidden="true" />}
+      onClick={() => setIsOpen((open) => !open)}
+      pressed={isOpen}
+      active={isOpen}
+      order={40}
+    />
+  )
+
+  if (!isOpen) return trigger
 
   return (
-    <div className="border-surface-600 bg-surface-900/90 absolute top-3 left-3 z-10 max-h-[75vh] w-44 overflow-y-auto rounded-lg border p-2 shadow-lg backdrop-blur-sm">
+    <>
+      {trigger}
+      <div className="border-surface-600 bg-surface-900/95 absolute top-10 left-2 z-20 max-h-[calc(100%-3rem)] w-56 max-w-[calc(100%-4.5rem)] overflow-y-auto rounded-lg border p-2 shadow-lg backdrop-blur-sm">
       <div className="mb-1.5 flex items-center justify-between gap-1.5 px-1">
         <div className="text-ink-500 flex items-center gap-1.5 text-xs font-semibold">
           <LayersIcon size={14} aria-hidden="true" />
-          Base layer
+          Fond de carte
         </div>
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          title="Close"
-          aria-label="Close base layer panel"
+          title="Fermer"
+          aria-label="Fermer le panneau des couches"
           className="text-ink-500 hover:text-ink-100"
         >
           <X size={14} aria-hidden="true" />
         </button>
       </div>
-      <div role="radiogroup" aria-label="Base layer" className="flex flex-col gap-2.5">
+      <div role="radiogroup" aria-label="Fond de carte" className="flex flex-col gap-2.5">
         {mapTilerOptions.length > 0 && (
           <BaseLayerGroup
             title="MapTiler"
@@ -106,9 +111,9 @@ export function LayerManagerPanel() {
       </div>
 
       <div className="border-surface-700 text-ink-500 mt-2 mb-1.5 border-t px-1 pt-2 text-xs font-semibold">
-        Overlays
+        Superpositions
       </div>
-      <div className="flex flex-col gap-0.5" role="group" aria-label="Overlays">
+      <div className="flex flex-col gap-0.5" role="group" aria-label="Superpositions">
         {OVERLAYS.map((option) => (
           <button
             key={option.id}
@@ -116,7 +121,7 @@ export function LayerManagerPanel() {
             role="checkbox"
             aria-checked={overlays[option.id]}
             disabled={!overlaysAvailable}
-            title={overlaysAvailable ? undefined : 'Only available on the Outdoor base layer'}
+            title={overlaysAvailable ? undefined : 'Disponible uniquement avec le fond Plein air'}
             onClick={() => toggleOverlay(option.id)}
             className={cn(
               'flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
@@ -136,7 +141,8 @@ export function LayerManagerPanel() {
           </button>
         ))}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

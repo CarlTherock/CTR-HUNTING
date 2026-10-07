@@ -1021,6 +1021,9 @@ export class MapLibreProvider implements MapProvider {
         // regardless of the visual exaggeration currently active.
         return raw / terrainExaggeration
       },
+      resize() {
+        map.resize()
+      },
       getBounds(): LngLatBounds {
         const bounds = map.getBounds()
         return {

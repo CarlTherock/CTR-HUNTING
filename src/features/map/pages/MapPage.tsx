@@ -1,9 +1,16 @@
-import { useEffect, useRef } from 'react'
-import { MapPinOff } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { availableBaseLayers, mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
+import {
+  MapToolRail,
+  MapToolsProvider,
+  ToolTrigger,
+  ToolsSheet,
+} from '@/components/map-tools'
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
+import { cn } from '@/utils/cn'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
 import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
@@ -32,6 +39,7 @@ import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
+import { useImmersiveMode } from '../useImmersiveMode'
 import { sampleSlopeAspect } from '../terrainQuery'
 import { ElevationProfileControl } from '../components/ElevationProfileControl'
 import { TerrainInfoControl } from '../components/TerrainInfoControl'
@@ -54,6 +62,16 @@ export function MapPage() {
   const appliedBaseLayerRef = useRef(baseLayer)
   const overlays = useLayersStore((state) => state.overlays)
   const appliedOverlaysRef = useRef(overlays)
+  const [railHost, setRailHost] = useState<HTMLDivElement | null>(null)
+  const [sheetHost, setSheetHost] = useState<HTMLDivElement | null>(null)
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const closeTools = useCallback(() => setToolsOpen(false), [])
+  const toolsContext = useMemo(
+    () => ({ railHost, sheetHost, closeSheet: closeTools }),
+    [railHost, sheetHost, closeTools],
+  )
+  const { immersive, nativeSupported, nativeActive, toggleImmersive, toggleNative } =
+    useImmersiveMode()
   const gpsReading = useGeolocation()
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
@@ -170,6 +188,24 @@ export function MapPage() {
     }
   }, [overlays])
 
+  // The map container changes size when immersive mode toggles, the device
+  // rotates or the on-screen keyboard opens. MapLibre only watches the
+  // window, so tell the engine through the adapter whenever that happens.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => instanceRef.current?.resize())
+    return () => cancelAnimationFrame(frame)
+  }, [immersive])
+
+  useEffect(() => {
+    const resize = () => instanceRef.current?.resize()
+    window.addEventListener('orientationchange', resize)
+    window.visualViewport?.addEventListener('resize', resize)
+    return () => {
+      window.removeEventListener('orientationchange', resize)
+      window.visualViewport?.removeEventListener('resize', resize)
+    }
+  }, [])
+
   useEffect(() => {
     instanceRef.current?.setUserLocationMarker(
       gpsReading.status === 'available' ? gpsReading.value : null,
@@ -279,80 +315,141 @@ export function MapPage() {
     }
   }
 
+  const statusBadges = (
+    <>
+      {!isOnline && <Badge variant="warning">Hors ligne — cartes en cache</Badge>}
+      <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
+        {gpsReading.status === 'available'
+          ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
+          : 'GPS indisponible'}
+      </Badge>
+    </>
+  )
+
   return (
-    <div className="flex h-full flex-col gap-3">
-      <PageHeader
-        title="Map"
-        actions={
-          <>
-            {!isOnline && (
-              <Badge variant="warning">Offline — showing cached maps</Badge>
-            )}
-            <Badge variant={gpsReading.status === 'available' ? 'success' : 'warning'}>
-              {gpsReading.status === 'available'
-                ? `GPS ±${Math.round(gpsReading.value.accuracyMeters ?? 0)} m`
-                : 'GPS unavailable'}
-            </Badge>
-          </>
-        }
-      />
+    <div className={cn('flex min-h-0 flex-1 flex-col', !immersive && 'md:gap-3 md:p-6')}>
+      {/* Hidden on short screens (phone in landscape): the map needs the height. */}
+      {!immersive && (
+        <div className="hidden md:[@media(min-height:640px)]:block">
+          <PageHeader title="Carte" />
+        </div>
+      )}
       {mapProvider ? (
-        <div className="relative min-h-[60vh] flex-1">
+        <div className="relative min-h-0 flex-1">
+          {/* MapLibre's own stylesheet forces `position: relative` on the
+              element it mounts into, which would cancel `absolute inset-0`
+              there and collapse it to zero height — hence the wrapper. */}
           <div
-            ref={containerRef}
-            className="rounded-card border-surface-600 h-full overflow-hidden border"
-            data-testid="map-container"
-          />
-          {fieldModeEnabled ? (
-            <div className="absolute top-3 left-3 z-10">
-              <CompassDisplay />
+            className={cn(
+              'absolute inset-0 overflow-hidden',
+              !immersive && 'md:rounded-card md:border-surface-600 md:border',
+            )}
+          >
+            <div ref={containerRef} className="h-full w-full" data-testid="map-container" />
+          </div>
+          <MapToolsProvider value={toolsContext}>
+            <div className="pointer-events-none absolute top-2 left-2 z-10 flex flex-wrap gap-1">
+              {statusBadges}
             </div>
-          ) : (
-            <LayerManagerPanel />
-          )}
-          {!fieldModeEnabled && (
-            <ViewModeToggle
-              pitch={view.pitch}
-              onChange={setViewMode}
-              terrainExaggeration={terrainExaggeration}
-              onTerrainExaggerationChange={changeTerrainExaggeration}
+            {fieldModeEnabled ? (
+              <div className="absolute top-12 left-3 z-10">
+                <CompassDisplay />
+              </div>
+            ) : (
+              <LayerManagerPanel />
+            )}
+            {!fieldModeEnabled && (
+              <ViewModeToggle
+                pitch={view.pitch}
+                onChange={setViewMode}
+                terrainExaggeration={terrainExaggeration}
+                onTerrainExaggerationChange={changeTerrainExaggeration}
+              />
+            )}
+            <MapToolRail setHost={setRailHost} />
+            <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
+            <WaypointControl large={fieldModeEnabled} />
+            <ToolTrigger
+              placement="rail"
+              label="Outils"
+              title="Outils de la carte"
+              icon={<Wrench size={20} aria-hidden="true" />}
+              onClick={() => setToolsOpen((open) => !open)}
+              pressed={toolsOpen}
+              active={toolsOpen}
+              large={fieldModeEnabled}
+              order={50}
             />
-          )}
-          <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
-          <WaypointControl large={fieldModeEnabled} />
-          <WaypointEditPanel />
-          <TrackRecorderControl />
-          {!fieldModeEnabled && (
-            <>
-              <OfflineAreaControl
-                getMapInstance={() => instanceRef.current}
-                baseLayer={baseLayer}
-                currentZoom={view.zoom}
+            <ToolTrigger
+              placement="rail"
+              label={immersive ? 'Quitter le mode immersif' : 'Mode immersif'}
+              icon={
+                immersive ? (
+                  <Shrink size={20} aria-hidden="true" />
+                ) : (
+                  <Expand size={20} aria-hidden="true" />
+                )
+              }
+              onClick={toggleImmersive}
+              pressed={immersive}
+              active={immersive}
+              large={fieldModeEnabled}
+              order={60}
+            />
+            {nativeSupported && (
+              <ToolTrigger
+                label={nativeActive ? 'Quitter le plein écran du navigateur' : 'Plein écran du navigateur'}
+                icon={
+                  nativeActive ? (
+                    <Minimize size={18} aria-hidden="true" />
+                  ) : (
+                    <Maximize size={18} aria-hidden="true" />
+                  )
+                }
+                onClick={() => void toggleNative()}
+                active={nativeActive}
+                order={1}
               />
-              <TerrainInfoControl />
-              <ElevationProfileControl
-                queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
-              />
-              <WeatherMapControl
-                getBounds={() => instanceRef.current?.getBounds() ?? null}
-                isFrameReady={(key) => instanceRef.current?.isWeatherFrameReady(key) ?? false}
-                viewCenter={view.center}
-              />
-              <ForestLayersControl />
-              <AnalysisControl />
-              <HeatmapControl
-                getBounds={() => instanceRef.current?.getBounds() ?? null}
-                queryElevation={(coordinate) => instanceRef.current?.queryElevation(coordinate) ?? null}
-                viewCenter={view.center}
-              />
-            </>
-          )}
+            )}
+            <ToolsSheet open={toolsOpen} onClose={closeTools} setHost={setSheetHost} />
+            <WaypointEditPanel />
+            <TrackRecorderControl />
+            {!fieldModeEnabled && (
+              <>
+                <OfflineAreaControl
+                  getMapInstance={() => instanceRef.current}
+                  baseLayer={baseLayer}
+                  currentZoom={view.zoom}
+                />
+                <TerrainInfoControl />
+                <ElevationProfileControl
+                  queryElevation={(coordinate) =>
+                    instanceRef.current?.queryElevation(coordinate) ?? null
+                  }
+                />
+                <WeatherMapControl
+                  getBounds={() => instanceRef.current?.getBounds() ?? null}
+                  isFrameReady={(key) => instanceRef.current?.isWeatherFrameReady(key) ?? false}
+                  viewCenter={view.center}
+                />
+                <ForestLayersControl />
+                <AnalysisControl />
+                <HeatmapControl
+                  getBounds={() => instanceRef.current?.getBounds() ?? null}
+                  queryElevation={(coordinate) =>
+                    instanceRef.current?.queryElevation(coordinate) ?? null
+                  }
+                  viewCenter={view.center}
+                />
+              </>
+            )}
+          </MapToolsProvider>
         </div>
       ) : (
         <EmptyState
           icon={<MapPinOff size={28} aria-hidden="true" />}
-          title="Map unavailable"
-          description="No map API key is configured (VITE_MAP_TILES_API_KEY or VITE_ESRI_API_KEY). Set one in .env — see .env.example."
+          title="Carte indisponible"
+          description="Aucune clé d'API cartographique n'est configurée (VITE_MAP_TILES_API_KEY ou VITE_ESRI_API_KEY). Voir .env.example."
         />
       )}
     </div>

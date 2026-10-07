@@ -37,6 +37,9 @@ export interface MapInstance {
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
+  /** Tells the engine its container changed size (immersive/fullscreen,
+   * rotation, keyboard) so the canvas matches it again. */
+  resize(): void
   /** The geographic bounds currently visible — the real basis for "make
    * this area available offline" (Phase 3), not a guessed/typed-in box. */
   getBounds(): LngLatBounds

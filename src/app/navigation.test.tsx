@@ -34,12 +34,12 @@ describe('navigation', () => {
   it('navigates to /map and renders the map feature (unavailable state, no API key in tests)', async () => {
     renderAt('/map')
 
-    expect(await screen.findByRole('heading', { name: 'Map' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Carte' })).toBeInTheDocument()
     // No VITE_MAP_TILES_API_KEY in the test environment: this is the real,
     // explicit "unavailable" state (see src/services/map/index.ts), not a
     // Phase-0-style placeholder. MapPage.test.tsx covers the configured case
     // with a mocked provider.
-    expect(screen.getByText('Map unavailable')).toBeInTheDocument()
+    expect(screen.getByText('Carte indisponible')).toBeInTheDocument()
   })
 
   it('navigates from the dashboard to Waypoints via the sidebar link', async () => {

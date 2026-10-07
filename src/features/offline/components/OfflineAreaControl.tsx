@@ -1,4 +1,5 @@
 import { Download, Minus, Plus, RefreshCw, X } from 'lucide-react'
+import { ToolSlot, ToolTrigger } from '@/components/map-tools'
 import { Button } from '@/components/ui'
 import { formatBytes } from '@/utils/format'
 import { tileCountForBounds } from '@/utils/tiles'
@@ -44,37 +45,31 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
 
     return (
       <>
-        {refreshable.length > 0 && (
-          <div className="border-surface-600 bg-surface-900/90 absolute top-[21rem] right-3 z-10 flex max-w-[10rem] flex-col gap-1 rounded-lg border p-1.5 shadow-lg backdrop-blur-sm">
-            {refreshable.map((area) => (
-              <button
-                key={area.id}
-                type="button"
-                onClick={() => {
-                  const map = getMapInstance()
-                  if (map) void refreshArea(map, area)
-                }}
-                title={`Refresh "${area.name}"`}
-                className="text-ink-300 hover:bg-surface-800 hover:text-brand-400 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs transition-colors"
-              >
-                <RefreshCw size={12} aria-hidden="true" className="shrink-0" />
-                <span className="truncate">{area.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
+        {refreshable.map((area) => (
+          <ToolSlot key={area.id} order={21}>
+            <button
+              type="button"
+              onClick={() => {
+                const map = getMapInstance()
+                if (map) void refreshArea(map, area)
+              }}
+              title={`Actualiser « ${area.name} »`}
+              className="border-surface-600 text-ink-300 hover:bg-surface-800 flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm transition-colors"
+            >
+              <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
+              <span className="truncate">Actualiser « {area.name} »</span>
+            </button>
+          </ToolSlot>
+        ))}
+        <ToolTrigger
+          label="Télécharger cette zone hors ligne"
+          icon={<Download size={18} aria-hidden="true" />}
           onClick={() => {
             const map = getMapInstance()
             if (map) startSelecting(map.getBounds(), currentZoom)
           }}
-          title="Download this area for offline use"
-          aria-label="Download this area for offline use"
-          className="border-surface-600 bg-surface-900/90 text-brand-400 hover:bg-surface-800 absolute top-[17rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
-        >
-          <Download size={18} aria-hidden="true" />
-        </button>
+          order={20}
+        />
       </>
     )
   }

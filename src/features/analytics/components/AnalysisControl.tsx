@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Activity, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import { useAnalysisStore } from '../state/analysisStore'
 import type { AnalyzerResult } from '@/types'
@@ -94,7 +95,7 @@ export function AnalysisControl() {
   if (mode === 'analyzing') {
     return (
       <div className="border-brand-500/40 bg-surface-900/95 text-ink-100 absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg">
-        Tap the map to analyze that spot
+        Touchez la carte pour analyser cet endroit
         <button
           type="button"
           onClick={cancel}
@@ -109,15 +110,12 @@ export function AnalysisControl() {
 
   return (
     <>
-      <button
-        type="button"
+      <ToolTrigger
+        label="Analyser cet endroit"
+        icon={<Activity size={18} aria-hidden="true" />}
         onClick={startAnalyzing}
-        title="Analyze this spot"
-        aria-label="Analyze this spot"
-        className="border-surface-600 bg-surface-900/90 text-brand-400 hover:bg-surface-800 absolute top-[38.5rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors"
-      >
-        <Activity size={18} aria-hidden="true" />
-      </button>
+        order={40}
+      />
 
       {status !== 'idle' && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

@@ -90,12 +90,26 @@
 
   body {
     @apply bg-surface-950 text-ink-100 font-sans antialiased;
-    /* Respect safe areas on notched devices when the PWA is installed. */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    /* Safe areas are applied by the layout pieces that actually touch the
+     * screen edges (TopBar, BottomNav, immersive shell) — padding the body
+     * as well counted them twice and pushed the page past the viewport. */
+    margin: 0;
   }
 
   :focus-visible {
     @apply outline-brand-400 outline-2 outline-offset-2;
+  }
+}
+
+/*
+ * Touch targets: MapLibre's own zoom/compass/attribution buttons are 29 px.
+ * On touch devices they must reach the 44 px minimum like every other
+ * control (WCAG 2.5.5 / Apple HIG).
+ */
+@media (pointer: coarse) {
+  .maplibregl-ctrl-group button,
+  .maplibregl-ctrl button.maplibregl-ctrl-attrib-button {
+    width: 44px;
+    height: 44px;
   }
 }

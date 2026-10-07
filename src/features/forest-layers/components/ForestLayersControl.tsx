@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Trees, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import { FOREST_LAYER_OPTIONS } from '@/services/map/forestLayerTiles'
 import { useForestLayersStore } from '../state/forestLayersStore'
@@ -26,19 +27,14 @@ export function ForestLayersControl() {
 
   return (
     <>
-      <button
-        type="button"
+      <ToolTrigger
+        label="Forêt ouverte (cadastre, coupes)"
+        icon={<Trees size={18} aria-hidden="true" />}
         onClick={() => setPanelOpen((open) => !open)}
-        aria-pressed={panelOpen}
-        title="Couches Forêt ouverte"
-        aria-label="Toggle Forêt ouverte layers panel"
-        className={cn(
-          'border-surface-600 bg-surface-900/90 hover:bg-surface-800 absolute top-[55rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors',
-          anyEnabled ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300',
-        )}
-      >
-        <Trees size={18} aria-hidden="true" />
-      </button>
+        pressed={panelOpen}
+        active={anyEnabled}
+        order={50}
+      />
 
       {panelOpen && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
