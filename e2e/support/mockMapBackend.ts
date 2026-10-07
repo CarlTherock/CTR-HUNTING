@@ -30,6 +30,9 @@ export interface MockMapBackend {
   served(): Record<MockCategory, number>
   /** Requests refused because `setOnline(false)` was active. */
   refused(): number
+  /** Makes the style of one layer kind (e.g. 'esri-imagery') answer HTTP
+   * 403, as an invalid key would. `null` restores normal answers. */
+  failStyle(kind: string | null): void
   /** Style kinds requested (in order) since the last reset. */
   styleRequests(): string[]
   /** Requests to hosts the app was not expected to call. */
@@ -103,6 +106,7 @@ export async function installMockMapBackend(
   context: BrowserContext,
 ): Promise<MockMapBackend> {
   let online = true
+  let failingStyle: string | null = null
   let counts: Record<MockCategory, number> = { style: 0, tile: 0, sprite: 0, glyph: 0 }
   let refusedCount = 0
   let styles: string[] = []
@@ -138,6 +142,10 @@ export async function installMockMapBackend(
       case STYLE_HOST_ESRI: {
         const kind = styleKind(url)
         styles.push(kind)
+        if (failingStyle === kind) {
+          await route.fulfill({ status: 403, headers: cors, body: 'forbidden' })
+          return
+        }
         counts.style++
         await route.fulfill({
           status: 200,
@@ -197,6 +205,9 @@ export async function installMockMapBackend(
   return {
     setOnline(value) {
       online = value
+    },
+    failStyle(kind) {
+      failingStyle = kind
     },
     served: () => ({ ...counts }),
     refused: () => refusedCount,

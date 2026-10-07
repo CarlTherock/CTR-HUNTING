@@ -10,6 +10,10 @@ interface LayersState {
   setBaseLayer: (layer: MapBaseLayerId) => void
   /** Applies the startup default without marking it as a user choice. */
   setInitialBaseLayer: (layer: MapBaseLayerId) => void
+  /** Explicit, user-visible explanation when the map is not on the layer it
+   * should be on (provider not configured, style failed to load). */
+  baseLayerNotice: string | null
+  setBaseLayerNotice: (notice: string | null) => void
   overlays: Record<MapOverlayId, boolean>
   toggleOverlay: (overlay: MapOverlayId) => void
 }
@@ -30,8 +34,11 @@ interface LayersState {
 export const useLayersStore = create<LayersState>((set) => ({
   baseLayer: 'outdoor',
   baseLayerChosenByUser: false,
-  setBaseLayer: (layer) => set({ baseLayer: layer, baseLayerChosenByUser: true }),
+  setBaseLayer: (layer) =>
+    set({ baseLayer: layer, baseLayerChosenByUser: true, baseLayerNotice: null }),
   setInitialBaseLayer: (layer) => set({ baseLayer: layer }),
+  baseLayerNotice: null,
+  setBaseLayerNotice: (notice) => set({ baseLayerNotice: notice }),
   overlays: { trails: true, hydrography: true, contours: true },
   toggleOverlay: (overlay) =>
     set((state) => ({

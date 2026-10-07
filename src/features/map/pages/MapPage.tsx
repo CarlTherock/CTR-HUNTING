@@ -1,3 +1,4 @@
+import type { MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -18,7 +19,12 @@ import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { CompassDisplay } from '@/features/field-mode/components/CompassDisplay'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { LayerManagerPanel } from '@/features/layers/components/LayerManagerPanel'
-import { resolveInitialBaseLayer } from '@/features/layers/startupBaseLayer'
+import {
+  baseLayerFailureNotice,
+  nextFallbackLayer,
+  resolveInitialBaseLayer,
+  startupFallbackNotice,
+} from '@/features/layers/startupBaseLayer'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
 import { useGeolocation } from '@/features/gps/useGeolocation'
@@ -125,6 +131,14 @@ export function MapPage() {
     if (initialBaseLayer !== layers.baseLayer) {
       layers.setInitialBaseLayer(initialBaseLayer)
     }
+    // Say it explicitly when the hybrid view cannot be used (provider not
+    // configured) instead of silently opening on another layer.
+    layers.setBaseLayerNotice(
+      layers.baseLayerChosenByUser
+        ? null
+        : startupFallbackNotice(availableBaseLayers, initialBaseLayer),
+    )
+    const failedBaseLayers: MapBaseLayerId[] = []
     // The engine is created with this layer: not a change to apply afterwards.
     appliedBaseLayerRef.current = initialBaseLayer
 
@@ -167,6 +181,20 @@ export function MapPage() {
       },
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
       onDraftMove: (coordinate) => useWaypointsStore.getState().moveDraft(coordinate),
+      onBaseLayerError: (failed) => {
+        const state = useLayersStore.getState()
+        failedBaseLayers.push(failed)
+        // Never override a layer the user picked: tell them instead.
+        if (state.baseLayerChosenByUser || state.baseLayer !== failed) {
+          state.setBaseLayerNotice(baseLayerFailureNotice(failed, null))
+          return
+        }
+        const fallback = nextFallbackLayer(availableBaseLayers, failedBaseLayers)
+        state.setBaseLayerNotice(baseLayerFailureNotice(failed, fallback))
+        if (fallback) {
+          state.setInitialBaseLayer(fallback)
+        }
+      },
     })
     instanceRef.current = instance
     void useWaypointsStore.getState().load()
@@ -355,6 +383,8 @@ export function MapPage() {
     }
   }
 
+  const baseLayerNotice = useLayersStore((state) => state.baseLayerNotice)
+
   const statusBadges = (
     <>
       {!isOnline && <Badge variant="warning">Hors ligne — cartes en cache</Badge>}
@@ -395,6 +425,14 @@ export function MapPage() {
             <div className="pointer-events-none absolute top-2 left-2 z-10 flex flex-wrap gap-1">
               {statusBadges}
             </div>
+            {baseLayerNotice && (
+              <p
+                role="status"
+                className="border-status-warning/50 bg-surface-900/95 text-ink-100 pointer-events-none absolute top-12 left-2 z-10 max-w-[calc(100%-5rem)] rounded-md border px-3 py-2 text-xs shadow-lg"
+              >
+                {baseLayerNotice}
+              </p>
+            )}
             {fieldModeEnabled ? (
               <div className="absolute top-12 left-3 z-10">
                 <CompassDisplay />

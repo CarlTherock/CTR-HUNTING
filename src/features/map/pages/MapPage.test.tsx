@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
 import { useLayersStore } from '@/features/layers/state/layersStore'
@@ -38,13 +38,11 @@ const setTerrainEnabled = vi.fn()
 const queryElevation = vi.fn(() => null as number | null)
 const resize = vi.fn()
 const getBounds = vi.fn(() => ({ west: -71.3, south: 46.7, east: -71.1, north: 46.9 }))
-const downloadArea = vi
-  .fn()
-  .mockResolvedValue({
-    tilesDownloaded: 4,
-    bytesDownloaded: 40_000,
-    tileUrls: ['a', 'b', 'c', 'd'],
-  })
+const downloadArea = vi.fn().mockResolvedValue({
+  tilesDownloaded: 4,
+  bytesDownloaded: 40_000,
+  tileUrls: ['a', 'b', 'c', 'd'],
+})
 let lastCreateMapOptions: CreateMapOptions | undefined
 const createMap = vi.fn((options: CreateMapOptions) => {
   lastCreateMapOptions = options
@@ -73,22 +71,26 @@ const createMap = vi.fn((options: CreateMapOptions) => {
 
 let mockProvider: { createMap: typeof createMap } | null = { createMap }
 
+const ALL_BASE_LAYERS = [
+  'outdoor',
+  'satellite',
+  'esri-topographic',
+  'esri-imagery',
+  'esri-imagery-standard',
+  'esri-terrain',
+  'esri-hillshade',
+  'esri-light-gray',
+  'esri-dark-gray',
+  'esri-navigation',
+]
+let mockAvailableBaseLayers: string[] = ALL_BASE_LAYERS
 vi.mock('@/services/map', () => ({
   get mapProvider() {
     return mockProvider
   },
-  availableBaseLayers: [
-    'outdoor',
-    'satellite',
-    'esri-topographic',
-    'esri-imagery',
-    'esri-imagery-standard',
-    'esri-terrain',
-    'esri-hillshade',
-    'esri-light-gray',
-    'esri-dark-gray',
-    'esri-navigation',
-  ],
+  get availableBaseLayers() {
+    return mockAvailableBaseLayers
+  },
 }))
 
 const fetchWindField = vi.fn().mockResolvedValue({
@@ -180,8 +182,11 @@ vi.mock('@/features/gps/useGeolocation', () => ({
 }))
 
 afterEach(async () => {
+  // Unmount first: resetting the stores below must not re-render a live map page.
+  cleanup()
   vi.clearAllMocks()
   mockProvider = { createMap }
+  mockAvailableBaseLayers = ALL_BASE_LAYERS
   mockGpsReading = {
     status: 'unavailable',
     reason: 'Geolocation is not supported by this browser.',
@@ -189,6 +194,7 @@ afterEach(async () => {
   useLayersStore.setState({
     baseLayer: 'outdoor',
     baseLayerChosenByUser: false,
+    baseLayerNotice: null,
     overlays: { trails: true, hydrography: true, contours: true },
   })
   useMapStore.setState({
@@ -310,6 +316,81 @@ describe('MapPage', () => {
 
     expect(createMap).toHaveBeenCalledWith(
       expect.objectContaining({ initialBaseLayer: 'outdoor' }),
+    )
+  })
+
+  it('keeps the chosen layer across a leave-and-return of the map page', () => {
+    const first = render(<MapPage />)
+    expect(createMap).toHaveBeenLastCalledWith(
+      expect.objectContaining({ initialBaseLayer: 'esri-imagery' }),
+    )
+    act(() => useLayersStore.getState().setBaseLayer('satellite'))
+    first.unmount()
+
+    render(<MapPage />)
+    expect(createMap).toHaveBeenLastCalledWith(
+      expect.objectContaining({ initialBaseLayer: 'satellite' }),
+    )
+  })
+
+  it('opens on the hybrid view again on a cold launch (fresh session state)', () => {
+    useLayersStore.setState({ baseLayer: 'satellite', baseLayerChosenByUser: true })
+    // A cold launch re-creates the stores: nothing carries the choice over.
+    useLayersStore.setState({ baseLayer: 'outdoor', baseLayerChosenByUser: false })
+    render(<MapPage />)
+    expect(createMap).toHaveBeenCalledWith(
+      expect.objectContaining({ initialBaseLayer: 'esri-imagery' }),
+    )
+  })
+
+  it('says explicitly when the hybrid view is unavailable because the Esri key is missing', () => {
+    mockAvailableBaseLayers = ['outdoor', 'satellite']
+    render(<MapPage />)
+
+    expect(createMap).toHaveBeenCalledWith(
+      expect.objectContaining({ initialBaseLayer: 'satellite' }),
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Imagerie hybride indisponible (la clé Esri n’est pas configurée) : fond « Satellite » affiché.',
+    )
+  })
+
+  it('shows no fallback notice when the hybrid view is used', () => {
+    render(<MapPage />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('falls back to Satellite, with a visible message, when the hybrid style fails to load', () => {
+    render(<MapPage />)
+    act(() => lastCreateMapOptions?.onBaseLayerError?.('esri-imagery', 'HTTP 403'))
+
+    expect(useLayersStore.getState().baseLayer).toBe('satellite')
+    expect(useLayersStore.getState().baseLayerChosenByUser).toBe(false)
+    expect(setBaseLayer).toHaveBeenCalledWith('satellite')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Fond « Imagerie hybride » indisponible',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('repli sur « Satellite »')
+  })
+
+  it('reports that nothing else can be loaded when every fallback failed', () => {
+    mockAvailableBaseLayers = ['esri-imagery', 'satellite']
+    render(<MapPage />)
+    act(() => lastCreateMapOptions?.onBaseLayerError?.('esri-imagery', 'réseau'))
+    act(() => lastCreateMapOptions?.onBaseLayerError?.('satellite', 'réseau'))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Aucun autre fond')
+  })
+
+  it('never overrides a layer the user picked when it fails: it only explains', () => {
+    useLayersStore.setState({ baseLayer: 'outdoor', baseLayerChosenByUser: true })
+    render(<MapPage />)
+    act(() => lastCreateMapOptions?.onBaseLayerError?.('outdoor', 'réseau'))
+
+    expect(useLayersStore.getState().baseLayer).toBe('outdoor')
+    expect(setBaseLayer).not.toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Fond « Extérieur » indisponible',
     )
   })
 

@@ -63,6 +63,7 @@ export class MapLibreProvider implements MapProvider {
     onMapClick,
     onWaypointClick,
     onDraftMove,
+    onBaseLayerError,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -110,7 +111,24 @@ export class MapLibreProvider implements MapProvider {
     // holds exaggeration at 1 (true scale).
     let terrainExaggeration = 1
 
+    // Style-level failure detection: an `error` event raised before the
+    // current base style finished loading and not tied to a source or tile
+    // is the style JSON itself failing (tile errors are transient and carry
+    // a `sourceId`). Reported once per load attempt.
+    let currentBaseLayer = initialBaseLayer
+    let styleReady = false
+    let failureReported = false
+    map.on(
+      'error',
+      (event: { error?: { message?: string }; sourceId?: string; tile?: unknown }) => {
+        if (styleReady || failureReported || event.sourceId || event.tile) return
+        failureReported = true
+        onBaseLayerError?.(currentBaseLayer, event.error?.message ?? 'style indisponible')
+      },
+    )
+
     map.on('style.load', () => {
+      styleReady = true
       for (const overlay of Object.keys(overlayState) as MapOverlayId[]) {
         applyOverlay(map, overlay, overlayState[overlay])
       }
@@ -150,6 +168,9 @@ export class MapLibreProvider implements MapProvider {
         if (view.bearing !== undefined) map.setBearing(view.bearing)
       },
       setBaseLayer: (layer: MapBaseLayerId) => {
+        currentBaseLayer = layer
+        styleReady = false
+        failureReported = false
         map.setStyle(this.styleUrl(layer))
       },
       setOverlayVisible(overlay: MapOverlayId, visible: boolean) {

@@ -162,6 +162,10 @@ export interface CreateMapOptions {
    * not saved yet) to a new position. Saved waypoint markers are never
    * draggable: a saved waypoint's location is locked. */
   onDraftMove?: (coordinate: Coordinate) => void
+  /** Called once per base-layer load attempt when the style itself (not an
+   * individual tile) could not be loaded: provider unreachable, invalid key,
+   * nothing cached offline. The caller decides the fallback. */
+  onBaseLayerError?: (layer: MapBaseLayerId, message: string) => void
 }
 
 /**
