@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Compass } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { APP_TAGLINE } from '@/app/appInfo'
 
 const VISIBLE_MS = 2600
 const FADE_MS = 450
@@ -54,7 +55,7 @@ export function Splash({ onDone }: SplashProps) {
           CTR HUNTING
         </p>
         <p className="text-ink-500 [animation:splash-text_0.5s_ease-out_0.48s_both] text-xs tracking-[0.15em] uppercase">
-          Field Terrain Intelligence
+          {APP_TAGLINE}
         </p>
       </div>
       <div className="bg-surface-700 h-px w-20 overflow-hidden rounded-full">

@@ -9,6 +9,8 @@ import { db } from '@/database/db'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
 import { summaryFixture } from '@/test/downloadFixtures'
+import { APP_VERSION } from '@/app/appInfo'
+import { useOnboardingStore } from '@/features/onboarding/state/onboardingStore'
 
 // jsdom has no Cache Storage API — `deleteArea` (via tileCache.ts)
 // touches it to remove a deleted area's tiles, which is exercised for
@@ -282,5 +284,32 @@ describe('SettingsPage', () => {
     await vi.waitFor(async () => {
       expect((await db.settings.get('fieldModeEnabled'))?.value).toBe(true)
     })
+  })
+
+  it('links to the help, privacy and about pages and shows the real version', async () => {
+    await renderSettled()
+
+    expect(screen.getByRole('link', { name: 'Aide' })).toHaveAttribute('href', '/help')
+    expect(
+      screen.getByRole('link', { name: /Confidentialité et mes données/ }),
+    ).toHaveAttribute('href', '/privacy')
+    expect(
+      screen.getByRole('link', { name: /À propos, mises à jour et sources/ }),
+    ).toHaveAttribute('href', '/about')
+    expect(screen.getByText(`CTR Hunting · version ${APP_VERSION}`)).toBeInTheDocument()
+    // The old stale labels are gone.
+    expect(screen.queryByText(/Phase 3/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Field Terrain Intelligence/)).not.toBeInTheDocument()
+  })
+
+  it('replays the presentation on demand', async () => {
+    const user = userEvent.setup()
+    useOnboardingStore.setState({ open: false })
+    await renderSettled()
+
+    await user.click(screen.getByRole('button', { name: /Revoir la présentation/ }))
+
+    expect(useOnboardingStore.getState().open).toBe(true)
+    useOnboardingStore.setState({ open: false })
   })
 })

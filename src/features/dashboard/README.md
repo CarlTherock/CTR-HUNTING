@@ -1,7 +1,10 @@
 # features/dashboard
 
-**Status:** functional (Phase 0).
+**Status:** functional.
 
-Landing page: connection/offline status, roadmap position, and quick links
-into the other sections. This is the one feature page that is not a
-placeholder — everything else in Phase 0 is app shell, not feature logic.
+Field home page (`/`). Compact cards fed by existing stores, never by new
+requests at launch: weather and wind (real data only, "actuel" or "prévision"
+with the hour, otherwise "indisponible" and a button), map shortcut, active
+guidance, selected territory, last outing, offline maps, data and backup
+state. Pure helpers (ages, last outing, offline counts, weather summary) live
+in `summary.ts`. The developer roadmap moved to `/about`.

@@ -29,15 +29,37 @@ interface WeatherState {
    * exists, clearly flagged via `isCached`; only goes to `error` status
    * if there's truly nothing to show. */
   fetch: (coordinate: Coordinate) => Promise<void>
+  /** Shows the last forecast saved on this device WITHOUT any network
+   * request (flagged `isCached`). Does nothing if a forecast is already
+   * loaded or nothing was ever saved. */
+  loadCached: () => Promise<void>
 }
 
-export const useWeatherStore = create<WeatherState>((set) => ({
+export const useWeatherStore = create<WeatherState>((set, get) => ({
   status: 'idle',
   forecast: null,
   coordinate: null,
   fetchedAt: null,
   isCached: false,
   errorReason: null,
+
+  loadCached: async () => {
+    if (get().forecast) return
+    try {
+      const cached = await getSetting<CachedWeather | null>(CACHE_KEY, null)
+      if (!cached || get().forecast) return
+      set({
+        status: 'available',
+        forecast: cached.forecast,
+        coordinate: cached.coordinate,
+        fetchedAt: cached.fetchedAt,
+        isCached: true,
+        errorReason: null,
+      })
+    } catch {
+      // Unreadable cache: stay « idle » (shown as unavailable), never guess.
+    }
+  },
 
   fetch: async (coordinate) => {
     set({ status: 'loading' })

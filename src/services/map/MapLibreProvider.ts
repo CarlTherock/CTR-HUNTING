@@ -1,4 +1,5 @@
 import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { MAP_LOCALE_FR } from './mapLocale'
 import type {
   AnalysisHeatmapCell,
   Coordinate,
@@ -96,6 +97,7 @@ export class MapLibreProvider implements MapProvider {
       // rendering issues, so 85 is the real, supported maximum, not an
       // arbitrary guess.
       maxPitch: 85,
+      locale: MAP_LOCALE_FR,
     })
 
     map.addControl(new NavigationControl(), 'top-right')

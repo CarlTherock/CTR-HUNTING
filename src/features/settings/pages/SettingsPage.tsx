@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { PlayCircle, RefreshCw, Trash2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Card,
   CardHeader,
@@ -9,8 +9,11 @@ import {
   CardContent,
   PageHeader,
   Badge,
+  Button,
   EmptyState,
 } from '@/components/ui'
+import { APP_NAME, APP_VERSION } from '@/app/appInfo'
+import { useOnboardingStore } from '@/features/onboarding/state/onboardingStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { estimateStorageUsage } from '@/offline/tileCache'
 import { useLocalStorageProbe } from '../state/useLocalStorageProbe'
@@ -33,7 +36,11 @@ const DataBackupSection = lazy(
   () => import('@/features/backup/components/DataBackupSection'),
 )
 
-const APP_VERSION = '0.1.0'
+const INFO_LINKS = [
+  { to: '/help', label: 'Aide' },
+  { to: '/privacy', label: 'Confidentialité et mes données' },
+  { to: '/about', label: 'À propos, mises à jour et sources' },
+] as const
 
 const STATUS_BADGE_VARIANT: Record<
   EffectiveAreaStatus,
@@ -61,6 +68,7 @@ export function SettingsPage() {
   const deleteArea = useOfflineStore((state) => state.deleteArea)
   const requestRetry = useOfflineStore((state) => state.requestRetry)
   const navigate = useNavigate()
+  const replayOnboarding = useOnboardingStore((state) => state.replay)
 
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
   const fieldModeLoaded = useFieldModeStore((state) => state.loaded)
@@ -268,11 +276,30 @@ export function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>À propos</CardTitle>
+          <CardTitle>Aide et informations</CardTitle>
+          <CardDescription>
+            {APP_NAME} · version {APP_VERSION}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="text-ink-300 space-y-1 text-sm">
-          <p>Field Terrain Intelligence</p>
-          <p className="text-ink-500">Version {APP_VERSION} · Phase 3 — Hors ligne</p>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {INFO_LINKS.map((link) => (
+              <li key={link.to}>
+                <Link
+                  to={link.to}
+                  className="text-ink-100 inline-flex min-h-11 items-center underline"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <Button size="sm" variant="secondary" onClick={replayOnboarding}>
+              <PlayCircle size={14} aria-hidden="true" />
+              Revoir la présentation
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -3,24 +3,28 @@ import { render, screen } from '@testing-library/react'
 import { App } from './App'
 
 describe('App startup', () => {
-  it('renders the app shell and the dashboard by default', async () => {
+  it('renders the app shell and the field home by default', async () => {
     render(<App />)
 
     // Sidebar brand mark (desktop nav) confirms the shell mounted.
     expect(await screen.findByText('CTR HUNTING')).toBeInTheDocument()
 
-    // Dashboard is the index route.
+    // The home page is the index route.
     expect(
-      await screen.findByRole('heading', { name: 'CTR Hunting' }),
+      await screen.findByRole('heading', { level: 1, name: 'CTR Hunting' }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Phase 14 — IA et assistant/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Météo et vent' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Sauvegarde et données' }),
+    ).toBeInTheDocument()
   })
 
-  it('lists every roadmap phase with phase 0 marked done', async () => {
+  it('no longer shows the developer roadmap on the home page', async () => {
     render(<App />)
 
-    expect(await screen.findByText(/0\. Fondations/)).toBeInTheDocument()
-    expect(screen.getByText(/17\. Lancement commercial/)).toBeInTheDocument()
+    await screen.findByRole('heading', { level: 1, name: 'CTR Hunting' })
+    expect(screen.queryByText(/0\. Fondations/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Feuille de route/)).not.toBeInTheDocument()
   })
 
   it('shows the splash screen only for a standalone/installed launch, not an ordinary tab', () => {

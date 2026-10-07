@@ -15,6 +15,9 @@ const base = process.env.GITHUB_PAGES === 'true' ? '/CTR-HUNTING/' : '/'
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  // Build moment shown in « À propos » (src/app/appInfo.ts). The version itself
+  // is imported from package.json, not defined here.
+  define: { __APP_BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
   // Local `vite preview` only (never part of the deployed site): lets a Cloudflare
   // quick tunnel reach it so a branch can be tried on a phone over HTTPS.
   preview: { allowedHosts: ['.trycloudflare.com'] },
@@ -74,7 +77,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'CTR Hunting — Field Terrain Intelligence',
+        name: 'CTR Hunting',
         short_name: 'CTR Hunting',
         lang: 'fr',
         description:

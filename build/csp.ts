@@ -9,15 +9,13 @@
  * Every remote host below is one the app really calls today. Providers are
  * listed explicitly rather than allowing `https:` wholesale.
  */
-const PROVIDER_HOSTS = [
+export const PROVIDER_HOSTS = [
   'https://api.maptiler.com',
   'https://*.arcgis.com',
   'https://*.arcgisonline.com',
   'https://api.open-meteo.com',
   'https://overpass-api.de',
   'https://s3.amazonaws.com',
-  'https://tilecache.rainviewer.com',
-  'https://api.rainviewer.com',
   'https://geo.weather.gc.ca',
   'https://geoegl.msp.gouv.qc.ca',
   'https://geo.environnement.gouv.qc.ca',

@@ -1,119 +1,91 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Circle, CircleDot } from 'lucide-react'
-import { navItems } from '@/app/navigation'
+import { APP_NAME } from '@/app/appInfo'
+import { Badge, PageHeader } from '@/components/ui'
+import { InstallPrompt } from '@/features/install/components/InstallPrompt'
+import { useFirstRunOnboarding } from '@/features/onboarding/useFirstRunOnboarding'
+import { useJournalStore } from '@/features/journal/state/journalStore'
+import { useOfflineStore } from '@/features/offline/state/offlineStore'
+import { useTracksStore } from '@/features/waypoints/state/tracksStore'
+import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  PageHeader,
-  Badge,
-} from '@/components/ui'
+import { DataCard } from '../components/DataCard'
+import { GuidanceCard } from '../components/GuidanceCard'
+import { OfflineCard } from '../components/OfflineCard'
+import { OutingCard } from '../components/OutingCard'
+import { QuickAccessCard } from '../components/QuickAccessCard'
+import { TerritoryCard } from '../components/TerritoryCard'
+import { WeatherCard } from '../components/WeatherCard'
 
-type PhaseStatus = 'done' | 'in-progress' | 'pending'
+/** Loads, once, the data the cards summarise. A store that fails to load
+ * simply leaves its card on its empty/loading state. */
+function useLoadDashboardData(): void {
+  const wpLoaded = useWaypointsStore((s) => s.loaded)
+  const wpLoad = useWaypointsStore((s) => s.load)
+  const trLoaded = useTracksStore((s) => s.loaded)
+  const trLoad = useTracksStore((s) => s.load)
+  const joLoaded = useJournalStore((s) => s.loaded)
+  const joLoad = useJournalStore((s) => s.load)
+  const ofLoaded = useOfflineStore((s) => s.loaded)
+  const ofLoad = useOfflineStore((s) => s.load)
 
-/** Kept in sync with `PROJECT_SPECIFICATION.md`'s phase table by hand —
- * that file (not this one) is the authoritative source; this is just its
- * status mirrored into the UI. Update both together. */
-const ROADMAP: { phase: number; label: string; status: PhaseStatus }[] = [
-  { phase: 0, label: 'Fondations', status: 'done' },
-  { phase: 1, label: 'Carte', status: 'done' },
-  { phase: 2, label: 'Points de repère et traces', status: 'done' },
-  { phase: 3, label: 'Hors ligne', status: 'done' },
-  { phase: 4, label: 'Terrain 3D', status: 'done' },
-  { phase: 5, label: 'Météo', status: 'done' },
-  { phase: 6, label: 'Vent', status: 'done' },
-  { phase: 7, label: 'Données temporelles', status: 'done' },
-  { phase: 8, label: 'Moteur d’analyse', status: 'done' },
-  { phase: 9, label: 'Carte d’analyse', status: 'done' },
-  { phase: 10, label: 'Graphiques avancés', status: 'done' },
-  { phase: 11, label: 'Mode terrain', status: 'done' },
-  { phase: 12, label: 'Caméra', status: 'done' },
-  { phase: 13, label: 'Journal', status: 'done' },
-  { phase: 14, label: 'IA et assistant', status: 'pending' },
-  { phase: 15, label: 'Synchronisation', status: 'pending' },
-  { phase: 16, label: 'Tests et optimisation', status: 'pending' },
-  { phase: 17, label: 'Lancement commercial', status: 'pending' },
-]
+  useEffect(() => {
+    if (!wpLoaded) void wpLoad().catch(() => undefined)
+    if (!trLoaded) void trLoad().catch(() => undefined)
+    if (!joLoaded) void joLoad().catch(() => undefined)
+    if (!ofLoaded) void ofLoad().catch(() => undefined)
+  }, [wpLoaded, wpLoad, trLoaded, trLoad, joLoaded, joLoad, ofLoaded, ofLoad])
+}
 
-const currentPhase =
-  ROADMAP.find((p) => p.status !== 'done') ?? ROADMAP[ROADMAP.length - 1]
+const FOOTER_LINKS = [
+  { to: '/help', label: 'Aide' },
+  { to: '/privacy', label: 'Confidentialité' },
+  { to: '/about', label: 'À propos' },
+] as const
 
+/** Field home: compact cards, mobile first. Reads only data already on the
+ * device (plus one weather request on demand) and never asks for a
+ * permission. */
 export function DashboardPage() {
   const isOnline = useOnlineStatus()
-  const quickLinks = navItems.filter((item) => item.path !== '/')
+  useFirstRunOnboarding()
+  useLoadDashboardData()
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
-        title="CTR Hunting"
-        description="Field Terrain Intelligence — cartographie, navigation et renseignement terrain, utilisables hors ligne."
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>État</CardTitle>
-          <CardDescription>Session en cours</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        title={APP_NAME}
+        description="Carte, navigation, météo et journal de terrain, utilisables hors ligne."
+        actions={
           <Badge variant={isOnline ? 'success' : 'warning'}>
             {isOnline ? 'En ligne' : 'Hors ligne — l’application reste utilisable'}
           </Badge>
-          <Badge variant="brand">
-            Phase {currentPhase.phase} — {currentPhase.label}
-            {currentPhase.status === 'in-progress' ? ' (en cours)' : ''}
-          </Badge>
-        </CardContent>
-      </Card>
+        }
+      />
 
-      <div>
-        <h2 className="text-ink-300 mb-3 text-sm font-semibold">Sections</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {quickLinks.map((item) => (
-            <Link key={item.path} to={item.path}>
-              <Card className="hover:border-brand-500/50 flex h-full flex-col gap-2 p-4 transition-colors">
-                <item.icon size={20} className="text-brand-400" aria-hidden="true" />
-                <span className="text-ink-100 text-sm font-medium">{item.label}</span>
-              </Card>
-            </Link>
-          ))}
-        </div>
+      <InstallPrompt />
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <QuickAccessCard />
+        <WeatherCard />
+        <GuidanceCard />
+        <TerritoryCard />
+        <OutingCard />
+        <OfflineCard />
+        <DataCard />
       </div>
 
-      <div>
-        <h2 className="text-ink-300 mb-3 text-sm font-semibold">Feuille de route</h2>
-        <Card>
-          <CardContent className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-            {ROADMAP.map((item) => (
-              <div key={item.phase} className="flex items-center gap-2 text-sm">
-                {item.status === 'done' && (
-                  <CheckCircle2 size={16} className="text-brand-400 shrink-0" />
-                )}
-                {item.status === 'in-progress' && (
-                  <CircleDot size={16} className="text-status-warning shrink-0" />
-                )}
-                {item.status === 'pending' && (
-                  <Circle size={16} className="text-ink-700 shrink-0" />
-                )}
-                <span
-                  className={
-                    item.status === 'done'
-                      ? 'text-ink-100'
-                      : item.status === 'in-progress'
-                        ? 'text-status-warning'
-                        : 'text-ink-500'
-                  }
-                >
-                  {item.phase}. {item.label}
-                  {item.status === 'in-progress' ? ' (en cours)' : ''}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <nav aria-label="Aide et informations" className="flex flex-wrap gap-x-4 gap-y-1">
+        {FOOTER_LINKS.map((link) => (
+          <Link
+            key={link.to}
+            to={link.to}
+            className="text-ink-300 hover:text-ink-100 inline-flex min-h-11 items-center text-sm underline"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </nav>
     </div>
   )
 }

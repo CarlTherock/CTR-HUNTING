@@ -85,4 +85,51 @@ describe('weatherStore', () => {
     expect(state.forecast).toBeNull()
     expect(state.errorReason).toBe('network down')
   })
+
+  describe('loadCached', () => {
+    it('shows the saved forecast, flagged as cached, without any network request', async () => {
+      await db.settings.put({
+        key: 'lastWeatherForecast',
+        value: {
+          coordinate: COORDINATE,
+          forecast: FORECAST,
+          fetchedAt: '2026-08-17T09:00:00Z',
+        },
+      })
+
+      await useWeatherStore.getState().loadCached()
+
+      const state = useWeatherStore.getState()
+      expect(state.status).toBe('available')
+      expect(state.isCached).toBe(true)
+      expect(state.forecast).toEqual(FORECAST)
+      expect(state.fetchedAt).toBe('2026-08-17T09:00:00Z')
+      expect(fetchForecast).not.toHaveBeenCalled()
+    })
+
+    it('stays idle (nothing invented) when nothing was ever saved', async () => {
+      await useWeatherStore.getState().loadCached()
+
+      expect(useWeatherStore.getState().status).toBe('idle')
+      expect(useWeatherStore.getState().forecast).toBeNull()
+    })
+
+    it('does not overwrite a forecast that is already loaded', async () => {
+      fetchForecast.mockResolvedValueOnce(FORECAST)
+      await useWeatherStore.getState().fetch(COORDINATE)
+      await db.settings.put({
+        key: 'lastWeatherForecast',
+        value: {
+          coordinate: { lat: 1, lng: 1 },
+          forecast: { ...FORECAST, timezone: 'Other/Zone' },
+          fetchedAt: '2020-01-01T00:00:00Z',
+        },
+      })
+
+      await useWeatherStore.getState().loadCached()
+
+      expect(useWeatherStore.getState().isCached).toBe(false)
+      expect(useWeatherStore.getState().forecast?.timezone).toBe('America/Toronto')
+    })
+  })
 })
