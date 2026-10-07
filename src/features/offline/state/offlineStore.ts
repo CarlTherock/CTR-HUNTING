@@ -149,7 +149,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
       const tileCount = tileCountForBounds(bounds, minZoom, maxZoom)
 
       const area = await createOfflineArea({
-        name: `Offline area ${nextDefaultNumber++}`,
+        name: `Zone hors ligne ${nextDefaultNumber++}`,
         bounds,
         minZoom,
         maxZoom,

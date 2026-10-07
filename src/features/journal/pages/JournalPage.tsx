@@ -97,25 +97,25 @@ export function JournalPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Journal"
-        description="Field observations — notes, photos, position, and real conditions."
+        description="Observations de terrain — notes, photos, position et conditions réelles."
         actions={
           <button
             type="button"
             onClick={() => void handleNewEntry()}
-            className="bg-brand-500 rounded-lg px-3 py-1.5 text-sm font-medium text-white"
+            className="bg-brand-500 rounded-lg px-3 py-1.5 text-sm font-medium text-white pointer-coarse:min-h-11"
           >
-            New entry
+            Nouvelle entrée
           </button>
         }
       />
 
-      {!usingGps && <Badge variant="warning">Using map location — GPS unavailable</Badge>}
+      {!usingGps && <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>}
 
       {editing && (
         <Card className="p-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-ink-100 text-sm font-semibold">
-              {new Date(editing.timestamp).toLocaleString()}
+              {new Date(editing.timestamp).toLocaleString('fr-CA')}
             </h2>
             <button
               type="button"
@@ -123,9 +123,9 @@ export function JournalPage() {
                 void update(editing.id, { notes: notesDraft })
                 select(null)
               }}
-              className="text-ink-500 hover:text-ink-100 text-xs"
+              className="text-ink-500 hover:text-ink-100 text-xs pointer-coarse:min-h-11 pointer-coarse:min-w-11"
             >
-              Close
+              Fermer
             </button>
           </div>
           <p className="text-ink-500 mb-2 text-xs">
@@ -134,16 +134,17 @@ export function JournalPage() {
           {editing.conditions && (
             <p className="text-ink-500 mb-2 text-xs">
               {Math.round(editing.conditions.temperatureCelsius)}°C ·{' '}
-              {Math.round(editing.conditions.windSpeedKmh)} km/h from{' '}
+              {Math.round(editing.conditions.windSpeedKmh)} km/h de{' '}
               {compassLabel(editing.conditions.windDirectionDegrees)} ·{' '}
-              {Math.round(editing.conditions.cloudCoverPercent)}% cloud
+              {Math.round(editing.conditions.cloudCoverPercent)} % de couverture nuageuse
             </p>
           )}
           <textarea
             value={notesDraft}
             onChange={(e) => setNotesDraft(e.target.value)}
             onBlur={() => void update(editing.id, { notes: notesDraft })}
-            placeholder="What did you see?"
+            placeholder="Qu’avez-vous observé ?"
+            aria-label="Notes de l’entrée"
             rows={3}
             className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 mb-3 w-full resize-none rounded-md border px-2.5 py-1.5 text-sm outline-none focus-visible:outline-2"
           />
@@ -152,18 +153,18 @@ export function JournalPage() {
             <button
               type="button"
               onClick={() => void remove(editing.id)}
-              className="text-status-danger flex items-center gap-1 text-xs"
+              className="text-status-danger flex items-center gap-1 text-xs pointer-coarse:min-h-11"
             >
               <Trash2 size={13} aria-hidden="true" />
-              Delete entry
+              Supprimer l’entrée
             </button>
             <button
               type="button"
               onClick={() => viewOnMap(editing)}
-              className="text-brand-400 flex items-center gap-1 text-xs"
+              className="text-brand-400 flex items-center gap-1 text-xs pointer-coarse:min-h-11"
             >
               <MapPin size={13} aria-hidden="true" />
-              View on map
+              Voir sur la carte
             </button>
           </div>
         </Card>
@@ -172,8 +173,8 @@ export function JournalPage() {
       {sorted.length === 0 ? (
         <EmptyState
           icon={<NotebookPen size={28} aria-hidden="true" />}
-          title="No journal entries yet"
-          description="Tap 'New entry' to log an observation at your current position."
+          title="Aucune entrée de journal pour le moment"
+          description="Touchez « Nouvelle entrée » pour consigner une observation à votre position actuelle."
         />
       ) : (
         <div className="flex flex-col gap-2">
@@ -185,13 +186,13 @@ export function JournalPage() {
               <button
                 type="button"
                 onClick={() => select(observation.id)}
-                className="flex w-full flex-col items-start gap-1 text-left"
+                className="flex w-full flex-col items-start gap-1 text-left pointer-coarse:min-h-11"
               >
                 <span className="text-ink-100 truncate text-sm font-medium">
-                  {observation.notes || 'Untitled entry'}
+                  {observation.notes || 'Entrée sans titre'}
                 </span>
                 <span className="text-ink-500 flex items-center gap-2 text-xs">
-                  {new Date(observation.timestamp).toLocaleString()} ·{' '}
+                  {new Date(observation.timestamp).toLocaleString('fr-CA')} ·{' '}
                   {formatCoordinate(observation.coordinate.lat, observation.coordinate.lng)}
                   {(observation.photoIds?.length ?? 0) > 0 && ` · ${observation.photoIds?.length} photo(s)`}
                 </span>

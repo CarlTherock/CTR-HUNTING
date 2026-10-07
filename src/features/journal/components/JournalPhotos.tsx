@@ -77,8 +77,8 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
             <button
               type="button"
               onClick={() => void handleDelete(photo)}
-              aria-label="Delete photo"
-              className="bg-surface-950/80 text-status-danger absolute top-0.5 right-0.5 rounded-full p-1"
+              aria-label="Supprimer la photo"
+              className="bg-surface-950/80 text-status-danger absolute top-0.5 right-0.5 rounded-full p-1 pointer-coarse:p-4"
             >
               <Trash2 size={12} aria-hidden="true" />
             </button>
@@ -87,8 +87,8 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
         <button
           type="button"
           onClick={() => setCameraOpen(true)}
-          aria-label="Open camera"
-          title="Open camera"
+          aria-label="Ouvrir la caméra"
+          title="Ouvrir la caméra"
           className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
         >
           <Camera size={18} aria-hidden="true" />
@@ -96,8 +96,8 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Add photo"
-          title="Choose a photo"
+          aria-label="Ajouter une photo"
+          title="Choisir une photo"
           className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
         >
           <ImagePlus size={18} aria-hidden="true" />
@@ -112,7 +112,7 @@ export function JournalPhotos({ observationId, photoIds }: { observationId: stri
           capture="environment"
           onChange={(e) => void handleFileChange(e)}
           className="hidden"
-          aria-label="Choose a photo"
+          aria-label="Choisir une photo"
         />
       </div>
     </div>

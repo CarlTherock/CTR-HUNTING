@@ -82,7 +82,7 @@ export class OverpassVegetationProvider implements VegetationProvider {
       body: new URLSearchParams({ data: buildQuery(coordinate, radiusMeters) }),
     })
     if (!response.ok) {
-      throw new Error(`Vegetation lookup failed (${response.status})`)
+      throw new Error(`Recherche de végétation échouée (${response.status})`)
     }
     const data = (await response.json()) as OverpassResponse
     if (!data.elements || data.elements.length === 0) return null
@@ -112,7 +112,7 @@ export class OverpassVegetationProvider implements VegetationProvider {
       body: new URLSearchParams({ data: buildBboxQuery(bounds) }),
     })
     if (!response.ok) {
-      throw new Error(`Vegetation lookup failed (${response.status})`)
+      throw new Error(`Recherche de végétation échouée (${response.status})`)
     }
     const data = (await response.json()) as OverpassResponse
 

@@ -98,6 +98,14 @@ export interface MapInstance {
    */
   setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer): void
   /**
+   * Pauses (`true`) or resumes (`false`) the wind particle animation.
+   * While paused the layer renders a single static frame (no
+   * `requestAnimationFrame` loop) — used for `prefers-reduced-motion`
+   * and for the visible Pause/Lecture button. Optional so adapters
+   * without an animated layer need not implement it.
+   */
+  setWindAnimationPaused?(paused: boolean): void
+  /**
    * Renders (Phase 9) or clears (`null`) the analysis heatmap: a soft
    * color-graded overlay, one blob per real `AnalysisHeatmapCell`,
    * colored by that cell's combined analyzer score

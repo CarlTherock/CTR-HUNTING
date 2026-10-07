@@ -53,7 +53,7 @@ describe('SettingsPage', () => {
   it('shows the empty state when there are no offline areas', async () => {
     await renderSettled()
 
-    expect(screen.getByText('No offline areas yet')).toBeInTheDocument()
+    expect(screen.getByText('Aucune zone hors ligne pour le moment')).toBeInTheDocument()
   })
 
   it('lists completed offline areas with their real tile count and size', async () => {
@@ -76,8 +76,8 @@ describe('SettingsPage', () => {
     await renderSettled()
 
     expect(screen.getByText('Camp area')).toBeInTheDocument()
-    expect(screen.getByText(/40 tiles/)).toBeInTheDocument()
-    expect(screen.getByText(/400 KB/)).toBeInTheDocument()
+    expect(screen.getByText(/40 tuiles/)).toBeInTheDocument()
+    expect(screen.getByText(/400 Ko/)).toBeInTheDocument()
   })
 
   it('excludes in-progress downloads from the list (they show on the Map page instead)', async () => {
@@ -98,7 +98,7 @@ describe('SettingsPage', () => {
 
     await renderSettled()
 
-    expect(screen.getByText('No offline areas yet')).toBeInTheDocument()
+    expect(screen.getByText('Aucune zone hors ligne pour le moment')).toBeInTheDocument()
     expect(screen.queryByText('Still downloading')).not.toBeInTheDocument()
   })
 
@@ -121,7 +121,7 @@ describe('SettingsPage', () => {
     await renderSettled()
     expect(screen.getByText('Camp area')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Delete Camp area' }))
+    await user.click(screen.getByRole('button', { name: 'Supprimer Camp area' }))
 
     expect(screen.queryByText('Camp area')).not.toBeInTheDocument()
     expect(await db.offlineAreas.get('a1')).toBeUndefined()
@@ -131,7 +131,7 @@ describe('SettingsPage', () => {
     const user = userEvent.setup()
     await renderSettled()
 
-    const checkbox = screen.getByLabelText('Field Mode')
+    const checkbox = screen.getByLabelText('Mode terrain')
     expect(checkbox).not.toBeChecked()
 
     await user.click(checkbox)

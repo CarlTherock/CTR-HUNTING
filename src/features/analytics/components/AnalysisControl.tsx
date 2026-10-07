@@ -3,23 +3,31 @@ import { Activity, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import { useAnalysisStore } from '../state/analysisStore'
-import type { AnalyzerResult } from '@/types'
+import type { AnalyzerResult, DataConfidence } from '@/types'
 
 const ANALYZER_LABEL: Record<AnalyzerResult['analyzer'], string> = {
   terrain: 'Terrain',
-  vegetation: 'Vegetation',
-  weather: 'Weather',
-  wind: 'Wind',
-  time: 'Time',
-  history: 'History',
+  vegetation: 'Végétation',
+  weather: 'Météo',
+  wind: 'Vent',
+  time: 'Moment',
+  history: 'Historique',
+}
+
+const CONFIDENCE_LABEL: Record<DataConfidence, string> = {
+  measured: 'mesuré',
+  calculated: 'calculé',
+  estimated: 'estimé',
+  ai_interpretation: 'interprétation de l’IA',
+  user_observation: 'observation de l’utilisateur',
 }
 
 function scoreLabel(score: number): string {
   if (score >= 75) return 'Favorable'
-  if (score >= 55) return 'Somewhat favorable'
-  if (score >= 45) return 'Neutral'
-  if (score >= 25) return 'Somewhat unfavorable'
-  return 'Unfavorable'
+  if (score >= 55) return 'Plutôt favorable'
+  if (score >= 45) return 'Neutre'
+  if (score >= 25) return 'Plutôt défavorable'
+  return 'Défavorable'
 }
 
 function AnalyzerCard({ result }: { result: AnalyzerResult }) {
@@ -30,7 +38,7 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between text-left"
+        className="flex w-full items-center justify-between text-left pointer-coarse:min-h-11"
         aria-expanded={expanded}
       >
         <span className="text-ink-100 text-sm font-medium">{ANALYZER_LABEL[result.analyzer]}</span>
@@ -38,7 +46,7 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
           {result.score !== null ? (
             <span className="text-ink-300 text-xs">{Math.round(result.score)}/100</span>
           ) : (
-            <span className="text-ink-500 text-xs">No data</span>
+            <span className="text-ink-500 text-xs">Aucune donnée</span>
           )}
           {expanded ? (
             <ChevronUp size={14} className="text-ink-500" aria-hidden="true" />
@@ -57,7 +65,7 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
               <div key={i} className="text-xs">
                 <p className="text-ink-200 font-medium">
                   {factor.label}
-                  <span className="text-ink-600 ml-1 font-normal">({factor.confidence.replace('_', ' ')})</span>
+                  <span className="text-ink-600 ml-1 font-normal">({CONFIDENCE_LABEL[factor.confidence]})</span>
                 </p>
                 <p className="text-ink-500">{factor.explanation}</p>
               </div>
@@ -99,8 +107,8 @@ export function AnalysisControl() {
         <button
           type="button"
           onClick={cancel}
-          aria-label="Cancel analysis"
-          className="text-ink-500 hover:text-ink-100"
+          aria-label="Annuler l’analyse"
+          className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
         >
           <X size={16} aria-hidden="true" />
         </button>
@@ -124,12 +132,12 @@ export function AnalysisControl() {
             className="border-surface-600 bg-surface-900 max-h-[75vh] w-full max-w-sm overflow-y-auto rounded-lg border p-4 shadow-2xl"
           >
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-ink-100 text-sm font-semibold">Spot analysis</h2>
+              <h2 className="text-ink-100 text-sm font-semibold">Analyse de l’endroit</h2>
               <button
                 type="button"
                 onClick={close}
-                aria-label="Close analysis"
-                className="text-ink-500 hover:text-ink-100"
+                aria-label="Fermer l’analyse"
+                className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -138,7 +146,7 @@ export function AnalysisControl() {
             {recent.length > 1 && (
               <div
                 role="group"
-                aria-label="Recently analyzed spots"
+                aria-label="Endroits analysés récemment"
                 className="mb-3 flex gap-1.5 overflow-x-auto pb-1"
               >
                 {recent.map((entry, i) => {
@@ -150,7 +158,7 @@ export function AnalysisControl() {
                       type="button"
                       onClick={() => recall(i)}
                       className={cn(
-                        'shrink-0 rounded-md border px-2 py-1 text-xs',
+                        'shrink-0 rounded-md border px-2 py-1 text-xs pointer-coarse:min-h-11',
                         isActive ? 'border-brand-500 text-brand-400' : 'border-surface-700 text-ink-300',
                       )}
                     >
@@ -164,7 +172,7 @@ export function AnalysisControl() {
               </div>
             )}
 
-            {status === 'loading' && <p className="text-ink-500 text-sm">Analyzing…</p>}
+            {status === 'loading' && <p className="text-ink-500 text-sm">Analyse en cours…</p>}
 
             {status === 'ready' && combined && (
               <>
@@ -180,12 +188,12 @@ export function AnalysisControl() {
                         {Math.round(combined.overallScore)}/100 — {scoreLabel(combined.overallScore)}
                       </p>
                       <p className="text-ink-500 text-xs">
-                        A probabilistic read from the factors below, not a guarantee — expand each
-                        analyzer to see exactly why.
+                        Estimation probabiliste fondée sur les facteurs ci-dessous, et non une
+                        garantie — déployez chaque analyseur pour voir exactement pourquoi.
                       </p>
                     </>
                   ) : (
-                    <p className="text-ink-500 text-sm">No analyzers had enough data for this spot.</p>
+                    <p className="text-ink-500 text-sm">Aucun analyseur n’avait assez de données pour cet endroit.</p>
                   )}
                 </div>
 

@@ -58,20 +58,20 @@ export function getMoonTimes(date: Date, coordinate: Coordinate): MoonTimes {
  * quarter) get a narrower band since they're single moments; the 4
  * "between" phases each get the bulk of the ~29.53-day cycle — this
  * bucketing width is a real, common convention (matching how most
- * moon-phase calendars label a many-day span "Waxing Crescent"), not a
+ * moon-phase calendars label a many-day span « premier croissant »), not a
  * fabricated astronomical fact — the underlying `phase` value itself is
  * SunCalc's real computed number.
  */
 export function moonPhaseName(phase: number): MoonPhaseName {
   const p = ((phase % 1) + 1) % 1
-  if (p < 0.03 || p >= 0.97) return 'New Moon'
-  if (p < 0.22) return 'Waxing Crescent'
-  if (p < 0.28) return 'First Quarter'
-  if (p < 0.47) return 'Waxing Gibbous'
-  if (p < 0.53) return 'Full Moon'
-  if (p < 0.72) return 'Waning Gibbous'
-  if (p < 0.78) return 'Last Quarter'
-  return 'Waning Crescent'
+  if (p < 0.03 || p >= 0.97) return 'Nouvelle lune'
+  if (p < 0.22) return 'Premier croissant'
+  if (p < 0.28) return 'Premier quartier'
+  if (p < 0.47) return 'Lune gibbeuse croissante'
+  if (p < 0.53) return 'Pleine lune'
+  if (p < 0.72) return 'Lune gibbeuse décroissante'
+  if (p < 0.78) return 'Dernier quartier'
+  return 'Dernier croissant'
 }
 
 export function getMoonIllumination(date: Date): MoonIllumination {

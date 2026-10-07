@@ -47,8 +47,8 @@ export function useCompassHeading(): {
 } {
   const [reading, setReading] = useState<CompassReading>(() =>
     supportsOrientation()
-      ? { status: 'unavailable', reason: 'Waiting for a compass reading.' }
-      : { status: 'unavailable', reason: 'Device orientation is not supported by this browser.' },
+      ? { status: 'unavailable', reason: 'En attente d’une lecture de la boussole.' }
+      : { status: 'unavailable', reason: 'L’orientation de l’appareil n’est pas prise en charge par ce navigateur.' },
   )
   const [started, setStarted] = useState(() => !needsExplicitPermission() && supportsOrientation())
 
@@ -59,11 +59,11 @@ export function useCompassHeading(): {
       try {
         const result = await ctor.requestPermission()
         if (result !== 'granted') {
-          setReading({ status: 'unavailable', reason: 'Compass permission denied.' })
+          setReading({ status: 'unavailable', reason: 'Autorisation de la boussole refusée.' })
           return
         }
       } catch {
-        setReading({ status: 'unavailable', reason: 'Could not request compass permission.' })
+        setReading({ status: 'unavailable', reason: 'Impossible de demander l’autorisation de la boussole.' })
         return
       }
     }

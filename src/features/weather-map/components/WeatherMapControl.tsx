@@ -47,6 +47,8 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
   const windEnabled = useWindStore((s) => s.enabled)
   const windStatus = useWindStore((s) => s.status)
   const toggleWind = useWindStore((s) => s.toggle)
+  const windPaused = useWindStore((s) => s.animationPaused)
+  const setWindPaused = useWindStore((s) => s.setAnimationPaused)
   const windReading = useWindStore((s) => (s.field ? s.windAt(viewCenter) : null))
 
   const [legendOpen, setLegendOpen] = useState(false)
@@ -88,7 +90,7 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                   type="button"
                   onClick={toggle}
                   aria-label="Fermer la carte météo"
-                  className="text-ink-500 hover:text-ink-100"
+                  className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
                 >
                   <X size={16} aria-hidden="true" />
                 </button>
@@ -104,7 +106,7 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                   aria-checked={layer.id === activeLayer}
                   onClick={() => void setLayer(layer.id)}
                   className={cn(
-                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-11',
                     layer.id === activeLayer
                       ? 'border-brand-400 bg-brand-500/20 text-brand-300'
                       : 'border-surface-600 text-ink-300 hover:bg-surface-800',
@@ -152,23 +154,23 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                     type="button"
                     onClick={() => step(-1)}
                     aria-label="Image précédente"
-                    className="text-ink-300 hover:text-ink-100 p-1"
+                    className="text-ink-300 hover:text-ink-100 p-1 flex items-center justify-center pointer-coarse:size-11"
                   >
                     <SkipBack size={16} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setPlaying(!playing)}
-                    aria-label={playing ? 'Pause' : 'Lecture'}
-                    className="bg-brand-500 text-surface-950 hover:bg-brand-400 rounded-full p-2"
+                    className="bg-brand-500 text-surface-950 hover:bg-brand-400 flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold pointer-coarse:min-h-11"
                   >
                     {playing ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+                    {playing ? 'Pause' : 'Lecture'}
                   </button>
                   <button
                     type="button"
                     onClick={() => step(1)}
                     aria-label="Image suivante"
-                    className="text-ink-300 hover:text-ink-100 p-1"
+                    className="text-ink-300 hover:text-ink-100 p-1 flex items-center justify-center pointer-coarse:size-11"
                   >
                     <SkipForward size={16} aria-hidden="true" />
                   </button>
@@ -210,7 +212,7 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                 onClick={() => setLegendOpen(!legendOpen)}
                 aria-pressed={legendOpen}
                 className={cn(
-                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs',
+                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
                   legendOpen ? 'border-brand-400 bg-brand-500/20 text-brand-300' : 'border-surface-600 text-ink-300',
                 )}
               >
@@ -221,9 +223,8 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
                 type="button"
                 onClick={handleToggleWind}
                 aria-pressed={windEnabled}
-                aria-label="Toggle wind flow field"
                 className={cn(
-                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs',
+                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
                   windEnabled
                     ? 'border-brand-400 bg-brand-500/20 text-brand-300'
                     : 'border-surface-600 text-ink-300',
@@ -249,6 +250,14 @@ export function WeatherMapControl({ getBounds, isFrameReady, viewCenter }: Weath
 
             {windEnabled && (
               <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWindPaused(!windPaused)}
+                  className="border-surface-600 text-ink-300 flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
+                >
+                  {windPaused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+                  {windPaused ? 'Lecture du vent' : 'Pause du vent'}
+                </button>
                 {windStatus === 'loading' && <p className="text-ink-500 text-xs">Chargement du vent…</p>}
                 {windStatus === 'error' && <p className="text-status-danger text-xs">Vent indisponible.</p>}
                 {windReading && (

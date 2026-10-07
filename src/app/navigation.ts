@@ -13,6 +13,8 @@ import {
 export interface NavItem {
   path: string
   label: string
+  /** Short label for the cramped mobile bottom nav (defaults to `label`). */
+  shortLabel?: string
   icon: LucideIcon
   /** Roadmap phase that implements this section. `null` means already
    * functional (not a placeholder). */
@@ -28,18 +30,33 @@ export interface NavItem {
  * rule (a handful of large touch targets beats a crowded bottom bar).
  */
 export const navItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard, phase: null, primary: true },
-  { path: '/map', label: 'Map', icon: Map, phase: 1, primary: true },
+  {
+    path: '/',
+    label: 'Tableau de bord',
+    shortLabel: 'Accueil',
+    icon: LayoutDashboard,
+    phase: null,
+    primary: true,
+  },
+  { path: '/map', label: 'Carte', icon: Map, phase: 1, primary: true },
   {
     path: '/waypoints',
-    label: 'Waypoints & Tracks',
+    label: 'Points de repère et traces',
+    shortLabel: 'Repères',
     icon: MapPin,
     phase: 2,
     primary: true,
   },
-  { path: '/weather', label: 'Weather & Wind', icon: CloudSun, phase: 5, primary: true },
-  { path: '/temporal', label: 'Sun & Moon', icon: Moon, phase: 7 },
-  { path: '/analysis', label: 'Terrain Analysis', icon: BarChart3, phase: null },
+  {
+    path: '/weather',
+    label: 'Météo et vent',
+    shortLabel: 'Météo',
+    icon: CloudSun,
+    phase: 5,
+    primary: true,
+  },
+  { path: '/temporal', label: 'Soleil et lune', icon: Moon, phase: 7 },
+  { path: '/analysis', label: 'Analyse du terrain', icon: BarChart3, phase: null },
   { path: '/journal', label: 'Journal', icon: NotebookPen, phase: null },
-  { path: '/settings', label: 'Settings', icon: Settings, phase: null, primary: true },
+  { path: '/settings', label: 'Réglages', icon: Settings, phase: null, primary: true },
 ]

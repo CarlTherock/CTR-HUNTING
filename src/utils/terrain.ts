@@ -33,11 +33,11 @@ export function computeSlopeAspect(
   return { slopeDegrees, aspectDegrees }
 }
 
-/** 16-point compass label for an aspect/bearing in degrees. */
+/** 16-point compass label (French: O = ouest) for an aspect/bearing in degrees. */
 export function compassLabel(degrees: number): string {
   const labels = [
     'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+    'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO',
   ]
   const index = Math.round(((degrees % 360) + 360) % 360 / 22.5) % 16
   return labels[index]

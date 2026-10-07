@@ -83,6 +83,7 @@ export function MapPage() {
   const windEnabled = useWindStore((state) => state.enabled)
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
+  const windPaused = useWindStore((state) => state.animationPaused)
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
@@ -251,6 +252,10 @@ export function MapPage() {
     // so the chart's numbers stay visually tied to the path they describe.
     instanceRef.current?.setMeasurePath(profilePoints.length > 0 ? profilePoints : null)
   }, [profilePoints])
+
+  useEffect(() => {
+    instanceRef.current?.setWindAnimationPaused?.(windPaused)
+  }, [windPaused, windEnabled, windField])
 
   useEffect(() => {
     // Particles only — the colored weather surfaces are now real GeoMet

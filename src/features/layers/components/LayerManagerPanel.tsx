@@ -86,7 +86,7 @@ export function LayerManagerPanel() {
           onClick={() => setIsOpen(false)}
           title="Fermer"
           aria-label="Fermer le panneau des couches"
-          className="text-ink-500 hover:text-ink-100"
+          className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
         >
           <X size={14} aria-hidden="true" />
         </button>
@@ -130,7 +130,7 @@ export function LayerManagerPanel() {
             title={overlaysAvailable ? undefined : 'Disponible uniquement avec le fond Plein air'}
             onClick={() => toggleOverlay(option.id)}
             className={cn(
-              'flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+              'flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors pointer-coarse:min-h-11',
               !overlaysAvailable && 'text-ink-700 cursor-not-allowed',
               overlaysAvailable && 'text-ink-300 hover:bg-surface-800 hover:text-ink-100',
             )}
@@ -174,7 +174,7 @@ function BaseLayerGroup({ title, options, active, onSelect }: BaseLayerGroupProp
             aria-checked={active === option.id}
             onClick={() => onSelect(option.id)}
             className={cn(
-              'rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+              'rounded-md px-2 py-1.5 text-left text-sm transition-colors pointer-coarse:min-h-11',
               active === option.id
                 ? 'bg-brand-500/15 text-brand-400'
                 : 'text-ink-300 hover:bg-surface-800 hover:text-ink-100',

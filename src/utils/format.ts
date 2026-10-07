@@ -15,7 +15,7 @@ export function formatDistanceMeters(meters: number): string {
 
 /** Bytes below 1 KB, KB below 1 MB (rounded), MB at or above (1 decimal). */
 export function formatBytes(bytes: number): string {
-  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`
-  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} KB`
-  return `${bytes} B`
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} Mo`
+  if (bytes >= 1_000) return `${Math.round(bytes / 1_000)} Ko`
+  return `${bytes} o`
 }

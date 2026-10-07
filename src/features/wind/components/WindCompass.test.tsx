@@ -3,13 +3,13 @@ import { render, screen } from '@testing-library/react'
 import { WindCompass } from './WindCompass'
 
 describe('WindCompass', () => {
-  it('renders a real compass dial with N/E/S/W labels', () => {
+  it('renders a real compass dial with N/E/S/O labels', () => {
     render(<WindCompass directionDegrees={270} speedKmh={20} />)
 
-    const svg = screen.getByRole('img', { name: 'Wind compass' })
+    const svg = screen.getByRole('img', { name: 'Boussole du vent' })
     expect(svg).toBeInTheDocument()
     const texts = Array.from(svg.querySelectorAll('text')).map((t) => t.textContent)
-    expect(texts).toEqual(['N', 'E', 'S', 'W'])
+    expect(texts).toEqual(['N', 'E', 'S', 'O'])
   })
 
   it('draws a green optimal-direction wedge only when optimalDirections is provided', () => {

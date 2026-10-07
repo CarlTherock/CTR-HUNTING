@@ -54,7 +54,7 @@ export const useWeatherStore = create<WeatherState>((set) => ({
       })
       await setSetting<CachedWeather>(CACHE_KEY, { coordinate, forecast, fetchedAt })
     } catch (err) {
-      const reason = err instanceof Error ? err.message : 'Unknown error'
+      const reason = err instanceof Error ? err.message : 'Erreur inconnue'
       const cached = await getSetting<CachedWeather | null>(CACHE_KEY, null)
       if (cached) {
         set({

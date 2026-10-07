@@ -100,7 +100,7 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
 
 export function layerDef(id: WeatherMapLayerId): GeoMetLayerDef {
   const def = GEOMET_LAYERS.find((l) => l.id === id)
-  if (!def) throw new Error(`Unknown weather layer ${id}`)
+  if (!def) throw new Error(`Couche météo inconnue : ${id}`)
   return def
 }
 

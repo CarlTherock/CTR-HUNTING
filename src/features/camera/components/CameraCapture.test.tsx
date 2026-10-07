@@ -51,7 +51,7 @@ describe('CameraCapture', () => {
   it('labels the zoom slider as digital when the device reports no real hardware zoom', () => {
     render(<CameraCapture onSave={vi.fn()} onClose={vi.fn()} />)
 
-    expect(screen.getByText('Zoom (digital)')).toBeInTheDocument()
+    expect(screen.getByText('Zoom (numérique)')).toBeInTheDocument()
   })
 
   it('labels the zoom slider as real zoom when the track reports a genuine capability', () => {
@@ -65,14 +65,14 @@ describe('CameraCapture', () => {
     render(<CameraCapture onSave={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByText('Zoom')).toBeInTheDocument()
-    expect(screen.queryByText('Zoom (digital)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Zoom (numérique)')).not.toBeInTheDocument()
   })
 
   it('disables the capture button until the stream is genuinely live', () => {
     mockCameraState = { status: 'starting', errorReason: null, stream: null, zoomRange: null, zoom: null }
     render(<CameraCapture onSave={vi.fn()} onClose={vi.fn()} />)
 
-    expect(screen.getByRole('button', { name: 'Capture photo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Prendre la photo' })).toBeDisabled()
   })
 
   it('calls onClose when the close button is tapped', async () => {
@@ -80,7 +80,7 @@ describe('CameraCapture', () => {
     const onClose = vi.fn()
     render(<CameraCapture onSave={vi.fn()} onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'Close camera' }))
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
 
     expect(onClose).toHaveBeenCalledOnce()
   })

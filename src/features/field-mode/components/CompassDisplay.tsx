@@ -3,7 +3,7 @@ import { compassLabel } from '@/utils/terrain'
 import { useCompassHeading } from '../useCompassHeading'
 
 /** Large, high-contrast real compass heading for Field Mode — tapping
- * "Enable compass" triggers the required iOS permission gesture; other
+ * "Activer la boussole" triggers the required iOS permission gesture; other
  * platforms start automatically. Never shows a heading it doesn't
  * genuinely have (unavailable states always give the real reason). */
 export function CompassDisplay() {
@@ -17,7 +17,7 @@ export function CompassDisplay() {
         className="border-surface-600 bg-surface-800 text-ink-100 flex flex-col items-center gap-2 rounded-lg border p-6"
       >
         <Compass size={32} className="text-brand-400" aria-hidden="true" />
-        <span className="text-sm font-medium">Enable compass</span>
+        <span className="text-sm font-medium">Activer la boussole</span>
       </button>
     )
   }

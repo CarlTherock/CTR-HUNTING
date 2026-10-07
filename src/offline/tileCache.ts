@@ -46,7 +46,7 @@ export async function putTile(url: string, response: Response): Promise<void> {
 export async function fetchAndCacheTile(url: string): Promise<number> {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`Tile request failed (${response.status}): ${url}`)
+    throw new Error(`Requête de tuile échouée (${response.status}) : ${url}`)
   }
   const blob = await response.clone().blob()
   await putTile(url, response)

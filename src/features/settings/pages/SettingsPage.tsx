@@ -57,26 +57,27 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Settings" description="App information and preferences." />
+      <PageHeader title="Réglages" description="Informations sur l’application et préférences." />
 
       <Card>
         <CardHeader>
-          <CardTitle>Connectivity</CardTitle>
-          <CardDescription>Live browser network status</CardDescription>
+          <CardTitle>Connectivité</CardTitle>
+          <CardDescription>État du réseau, en direct</CardDescription>
         </CardHeader>
         <CardContent>
           <Badge variant={isOnline ? 'success' : 'warning'}>
-            {isOnline ? 'Online' : 'Offline'}
+            {isOnline ? 'En ligne' : 'Hors ligne'}
           </Badge>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Field Mode</CardTitle>
+          <CardTitle>Mode terrain</CardTitle>
           <CardDescription>
-            Simplified map UI for outdoor use — larger buttons, a real compass, and the wind/
-            heatmap animations turned off to save battery.
+            Interface de carte simplifiée pour l’extérieur : boutons plus grands, vraie
+            boussole, et animations du vent et de la carte thermique désactivées pour
+            économiser la batterie.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,31 +86,31 @@ export function SettingsPage() {
               type="checkbox"
               checked={fieldModeEnabled}
               onChange={toggleFieldMode}
-              aria-label="Field Mode"
+              aria-label="Mode terrain"
             />
-            {fieldModeEnabled ? 'On' : 'Off'}
+            {fieldModeEnabled ? 'Activé' : 'Désactivé'}
           </label>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Offline maps</CardTitle>
+          <CardTitle>Cartes hors ligne</CardTitle>
           <CardDescription>
-            Downloaded from the Map page — stored on this device only, not any cloud account
+            Téléchargées depuis la page Carte — stockées sur cet appareil seulement, et non dans un compte en ligne
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {storageUsage && (
             <p className="text-ink-500 text-xs">
-              {formatBytes(storageUsage.usage)} used of {formatBytes(storageUsage.quota)} available
-              to this app
+              {formatBytes(storageUsage.usage)} utilisés sur {formatBytes(storageUsage.quota)}{' '}
+              disponibles pour cette application
             </p>
           )}
           {completedAreas.length === 0 ? (
             <EmptyState
-              title="No offline areas yet"
-              description="Open the Map page and tap the download button to save an area."
+              title="Aucune zone hors ligne pour le moment"
+              description="Ouvrez la page Carte et touchez le bouton de téléchargement pour enregistrer une zone."
             />
           ) : (
             <div className="flex flex-col gap-2">
@@ -122,22 +123,22 @@ export function SettingsPage() {
                     <span className="text-ink-100 block truncate text-sm font-medium">
                       {area.name}
                       {area.status === 'error' && (
-                        <span className="text-status-danger ml-2 text-xs font-normal">Failed</span>
+                        <span className="text-status-danger ml-2 text-xs font-normal">Échec</span>
                       )}
                       {area.status === 'cancelled' && (
-                        <span className="text-ink-500 ml-2 text-xs font-normal">Cancelled</span>
+                        <span className="text-ink-500 ml-2 text-xs font-normal">Annulé</span>
                       )}
                     </span>
                     <span className="text-ink-500 block truncate text-xs">
-                      {area.tilesDownloaded} tiles · {formatBytes(area.bytesDownloaded)} · zoom{' '}
+                      {area.tilesDownloaded} tuiles · {formatBytes(area.bytesDownloaded)} · zoom{' '}
                       {area.minZoom}–{area.maxZoom}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => void deleteArea(area.id)}
-                    aria-label={`Delete ${area.name}`}
-                    className="text-ink-500 hover:text-status-danger shrink-0"
+                    aria-label={`Supprimer ${area.name}`}
+                    className="text-ink-500 hover:text-status-danger flex shrink-0 items-center justify-center pointer-coarse:size-11"
                   >
                     <Trash2 size={16} aria-hidden="true" />
                   </button>
@@ -150,25 +151,25 @@ export function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Local storage</CardTitle>
-          <CardDescription>IndexedDB-backed, works fully offline</CardDescription>
+          <CardTitle>Stockage local</CardTitle>
+          <CardDescription>Basé sur IndexedDB, fonctionne entièrement hors ligne</CardDescription>
         </CardHeader>
         <CardContent className="text-ink-300 text-sm">
           {installedBefore === null
-            ? 'Checking local database…'
+            ? 'Vérification de la base de données locale…'
             : installedBefore
-              ? 'Local database is reachable — this is a returning session.'
-              : 'Local database is reachable — this is the first time settings were opened.'}
+              ? 'La base de données locale est accessible — session déjà ouverte auparavant.'
+              : 'La base de données locale est accessible — c’est la première ouverture des réglages.'}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>About</CardTitle>
+          <CardTitle>À propos</CardTitle>
         </CardHeader>
         <CardContent className="text-ink-300 space-y-1 text-sm">
           <p>Field Terrain Intelligence</p>
-          <p className="text-ink-500">Version {APP_VERSION} · Phase 3 — Offline</p>
+          <p className="text-ink-500">Version {APP_VERSION} · Phase 3 — Hors ligne</p>
         </CardContent>
       </Card>
     </div>

@@ -1239,7 +1239,7 @@ describe('MapLibreProvider', () => {
 
       await expect(
         instance.downloadArea(bounds, 10, 12, vi.fn(), controller.signal),
-      ).rejects.toThrow(/cancelled/i)
+      ).rejects.toThrow(/annulé/i)
 
       // Aborted before the first tile — no sweep jumps, only the restore.
       expect(map.jumpToCalls).toHaveLength(1)

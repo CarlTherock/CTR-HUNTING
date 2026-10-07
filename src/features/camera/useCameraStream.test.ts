@@ -35,7 +35,7 @@ describe('useCameraStream', () => {
     })
 
     expect(result.current.status).toBe('error')
-    expect(result.current.errorReason).toMatch(/not supported/)
+    expect(result.current.errorReason).toMatch(/pas pris en charge/)
   })
 
   it('reaches streaming status on a real successful getUserMedia call', async () => {

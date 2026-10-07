@@ -22,6 +22,16 @@ export interface ZoomRange {
  * needs, and exposes hardware zoom control when the track genuinely
  * reports one.
  */
+/** French message for the common `getUserMedia` failures; any other real
+ * error keeps the browser's own diagnostic text rather than hiding it. */
+function describeCameraError(err: unknown): string {
+  const name = err instanceof Error ? err.name : ''
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Accès à la caméra refusé.'
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'Aucune caméra compatible détectée.'
+  if (name === 'NotReadableError') return 'La caméra est utilisée par une autre application.'
+  return err instanceof Error && err.message ? err.message : 'Impossible d’accéder à la caméra.'
+}
+
 export function useCameraStream() {
   const [status, setStatus] = useState<CameraStatus>('idle')
   const [errorReason, setErrorReason] = useState<string | null>(null)
@@ -44,7 +54,7 @@ export function useCameraStream() {
   const start = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setStatus('error')
-      setErrorReason('Camera access is not supported by this browser.')
+      setErrorReason('L’accès à la caméra n’est pas pris en charge par ce navigateur.')
       return
     }
     setStatus('starting')
@@ -73,7 +83,7 @@ export function useCameraStream() {
       setStatus('streaming')
     } catch (err) {
       setStatus('error')
-      setErrorReason(err instanceof Error ? err.message : 'Could not access the camera.')
+      setErrorReason(describeCameraError(err))
     }
   }, [])
 

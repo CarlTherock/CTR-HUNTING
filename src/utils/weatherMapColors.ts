@@ -44,10 +44,10 @@ const SCALES: Record<WeatherMapLayer, ColorStop[]> = {
 /** Each layer's real value bounds + unit, for the legend gradient bar —
  * kept in sync with `SCALES` above rather than re-deriving it. */
 export const LAYER_LEGEND: Record<WeatherMapLayer, { min: number; max: number; unit: string; label: string }> = {
-  wind: { min: 0, max: 65, unit: 'km/h', label: 'Wind speed' },
-  temperature: { min: -20, max: 32, unit: '°C', label: 'Temperature' },
-  precipitation: { min: 0, max: 12, unit: 'mm/h', label: 'Precipitation' },
-  clouds: { min: 0, max: 100, unit: '%', label: 'Cloud cover' },
+  wind: { min: 0, max: 65, unit: 'km/h', label: 'Vitesse du vent' },
+  temperature: { min: -20, max: 32, unit: '°C', label: 'Température' },
+  precipitation: { min: 0, max: 12, unit: 'mm/h', label: 'Précipitations' },
+  clouds: { min: 0, max: 100, unit: '%', label: 'Couverture nuageuse' },
 }
 
 function lerp(a: number, b: number, t: number): number {

@@ -69,38 +69,38 @@ export function unavailableResult(analyzer: AnalyzerResult['analyzer'], reason: 
 
 export function terrainAnalyzer(slopeAspect: SlopeAspect | null): AnalyzerResult {
   if (!slopeAspect) {
-    return unavailableResult('terrain', 'No elevation data loaded for this point yet (terrain tile not loaded).')
+    return unavailableResult('terrain', 'Aucune donnée d’élévation chargée pour ce point (tuile de terrain non chargée).')
   }
   const { slopeDegrees, aspectDegrees } = slopeAspect
   const factors: AnalysisFactor[] = []
 
   if (slopeDegrees >= 5 && slopeDegrees <= 20) {
     factors.push({
-      label: 'Moderate slope',
+      label: 'Pente modérée',
       contribution: 0.4,
-      explanation: `${slopeDegrees.toFixed(0)}° slope — moderate grades like this often form natural travel edges between cover types.`,
+      explanation: `Pente de ${slopeDegrees.toFixed(0)}° — des pentes modérées comme celle-ci forment souvent des lisières naturelles de déplacement entre les types de couvert.`,
       confidence: 'calculated',
     })
   } else if (slopeDegrees > 25) {
     factors.push({
-      label: 'Steep slope',
+      label: 'Pente abrupte',
       contribution: -0.3,
-      explanation: `${slopeDegrees.toFixed(0)}° slope is quite steep — less likely to see regular travel.`,
+      explanation: `Une pente de ${slopeDegrees.toFixed(0)}° est assez abrupte — les déplacements réguliers y sont moins probables.`,
       confidence: 'calculated',
     })
   } else {
     factors.push({
-      label: 'Gentle/flat terrain',
+      label: 'Terrain doux ou plat',
       contribution: 0,
-      explanation: `${slopeDegrees.toFixed(0)}° slope — fairly flat, no strong terrain funnel effect either way.`,
+      explanation: `Pente de ${slopeDegrees.toFixed(0)}° — plutôt plat, sans effet d’entonnoir marqué dans un sens ou dans l’autre.`,
       confidence: 'calculated',
     })
   }
 
   factors.push({
-    label: 'Aspect',
+    label: 'Exposition',
     contribution: 0,
-    explanation: `Faces ${compassLabel(aspectDegrees)} — informational only (sun exposure/cover value depends on season, which isn't factored in here).`,
+    explanation: `Orientée vers le ${compassLabel(aspectDegrees)} — à titre indicatif seulement (l’ensoleillement et la valeur du couvert dépendent de la saison, qui n’est pas prise en compte ici).`,
     confidence: 'calculated',
   })
 
@@ -119,7 +119,7 @@ export function vegetationAnalyzer(sample: VegetationSample | null): AnalyzerRes
   if (!sample || Object.keys(sample.categoryCounts).length === 0) {
     return unavailableResult(
       'vegetation',
-      'No OpenStreetMap land-cover data found near this point (may be sparsely mapped).',
+      'Aucune donnée d’occupation du sol d’OpenStreetMap trouvée près de ce point (la zone est peut-être peu cartographiée).',
     )
   }
 
@@ -128,45 +128,45 @@ export function vegetationAnalyzer(sample: VegetationSample | null): AnalyzerRes
 
   if (categories.length >= 2) {
     factors.push({
-      label: 'Habitat edge',
+      label: 'Lisière d’habitat',
       contribution: Math.min((categories.length - 1) * 0.2, 0.5),
-      explanation: `${categories.length} distinct land-cover types mapped within ${sample.radiusMeters} m — more variety often means more edge habitat between cover types.`,
+      explanation: `${categories.length} types distincts d’occupation du sol cartographiés dans un rayon de ${sample.radiusMeters} m — plus de variété signifie souvent plus de lisières d’habitat entre les types de couvert.`,
       confidence: 'estimated',
     })
   }
 
   if (sample.categoryCounts.water || sample.categoryCounts.wetland) {
     factors.push({
-      label: 'Water nearby',
+      label: 'Eau à proximité',
       contribution: 0.3,
-      explanation: 'Water/wetland mapped nearby — proximity to water is a well-established attractant.',
+      explanation: 'Eau ou milieu humide cartographié à proximité — la proximité de l’eau est un attrait bien établi.',
       confidence: 'estimated',
     })
   }
 
   if (sample.categoryCounts.forest) {
     factors.push({
-      label: 'Forest cover',
+      label: 'Couvert forestier',
       contribution: 0.2,
-      explanation: 'Forest cover mapped nearby — provides bedding/travel cover.',
+      explanation: 'Couvert forestier cartographié à proximité — il offre un abri de repos et de déplacement.',
       confidence: 'estimated',
     })
   }
 
   if (sample.categoryCounts.developed) {
     factors.push({
-      label: 'Developed land nearby',
+      label: 'Terrain aménagé à proximité',
       contribution: -0.3,
-      explanation: 'Residential/commercial/industrial land mapped nearby — typically reduces game activity.',
+      explanation: 'Terrains résidentiels, commerciaux ou industriels cartographiés à proximité — ils réduisent généralement l’activité du gibier.',
       confidence: 'estimated',
     })
   }
 
   if (factors.length === 0) {
     factors.push({
-      label: 'Land cover mapped, no strong signal',
+      label: 'Occupation du sol cartographiée, sans signal marqué',
       contribution: 0,
-      explanation: `Land cover mapped nearby (${categories.join(', ')}) but none of it maps to a strong positive/negative signal this app tracks.`,
+      explanation: `Occupation du sol cartographiée à proximité (${categories.join(', ')}), mais aucune ne correspond à un signal positif ou négatif marqué parmi ceux que suit l’application.`,
       confidence: 'estimated',
     })
   }
@@ -178,7 +178,7 @@ export function weatherAnalyzer(
   current: WeatherConditions | null,
   hourly: HourlyForecastEntry[],
 ): AnalyzerResult {
-  if (!current) return unavailableResult('weather', 'No weather data loaded yet.')
+  if (!current) return unavailableResult('weather', 'Aucune donnée météo chargée pour le moment.')
 
   const factors: AnalysisFactor[] = []
 
@@ -187,24 +187,24 @@ export function weatherAnalyzer(
     const pressureDelta = future.surfacePressureHpa - current.surfacePressureHpa
     if (pressureDelta <= -1) {
       factors.push({
-        label: 'Falling pressure',
+        label: 'Pression en baisse',
         contribution: 0.3,
         explanation:
-          'Pressure is forecast to fall — commonly associated with increased movement ahead of a weather change (a popular outdoor observation, not verified science).',
+          'La pression devrait baisser — on l’associe couramment à plus de déplacements avant un changement de température (observation populaire en plein air, et non une science vérifiée).',
         confidence: 'estimated',
       })
     } else if (pressureDelta >= 1) {
       factors.push({
-        label: 'Rising pressure',
+        label: 'Pression en hausse',
         contribution: -0.1,
-        explanation: 'Pressure is forecast to rise — typically calmer movement patterns.',
+        explanation: 'La pression devrait monter — les déplacements sont généralement plus calmes.',
         confidence: 'estimated',
       })
     } else {
       factors.push({
-        label: 'Stable pressure',
+        label: 'Pression stable',
         contribution: 0,
-        explanation: 'Pressure is holding steady over the next few hours.',
+        explanation: 'La pression reste stable au cours des prochaines heures.',
         confidence: 'estimated',
       })
     }
@@ -212,32 +212,32 @@ export function weatherAnalyzer(
 
   if (current.windSpeedKmh > 35) {
     factors.push({
-      label: 'High wind',
+      label: 'Vent fort',
       contribution: -0.4,
-      explanation: `${Math.round(current.windSpeedKmh)} km/h wind — strong wind often suppresses daytime movement.`,
+      explanation: `Vent de ${Math.round(current.windSpeedKmh)} km/h — un vent fort réduit souvent les déplacements de jour.`,
       confidence: 'measured',
     })
   } else if (current.windSpeedKmh >= 5) {
     factors.push({
-      label: 'Light-moderate wind',
+      label: 'Vent faible à modéré',
       contribution: 0.2,
-      explanation: `${Math.round(current.windSpeedKmh)} km/h wind — comfortable conditions for movement.`,
+      explanation: `Vent de ${Math.round(current.windSpeedKmh)} km/h — conditions confortables pour les déplacements.`,
       confidence: 'measured',
     })
   }
 
   if (current.precipitationMm > 4) {
     factors.push({
-      label: 'Heavy precipitation',
+      label: 'Fortes précipitations',
       contribution: -0.3,
-      explanation: `${current.precipitationMm.toFixed(1)} mm/h — heavy precipitation tends to reduce movement.`,
+      explanation: `${current.precipitationMm.toFixed(1)} mm/h — de fortes précipitations tendent à réduire les déplacements.`,
       confidence: 'measured',
     })
   } else if (current.precipitationMm > 0) {
     factors.push({
-      label: 'Light precipitation',
+      label: 'Faibles précipitations',
       contribution: 0.1,
-      explanation: 'Light precipitation — some hunters report it can help mask noise and scent (anecdotal).',
+      explanation: 'Faibles précipitations — certains chasseurs rapportent qu’elles aident à masquer les bruits et les odeurs (témoignages anecdotiques).',
       confidence: 'measured',
     })
   }
@@ -249,41 +249,41 @@ export function windAnalyzer(
   reading: WindHourlyReading | null,
   optimalDirections: number[] | undefined,
 ): AnalyzerResult {
-  if (!reading) return unavailableResult('wind', 'No wind data loaded yet.')
+  if (!reading) return unavailableResult('wind', 'Aucune donnée de vent chargée pour le moment.')
 
   const factors: AnalysisFactor[] = []
 
   if (optimalDirections && optimalDirections.length > 0) {
     const matches = isOptimalWind(reading.directionDegrees, optimalDirections)
     factors.push({
-      label: matches ? 'Matches optimal wind' : 'Does not match optimal wind',
+      label: matches ? 'Correspond au vent optimal' : 'Ne correspond pas au vent optimal',
       contribution: matches ? 0.6 : -0.6,
       explanation: matches
-        ? `Wind from ${compassLabel(reading.directionDegrees)} matches this waypoint's saved optimal directions.`
-        : `Wind from ${compassLabel(reading.directionDegrees)} does not match this waypoint's saved optimal directions.`,
+        ? `Le vent du ${compassLabel(reading.directionDegrees)} correspond aux directions optimales enregistrées pour ce point de repère.`
+        : `Le vent du ${compassLabel(reading.directionDegrees)} ne correspond pas aux directions optimales enregistrées pour ce point de repère.`,
       confidence: 'user_observation',
     })
   }
 
   if (reading.speedKmh < 5) {
     factors.push({
-      label: 'Very calm',
+      label: 'Très calme',
       contribution: -0.1,
-      explanation: 'Very calm wind can let scent linger unpredictably rather than carrying it consistently.',
+      explanation: 'Un vent très calme laisse les odeurs stagner de façon imprévisible au lieu de les porter de manière constante.',
       confidence: 'measured',
     })
   } else if (reading.speedKmh <= 25) {
     factors.push({
-      label: 'Steady wind',
+      label: 'Vent soutenu',
       contribution: 0.2,
-      explanation: `${Math.round(reading.speedKmh)} km/h — steady wind aids consistent scent dispersal.`,
+      explanation: `${Math.round(reading.speedKmh)} km/h — un vent soutenu favorise une dispersion constante des odeurs.`,
       confidence: 'measured',
     })
   } else {
     factors.push({
-      label: 'Strong wind',
+      label: 'Vent fort',
       contribution: -0.3,
-      explanation: `${Math.round(reading.speedKmh)} km/h — quite strong, may suppress movement.`,
+      explanation: `${Math.round(reading.speedKmh)} km/h — assez fort, il peut réduire les déplacements.`,
       confidence: 'measured',
     })
   }
@@ -299,9 +299,9 @@ export function timeAnalyzer(data: TemporalData, now: Date): AnalyzerResult {
   const nearSunset = data.sun.sunset && Math.abs(now.getTime() - new Date(data.sun.sunset).getTime()) <= CREPUSCULAR_WINDOW_MS
   if (nearSunrise || nearSunset) {
     factors.push({
-      label: 'Dawn/dusk window',
+      label: 'Fenêtre de l’aube et du crépuscule',
       contribution: 0.5,
-      explanation: 'Within an hour of sunrise/sunset — prime movement time for most game species (well-documented crepuscular activity pattern).',
+      explanation: 'À moins d’une heure du lever ou du coucher du soleil — période de déplacement privilégiée de la plupart des espèces de gibier (rythme d’activité crépusculaire bien documenté).',
       confidence: 'calculated',
     })
   }
@@ -311,18 +311,18 @@ export function timeAnalyzer(data: TemporalData, now: Date): AnalyzerResult {
   )
   if (activePeriod) {
     factors.push({
-      label: activePeriod.type === 'major' ? 'Major solunar period active' : 'Minor solunar period active',
+      label: activePeriod.type === 'major' ? 'Période solunaire majeure en cours' : 'Période solunaire mineure en cours',
       contribution: activePeriod.type === 'major' ? 0.4 : 0.2,
-      explanation: `A ${activePeriod.type} solunar period is active now — based on Knight's Solunar Theory (1926), a popular but scientifically unverified framework.`,
+      explanation: `Une période solunaire ${activePeriod.type === 'major' ? 'majeure' : 'mineure'} est en cours — selon la théorie solunaire de Knight (1926), un cadre populaire mais non vérifié scientifiquement.`,
       confidence: 'estimated',
     })
   }
 
   if (data.illumination.fraction > 0.9) {
     factors.push({
-      label: 'Near-full moon',
+      label: 'Lune presque pleine',
       contribution: -0.1,
-      explanation: `Moon is ${Math.round(data.illumination.fraction * 100)}% illuminated — some hunters report reduced daytime movement near a full moon (anecdotal, not verified).`,
+      explanation: `La lune est illuminée à ${Math.round(data.illumination.fraction * 100)} % — certains chasseurs rapportent moins de déplacements de jour près de la pleine lune (anecdotique, non vérifié).`,
       confidence: 'estimated',
     })
   }
@@ -345,16 +345,16 @@ export function historyAnalyzer(
   )
   if (nearbySignWaypoints.length > 0) {
     factors.push({
-      label: 'Nearby game sign',
+      label: 'Indices de gibier à proximité',
       contribution: Math.min(nearbySignWaypoints.length * 0.2, 0.6),
-      explanation: `${nearbySignWaypoints.length} waypoint(s) you've tagged as game sign/kill site/trail camera within ${HISTORY_RADIUS_METERS} m.`,
+      explanation: `${nearbySignWaypoints.length} point(s) de repère que vous avez classés comme indice de gibier, site d’abattage ou caméra de sentier dans un rayon de ${HISTORY_RADIUS_METERS} m.`,
       confidence: 'user_observation',
     })
   } else {
     factors.push({
-      label: 'No recorded sign nearby',
+      label: 'Aucun indice enregistré à proximité',
       contribution: 0,
-      explanation: `No game sign/kill site/trail camera waypoints recorded within ${HISTORY_RADIUS_METERS} m yet.`,
+      explanation: `Aucun point de repère d’indice de gibier, de site d’abattage ou de caméra de sentier enregistré dans un rayon de ${HISTORY_RADIUS_METERS} m pour le moment.`,
       confidence: 'user_observation',
     })
   }
@@ -364,9 +364,9 @@ export function historyAnalyzer(
   )
   if (nearbyTracks.length > 0) {
     factors.push({
-      label: 'Past visits recorded',
+      label: 'Visites passées enregistrées',
       contribution: Math.min(nearbyTracks.length * 0.15, 0.4),
-      explanation: `${nearbyTracks.length} recorded GPS track(s) pass within ${HISTORY_RADIUS_METERS} m of this spot.`,
+      explanation: `${nearbyTracks.length} trace(s) GPS enregistrée(s) passent à moins de ${HISTORY_RADIUS_METERS} m de cet endroit.`,
       confidence: 'calculated',
     })
   }

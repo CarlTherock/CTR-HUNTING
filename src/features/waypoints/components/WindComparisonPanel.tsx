@@ -29,10 +29,10 @@ export function WindComparisonPanel() {
     <div>
       <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
         <Wind size={16} aria-hidden="true" />
-        Wind check
+        Vérification du vent
         {field && (
           <span className="text-ink-500 text-xs font-normal">
-            ({selectedHourOffset === 0 ? 'now' : `+${selectedHourOffset}h`})
+            ({selectedHourOffset === 0 ? 'maintenant' : `+${selectedHourOffset} h`})
           </span>
         )}
       </h2>
@@ -40,8 +40,8 @@ export function WindComparisonPanel() {
       {!field ? (
         <Card className="p-3">
           <p className="text-ink-500 text-xs">
-            Turn on the wind layer from the Map page to compare live wind against these
-            waypoints&apos; saved optimal directions.
+            Activez la couche de vent depuis la page Carte pour comparer le vent en direct aux
+            directions optimales enregistrées pour ces points de repère.
           </p>
         </Card>
       ) : (
@@ -69,11 +69,11 @@ export function WindComparisonPanel() {
                     </span>
                     <span className="text-ink-500 text-[10px]">
                       {Math.round(reading.speedKmh)} km/h ·{' '}
-                      {matches ? 'matches optimal' : 'not optimal'}
+                      {matches ? 'direction optimale' : 'direction non optimale'}
                     </span>
                   </>
                 ) : (
-                  <span className="text-ink-500 text-xs">No data</span>
+                  <span className="text-ink-500 text-xs">Aucune donnée</span>
                 )}
               </Card>
             )

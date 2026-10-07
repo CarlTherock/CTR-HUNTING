@@ -19,14 +19,14 @@ export interface MoonTimes {
 }
 
 export type MoonPhaseName =
-  | 'New Moon'
-  | 'Waxing Crescent'
-  | 'First Quarter'
-  | 'Waxing Gibbous'
-  | 'Full Moon'
-  | 'Waning Gibbous'
-  | 'Last Quarter'
-  | 'Waning Crescent'
+  | 'Nouvelle lune'
+  | 'Premier croissant'
+  | 'Premier quartier'
+  | 'Lune gibbeuse croissante'
+  | 'Pleine lune'
+  | 'Lune gibbeuse décroissante'
+  | 'Dernier quartier'
+  | 'Dernier croissant'
 
 export interface MoonIllumination {
   /** 0 (new) to 1 (full) — real illuminated fraction from SunCalc's lunar

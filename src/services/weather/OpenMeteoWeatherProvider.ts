@@ -106,7 +106,7 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
 
     const response = await fetch(url)
     if (!response.ok) {
-      throw new Error(`Weather request failed (${response.status})`)
+      throw new Error(`Requête météo échouée (${response.status})`)
     }
     const data = (await response.json()) as OpenMeteoResponse
     return mapResponse(data)

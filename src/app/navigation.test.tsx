@@ -46,11 +46,11 @@ describe('navigation', () => {
     const user = userEvent.setup()
     renderAt('/')
 
-    const links = await screen.findAllByRole('link', { name: /Waypoints & Tracks/i })
+    const links = await screen.findAllByRole('link', { name: /Points de repère et traces/i })
     await user.click(links[0])
 
     expect(
-      await screen.findByRole('heading', { name: 'Waypoints & Tracks' }),
+      await screen.findByRole('heading', { name: 'Points de repère et traces' }),
     ).toBeInTheDocument()
   })
 })

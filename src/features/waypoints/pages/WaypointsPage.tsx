@@ -39,8 +39,8 @@ export function WaypointsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Waypoints & Tracks"
-        description="Every saved marker and recorded GPS track. Create new ones from the Map page."
+        title="Points de repère et traces"
+        description="Tous les repères enregistrés et toutes les traces GPS. Créez-en de nouveaux depuis la page Carte."
       />
 
       <WindComparisonPanel />
@@ -48,13 +48,13 @@ export function WaypointsPage() {
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <MapPinned size={16} aria-hidden="true" />
-          Waypoints ({waypoints.length})
+          Points de repère ({waypoints.length})
         </h2>
         {waypoints.length === 0 ? (
           <EmptyState
             icon={<MapPinned size={28} aria-hidden="true" />}
-            title="No waypoints yet"
-            description="Open the Map page, tap the + button, then tap the map to place one."
+            title="Aucun point de repère pour le moment"
+            description="Ouvrez la page Carte, touchez le bouton +, puis touchez la carte pour en placer un."
           />
         ) : (
           <div className="flex flex-col gap-2">
@@ -67,7 +67,7 @@ export function WaypointsPage() {
                   <button
                     type="button"
                     onClick={() => selectWaypoint(waypoint.id)}
-                    className="hover:bg-surface-800 flex w-full items-center gap-3 rounded-[inherit] p-3 text-left transition-colors"
+                    className="hover:bg-surface-800 flex w-full items-center gap-3 rounded-[inherit] p-3 text-left transition-colors pointer-coarse:min-h-11"
                   >
                     <span
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white"
@@ -101,7 +101,7 @@ export function WaypointsPage() {
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <Route size={16} aria-hidden="true" />
-          Tracks ({tracks.length})
+          Traces ({tracks.length})
         </h2>
         <TrackList />
       </div>

@@ -15,7 +15,7 @@ const CARDINALS = [
   { label: 'N', degrees: 0 },
   { label: 'E', degrees: 90 },
   { label: 'S', degrees: 180 },
-  { label: 'W', degrees: 270 },
+  { label: 'O', degrees: 270 },
 ]
 
 /**
@@ -38,7 +38,7 @@ export function WindCompass({ directionDegrees, speedKmh, optimalDirections, siz
   const arrowRight = pointOnCircle(center, center, outerRadius - 24, directionDegrees + 12)
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Wind compass">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Boussole du vent">
       {optimalDirections?.map((octant) => (
         <path
           key={octant}

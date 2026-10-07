@@ -8,6 +8,11 @@ import type { Track } from '@/types'
 const ACTION_BUTTON =
   'text-ink-300 hover:bg-surface-800 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm disabled:cursor-not-allowed disabled:opacity-40'
 
+/** Stable ref callback: moves focus into the confirmation dialog when it opens. */
+function focusOnMount(element: HTMLDivElement | null) {
+  element?.focus()
+}
+
 function trackDurationMs(track: Track, isRecording: boolean): number {
   const start = new Date(track.startedAt).getTime()
   const end = track.endedAt ? new Date(track.endedAt).getTime() : isRecording ? Date.now() : start
@@ -191,9 +196,11 @@ export function TrackList() {
 
             {confirming && (
               <div
+                ref={focusOnMount}
+                tabIndex={-1}
                 role="alertdialog"
                 aria-label={`Confirmer la suppression de ${track.name}`}
-                className="border-status-danger/50 flex flex-col gap-2 rounded-lg border p-2 text-sm"
+                className="border-status-danger/50 flex flex-col gap-2 rounded-lg border p-2 text-sm outline-none"
               >
                 <p className="text-ink-100">
                   Supprimer définitivement « {track.name} » ({track.points.length} points) ? Cette

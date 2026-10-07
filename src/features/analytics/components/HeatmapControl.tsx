@@ -88,8 +88,8 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
               <button
                 type="button"
                 onClick={handleToggle}
-                aria-label="Hide analysis heatmap"
-                className="text-ink-500 hover:text-ink-100"
+                aria-label="Masquer la carte de potentiel"
+                className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -99,7 +99,7 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
             {status === 'error' && (
               <p className="text-status-danger text-sm">
                 Carte indisponible — {errorReason}.{' '}
-                <button type="button" onClick={refresh} className="underline">
+                <button type="button" onClick={refresh} className="underline pointer-coarse:min-h-11">
                   Réessayer
                 </button>
               </p>
@@ -112,7 +112,7 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                     value={selectedView}
                     onChange={(e) => setSelectedView(e.target.value as HeatmapView)}
                     aria-label="Score affiché"
-                    className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 rounded-md border px-2 py-1.5 text-sm outline-none focus-visible:outline-2"
+                    className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 rounded-md border px-2 py-1.5 text-sm outline-none focus-visible:outline-2 pointer-coarse:min-h-11"
                   >
                     {VIEW_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -124,7 +124,7 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                 {areaChanged && (
                   <div className="bg-status-warning/15 text-status-warning mb-2 flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs">
                     <span>La carte a bougé hors de la zone analysée.</span>
-                    <button type="button" onClick={refresh} className="font-semibold underline">
+                    <button type="button" onClick={refresh} className="font-semibold underline pointer-coarse:min-h-11">
                       Recalculer
                     </button>
                   </div>
@@ -148,7 +148,7 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                 <button
                   type="button"
                   onClick={refresh}
-                  className="text-ink-500 hover:text-ink-100 mt-2 text-xs underline"
+                  className="text-ink-500 hover:text-ink-100 mt-2 text-xs underline pointer-coarse:min-h-11"
                 >
                   Recalculer pour la zone visible
                 </button>

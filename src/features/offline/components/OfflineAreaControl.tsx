@@ -83,30 +83,30 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
       <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="border-surface-600 bg-surface-900 w-full max-w-sm rounded-lg border p-4 shadow-2xl">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-ink-100 text-sm font-semibold">Download this area</h2>
+            <h2 className="text-ink-100 text-sm font-semibold">Télécharger cette zone</h2>
             <button
               type="button"
               onClick={cancelSelecting}
-              aria-label="Cancel"
-              className="text-ink-500 hover:text-ink-100"
+              aria-label="Annuler"
+              className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
             >
               <X size={16} aria-hidden="true" />
             </button>
           </div>
 
           <p className="text-ink-500 mb-3 text-xs">
-            Downloads the area currently in view for offline use.
+            Télécharge la zone actuellement affichée pour l’utiliser hors ligne.
           </p>
 
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-ink-500 text-xs font-medium">Extra zoom levels</span>
+            <span className="text-ink-500 text-xs font-medium">Niveaux de zoom supplémentaires</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setExtraZoomLevels(extraZoomLevels - 1)}
                 disabled={extraZoomLevels <= 0}
-                aria-label="Fewer zoom levels"
-                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Moins de niveaux de zoom"
+                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 pointer-coarse:p-3.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Minus size={14} aria-hidden="true" />
               </button>
@@ -115,8 +115,8 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
                 type="button"
                 onClick={() => setExtraZoomLevels(extraZoomLevels + 1)}
                 disabled={extraZoomLevels >= 3}
-                aria-label="More zoom levels"
-                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Plus de niveaux de zoom"
+                className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-md border p-1 pointer-coarse:p-3.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus size={14} aria-hidden="true" />
               </button>
@@ -124,7 +124,7 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
           </div>
 
           <p className="text-ink-300 mb-4 text-sm">
-            {tileCount} tile{tileCount === 1 ? '' : 's'} (zoom {minZoom}–{maxZoom})
+            {tileCount} tuile{tileCount === 1 ? '' : 's'} (zoom {minZoom}–{maxZoom})
           </p>
 
           <Button
@@ -137,7 +137,7 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
             }}
           >
             <Download size={14} aria-hidden="true" />
-            Start download
+            Lancer le téléchargement
           </Button>
         </div>
       </div>
@@ -149,14 +149,14 @@ export function OfflineAreaControl({ getMapInstance, baseLayer, currentZoom }: O
       <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="border-surface-600 bg-surface-900/95 text-ink-100 flex w-full max-w-sm items-center justify-between gap-3 rounded-lg border p-3 shadow-2xl">
           <span className="text-sm">
-            Downloading… {downloadProgress?.tilesDownloaded ?? 0} tiles (
+            Téléchargement… {downloadProgress?.tilesDownloaded ?? 0} tuiles (
             {formatBytes(downloadProgress?.bytesDownloaded ?? 0)})
           </span>
           <button
             type="button"
             onClick={cancelDownload}
-            aria-label="Cancel download"
-            className="text-status-danger hover:brightness-110"
+            aria-label="Annuler le téléchargement"
+            className="text-status-danger flex items-center justify-center hover:brightness-110 pointer-coarse:size-11"
           >
             <X size={16} aria-hidden="true" />
           </button>

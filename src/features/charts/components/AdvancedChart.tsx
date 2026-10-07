@@ -110,7 +110,7 @@ export function AdvancedChart() {
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div role="tablist" aria-label="Chart granularity" className="flex gap-1">
+        <div role="tablist" aria-label="Granularité du graphique" className="flex gap-1">
           {GRANULARITIES.map((g) => (
             <button
               key={g}
@@ -119,7 +119,7 @@ export function AdvancedChart() {
               aria-selected={granularity === g}
               onClick={() => setGranularity(g)}
               className={cn(
-                'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                'rounded-md px-2 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:px-3',
                 granularity === g ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300 hover:bg-surface-800',
               )}
             >
@@ -127,13 +127,13 @@ export function AdvancedChart() {
             </button>
           ))}
         </div>
-        <label className="text-ink-300 flex items-center gap-1.5 text-xs">
+        <label className="text-ink-300 flex items-center gap-1.5 text-xs pointer-coarse:min-h-11">
           <input
             type="checkbox"
             checked={dayComparison}
             onChange={(e) => setDayComparison(e.target.checked)}
           />
-          Compare day 1 vs day 2
+          Comparer le jour 1 et le jour 2
         </label>
       </div>
 
@@ -142,7 +142,7 @@ export function AdvancedChart() {
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           onClick={handleChartClick}
           role="img"
-          aria-label="Hourly temperature and wind chart"
+          aria-label="Graphique horaire de la température et du vent"
           className="min-w-[500px] cursor-pointer"
         >
           <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} className="stroke-surface-700" />
@@ -186,13 +186,13 @@ export function AdvancedChart() {
       </div>
 
       <div className="text-ink-500 mt-1 flex justify-between text-[10px]">
-        <span className="text-status-danger">— Temperature</span>
-        <span className="text-brand-400">— Wind speed</span>
-        <span>▮ Precipitation</span>
+        <span className="text-status-danger">— Température</span>
+        <span className="text-brand-400">— Vitesse du vent</span>
+        <span>▮ Précipitations</span>
       </div>
       {cursorSeries && (
         <p className="text-ink-500 mt-1 text-xs">
-          Cursor: {formatHour(cursorSeries.bucket.time)} —{' '}
+          Curseur : {formatHour(cursorSeries.bucket.time)} —{' '}
           {Math.round(cursorSeries.bucket.temperatureCelsius)}°C,{' '}
           {Math.round(cursorSeries.bucket.windSpeedKmh)} km/h
         </p>

@@ -46,7 +46,7 @@ describe('weatherLayerGradientCss', () => {
 
 describe('LAYER_LEGEND', () => {
   it('has real min/max/unit for every layer', () => {
-    expect(LAYER_LEGEND.wind).toEqual({ min: 0, max: 65, unit: 'km/h', label: 'Wind speed' })
+    expect(LAYER_LEGEND.wind).toEqual({ min: 0, max: 65, unit: 'km/h', label: 'Vitesse du vent' })
     expect(LAYER_LEGEND.temperature.unit).toBe('°C')
     expect(LAYER_LEGEND.precipitation.unit).toBe('mm/h')
     expect(LAYER_LEGEND.clouds.max).toBe(100)

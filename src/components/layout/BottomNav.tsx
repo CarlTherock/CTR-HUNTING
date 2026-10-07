@@ -25,7 +25,7 @@ export function BottomNav() {
           }
         >
           <item.icon size={20} aria-hidden="true" />
-          {item.label.split(' ')[0]}
+          {item.shortLabel ?? item.label}
         </NavLink>
       ))}
     </nav>

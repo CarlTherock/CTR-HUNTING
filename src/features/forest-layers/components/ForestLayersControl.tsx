@@ -45,7 +45,7 @@ export function ForestLayersControl() {
                 type="button"
                 onClick={() => setPanelOpen(false)}
                 aria-label="Fermer"
-                className="text-ink-500 hover:text-ink-100"
+                className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -60,7 +60,7 @@ export function ForestLayersControl() {
                   aria-checked={!!enabled[option.id]}
                   onClick={() => toggle(option.id)}
                   className={cn(
-                    'flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                    'flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors pointer-coarse:min-h-11',
                     enabled[option.id]
                       ? 'border-brand-400 bg-brand-500/15 text-brand-400'
                       : 'border-surface-600 text-ink-300 hover:bg-surface-800',
@@ -76,7 +76,7 @@ export function ForestLayersControl() {
               <div className="mt-2">
                 <label className="text-ink-500 flex items-center justify-between text-xs">
                   <span>Opacité</span>
-                  <span>{Math.round(opacity * 100)}%</span>
+                  <span>{Math.round(opacity * 100)} %</span>
                 </label>
                 <input
                   type="range"

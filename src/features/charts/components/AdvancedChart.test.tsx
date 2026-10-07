@@ -58,7 +58,7 @@ describe('AdvancedChart', () => {
     useWeatherStore.setState({ forecast: FORECAST })
     render(<AdvancedChart />)
 
-    expect(screen.getByRole('img', { name: 'Hourly temperature and wind chart' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })).toBeInTheDocument()
     for (const g of ['1h', '3h', '6h', '12h', '24h']) {
       expect(screen.getByRole('tab', { name: g })).toBeInTheDocument()
     }
@@ -81,7 +81,7 @@ describe('AdvancedChart', () => {
     useWeatherStore.setState({ forecast: FORECAST })
     render(<AdvancedChart />)
 
-    const svg = screen.getByRole('img', { name: 'Hourly temperature and wind chart' })
+    const svg = screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })
     await user.click(svg)
 
     // A real, valid hour index was set — not left at its default of 0
@@ -96,10 +96,10 @@ describe('AdvancedChart', () => {
     useWeatherStore.setState({ forecast: FORECAST })
     render(<AdvancedChart />)
 
-    await user.click(screen.getByLabelText('Compare day 1 vs day 2'))
+    await user.click(screen.getByLabelText('Comparer le jour 1 et le jour 2'))
 
     // Two temperature paths now exist (day 1 solid + day 2 dashed).
-    const svg = screen.getByRole('img', { name: 'Hourly temperature and wind chart' })
+    const svg = screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })
     const dashedPaths = svg.querySelectorAll('path[stroke-dasharray]')
     expect(dashedPaths.length).toBeGreaterThan(0)
   })

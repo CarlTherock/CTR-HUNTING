@@ -72,7 +72,7 @@ describe('useCompassHeading', () => {
     })
 
     expect(requestPermission).toHaveBeenCalledOnce()
-    expect(result.current.reading).toEqual({ status: 'unavailable', reason: 'Compass permission denied.' })
+    expect(result.current.reading).toEqual({ status: 'unavailable', reason: 'Autorisation de la boussole refusée.' })
   })
 
   it('starts listening for real orientation events once permission is granted', async () => {

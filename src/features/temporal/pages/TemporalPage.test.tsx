@@ -22,15 +22,15 @@ describe('TemporalPage', () => {
   it('renders real sun, moon, and solunar data for the map-center fallback location', async () => {
     render(<TemporalPage />)
 
-    expect(screen.getByText('Using map location — GPS unavailable')).toBeInTheDocument()
-    expect(screen.getByText('Sun')).toBeInTheDocument()
-    expect(screen.getByText('Moon')).toBeInTheDocument()
+    expect(screen.getByText('Position de la carte utilisée — GPS indisponible')).toBeInTheDocument()
+    expect(screen.getByText('Soleil')).toBeInTheDocument()
+    expect(screen.getByText('Lune')).toBeInTheDocument()
     // A real phase name (one of the 8) must be shown, not a placeholder.
     expect(
-      screen.getByText(/New Moon|Waxing Crescent|First Quarter|Waxing Gibbous|Full Moon|Waning Gibbous|Last Quarter|Waning Crescent/),
+      screen.getByText(/Nouvelle lune|Premier croissant|Premier quartier|Lune gibbeuse croissante|Pleine lune|Lune gibbeuse décroissante|Dernier quartier|Dernier croissant/),
     ).toBeInTheDocument()
-    expect(screen.getByText('Solunar periods')).toBeInTheDocument()
-    expect(await screen.findAllByText(/Major|Minor/)).not.toHaveLength(0)
+    expect(screen.getByText('Périodes solunaires')).toBeInTheDocument()
+    expect(await screen.findAllByText(/Majeure|Mineure/)).not.toHaveLength(0)
   })
 
   it('does not show the GPS-unavailable badge once a GPS fix is available', () => {
@@ -42,26 +42,26 @@ describe('TemporalPage', () => {
     }
     render(<TemporalPage />)
 
-    expect(screen.queryByText('Using map location — GPS unavailable')).not.toBeInTheDocument()
+    expect(screen.queryByText('Position de la carte utilisée — GPS indisponible')).not.toBeInTheDocument()
   })
 
   it('navigates to the next/previous day and updates the header label', async () => {
     const user = userEvent.setup()
     render(<TemporalPage />)
 
-    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(screen.getByText('Aujourd’hui')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Next day' }))
-    expect(screen.queryByText('Today')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Jour suivant' }))
+    expect(screen.queryByText('Aujourd’hui')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Previous day' }))
-    expect(screen.getByText('Today')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Jour précédent' }))
+    expect(screen.getByText('Aujourd’hui')).toBeInTheDocument()
   })
 
   it('shows the shared Phase 10 timeline cursor on the day bar when windStore has a real hour selected', () => {
     useWindStore.setState({ selectedHourOffset: 15 }) // hour-of-day 15
     render(<TemporalPage />)
 
-    expect(screen.getByLabelText('Selected hour (shared timeline cursor)')).toBeInTheDocument()
+    expect(screen.getByLabelText('Heure sélectionnée (curseur partagé de la ligne du temps)')).toBeInTheDocument()
   })
 })

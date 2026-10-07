@@ -11,6 +11,11 @@ import { CATEGORY_OPTIONS, COLOR_OPTIONS, DEFAULT_WAYPOINT_COLOR as DEFAULT_COLO
 import { useWaypointsStore } from '../state/waypointsStore'
 import { WaypointPhotos } from './WaypointPhotos'
 
+/** Stable ref callback: moves focus into the confirmation dialog when it opens. */
+function focusOnMount(element: HTMLDivElement | null) {
+  element?.focus()
+}
+
 /** The 8 compass octants a hunter can mark as "good wind" for a spot —
  * matches `octantOf()` in `utils/windField.ts`, which snaps any live
  * reading to the nearest of these same 8 values before comparing. */
@@ -340,9 +345,11 @@ export function WaypointEditPanel() {
 
         {confirmingDelete && waypoint ? (
           <div
+            ref={focusOnMount}
+            tabIndex={-1}
             role="alertdialog"
             aria-label={`Confirmer la suppression de ${waypoint.name}`}
-            className="border-status-danger/50 mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm"
+            className="border-status-danger/50 mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm outline-none"
           >
             <p className="text-ink-100">
               Supprimer définitivement « {waypoint.name} » et ses photos ? Cette action est

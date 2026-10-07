@@ -417,9 +417,9 @@ describe('MapPage', () => {
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     lastCreateMapOptions?.onMapClick?.({ lat: 46.81, lng: -71.2 })
 
-    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: 'Terminer' }))
 
-    expect(await screen.findByText('Elevation profile')).toBeInTheDocument()
+    expect(await screen.findByText('Profil d’élévation')).toBeInTheDocument()
   })
 
   it('shows each tapped elevation-profile point on the map immediately, and clears them on discard', async () => {
@@ -440,8 +440,8 @@ describe('MapPage', () => {
       ])
     })
 
-    await user.click(screen.getByRole('button', { name: 'Done' }))
-    await user.click(screen.getByRole('button', { name: 'Discard' }))
+    await user.click(screen.getByRole('button', { name: 'Terminer' }))
+    await user.click(screen.getByRole('button', { name: 'Abandonner' }))
 
     expect(setMeasurePath).toHaveBeenLastCalledWith(null)
   })
@@ -597,18 +597,18 @@ describe('MapPage', () => {
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
     await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
     await vi.waitFor(() => {
-      expect(screen.getAllByRole('img', { name: 'Wind compass' }).length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('img', { name: 'Boussole du vent' }).length).toBeGreaterThan(0)
     })
 
     // Mark north as optimal — the live wind (W) should read as a mismatch.
     await user.click(screen.getByRole('button', { name: 'N' }))
-    expect(await screen.findByText('W maintenant')).toHaveClass('text-status-danger')
+    expect(await screen.findByText('O maintenant')).toHaveClass('text-status-danger')
 
     // Mark west too — now the live wind matches.
-    await user.click(screen.getByRole('button', { name: 'W' }))
-    expect(await screen.findByText('W maintenant')).toHaveClass('text-status-success')
+    await user.click(screen.getByRole('button', { name: 'O' }))
+    expect(await screen.findByText('O maintenant')).toHaveClass('text-status-success')
 
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
@@ -675,9 +675,9 @@ describe('MapPage', () => {
     await useTool(user, 'Télécharger cette zone hors ligne')
     expect(getBounds).toHaveBeenCalled()
     // Real tile-math count for this bbox/zoom-range, not a placeholder.
-    expect(screen.getByText(/\d+ tiles? \(zoom/)).toBeInTheDocument()
+    expect(screen.getByText(/\d+ tuiles? \(zoom/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Start download' }))
+    await user.click(screen.getByRole('button', { name: 'Lancer le téléchargement' }))
 
     expect(downloadArea).toHaveBeenCalledOnce()
     await vi.waitFor(() => {
@@ -692,7 +692,7 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
 
     expect(fetchWindField).toHaveBeenCalledWith(
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
@@ -705,9 +705,9 @@ describe('MapPage', () => {
         'wind',
       )
     })
-    expect(await screen.findByRole('img', { name: 'Wind compass' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: 'Boussole du vent' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
+    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
     expect(setWindField).toHaveBeenLastCalledWith(null, 0, 'wind')
   })
 
@@ -756,17 +756,17 @@ describe('MapPage', () => {
 
     await useTool(user, 'Analyser cet endroit')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
-    await screen.findByRole('heading', { name: 'Spot analysis' })
+    await screen.findByRole('heading', { name: 'Analyse de l’endroit' })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(1))
 
     await useTool(user, 'Analyser cet endroit')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.82, lng: -71.21 })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(2))
     await vi.waitFor(() => {
-      expect(screen.getByRole('group', { name: 'Recently analyzed spots' })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Endroits analysés récemment' })).toBeInTheDocument()
     })
 
-    const strip = screen.getByRole('group', { name: 'Recently analyzed spots' })
+    const strip = screen.getByRole('group', { name: 'Endroits analysés récemment' })
     const chips = within(strip).getAllByRole('button')
     expect(chips).toHaveLength(2)
 
@@ -786,7 +786,7 @@ describe('MapPage', () => {
 
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
 
-    expect(await screen.findByRole('heading', { name: 'Spot analysis' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Analyse de l’endroit' })).toBeInTheDocument()
     await vi.waitFor(() => {
       expect(fetchForecast).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 })
       expect(fetchVegetation).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 }, 300)
@@ -795,12 +795,12 @@ describe('MapPage', () => {
     // A real combined score + all 6 analyzers, not a fabricated summary.
     expect(await screen.findByText(/\/100 —/)).toBeInTheDocument()
     const panel = within(screen.getByTestId('spot-analysis-panel'))
-    for (const label of ['Terrain', 'Vegetation', 'Weather', 'Wind', 'Time', 'History']) {
+    for (const label of ['Terrain', 'Végétation', 'Météo', 'Vent', 'Moment', 'Historique']) {
       expect(panel.getByText(label)).toBeInTheDocument()
     }
 
     await user.click(panel.getByText('Terrain'))
-    expect(panel.getByText(/slope/i)).toBeInTheDocument()
+    expect(panel.getByText(/pente/i)).toBeInTheDocument()
   })
 
   it('toggles the analysis heatmap, computing a real 8x8 grid from one batched fetch each', async () => {
@@ -863,19 +863,19 @@ describe('MapPage', () => {
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Toggle wind flow field' }))
-    expect(screen.getByRole('button', { name: 'Toggle wind flow field' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    expect(screen.getByRole('button', { name: 'Particules de vent' })).toBeInTheDocument()
 
     useFieldModeStore.setState({ enabled: true, loaded: true })
 
     await vi.waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Toggle wind flow field' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Particules de vent' })).not.toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: 'Carte de potentiel' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Analyser cet endroit' })).not.toBeInTheDocument()
     // Real CompassDisplay is now shown instead — jsdom has no orientation
     // API, so it honestly reports unavailable rather than a fake heading.
-    expect(screen.getByText(/not supported/)).toBeInTheDocument()
+    expect(screen.getByText(/pas prise en charge/)).toBeInTheDocument()
     expect(useWindStore.getState().enabled).toBe(false)
     expect(useWeatherMapStore.getState().enabled).toBe(false)
 

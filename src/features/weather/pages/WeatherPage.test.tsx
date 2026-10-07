@@ -82,21 +82,21 @@ describe('WeatherPage', () => {
     fetchForecast.mockResolvedValue(FORECAST)
     render(<WeatherPage />)
 
-    expect(await screen.findByText('Current conditions')).toBeInTheDocument()
+    expect(await screen.findByText('Conditions actuelles')).toBeInTheDocument()
     expect(screen.getByText('18°C')).toBeInTheDocument()
-    expect(screen.getByText('60%')).toBeInTheDocument()
-    expect(screen.getByText('Next 24 hours')).toBeInTheDocument()
+    expect(screen.getByText('60 %')).toBeInTheDocument()
+    expect(screen.getByText('24 prochaines heures')).toBeInTheDocument()
     expect(screen.getByText('10:00')).toBeInTheDocument()
     expect(screen.getByText('11:00')).toBeInTheDocument()
-    expect(screen.getByText('Advanced chart')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Hourly temperature and wind chart' })).toBeInTheDocument()
+    expect(screen.getByText('Graphique avancé')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Graphique horaire de la température et du vent' })).toBeInTheDocument()
   })
 
   it('fetches using the map center and flags it, when GPS is unavailable', async () => {
     fetchForecast.mockResolvedValue(FORECAST)
     render(<WeatherPage />)
 
-    expect(await screen.findByText('Using map location — GPS unavailable')).toBeInTheDocument()
+    expect(await screen.findByText('Position de la carte utilisée — GPS indisponible')).toBeInTheDocument()
     expect(fetchForecast).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 })
   })
 
@@ -110,8 +110,8 @@ describe('WeatherPage', () => {
     fetchForecast.mockResolvedValue(FORECAST)
     render(<WeatherPage />)
 
-    await screen.findByText('Current conditions')
-    expect(screen.queryByText('Using map location — GPS unavailable')).not.toBeInTheDocument()
+    await screen.findByText('Conditions actuelles')
+    expect(screen.queryByText('Position de la carte utilisée — GPS indisponible')).not.toBeInTheDocument()
     expect(fetchForecast).toHaveBeenCalledWith(
       expect.objectContaining({ lat: 47.1, lng: -70.5 }),
     )
@@ -121,10 +121,10 @@ describe('WeatherPage', () => {
     fetchForecast.mockResolvedValue(FORECAST)
     const user = userEvent.setup()
     render(<WeatherPage />)
-    await screen.findByText('Current conditions')
+    await screen.findByText('Conditions actuelles')
     fetchForecast.mockClear()
 
-    await user.click(screen.getByRole('button', { name: 'Refresh weather' }))
+    await user.click(screen.getByRole('button', { name: 'Actualiser la météo' }))
 
     expect(fetchForecast).toHaveBeenCalledOnce()
   })
@@ -133,7 +133,7 @@ describe('WeatherPage', () => {
     fetchForecast.mockRejectedValue(new Error('network down'))
     render(<WeatherPage />)
 
-    expect(await screen.findByText('Weather unavailable')).toBeInTheDocument()
+    expect(await screen.findByText('Météo indisponible')).toBeInTheDocument()
     expect(screen.getByText('network down')).toBeInTheDocument()
   })
 })

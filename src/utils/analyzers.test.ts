@@ -85,7 +85,7 @@ describe('vegetationAnalyzer', () => {
       source: 'openstreetmap',
     }
     const result = vegetationAnalyzer(sample)
-    expect(result.factors.some((f) => f.label === 'Habitat edge')).toBe(true)
+    expect(result.factors.some((f) => f.label === 'Lisière d’habitat')).toBe(true)
   })
 })
 
@@ -160,7 +160,7 @@ describe('timeAnalyzer', () => {
       dayLengthMs: 14 * 3600_000,
     },
     moon: { rise: null, set: null, alwaysUp: false, alwaysDown: false },
-    illumination: { fraction: 0.2, phase: 0.1, waxing: true, phaseName: 'Waxing Crescent' },
+    illumination: { fraction: 0.2, phase: 0.1, waxing: true, phaseName: 'Premier croissant' },
     solunarPeriods: [
       {
         type: 'major',
@@ -180,13 +180,13 @@ describe('timeAnalyzer', () => {
 
   it('detects an active major solunar period', () => {
     const result = timeAnalyzer(DATA, new Date('2026-08-17T10:00:00.000Z'))
-    expect(result.factors.some((f) => f.label.includes('Major solunar'))).toBe(true)
+    expect(result.factors.some((f) => f.label.includes('Période solunaire majeure'))).toBe(true)
   })
 
   it('flags near-full moon as a real (anecdotal) factor', () => {
     const fullMoonData = { ...DATA, illumination: { ...DATA.illumination, fraction: 0.98 } }
     const result = timeAnalyzer(fullMoonData, new Date('2026-08-17T16:00:00.000Z'))
-    expect(result.factors.some((f) => f.label.includes('full moon'))).toBe(true)
+    expect(result.factors.some((f) => f.label.includes('presque pleine'))).toBe(true)
   })
 })
 

@@ -63,7 +63,7 @@ describe('WindComparisonPanel', () => {
 
     render(<WindComparisonPanel />)
 
-    expect(screen.getByText(/Turn on the wind layer/)).toBeInTheDocument()
+    expect(screen.getByText(/Activez la couche de vent/)).toBeInTheDocument()
   })
 
   it('flags a mismatch when the live wind does not match the saved optimal directions', () => {
@@ -75,7 +75,7 @@ describe('WindComparisonPanel', () => {
     render(<WindComparisonPanel />)
 
     expect(screen.getByText('Ridge stand')).toBeInTheDocument()
-    expect(screen.getByText(/not optimal/)).toBeInTheDocument()
+    expect(screen.getByText(/direction non optimale/)).toBeInTheDocument()
   })
 
   it('flags a match when the live wind does match the saved optimal directions', () => {
@@ -86,6 +86,6 @@ describe('WindComparisonPanel', () => {
 
     render(<WindComparisonPanel />)
 
-    expect(screen.getByText(/matches optimal/)).toBeInTheDocument()
+    expect(screen.getByText(/direction optimale/)).toBeInTheDocument()
   })
 })

@@ -31,7 +31,7 @@ export function MoonPhaseIcon({
   const litOnRight = phase < 0.5 ? waxing : !waxing
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Moon phase">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Phase de la lune">
       <circle cx={r} cy={r} r={r} className="fill-surface-700" />
       <g transform={litOnRight ? `translate(${size}, 0) scale(-1, 1)` : undefined}>
         <path d={path} className="fill-ink-100" />

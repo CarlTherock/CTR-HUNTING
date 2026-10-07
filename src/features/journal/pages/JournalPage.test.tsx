@@ -43,14 +43,14 @@ describe('JournalPage', () => {
   it('shows the empty state with no entries', async () => {
     renderPage()
 
-    expect(await screen.findByText('No journal entries yet')).toBeInTheDocument()
+    expect(await screen.findByText('Aucune entrée de journal pour le moment')).toBeInTheDocument()
   })
 
   it('creates a real entry at the map-center fallback when GPS is unavailable, with no conditions snapshot when nothing is loaded', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'New entry' }))
+    await user.click(screen.getByRole('button', { name: 'Nouvelle entrée' }))
 
     await vi.waitFor(async () => {
       expect(await db.observations.count()).toBe(1)
@@ -58,7 +58,7 @@ describe('JournalPage', () => {
     const [observation] = await db.observations.toArray()
     expect(observation.coordinate).toEqual(useMapStore.getState().view.center)
     expect(observation.conditions).toBeUndefined()
-    expect(screen.getByPlaceholderText('What did you see?')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Qu’avez-vous observé ?')).toBeInTheDocument()
   })
 
   it('attaches a real conditions snapshot when weather and wind data are already loaded', async () => {
@@ -104,7 +104,7 @@ describe('JournalPage', () => {
     })
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'New entry' }))
+    await user.click(screen.getByRole('button', { name: 'Nouvelle entrée' }))
 
     await vi.waitFor(async () => {
       const [observation] = await db.observations.toArray()
@@ -120,11 +120,11 @@ describe('JournalPage', () => {
   it('edits notes and lists the real entry with its notes/timestamp/coordinate', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'New entry' }))
-    await screen.findByPlaceholderText('What did you see?')
+    await user.click(screen.getByRole('button', { name: 'Nouvelle entrée' }))
+    await screen.findByPlaceholderText('Qu’avez-vous observé ?')
 
-    await user.type(screen.getByPlaceholderText('What did you see?'), 'Fresh rub line')
-    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.type(screen.getByPlaceholderText('Qu’avez-vous observé ?'), 'Fresh rub line')
+    await user.click(screen.getByRole('button', { name: 'Fermer' }))
 
     expect(await screen.findByText('Fresh rub line')).toBeInTheDocument()
   })
@@ -132,14 +132,14 @@ describe('JournalPage', () => {
   it('deletes a real entry', async () => {
     const user = userEvent.setup()
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'New entry' }))
-    await screen.findByPlaceholderText('What did you see?')
+    await user.click(screen.getByRole('button', { name: 'Nouvelle entrée' }))
+    await screen.findByPlaceholderText('Qu’avez-vous observé ?')
 
-    await user.click(screen.getByRole('button', { name: 'Delete entry' }))
+    await user.click(screen.getByRole('button', { name: 'Supprimer l’entrée' }))
 
     await vi.waitFor(async () => {
       expect(await db.observations.count()).toBe(0)
     })
-    expect(await screen.findByText('No journal entries yet')).toBeInTheDocument()
+    expect(await screen.findByText('Aucune entrée de journal pour le moment')).toBeInTheDocument()
   })
 })

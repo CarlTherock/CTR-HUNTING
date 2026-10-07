@@ -73,8 +73,9 @@ export default defineConfig({
       manifest: {
         name: 'CTR Hunting — Field Terrain Intelligence',
         short_name: 'CTR Hunting',
+        lang: 'fr',
         description:
-          'Offline-first terrain mapping, navigation and field intelligence platform.',
+          'Plateforme de cartographie, de navigation et de renseignement terrain, utilisable hors ligne.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

@@ -318,6 +318,7 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
   let particles: WindParticle[] = []
   let animationFrame: number | null = null
   let trailsNeedClear = true
+  let paused = false
   const onMove = () => {
     trailsNeedClear = true
   }
@@ -348,7 +349,7 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
     if (layer !== 'wind') {
       ctx.clearRect(0, 0, width, height)
       drawWeatherOverlay(ctx, map, field, hourOffset, layer, width, height)
-      animationFrame = requestAnimationFrame(step)
+      animationFrame = paused ? null : requestAnimationFrame(step)
       return
     }
 
@@ -402,22 +403,44 @@ function createWindLayer(map: MapLibreMap, container: HTMLElement) {
       }
     }
 
-    animationFrame = requestAnimationFrame(step)
+    animationFrame = paused ? null : requestAnimationFrame(step)
+  }
+
+  /** Paused mode: paint a handful of frames synchronously so the
+   * streamlines are visible as a still image, with no animation loop. */
+  function renderStatic() {
+    trailsNeedClear = true
+    for (let i = 0; i < 24; i += 1) step()
+    animationFrame = null
   }
 
   return {
     setField(newField: WindField | null, newHourOffset: number, newLayer: WeatherMapLayer) {
+      const hadField = field !== null
       field = newField
       hourOffset = newHourOffset
       layer = newLayer
-      if (field && animationFrame === null) {
-        reset()
-        animationFrame = requestAnimationFrame(step)
-      } else if (!field && animationFrame !== null) {
-        cancelAnimationFrame(animationFrame)
+      if (field) {
+        if (!hadField) reset()
+        if (paused) renderStatic()
+        else if (animationFrame === null) animationFrame = requestAnimationFrame(step)
+      } else if (hadField) {
+        if (animationFrame !== null) cancelAnimationFrame(animationFrame)
         animationFrame = null
         const ctx = canvas.getContext('2d')
         ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    },
+    setPaused(newPaused: boolean) {
+      if (paused === newPaused) return
+      paused = newPaused
+      if (!field) return
+      if (paused) {
+        if (animationFrame !== null) cancelAnimationFrame(animationFrame)
+        renderStatic()
+      } else {
+        trailsNeedClear = true
+        animationFrame = requestAnimationFrame(step)
       }
     },
     destroy() {
@@ -1007,6 +1030,9 @@ export class MapLibreProvider implements MapProvider {
       setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer) {
         windLayer.setField(field, hourOffset, layer)
       },
+      setWindAnimationPaused(paused: boolean) {
+        windLayer.setPaused(paused)
+      },
       setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null) {
         analysisHeatmapLayer.setCells(cells)
       },
@@ -1096,7 +1122,7 @@ export class MapLibreProvider implements MapProvider {
             const range = tileRangeForBounds(bounds, zoom)
             for (const tile of tilesForRange(range)) {
               if (signal.aborted) {
-                throw new DOMException('Offline area download cancelled', 'AbortError')
+                throw new DOMException('Téléchargement de la zone hors ligne annulé', 'AbortError')
               }
               const center = tileCenterLngLat(tile.x, tile.y, zoom)
               map.jumpTo({ center: [center.lng, center.lat], zoom })

@@ -13,6 +13,16 @@ export type WindLayerStatus = 'idle' | 'loading' | 'available' | 'error'
  * re-fetches. */
 const GRID_SIZE = 5
 
+/** True when the OS asks for reduced motion — the wind particle animation
+ * then starts paused (a still frame) and the user must press Lecture. */
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
+
 interface WindState {
   status: WindLayerStatus
   field: WindField | null
@@ -38,11 +48,15 @@ interface WindState {
    * `OpenMeteoWindProvider`), so every layer is instantly available once
    * one fetch has landed. */
   activeLayer: WeatherMapLayer
+  /** Wind particle animation paused (still frame). Defaults to `true`
+   * when the OS requests reduced motion. */
+  animationPaused: boolean
 
   toggle: (bounds: LngLatBounds) => void
   fetch: (bounds: LngLatBounds) => Promise<void>
   setSelectedHourOffset: (offset: number) => void
   setActiveLayer: (layer: WeatherMapLayer) => void
+  setAnimationPaused: (paused: boolean) => void
   /** Real wind reading nearest `coordinate` at the currently scrubbed
    * hour — `null` if no field is loaded, never a guess. */
   windAt: (coordinate: Coordinate) => WindHourlyReading | null
@@ -55,6 +69,7 @@ export const useWindStore = create<WindState>((set, get) => ({
   enabled: false,
   selectedHourOffset: 0,
   activeLayer: 'wind',
+  animationPaused: prefersReducedMotion(),
 
   toggle: (bounds) => {
     const { enabled, field } = get()
@@ -72,13 +87,15 @@ export const useWindStore = create<WindState>((set, get) => ({
       const field = await windProvider.fetchWindField(bounds, GRID_SIZE)
       set({ status: 'available', field, errorReason: null })
     } catch (err) {
-      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Unknown error' })
+      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Erreur inconnue' })
     }
   },
 
   setSelectedHourOffset: (offset) => set({ selectedHourOffset: Math.max(0, Math.min(47, offset)) }),
 
   setActiveLayer: (layer) => set({ activeLayer: layer }),
+
+  setAnimationPaused: (paused) => set({ animationPaused: paused }),
 
   windAt: (coordinate) => {
     const { field, selectedHourOffset } = get()

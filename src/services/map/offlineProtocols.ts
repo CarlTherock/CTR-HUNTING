@@ -39,7 +39,7 @@ function realUrl(url: string, protocol: string): string {
 
 async function fetchOk(url: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(url, { signal })
-  if (!response.ok) throw new Error(`Request failed (${response.status}): ${url}`)
+  if (!response.ok) throw new Error(`Requête échouée (${response.status}) : ${url}`)
   return response
 }
 
