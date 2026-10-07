@@ -16,6 +16,16 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 - Base locale Dexie version 5 : nouvelle table `territories` et index `territoryId`. Migration additive, sans modification des données existantes (testée v4 → v5).
 - Affecter un territoire à un waypoint ne modifie jamais sa position (verrouillage inchangé).
+## Carte de potentiel : familles, heure, fiche de cellule (2026-10-07)
+
+### Fixed
+
+- Plus de « 50 neutre » caché : un groupe sans signal n'a pas de score. Vent compté une seule fois, pente de 22° mal décrite, visites ne gonflant plus le score, soleil calculé sur le bon jour local.
+
+### Added
+
+- Familles Habitat / Conditions / Observations, texte de couverture, cellules hachurées (partielles) et pointillées (sans donnée).
+- Sélecteur d'heure sans requête supplémentaire, fiche de cellule, comparaison de deux créneaux, création de waypoint depuis une cellule.
 
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 

@@ -1147,7 +1147,9 @@ describe('MapPage', () => {
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
       8,
     )
-    expect(screen.getByText(/Lecture probabiliste/)).toBeInTheDocument()
+    // Adapté : le score n'est plus présenté comme une « lecture probabiliste »
+    // mais comme un indice de repère, explicitement pas une probabilité.
+    expect(screen.getByText(/pas une probabilité de/)).toBeInTheDocument()
 
     await useTool(user, 'Carte de potentiel')
     expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(null)
@@ -1178,6 +1180,39 @@ describe('MapPage', () => {
         cells[0].combined.results.find((r: { analyzer: string }) => r.analyzer === 'wind')
           .score,
       )
+    })
+  })
+
+  it('toucher une cellule de la carte de potentiel ouvre sa fiche et la marque comme sélectionnée', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await useTool(user, 'Carte de potentiel')
+    await vi.waitFor(() => {
+      expect(useHeatmapStore.getState().status).toBe('ready')
+    })
+    expect(screen.queryByTestId('heatmap-cell-sheet')).toBeNull()
+
+    act(() => {
+      lastCreateMapOptions?.onMapClick?.({ lat: 46.75, lng: -71.25 })
+    })
+
+    expect(await screen.findByTestId('heatmap-cell-sheet')).toBeInTheDocument()
+    await vi.waitFor(() => {
+      const [cells] =
+        setAnalysisHeatmap.mock.calls[setAnalysisHeatmap.mock.calls.length - 1]
+      expect(
+        cells.filter((c: { selected?: boolean }) => c.selected === true),
+      ).toHaveLength(1)
+    })
+
+    // Toucher hors de la zone analysée ferme la fiche.
+    act(() => {
+      lastCreateMapOptions?.onMapClick?.({ lat: 10, lng: 10 })
+    })
+    await vi.waitFor(() => {
+      expect(screen.queryByTestId('heatmap-cell-sheet')).toBeNull()
     })
   })
 

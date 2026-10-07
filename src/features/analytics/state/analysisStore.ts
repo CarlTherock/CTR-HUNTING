@@ -5,18 +5,17 @@ import { windProvider } from '@/services/wind'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { sampleSlopeAspect } from '@/features/map/terrainQuery'
+import { listObservations } from '@/database/observationsRepository'
 import {
   combineAnalyses,
   historyAnalyzer,
   terrainAnalyzer,
-  timeAnalyzer,
   unavailableResult,
   vegetationAnalyzer,
-  weatherAnalyzer,
-  windAnalyzer,
 } from '@/utils/analyzers'
-import { computeTemporalData } from '@/utils/temporal'
-import type { CombinedAnalysis, Coordinate } from '@/types'
+import { dataTimeZone, resolveHour } from '@/utils/analysisTime'
+import { analyzeHourly } from '../heatmapEngine'
+import type { CombinedAnalysis, Coordinate, Observation } from '@/types'
 
 export type AnalysisMode = 'idle' | 'analyzing'
 export type AnalysisStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -61,6 +60,9 @@ interface AnalysisState {
     coordinate: Coordinate,
     queryElevation: (coordinate: Coordinate) => number | null,
     optimalWindDirections?: number[],
+    /** Heure locale (`YYYY-MM-DDTHH:00`) à analyser ; `null`/omis = maintenant.
+     * Doit exister dans les données horaires chargées pour ce point. */
+    hourKey?: string | null,
   ) => Promise<void>
   close: () => void
   /** Re-shows a cached recent result without re-fetching anything. */
@@ -78,7 +80,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   startAnalyzing: () => set({ mode: 'analyzing' }),
   cancel: () => set({ mode: 'idle' }),
 
-  analyze: async (coordinate, queryElevation, optimalWindDirections) => {
+  analyze: async (coordinate, queryElevation, optimalWindDirections, hourKey = null) => {
     set({
       mode: 'idle',
       status: 'loading',
@@ -90,15 +92,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const slopeAspect = sampleSlopeAspect(queryElevation, coordinate)
     const terrain = terrainAnalyzer(slopeAspect)
 
-    const { waypoints } = useWaypointsStore.getState()
-    const { tracks } = useTracksStore.getState()
-    const history = historyAnalyzer(coordinate, waypoints, tracks)
-
-    const now = new Date()
-    const temporalData = computeTemporalData(now, coordinate)
-    const time = timeAnalyzer(temporalData, now)
-
-    const [weatherOutcome, windOutcome, vegetationOutcome] = await Promise.allSettled([
+    const fetches = Promise.allSettled([
       weatherProvider.fetchForecast(coordinate),
       windProvider.fetchWindField(
         {
@@ -112,9 +106,39 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       vegetationProvider.fetchVegetation(coordinate, VEGETATION_RADIUS_METERS),
     ])
 
+    const { waypoints } = useWaypointsStore.getState()
+    const { tracks } = useTracksStore.getState()
+    let observations: Observation[]
+    try {
+      observations = await listObservations()
+    } catch {
+      observations = []
+    }
+    const now = new Date()
+    const history = historyAnalyzer(coordinate, waypoints, tracks, {
+      observations,
+      dataTime: now.toISOString(),
+    })
+
+    const [weatherOutcome, windOutcome, vegetationOutcome] = await fetches
+
+    const weatherForecast =
+      weatherOutcome.status === 'fulfilled' ? weatherOutcome.value : null
+    const windField = windOutcome.status === 'fulfilled' ? windOutcome.value : null
+
+    // Même logique horaire que la carte de potentiel : l'heure choisie (ou
+    // l'heure EN COURS), jamais l'entrée d'index 0 — qui est minuit local.
+    const hour = resolveHour(hourKey, now, dataTimeZone(windField, weatherForecast))
+    const hourly = analyzeHourly(
+      coordinate,
+      hour,
+      { windField, weather: weatherForecast },
+      { optimalWindDirections, weatherScope: 'point' },
+    )
+
     const weather =
       weatherOutcome.status === 'fulfilled'
-        ? weatherAnalyzer(weatherOutcome.value.current, weatherOutcome.value.hourly)
+        ? hourly.weather
         : unavailableResult(
             'weather',
             weatherOutcome.reason instanceof Error
@@ -123,18 +147,18 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
           )
 
     const wind =
-      windOutcome.status === 'fulfilled' && windOutcome.value.samples[0]?.hourly[0]
-        ? windAnalyzer(windOutcome.value.samples[0].hourly[0], optimalWindDirections)
+      windOutcome.status === 'fulfilled'
+        ? hourly.wind
         : unavailableResult(
             'wind',
-            windOutcome.status === 'rejected' && windOutcome.reason instanceof Error
+            windOutcome.reason instanceof Error
               ? windOutcome.reason.message
               : 'Échec de la recherche de vent.',
           )
 
     const vegetation =
       vegetationOutcome.status === 'fulfilled'
-        ? vegetationAnalyzer(vegetationOutcome.value)
+        ? vegetationAnalyzer(vegetationOutcome.value, { dataTime: now.toISOString() })
         : unavailableResult(
             'vegetation',
             vegetationOutcome.reason instanceof Error
@@ -142,7 +166,14 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
               : 'Échec de la recherche de végétation.',
           )
 
-    const combined = combineAnalyses([terrain, vegetation, weather, wind, time, history])
+    const combined = combineAnalyses([
+      terrain,
+      vegetation,
+      weather,
+      wind,
+      hourly.time,
+      history,
+    ])
     const recent = [{ coordinate, combined }, ...get().recent].slice(0, MAX_RECENT)
     set({ status: 'ready', combined, recent })
   },
