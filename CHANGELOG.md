@@ -3,6 +3,20 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Organisation par territoire (2026-10-07)
+
+### Added
+
+- Territoires : dossiers logiques (sans limite géographique) pour classer points de repère, traces et entrées de journal. Créer, renommer, archiver/restaurer, supprimer depuis la page Points de repère (« Gérer les territoires »). Section « Non classé » toujours présente.
+- Filtre « Territoire » (Tous / territoire / Non classé / Archivés) sur les listes Points de repère, Traces et Journal, et sur la carte, avec l'indicateur « N éléments masqués par le filtre » et un outil « Territoire » dans la feuille « Outils ». Le filtre est enregistré dans les réglages.
+- Les nouveaux points, traces et entrées héritent du territoire sélectionné.
+- Supprimer un territoire demande une confirmation qui indique le nombre d'éléments, puis les déplace vers « Non classé » : aucune donnée n'est supprimée.
+
+### Changed
+
+- Base locale Dexie version 5 : nouvelle table `territories` et index `territoryId`. Migration additive, sans modification des données existantes (testée v4 → v5).
+- Affecter un territoire à un waypoint ne modifie jamais sa position (verrouillage inchangé).
+
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 
 ### Fixed
