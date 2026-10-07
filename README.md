@@ -3,21 +3,21 @@
 Offline-first Progressive Web App for terrain mapping, navigation,
 environmental awareness, field observation and spatial analysis.
 
-> **Status:** Phase 0 — Foundation. This is the application shell and
-> architecture only; no map, GPS, weather or other field features are
-> implemented yet. See `PROJECT_SPECIFICATION.md` for the full roadmap and
-> `ARCHITECTURE.md` for how the codebase is organized.
+> **État :** application fonctionnelle (carte, GPS, points de repère, traces,
+> hors ligne, météo/vent, analyse). Voir `PROJECT_SPECIFICATION.md` pour la
+> feuille de route, `ARCHITECTURE.md` pour l'organisation du code et
+> `docs/VALIDATION.md` pour ce qui est réellement testé (et ce qui ne l'est pas).
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22.12+ (Node 24 recommandé, voir `.nvmrc`)
 - npm
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env   # not required for Phase 0 — no external APIs are called yet
+cp .env.example .env   # clés publiques de fonds de carte (MapTiler/Esri) ; jamais de secret ici
 npm run dev
 ```
 
@@ -38,6 +38,8 @@ The dev server prints a local URL (typically `http://localhost:5173`).
 | `npm run test`         | Run the test suite once (Vitest)                    |
 | `npm run test:watch`   | Run tests in watch mode                             |
 | `npm run test:ui`      | Run tests with the Vitest UI                        |
+| `npm run e2e:install`  | Install Chromium for Playwright                     |
+| `npm run e2e`          | E2E tests (Chromium, simulated map provider)        |
 
 Before considering any change complete, all of `typecheck`, `lint`, `test`
 and `build` must pass.
@@ -59,4 +61,6 @@ adapters (none yet) in `src/services/`.
 
 - [`PROJECT_SPECIFICATION.md`](./PROJECT_SPECIFICATION.md) — product vision, 17-phase roadmap, hard rules
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — implemented architecture, directory layout, decisions log
+- [`docs/VALIDATION.md`](./docs/VALIDATION.md) — périmètre réel des tests
+- [`docs/SECURITY.md`](./docs/SECURITY.md) — CSP, dépendances, CI
 - [`CHANGELOG.md`](./CHANGELOG.md) — what shipped in each phase

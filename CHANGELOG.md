@@ -3,6 +3,24 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
+
+### Fixed
+- Mise en page mobile : carte à hauteur définie, zones de sécurité iPhone gérées une seule fois, plus de défilement de page, contrôles accessibles aux 7 tailles testées.
+- Démarrage à froid hors ligne : moteur MapLibre précaché, style/sprites/glyphes/tuiles servis depuis le cache local.
+- MapLibre 6.13.0 (correctif de dépendance), `npm audit` en CI, CSP, permissions CI minimales, Dependabot.
+- 9 bugs confirmés (coordonnées NaN, fuite d'écouteurs, rejets non gérés, erreurs de stockage) avec tests.
+
+### Added
+- Vue satellite hybride par défaut ; menu des couches compact ; outils regroupés (rail + feuille « Outils »), mode plein écran.
+- Traces GPS durables : écriture ordonnée, reprise des traces interrompues, renommage, suppression confirmée, verrou d'écran avec message honnête (iPhone coupe le GPS écran verrouillé).
+- Points de repère : brouillon (annulable) puis verrouillage de la position à l'enregistrement.
+- Tests E2E Playwright (Chromium, fournisseur simulé) et `docs/VALIDATION.md`.
+
+### Changed
+- Interface entièrement en français, `prefers-reduced-motion`, pauses explicites des animations, cibles tactiles ≥ 44 px.
+- `MapLibreProvider` découpé en modules ; l'UI n'importe plus la base de données.
+
 ## Carte météo radar + carte de potentiel fiabilisée (2026-09-25)
 
 User feedback: "le heatmap fonctionne pas bien, la météo vent pluie etc
