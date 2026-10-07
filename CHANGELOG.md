@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Couches québécoises, LiDAR et territoires (2026-10-07)
+
+### Added
+
+- Relief ombré LiDAR (`lidar_ombre`) et année d'acquisition (`lidar_index_acquisition`), WMS Forêt ouverte : opacité par couche pour comparer avec le satellite, indice de zoom minimal, note de couverture et de fraîcheur.
+- Frontières : territoires fauniques (ZEC, pourvoiries à droits exclusifs, réserves/refuges fauniques…), parcs et réserves écologiques (TRQ), aires protégées (registre MELCCFP), avec l'avertissement « Une frontière ne prouve pas un droit de chasse… » et liens officiels.
+- État de chargement par couche (chargement / chargée / erreur visible) et attribution dans le contrôle d'attribution de la carte.
+- `docs/SOURCES_QUEBEC.md` : sources vérifiées, non intégrées et bloquées (TFS sous CC-BY-NC-ND, zones de chasse en PDF seulement, tenure introuvable).
+- CSP : hôte `servicescarto.mrnf.gouv.qc.ca`.
+
+### Notes
+
+- CORS et rendu réel des tuiles non vérifiés en navigateur ; les couches ne sont pas incluses dans les zones hors ligne.
+- Les noms de couche `ori_pee_interventions` / `ori_pee_ori_prov` n'ont pas été retrouvés dans la partie lisible du GetCapabilities actuel : à revérifier.
+
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 
 ### Fixed

@@ -34,6 +34,8 @@ Limites connues, inhérentes à GitHub Pages (pas d'en-têtes HTTP) :
 - La liste d'hôtes est celle des appels réels du code. **Non vérifiée en
   direct** contre les vrais services MapTiler/Esri (E2E : backend simulé).
   Si un nouveau fournisseur est ajouté, il faut l'ajouter à `build/csp.ts`.
+  Couches québécoises : `geoegl.msp.gouv.qc.ca`, `geo.environnement.gouv.qc.ca`,
+  `servicescarto.mrnf.gouv.qc.ca` (voir `docs/SOURCES_QUEBEC.md`).
 - Le serveur de développement n'applique pas la CSP (HMR).
 
 ## Dépendances et CI
