@@ -215,11 +215,11 @@ describe('waypointsStore — saved waypoints are locked in place', () => {
     await useWaypointsStore.getState().load()
 
     await expect(
-      useWaypointsStore
-        .getState()
-        .updateWaypoint('legacy', { coordinate: { lat: 0, lng: 0 } } as unknown as {
-          name: string
-        }),
+      useWaypointsStore.getState().updateWaypoint('legacy', {
+        coordinate: { lat: 0, lng: 0 },
+      } as unknown as {
+        name: string
+      }),
     ).rejects.toBeInstanceOf(WaypointLockedError)
     await useWaypointsStore.getState().updateWaypoint('legacy', { notes: 'ajout' })
 

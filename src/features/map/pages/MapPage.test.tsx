@@ -1204,7 +1204,9 @@ describe('MapPage', () => {
 })
 
 describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => {
-  const recentFix = (overrides: { lat?: number; ageMs?: number } = {}): GeolocationReading => ({
+  const recentFix = (
+    overrides: { lat?: number; ageMs?: number } = {},
+  ): GeolocationReading => ({
     status: 'available',
     value: {
       lat: overrides.lat ?? 46.8,
@@ -1218,9 +1220,7 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
 
   /** Calls to the map's `setView` that only recentre (no zoom change). */
   const centerOnlyCalls = () =>
-    setView.mock.calls.filter(
-      ([view]) => view && 'center' in view && !('zoom' in view),
-    )
+    setView.mock.calls.filter(([view]) => view && 'center' in view && !('zoom' in view))
 
   it('cannot start without a GPS fix, with the reason as its tooltip', () => {
     render(<MapPage />)
@@ -1340,4 +1340,3 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
     expect(screen.queryByTestId('guidance-panel')).toBeNull()
   })
 })
-

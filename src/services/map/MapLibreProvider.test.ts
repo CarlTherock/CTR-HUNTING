@@ -775,10 +775,8 @@ describe('MapLibreProvider', () => {
           },
         ],
       })
-      const paint = map.addedLayers.find((l) => l.id === 'guidance-line')?.paint as Record<
-        string,
-        unknown
-      >
+      const paint = map.addedLayers.find((l) => l.id === 'guidance-line')
+        ?.paint as Record<string, unknown>
       expect(paint['line-dasharray']).toBeDefined()
 
       instance.setGuidanceLine(null)
