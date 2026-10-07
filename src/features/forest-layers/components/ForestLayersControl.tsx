@@ -2,24 +2,47 @@ import { useState } from 'react'
 import { Trees, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
-import { FOREST_LAYER_OPTIONS } from '@/services/map/forestLayerTiles'
-import { useForestLayersStore } from '../state/forestLayersStore'
+import {
+  FOREST_LAYER_OPTIONS,
+  OFFICIAL_HUNTING_LINKS,
+  WARNING_FRONTIERE,
+} from '@/services/map/forestLayerTiles'
+import type { ForestLayerGroup } from '@/types'
+import { effectiveOpacity, useForestLayersStore } from '../state/forestLayersStore'
+import { enabledAttributions, layerNotice } from '../utils/layerNotices'
+
+const GROUPS: { id: ForestLayerGroup; title: string }[] = [
+  { id: 'foret', title: 'Forêt et propriété' },
+  { id: 'relief', title: 'Relief LiDAR' },
+  { id: 'frontieres', title: 'Frontières (territoires)' },
+]
+
+const TONE_CLASS = {
+  info: 'text-ink-500',
+  warning: 'text-amber-400',
+  error: 'text-red-400',
+} as const
 
 /**
- * Real Québec government reference layers — cadastre (land parcels),
- * coupes forestières (harvest/silviculture interventions), and
- * peuplements forestiers (ecoforestry stand composition/age), the same
- * "cadastre + coupes" layers Forêt ouverte's own map offers. Each is a
- * real WMS/ArcGIS overlay (`services/map/forestLayerTiles.ts`), not a
- * synthesized layer — toggled independently, any combination at once.
+ * Real Québec government reference layers — see `docs/SOURCES_QUEBEC.md`
+ * for what was verified for each. Each is a real WMS/ArcGIS overlay
+ * (`services/map/forestLayerTiles.ts`), not a synthesized layer — toggled
+ * independently, any combination at once, each with its own opacity so the
+ * LiDAR relief can be compared with the satellite view underneath.
  */
-export function ForestLayersControl() {
+export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
   const enabled = useForestLayersStore((state) => state.enabled)
   const opacity = useForestLayersStore((state) => state.opacity)
+  const layerOpacity = useForestLayersStore((state) => state.layerOpacity)
+  const status = useForestLayersStore((state) => state.status)
   const toggle = useForestLayersStore((state) => state.toggle)
-  const setOpacity = useForestLayersStore((state) => state.setOpacity)
+  const setLayerOpacity = useForestLayersStore((state) => state.setLayerOpacity)
 
   const anyEnabled = Object.values(enabled).some(Boolean)
+  const anyLegalEnabled = FOREST_LAYER_OPTIONS.some(
+    (option) => option.legalBoundary && enabled[option.id],
+  )
+  const attributions = enabledAttributions(FOREST_LAYER_OPTIONS, enabled)
   // Separate from `enabled` (per-layer visibility) so closing the panel
   // never turns off already-toggled layers — same split as
   // `WeatherMapControl`'s panel visibility vs. its layer toggle.
@@ -28,7 +51,7 @@ export function ForestLayersControl() {
   return (
     <>
       <ToolTrigger
-        label="Forêt ouverte (cadastre, coupes)"
+        label="Couches du Québec (forêt, LiDAR, territoires)"
         icon={<Trees size={18} aria-hidden="true" />}
         onClick={() => setPanelOpen((open) => !open)}
         pressed={panelOpen}
@@ -38,9 +61,9 @@ export function ForestLayersControl() {
 
       {panelOpen && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div className="border-surface-600 bg-surface-900/95 w-full max-w-sm rounded-lg border p-3 shadow-2xl">
+          <div className="border-surface-600 bg-surface-900/95 max-h-[75dvh] w-full max-w-sm overflow-y-auto rounded-lg border p-3 shadow-2xl">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-ink-100 text-sm font-semibold">Forêt ouverte</h2>
+              <h2 className="text-ink-100 text-sm font-semibold">Couches du Québec</h2>
               <button
                 type="button"
                 onClick={() => setPanelOpen(false)}
@@ -51,50 +74,131 @@ export function ForestLayersControl() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              {FOREST_LAYER_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="switch"
-                  aria-checked={!!enabled[option.id]}
-                  onClick={() => toggle(option.id)}
-                  className={cn(
-                    'flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors pointer-coarse:min-h-11',
-                    enabled[option.id]
-                      ? 'border-brand-400 bg-brand-500/15 text-brand-400'
-                      : 'border-surface-600 text-ink-300 hover:bg-surface-800',
-                  )}
-                >
-                  <span className="text-sm font-medium">{option.label}</span>
-                  <span className="text-ink-500 text-xs">{option.description}</span>
-                </button>
-              ))}
-            </div>
+            {GROUPS.map((group) => (
+              <section key={group.id} className="mb-3">
+                <h3 className="text-ink-300 mb-1 text-xs font-semibold uppercase">
+                  {group.title}
+                </h3>
+                <div className="flex flex-col gap-1.5">
+                  {FOREST_LAYER_OPTIONS.filter((option) => option.group === group.id).map(
+                    (option) => {
+                      const on = !!enabled[option.id]
+                      const notice = on
+                        ? layerNotice(option, status[option.id], currentZoom)
+                        : null
+                      const value = effectiveOpacity({ opacity, layerOpacity }, option.id)
+                      return (
+                        <div key={option.id}>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={on}
+                            onClick={() => toggle(option.id)}
+                            className={cn(
+                              'flex w-full flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors pointer-coarse:min-h-11',
+                              on
+                                ? 'border-brand-400 bg-brand-500/15 text-brand-400'
+                                : 'border-surface-600 text-ink-300 hover:bg-surface-800',
+                            )}
+                          >
+                            <span className="text-sm font-medium">{option.label}</span>
+                            <span className="text-ink-500 text-xs">
+                              {option.description}
+                            </span>
+                          </button>
 
-            {anyEnabled && (
-              <div className="mt-2">
-                <label className="text-ink-500 flex items-center justify-between text-xs">
-                  <span>Opacité</span>
-                  <span>{Math.round(opacity * 100)} %</span>
-                </label>
-                <input
-                  type="range"
-                  min={0.2}
-                  max={1}
-                  step={0.05}
-                  value={opacity}
-                  onChange={(e) => setOpacity(Number(e.target.value))}
-                  aria-label="Opacité des couches"
-                  className="accent-brand-500 w-full"
-                />
+                          {on && (
+                            <div className="mt-1 px-1">
+                              {notice && (
+                                <p
+                                  role={notice.tone === 'error' ? 'alert' : 'status'}
+                                  className={cn('mb-1 text-xs', TONE_CLASS[notice.tone])}
+                                >
+                                  {notice.text}
+                                </p>
+                              )}
+                              <label className="text-ink-500 flex items-center justify-between text-xs">
+                                <span>Opacité (comparer avec le fond)</span>
+                                <span>{Math.round(value * 100)} %</span>
+                              </label>
+                              <input
+                                type="range"
+                                min={0.1}
+                                max={1}
+                                step={0.05}
+                                value={value}
+                                onChange={(e) =>
+                                  setLayerOpacity(option.id, Number(e.target.value))
+                                }
+                                aria-label={`Opacité : ${option.label}`}
+                                className="accent-brand-500 w-full"
+                              />
+                              {option.legend && (
+                                <p className="text-ink-500 mt-1 text-[11px]">
+                                  Légende : {option.legend}
+                                </p>
+                              )}
+                              <p className="text-ink-500 mt-1 text-[11px]">
+                                {option.dataNote}
+                              </p>
+                              <p className="text-ink-500 mt-1 text-[11px]">
+                                Licence {option.license} ·{' '}
+                                <a
+                                  href={option.sourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-brand-400 underline"
+                                >
+                                  Source officielle
+                                </a>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    },
+                  )}
+                </div>
+              </section>
+            ))}
+
+            {anyLegalEnabled && (
+              <div
+                role="note"
+                className="mb-2 rounded-md border border-amber-400/60 bg-amber-400/10 p-2 text-xs text-amber-200"
+              >
+                <p className="font-semibold">{WARNING_FRONTIERE}</p>
+                <p className="mt-1">
+                  Ces limites sont indicatives (les diffuseurs ne garantissent pas leur
+                  exactitude). Consultez l’information officielle :
+                </p>
+                <ul className="mt-1 list-disc pl-4">
+                  {OFFICIAL_HUNTING_LINKS.map((link) => (
+                    <li key={link.href}>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
-            <p className="text-ink-500 mt-2 text-[10px]">
-              Données réelles © Gouvernement du Québec (Forêt ouverte / MRNF, cadastre) —
-              CC-BY 4.0.
+            <p className="text-ink-500 text-[11px]">
+              Hors ligne : ces couches ne sont pas incluses dans le téléchargement de zone
+              (conditions de mise en cache des services non établies) ; elles exigent une
+              connexion.
             </p>
+            {attributions.length > 0 && (
+              <p className="text-ink-500 mt-1 text-[10px]">
+                Données : {attributions.join(' ; ')}.
+              </p>
+            )}
           </div>
         </div>
       )}

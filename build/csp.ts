@@ -21,6 +21,7 @@ const PROVIDER_HOSTS = [
   'https://geo.weather.gc.ca',
   'https://geoegl.msp.gouv.qc.ca',
   'https://geo.environnement.gouv.qc.ca',
+  'https://servicescarto.mrnf.gouv.qc.ca',
 ]
 
 /** `extraHosts` lets the E2E build allow its simulated backend only. */

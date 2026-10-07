@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import type { WeatherTileFrame } from '@/types'
+import type { OverlayStatus, WeatherTileFrame } from '@/types'
 import { TRACK_PREVIEW_LAYER_ID } from './pathLayers'
 
 /** Named external raster overlays (radar, Forêt ouverte's cadastre/
@@ -7,12 +7,28 @@ import { TRACK_PREVIEW_LAYER_ID } from './pathLayers'
  * layer switch's `setStyle()` discards custom sources/layers. Keyed by the
  * caller's own `id` so any number of these can be active simultaneously
  * without clobbering each other. */
-export function createRasterOverlays(map: MapLibreMap) {
-  const overlays = new Map<string, { tileUrlTemplate: string; opacity: number }>()
+export function createRasterOverlays(
+  map: MapLibreMap,
+  onStatus?: (id: string, status: OverlayStatus) => void,
+) {
+  const overlays = new Map<
+    string,
+    { tileUrlTemplate: string; opacity: number; attribution?: string }
+  >()
   const sourceId = (id: string) => `raster-overlay-${id}`
   const layerId = (id: string) => `raster-overlay-${id}-layer`
+  // Overlays whose tiles failed since they were (re)added: the error stays
+  // visible until the overlay is re-applied, even if other tiles load.
+  const failed = new Map<string, string>()
+
+  function overlayIdOf(source: string | undefined): string | null {
+    if (!source?.startsWith('raster-overlay-')) return null
+    const id = source.slice('raster-overlay-'.length)
+    return overlays.has(id) ? id : null
+  }
 
   function apply(id: string) {
+    failed.delete(id)
     if (map.getLayer(layerId(id))) {
       map.removeLayer(layerId(id))
       map.removeSource(sourceId(id))
@@ -23,6 +39,8 @@ export function createRasterOverlays(map: MapLibreMap) {
         type: 'raster',
         tiles: [overlay.tileUrlTemplate],
         tileSize: 256,
+        // Shown by MapLibre's attribution control while the layer is on.
+        ...(overlay.attribution ? { attribution: overlay.attribution } : {}),
       })
       map.addLayer({
         id: layerId(id),
@@ -30,13 +48,59 @@ export function createRasterOverlays(map: MapLibreMap) {
         source: sourceId(id),
         paint: { 'raster-opacity': overlay.opacity },
       })
+      onStatus?.(id, { state: 'loading' })
     }
   }
 
+  // Load state per overlay, from MapLibre's own source/tile events. A tile
+  // error is latched (not transient noise) so a dead layer is never shown
+  // as "loaded".
+  interface SourceEvent {
+    sourceId?: string
+  }
+  map.on('dataloading', (event: object) => {
+    const id = overlayIdOf((event as SourceEvent).sourceId)
+    if (id && !failed.has(id)) onStatus?.(id, { state: 'loading' })
+  })
+  map.on('data', (event: object) => {
+    const id = overlayIdOf((event as SourceEvent).sourceId)
+    if (!id || failed.has(id)) return
+    if (map.isSourceLoaded(sourceId(id))) onStatus?.(id, { state: 'ready' })
+  })
+  map.on('error', (event: object) => {
+    const id = overlayIdOf((event as SourceEvent).sourceId)
+    if (!id) return
+    const message =
+      'Chargement impossible : service indisponible, réponse invalide, accès bloqué ou hors ligne.'
+    failed.set(id, message)
+    onStatus?.(id, { state: 'error', message })
+  })
+
   return {
-    set(id: string, tileUrlTemplate: string | null, opacity: number) {
-      if (tileUrlTemplate) overlays.set(id, { tileUrlTemplate, opacity })
-      else overlays.delete(id)
+    set(
+      id: string,
+      tileUrlTemplate: string | null,
+      opacity: number,
+      attribution?: string,
+    ) {
+      const existing = overlays.get(id)
+      if (
+        tileUrlTemplate &&
+        existing?.tileUrlTemplate === tileUrlTemplate &&
+        existing.attribution === attribution &&
+        map.getLayer(layerId(id))
+      ) {
+        // Same source, only the opacity moved (slider): no reload, and a
+        // latched error stays visible.
+        existing.opacity = opacity
+        map.setPaintProperty(layerId(id), 'raster-opacity', opacity)
+        return
+      }
+      if (tileUrlTemplate) overlays.set(id, { tileUrlTemplate, opacity, attribution })
+      else {
+        failed.delete(id)
+        if (overlays.delete(id)) onStatus?.(id, { state: 'idle' })
+      }
       try {
         apply(id)
       } catch {

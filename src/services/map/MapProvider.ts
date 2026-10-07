@@ -5,6 +5,7 @@ import type {
   MapBaseLayerId,
   MapOverlayId,
   MapViewState,
+  OverlayStatus,
   WeatherMapLayer,
   WeatherTileFrame,
   Waypoint,
@@ -168,7 +169,12 @@ export interface MapInstance {
    * `id` again with a different `tileUrlTemplate` replaces that one
    * overlay (a raster source's tile URLs can't be mutated in place).
    */
-  setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number): void
+  setRasterOverlay(
+    id: string,
+    tileUrlTemplate: string | null,
+    opacity: number,
+    attribution?: string,
+  ): void
   /**
    * Weather-app-style animated raster (radar loop / hourly forecast):
    * `frames` are real GeoMet WMS tile templates, `activeIndex` the one
@@ -188,6 +194,10 @@ export interface MapInstance {
 }
 
 export interface CreateMapOptions {
+  /** Load state of each named raster overlay (`setRasterOverlay`): loading,
+   * ready, or error (tile/service failure). Lets the UI show a failed
+   * government layer instead of an empty map. */
+  onRasterOverlayStatus?: (id: string, status: OverlayStatus) => void
   /** DOM element the map renders into. Must already be attached and sized. */
   container: HTMLElement
   initialView: MapViewState
