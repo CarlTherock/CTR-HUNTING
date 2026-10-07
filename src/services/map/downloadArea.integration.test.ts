@@ -30,7 +30,10 @@ vi.mock('../../offline/resourceCache', () => ({
 }))
 
 import { sweepDownloadArea } from './downloadArea'
-import { ensureOfflineProtocolsRegistered } from './offlineProtocols'
+import {
+  ensureOfflineProtocolsRegistered,
+  setRetryBackoffForTests,
+} from './offlineProtocols'
 
 // Small box at zoom 11: a handful of sweep steps.
 const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
@@ -40,7 +43,14 @@ beforeEach(() => {
   tiles.clear()
   resources.clear()
 })
-afterEach(() => {
+/** Every request started by any fake engine in this file. Awaited after each
+ * test so a request still retrying can never leak into the next test (it
+ * would hit the next test's `fetch` stub and tile cache). */
+const allPending: Promise<unknown>[] = []
+
+afterEach(async () => {
+  await Promise.allSettled(allPending.splice(0))
+  setRetryBackoffForTests()
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
@@ -62,9 +72,11 @@ function fakeEngineMap(options: { neverIdle?: boolean } = {}) {
       stepJumps.push(view.zoom)
       const id = counter++
       const url = `ctrtile://tiles.test/${view.zoom}/${id}.png?key=SECRET`
-      pending.push(
-        handlers.ctrtile({ url }, new AbortController()).catch(() => undefined),
-      )
+      const request = handlers
+        .ctrtile({ url }, new AbortController())
+        .catch(() => undefined)
+      pending.push(request)
+      allPending.push(request)
     },
     once(_event: string, handler: () => void) {
       if (options.neverIdle) return
@@ -107,6 +119,10 @@ describe('sweepDownloadArea', () => {
   })
 
   it('a step that never reaches idle is retried once, then recorded as timed out (never skipped silently)', async () => {
+    // The requests of a never-idle step still run: make them fail fast and
+    // finish within this test.
+    setRetryBackoffForTests([1, 1])
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
     const { map, stepJumps } = fakeEngineMap({ neverIdle: true })
 
     const result = await sweepDownloadArea(
@@ -127,7 +143,9 @@ describe('sweepDownloadArea', () => {
   })
 
   it('failures then retry/resume: the second run reuses cached tiles and refetches only the failed one', async () => {
-    vi.useFakeTimers()
+    // Real timers with tiny retry pauses: deterministic, no race between fake
+    // timers and the real asynchronous reading of Response bodies.
+    setRetryBackoffForTests([1, 1])
     const broken = { on: true }
     const fetchMock = vi
       .fn()
@@ -148,7 +166,6 @@ describe('sweepDownloadArea', () => {
       vi.fn(),
       new AbortController().signal,
     )
-    await vi.runAllTimersAsync()
     const result1 = await run1
 
     const total = result1.summary.stepsTotal
@@ -171,7 +188,6 @@ describe('sweepDownloadArea', () => {
       vi.fn(),
       new AbortController().signal,
     )
-    await vi.runAllTimersAsync()
     const result2 = await run2
 
     expect(fetchMock).toHaveBeenCalledTimes(1)

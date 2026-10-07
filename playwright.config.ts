@@ -58,6 +58,8 @@ export default defineConfig({
         'https://tiles.e2e.test,https://sprites.e2e.test,https://glyphs.e2e.test',
       VITE_MAP_TILES_API_KEY: 'e2e-fake-maptiler-key',
       VITE_ESRI_API_KEY: 'e2e-fake-esri-key',
+      // Short sweep-step timeout so the failing-tiles download test stays fast.
+      VITE_OFFLINE_STEP_TIMEOUT_MS: '4000',
     },
   },
 })

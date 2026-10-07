@@ -29,6 +29,7 @@ vi.mock('../../offline/resourceCache', () => ({
 
 import {
   ensureOfflineProtocolsRegistered,
+  setRetryBackoffForTests,
   setActiveDownload,
   REQUEST_TIMEOUT_MS,
 } from './offlineProtocols'
@@ -71,6 +72,29 @@ function startDownload() {
   setActiveDownload({ ledger })
   return ledger
 }
+
+describe('a request that outlives its download', () => {
+  it('keeps retrying into ITS ledger and never into a later download', async () => {
+    setRetryBackoffForTests([20, 20])
+    const first = startDownload()
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('offline'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const stale = handlers
+      .ctrtile(tileRequest, new AbortController())
+      .catch(() => undefined)
+    // The first download ends and a second one starts while the request is
+    // still waiting to retry.
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const second = startDownload()
+    await stale
+    setRetryBackoffForTests()
+
+    expect(first.summary().retried).toBe(2)
+    expect(second.summary().retried).toBe(0)
+    expect(second.summary().requested).toBe(0)
+  })
+})
 
 describe('ctrtile during a download', () => {
   it('network error then success on retry: succeeded, 1 retry, no failure', async () => {

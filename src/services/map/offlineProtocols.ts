@@ -33,6 +33,16 @@ export const DOWNLOAD_MAX_ATTEMPTS = 3
 /** Pause before retry #1 and retry #2. */
 export const RETRY_BACKOFF_MS = [250, 750] as const
 
+/** Retry pauses actually used. Production always uses `RETRY_BACKOFF_MS`;
+ * tests shorten them (see `setRetryBackoffForTests`) so they can run on real
+ * timers instead of racing fake timers against real body reads. */
+let retryBackoffMs: readonly number[] = RETRY_BACKOFF_MS
+
+/** TEST ONLY: replaces the retry pauses; call with no argument to restore. */
+export function setRetryBackoffForTests(pauses?: readonly number[]): void {
+  retryBackoffMs = pauses ?? RETRY_BACKOFF_MS
+}
+
 export interface ActiveDownload {
   ledger: DownloadLedger
 }
@@ -156,15 +166,22 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 /** Fetches `url`. Single attempt in normal use; up to
  * `DOWNLOAD_MAX_ATTEMPTS` (with short backoff) while a download is active,
  * and only for transient failures. Every retry is counted in the ledger. */
-export async function fetchResource(url: string, signal: AbortSignal): Promise<Fetched> {
+export async function fetchResource(
+  url: string,
+  signal: AbortSignal,
+  ledger?: DownloadLedger,
+): Promise<Fetched> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await attemptFetch(url, signal)
     } catch (error) {
-      const maxAttempts = activeDownload ? DOWNLOAD_MAX_ATTEMPTS : 1
+      // Bound to the ledger captured when the request started, never to the
+      // global: a request that outlives its download must not retry, or count
+      // into, a later download.
+      const maxAttempts = ledger ? DOWNLOAD_MAX_ATTEMPTS : 1
       if (attempt >= maxAttempts || !isTransient(error) || signal.aborted) throw error
-      activeDownload?.ledger.retry()
-      await sleep(RETRY_BACKOFF_MS[attempt - 1] ?? 750, signal)
+      ledger?.retry()
+      await sleep(retryBackoffMs[attempt - 1] ?? 750, signal)
     }
   }
 }
@@ -201,7 +218,7 @@ export function ensureOfflineProtocolsRegistered(): void {
     }
 
     try {
-      const fetched = await fetchResource(url, abortController.signal)
+      const fetched = await fetchResource(url, abortController.signal, ledger)
       try {
         await tileCache.putTile(url, toResponse(fetched))
       } catch (error) {
@@ -230,7 +247,7 @@ export function ensureOfflineProtocolsRegistered(): void {
     const url = realUrl(params.url, CTR_FRESH_PROTOCOL)
     const ledger = activeDownload?.ledger
     try {
-      const fetched = await fetchResource(url, abortController.signal)
+      const fetched = await fetchResource(url, abortController.signal, ledger)
       try {
         await resourceCache.putResource(url, toResponse(fetched))
         ledger?.essentialOk(url)
@@ -259,7 +276,7 @@ export function ensureOfflineProtocolsRegistered(): void {
     const cached = await resourceCache.getResource(url)
     if (cached) return { data: await cached.arrayBuffer() }
     try {
-      const fetched = await fetchResource(url, abortController.signal)
+      const fetched = await fetchResource(url, abortController.signal, ledger)
       try {
         await resourceCache.putResource(url, toResponse(fetched))
         ledger?.essentialOk(url)

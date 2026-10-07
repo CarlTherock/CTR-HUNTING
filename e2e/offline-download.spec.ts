@@ -10,11 +10,15 @@ import { expect, test } from './support/test'
  * app's ledger / retry / status logic, not real MapTiler/Esri coverage.
  */
 test.describe('téléchargement de zone hors ligne', () => {
+  // A small viewport frames a small area: few sweep steps, so the test stays fast
+  // and does not depend on how quickly a CI runner renders each step.
+  test.use({ viewport: { width: 360, height: 480 } })
+
   test('échecs de tuiles : zone incomplète avec compteurs, puis reprise réussie', async ({
     page,
     backend,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(240_000)
     const canvas = page.locator('canvas.maplibregl-canvas')
     const hybrid = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
 
@@ -62,6 +66,11 @@ test.describe('téléchargement de zone hors ligne', () => {
     await expect(done).toContainText('0 échec')
     await expect(done).toContainText('pas une garantie de couverture')
     expect(backend.served().tile).toBeGreaterThan(servedBefore)
+
+    // The result card is a persistent overlay: close it to reach the navigation.
+    await done
+      .getByRole('button', { name: 'Fermer le résultat du téléchargement' })
+      .click()
 
     // One area only (retry reused the record), listed as complete in Réglages.
     await page.getByRole('link', { name: /Réglages/ }).click()

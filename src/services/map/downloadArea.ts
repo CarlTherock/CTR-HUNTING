@@ -7,7 +7,17 @@ import { setActiveDownload } from './offlineProtocols'
 
 /** Longer than the 15 s per-request timeout, so a tile that hangs is
  * resolved (and recorded as a failure) before the step itself gives up. */
-export const STEP_TIMEOUT_MS = 20_000
+const DEFAULT_STEP_TIMEOUT_MS = 20_000
+
+/** Max wait for one sweep position to settle. 20 s in production; the E2E
+ * build shortens it (`VITE_OFFLINE_STEP_TIMEOUT_MS`) because a step with
+ * failing tiles never goes idle and would otherwise take 40 s (2 attempts)
+ * per step on a slow CI runner. Invalid or missing values keep the default. */
+function readStepTimeout(): number {
+  const raw = Number(import.meta.env.VITE_OFFLINE_STEP_TIMEOUT_MS)
+  return Number.isFinite(raw) && raw >= 1000 ? raw : DEFAULT_STEP_TIMEOUT_MS
+}
+export const STEP_TIMEOUT_MS = readStepTimeout()
 
 /** Resolves `true` once the map has finished loading everything it
  * currently needs (`'idle'`), or `false` after `timeoutMs` — never hangs on
