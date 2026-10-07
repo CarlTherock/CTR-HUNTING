@@ -12,7 +12,7 @@ export function ConnectionStatus() {
       aria-live="polite"
     >
       {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-      {isOnline ? 'Online' : 'Offline'}
+      {isOnline ? 'En ligne' : 'Hors ligne'}
     </Badge>
   )
 }

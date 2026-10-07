@@ -54,6 +54,13 @@ export function computeHeatmapCell(
 
   return {
     coordinate,
-    combined: combineAnalyses([terrain, vegetationResult, weatherResult, windResult, timeResult, historyResult]),
+    combined: combineAnalyses([
+      terrain,
+      vegetationResult,
+      weatherResult,
+      windResult,
+      timeResult,
+      historyResult,
+    ]),
   }
 }

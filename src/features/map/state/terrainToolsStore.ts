@@ -43,7 +43,8 @@ export const useTerrainToolsStore = create<TerrainToolsState>((set) => ({
 
   startQuerying: () => set({ mode: 'querying', queryResult: null }),
   startProfiling: () => set({ mode: 'profiling', profilePoints: [], profileData: null }),
-  cancel: () => set({ mode: 'idle', queryResult: null, profilePoints: [], profileData: null }),
+  cancel: () =>
+    set({ mode: 'idle', queryResult: null, profilePoints: [], profileData: null }),
   setQueryResult: (result) => set({ mode: 'idle', queryResult: result }),
   closeQuery: () => set({ queryResult: null }),
   addProfilePoint: (coordinate) =>

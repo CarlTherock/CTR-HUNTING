@@ -1,6 +1,22 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownToLine, ArrowUpToLine, ChevronLeft, ChevronRight, Moon, Sunrise, Sunset } from 'lucide-react'
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from '@/components/ui'
+import {
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sunrise,
+  Sunset,
+} from 'lucide-react'
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+} from '@/components/ui'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
 import { useWindStore } from '@/features/wind/state/windStore'
@@ -11,7 +27,7 @@ import type { TemporalData } from '@/types'
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' })
 }
 
 function formatDuration(ms: number | null): string {
@@ -19,7 +35,7 @@ function formatDuration(ms: number | null): string {
   const totalMinutes = Math.round(ms / 60_000)
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`
+  return `${hours} h ${minutes.toString().padStart(2, '0')} min`
 }
 
 function localMidnight(date: Date): Date {
@@ -43,19 +59,28 @@ function isSameDay(a: Date, b: Date): boolean {
  * computed times, and only when the event genuinely hasn't passed yet
  * (never shows a negative/elapsed duration). `null` when nothing is
  * left today (e.g. every event already passed). */
-function nextEvent(data: TemporalData, now: Date): { label: string; iso: string; msUntil: number } | null {
-  const candidates: { label: string; iso: string | null }[] = [
-    { label: 'Sunrise', iso: data.sun.sunrise },
-    { label: 'Sunset', iso: data.sun.sunset },
-    { label: 'Moonrise', iso: data.moon.rise },
-    { label: 'Moonset', iso: data.moon.set },
+type EventKind = 'sunrise' | 'sunset' | 'moonrise' | 'moonset'
+interface UpcomingEvent {
+  kind: EventKind
+  label: string
+  iso: string
+  msUntil: number
+}
+
+function nextEvent(data: TemporalData, now: Date): UpcomingEvent | null {
+  const candidates: { kind: EventKind; label: string; iso: string | null }[] = [
+    { kind: 'sunrise', label: 'Lever du soleil', iso: data.sun.sunrise },
+    { kind: 'sunset', label: 'Coucher du soleil', iso: data.sun.sunset },
+    { kind: 'moonrise', label: 'Lever de la lune', iso: data.moon.rise },
+    { kind: 'moonset', label: 'Coucher de la lune', iso: data.moon.set },
   ]
-  let best: { label: string; iso: string; msUntil: number } | null = null
+  let best: UpcomingEvent | null = null
   for (const candidate of candidates) {
     if (!candidate.iso) continue
     const msUntil = new Date(candidate.iso).getTime() - now.getTime()
     if (msUntil <= 0) continue
-    if (!best || msUntil < best.msUntil) best = { label: candidate.label, iso: candidate.iso, msUntil }
+    if (!best || msUntil < best.msUntil)
+      best = { kind: candidate.kind, label: candidate.label, iso: candidate.iso, msUntil }
   }
   return best
 }
@@ -91,26 +116,31 @@ export function TemporalPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Sun & Moon"
-        description="Sunrise/sunset, moon phase, and solunar periods for today and nearby days."
+        title="Soleil et lune"
+        description="Lever et coucher du soleil, phase de la lune et périodes solunaires pour aujourd’hui et les jours voisins."
         actions={
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setSelectedDay((d) => addDays(d, -1))}
-              aria-label="Previous day"
-              className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2"
+              aria-label="Jour précédent"
+              className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2 pointer-coarse:p-3"
             >
               <ChevronLeft size={16} aria-hidden="true" />
             </button>
             <span className="text-ink-100 min-w-[6.5rem] text-center text-sm font-medium">
-              {isToday ? 'Today' : selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              {isToday
+                ? 'Aujourd’hui'
+                : selectedDay.toLocaleDateString('fr-CA', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
             </span>
             <button
               type="button"
               onClick={() => setSelectedDay((d) => addDays(d, 1))}
-              aria-label="Next day"
-              className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2"
+              aria-label="Jour suivant"
+              className="border-surface-600 text-ink-300 hover:bg-surface-800 rounded-lg border p-2 pointer-coarse:p-3"
             >
               <ChevronRight size={16} aria-hidden="true" />
             </button>
@@ -118,12 +148,14 @@ export function TemporalPage() {
         }
       />
 
-      {!usingGps && <Badge variant="warning">Using map location — GPS unavailable</Badge>}
+      {!usingGps && (
+        <Badge variant="warning">Position de la carte utilisée — GPS indisponible</Badge>
+      )}
 
       {upcoming && (
         <Card className="flex items-center gap-3 p-4">
-          {upcoming.label.startsWith('Sun') ? (
-            upcoming.label === 'Sunrise' ? (
+          {upcoming.kind === 'sunrise' || upcoming.kind === 'sunset' ? (
+            upcoming.kind === 'sunrise' ? (
               <Sunrise size={28} className="text-brand-400 shrink-0" aria-hidden="true" />
             ) : (
               <Sunset size={28} className="text-brand-400 shrink-0" aria-hidden="true" />
@@ -133,9 +165,9 @@ export function TemporalPage() {
           )}
           <div>
             <p className="text-ink-100 text-lg font-semibold">
-              {upcoming.label} in {formatDuration(upcoming.msUntil)}
+              {upcoming.label} dans {formatDuration(upcoming.msUntil)}
             </p>
-            <p className="text-ink-500 text-xs">at {formatTime(upcoming.iso)}</p>
+            <p className="text-ink-500 text-xs">à {formatTime(upcoming.iso)}</p>
           </div>
         </Card>
       )}
@@ -151,73 +183,105 @@ export function TemporalPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Sun</CardTitle>
-            <CardDescription>Day length {formatDuration(data.sun.dayLengthMs)}</CardDescription>
+            <CardTitle>Soleil</CardTitle>
+            <CardDescription>
+              Durée du jour : {formatDuration(data.sun.dayLengthMs)}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
               <Sunrise size={18} className="text-brand-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.sunrise)}</p>
-                <p className="text-ink-500 text-xs">Sunrise</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.sun.sunrise)}
+                </p>
+                <p className="text-ink-500 text-xs">Lever du soleil</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Sunset size={18} className="text-brand-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.sunset)}</p>
-                <p className="text-ink-500 text-xs">Sunset</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.sun.sunset)}
+                </p>
+                <p className="text-ink-500 text-xs">Coucher du soleil</p>
               </div>
             </div>
             <div>
-              <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.dawn)}</p>
-              <p className="text-ink-500 text-xs">Dawn</p>
+              <p className="text-ink-100 text-sm font-medium">
+                {formatTime(data.sun.dawn)}
+              </p>
+              <p className="text-ink-500 text-xs">Aube</p>
             </div>
             <div>
-              <p className="text-ink-100 text-sm font-medium">{formatTime(data.sun.dusk)}</p>
-              <p className="text-ink-500 text-xs">Dusk</p>
+              <p className="text-ink-100 text-sm font-medium">
+                {formatTime(data.sun.dusk)}
+              </p>
+              <p className="text-ink-500 text-xs">Crépuscule</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Moon</CardTitle>
+            <CardTitle>Lune</CardTitle>
             <CardDescription>{data.illumination.phaseName}</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            <MoonPhaseIcon phase={data.illumination.phase} waxing={data.illumination.waxing} size={48} />
+            <MoonPhaseIcon
+              phase={data.illumination.phase}
+              waxing={data.illumination.waxing}
+              size={48}
+            />
             <div className="grid flex-1 grid-cols-2 gap-3">
               <div>
                 <p className="text-ink-100 text-sm font-medium">
-                  {Math.round(data.illumination.fraction * 100)}%
+                  {Math.round(data.illumination.fraction * 100)} %
                 </p>
-                <p className="text-ink-500 text-xs">Illuminated</p>
+                <p className="text-ink-500 text-xs">Illuminée</p>
               </div>
               <div className="flex items-center gap-1">
                 <Moon size={14} className="text-ink-500" aria-hidden="true" />
-                <span className="text-ink-500 text-xs">{data.illumination.waxing ? 'Waxing' : 'Waning'}</span>
+                <span className="text-ink-500 text-xs">
+                  {data.illumination.waxing ? 'Croissante' : 'Décroissante'}
+                </span>
               </div>
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.moon.rise)}</p>
-                <p className="text-ink-500 text-xs">Moonrise</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.moon.rise)}
+                </p>
+                <p className="text-ink-500 text-xs">Lever de la lune</p>
               </div>
               <div>
-                <p className="text-ink-100 text-sm font-medium">{formatTime(data.moon.set)}</p>
-                <p className="text-ink-500 text-xs">Moonset</p>
+                <p className="text-ink-100 text-sm font-medium">
+                  {formatTime(data.moon.set)}
+                </p>
+                <p className="text-ink-500 text-xs">Coucher de la lune</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <ArrowUpToLine size={14} className="text-status-success shrink-0" aria-hidden="true" />
+                <ArrowUpToLine
+                  size={14}
+                  className="text-status-success shrink-0"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.overhead)}</p>
-                  <p className="text-ink-500 text-xs">Overhead</p>
+                  <p className="text-ink-100 text-sm font-medium">
+                    {formatTime(data.moonTransit.overhead)}
+                  </p>
+                  <p className="text-ink-500 text-xs">Au zénith</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <ArrowDownToLine size={14} className="text-brand-400 shrink-0" aria-hidden="true" />
+                <ArrowDownToLine
+                  size={14}
+                  className="text-brand-400 shrink-0"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="text-ink-100 text-sm font-medium">{formatTime(data.moonTransit.underfoot)}</p>
-                  <p className="text-ink-500 text-xs">Underfoot</p>
+                  <p className="text-ink-100 text-sm font-medium">
+                    {formatTime(data.moonTransit.underfoot)}
+                  </p>
+                  <p className="text-ink-500 text-xs">Au nadir</p>
                 </div>
               </div>
             </div>
@@ -227,17 +291,22 @@ export function TemporalPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Solunar periods</CardTitle>
+          <CardTitle>Périodes solunaires</CardTitle>
           <CardDescription>
-            Major periods (moon overhead/underfoot) and minor periods (near moonrise/moonset),
-            per the public Solunar Theory geometry — not a proprietary activity score.
+            Périodes majeures (lune au zénith ou au nadir) et mineures (près du lever ou
+            du coucher de la lune), selon la géométrie de la théorie solunaire publique —
+            et non un pointage d’activité propriétaire.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {data.solunarPeriods.map((period, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
-              <span className={period.type === 'major' ? 'text-ink-100 font-medium' : 'text-ink-300'}>
-                {period.type === 'major' ? 'Major' : 'Minor'}
+              <span
+                className={
+                  period.type === 'major' ? 'text-ink-100 font-medium' : 'text-ink-300'
+                }
+              >
+                {period.type === 'major' ? 'Majeure' : 'Mineure'}
               </span>
               <span className="text-ink-500 text-xs">
                 {formatTime(period.start)} – {formatTime(period.end)}

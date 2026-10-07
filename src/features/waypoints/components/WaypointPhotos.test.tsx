@@ -32,7 +32,7 @@ describe('WaypointPhotos', () => {
     const user = userEvent.setup()
     render(<WaypointPhotos waypointId="wp-1" photoIds={[]} />)
 
-    await user.click(screen.getByRole('button', { name: 'Open camera' }))
+    await user.click(screen.getByRole('button', { name: 'Ouvrir la caméra' }))
     expect(screen.getByTestId('camera-capture-stub')).toBeInTheDocument()
 
     const originalBlob = new Blob(['original'], { type: 'image/jpeg' })
@@ -53,13 +53,15 @@ describe('WaypointPhotos', () => {
       expect(photo.waypointId).toBe('wp-1')
       expect(photo.coordinate).toEqual(coordinate)
     })
-    expect(updateWaypoint).toHaveBeenCalledWith('wp-1', { photoIds: [expect.any(String)] })
+    expect(updateWaypoint).toHaveBeenCalledWith('wp-1', {
+      photoIds: [expect.any(String)],
+    })
   })
 
   it('closes the camera modal after saving', async () => {
     const user = userEvent.setup()
     render(<WaypointPhotos waypointId="wp-1" photoIds={[]} />)
-    await user.click(screen.getByRole('button', { name: 'Open camera' }))
+    await user.click(screen.getByRole('button', { name: 'Ouvrir la caméra' }))
 
     await vi.waitFor(() => expect(cameraSaveHandler).not.toBeNull())
     await act(async () => {
@@ -79,7 +81,7 @@ describe('WaypointPhotos', () => {
     render(<WaypointPhotos waypointId="wp-1" photoIds={[]} />)
 
     const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
-    const input = screen.getByLabelText('Choose a photo') as HTMLInputElement
+    const input = screen.getByLabelText('Choisir une photo') as HTMLInputElement
     await user.upload(input, file)
 
     await vi.waitFor(async () => {

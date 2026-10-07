@@ -17,7 +17,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Primary">
+      <nav
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+        aria-label="Sections de l’application"
+      >
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -34,11 +37,6 @@ export function Sidebar() {
           >
             <item.icon size={18} aria-hidden="true" />
             <span className="flex-1">{item.label}</span>
-            {item.phase !== null && (
-              <span className="text-ink-700 text-[10px] font-semibold">
-                P{item.phase}
-              </span>
-            )}
           </NavLink>
         ))}
       </nav>

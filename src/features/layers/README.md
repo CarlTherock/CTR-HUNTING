@@ -14,7 +14,7 @@ base layer calls `MapInstance.setBaseLayer()`, toggling an overlay calls
 
 The panel collapses to a small icon button as soon as a base layer is
 picked (ten options is a lot to leave covering a phone screen) — tap it
-to reopen. Toggling an overlay does *not* collapse it, since that's more
+to reopen. Toggling an overlay does _not_ collapse it, since that's more
 of a "flip a few, one at a time" action than a single choice.
 
 ## Base layers
@@ -22,13 +22,13 @@ of a "flip a few, one at a time" action than a single choice.
 Ten base layers across two vendors, picked for what the app actually
 needs rather than "every style available":
 
-| Vendor   | Layer                                        | Why                                                   |
-| -------- | --------------------------------------------- | ------------------------------------------------------ |
-| MapTiler | Outdoor, Satellite                            | Original Phase 1 layers                                |
-| Esri     | Topographic, Imagery Hybrid, Imagery          | Alternate vendor for the same core needs                |
-| Esri     | Terrain, Hillshade                            | Relief context ahead of Phase 4's real 3D terrain       |
-| Esri     | Light Gray, Dark Gray                         | Neutral canvases Phase 8–9's analytics heatmaps draw on |
-| Esri     | Navigation                                    | Road-focused, for finding access routes                 |
+| Vendor   | Layer                                | Why                                                     |
+| -------- | ------------------------------------ | ------------------------------------------------------- |
+| MapTiler | Outdoor, Satellite                   | Original Phase 1 layers                                 |
+| Esri     | Topographic, Imagery Hybrid, Imagery | Alternate vendor for the same core needs                |
+| Esri     | Terrain, Hillshade                   | Relief context ahead of Phase 4's real 3D terrain       |
+| Esri     | Light Gray, Dark Gray                | Neutral canvases Phase 8–9's analytics heatmaps draw on |
+| Esri     | Navigation                           | Road-focused, for finding access routes                 |
 
 Both vendors serve MapLibre-compatible style JSON, so `src/services/map/`
 needs only one engine adapter (`MapLibreProvider`) for both — see that

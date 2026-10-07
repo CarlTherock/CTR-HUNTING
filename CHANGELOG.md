@@ -3,6 +3,28 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
+
+### Fixed
+
+- Mise en page mobile : carte à hauteur définie, zones de sécurité iPhone gérées une seule fois, plus de défilement de page, contrôles accessibles aux 7 tailles testées.
+- Démarrage à froid hors ligne : moteur MapLibre précaché, style/sprites/glyphes/tuiles servis depuis le cache local.
+- MapLibre 6.13.0 (correctif de dépendance), `npm audit` en CI, CSP, permissions CI minimales, Dependabot.
+- 9 bugs confirmés (coordonnées NaN, fuite d'écouteurs, rejets non gérés, erreurs de stockage) avec tests.
+
+### Added
+
+- Vue satellite hybride par défaut ; menu des couches compact ; outils regroupés (rail + feuille « Outils »), mode plein écran.
+- Traces GPS durables : écriture ordonnée, reprise des traces interrompues, renommage, suppression confirmée, verrou d'écran avec message honnête (iPhone coupe le GPS écran verrouillé).
+- Points de repère : brouillon (annulable) puis verrouillage de la position à l'enregistrement.
+- Tests E2E Playwright (Chromium, fournisseur simulé) et `docs/VALIDATION.md`.
+
+### Changed
+
+- Finitions : distances avec virgule décimale française (« 2,31 km ») ; badges de phase (P1/P2…) retirés de la navigation et des raccourcis ; panneau de guidage replié par défaut en paysage court (corps défilant, boutons ≥ 44 px) ; « Réessayer » dans Réglages pour les téléchargements incomplets.
+- Interface entièrement en français, `prefers-reduced-motion`, pauses explicites des animations, cibles tactiles ≥ 44 px.
+- `MapLibreProvider` découpé en modules ; l'UI n'importe plus la base de données.
+
 ## Carte météo radar + carte de potentiel fiabilisée (2026-09-25)
 
 User feedback: "le heatmap fonctionne pas bien, la météo vent pluie etc
@@ -10,6 +32,7 @@ ne fonctionne pas à son maximum — j'aimerais que ce soit comme une app
 météo avec radar".
 
 ### Added
+
 - `features/weather-map/` + `services/weather-map/`: animated weather map
   from ECCC MSC GeoMet (radar 1 km observed, HRDPS 2.5 km forecast
   48 h): Radar, Précip., Temp., Vent, Rafales, Nuages, Pression; play /
@@ -18,6 +41,7 @@ météo avec radar".
   at every zoom, synced to the timeline hour.
 
 ### Changed
+
 - Heatmap (Carte de potentiel): real per-cell grid rendering (no more
   blotches), 8×8 grid, partial results when one source fails (listed as
   unavailable), "Recalculer" prompt when the map leaves the analysed
@@ -26,6 +50,7 @@ météo avec radar".
   reading local midnight as "now").
 
 ### Removed
+
 - RainViewer radar (blank above zoom 7), `features/radar/`,
   `services/radar/`, `WindLayerControl` (replaced by the weather map).
 
@@ -38,7 +63,7 @@ this session (not assumed from memory):
 
 - **Cadastre** — "Lots du cadastre rénové" from the real ArcGIS
   MapServer at `geo.environnement.gouv.qc.ca` (`Reference/
-  Cadastre_allege`), confirmed via that service's own `?f=json`
+Cadastre_allege`), confirmed via that service's own `?f=json`
   metadata.
 - **Coupes forestières** — the `ori_pee_interventions` WMS layer
   ("Interventions sylvicoles et récolte"), confirmed by fetching Forêt
@@ -55,7 +80,7 @@ this session (not assumed from memory):
   tile — the same technique as MapLibre's own official "Add a WMS
   source" example, not a fabricated integration.
 - Generalized `MapInstance.setRadarLayer` into `setRasterOverlay(id,
-  tileUrlTemplate, opacity)` — a named-overlay version of the same
+tileUrlTemplate, opacity)` — a named-overlay version of the same
   mechanism, since radar and up to three Forêt ouverte layers can now
   all be active on the map at once, each independently added/removed/
   re-applied after a base-layer switch.
@@ -75,7 +100,7 @@ environment, same pre-existing limitation as the rest of the map).
 ## Real precipitation radar map (2026-08-23)
 
 Follow-up to the round below — user feedback specifically named the map
-*tools* in MétéoMédia/AccuWeather/HuntStand as the bar to reach, not just
+_tools_ in MétéoMédia/AccuWeather/HuntStand as the bar to reach, not just
 individual panels. Those apps' "carte" (map) feature is a real radar
 mosaic overlay, which this app didn't have — the existing Phase 6 layer
 switcher draws per-point color blobs from Open-Meteo's forecast grid,
@@ -116,7 +141,7 @@ logic is covered by unit tests against that documented shape.
 Follow-up to the terrain fix below — user feedback was that the result
 still looked plain next to reference apps (MétéoMédia, HuntStand,
 Spartan Forge screenshots the user supplied). Reproduced the visual
-*style* those apps use — radar-style dials, dense icon rows, a
+_style_ those apps use — radar-style dials, dense icon rows, a
 big-number weather hero — entirely from this app's own real data, not
 by fabricating the proprietary scoring those apps also show (HuntStand's
 "scent impact" ring-coloring, its "Buck Movement Probability" percentage,
@@ -211,13 +236,13 @@ roadmap).
   `waypointsRepository`; deleting an observation also deletes its
   photos.
 - `Photo` (`types/photo.ts`) generalized from waypoint-only to belong to
-  *either* a waypoint or an observation (mutually exclusive, enforced by
+  _either_ a waypoint or an observation (mutually exclusive, enforced by
   a discriminated `CreatePhotoInput` union) — `photosRepository` gained
   `listPhotosForObservation`/`deletePhotosForObservation`.
 - `features/journal/components/JournalPhotos.tsx`: `WaypointPhotos`'s
   same in-app-camera + file-picker pattern, keyed by `observationId`.
 - `JournalPage.tsx`: real create/edit/delete UI. `snapshotConditions()`
-  attaches a real weather+wind reading only when *both* are already
+  attaches a real weather+wind reading only when _both_ are already
   loaded for that coordinate — never fetched specifically for a journal
   entry, never a partial/fabricated snapshot. "View on map" recenters
   the Map page on the entry's real coordinate (`mapStore.setView`) rather
@@ -272,7 +297,7 @@ handoff.
 - `components/CameraCapture.tsx`: live preview → capture-to-canvas
   (`originalBlob`, kept untouched) → non-destructive review (brightness/
   contrast sliders + grayscale/sepia/vivid presets, redrawn live from the
-  original each time) → save (a *separate* canvas produces `editedBlob`).
+  original each time) → save (a _separate_ canvas produces `editedBlob`).
   Zoom slider labeled "Zoom" vs. "Zoom (digital)" depending on whether
   real hardware zoom or a CSS `scale()` fallback is active — never
   presenting one as the other.
@@ -486,7 +511,7 @@ Sunrise/sunset, moonrise/moonset, moon phase, day length, and a global
   before depending on it.
 - Confirmed Solunar Theory's major/minor-period geometry (moon
   transit/anti-transit; near moonrise/moonset) is John Alden Knight's
-  1926 public-domain concept — distinct from the *proprietary*
+  1926 public-domain concept — distinct from the _proprietary_
   activity-scoring commercial apps (onX Hunt, HuntStand) layer on top,
   which this app does not attempt to reproduce or fabricate.
 
@@ -620,7 +645,7 @@ no re-fetch per scrub.
 
 `Waypoint.optimalWindDirections` — an 8-octant picker added to
 `WaypointEditPanel.tsx` — lets a hunter mark which compass directions the
-wind should blow *from* for a spot to be worth sitting. While the wind
+wind should blow _from_ for a spot to be worth sitting. While the wind
 layer is on, the panel shows the live reading nearest that waypoint and a
 green "matches" / red "mismatch" badge against the saved octants, so a
 hunter can check before walking in whether today's wind actually favors a
@@ -648,7 +673,7 @@ moderate downward-angled view.
 
 MapLibre's own default `maxPitch` is 60° when not explicitly set — this
 app never set it, so 60° (also the old `THREE_D_PITCH` preset) was
-literally the hard ceiling for both the preset button *and* manual
+literally the hard ceiling for both the preset button _and_ manual
 drag-tilt gestures. Confirmed directly against MapLibre's installed type
 definitions, not assumed.
 
@@ -762,7 +787,7 @@ so it couldn't be tapped. Also requested a wider exaggeration range.
 
 ### Changed
 
-- `ViewModeToggle.tsx`: the stepper used to stack *below* the 2D/3D
+- `ViewModeToggle.tsx`: the stepper used to stack _below_ the 2D/3D
   toggle inside the same absolutely-positioned wrapper — harmless height
   in 2D, but in 3D it grew the wrapper down into the next fixed-position
   control below it. Now laid out as a single row (stepper beside the
@@ -865,7 +890,7 @@ distinct from Dexie/IndexedDB which stays for small structured records).
 **Known limitation, flagged in code comments, not silently assumed
 solved:** MapLibre's docs note a custom protocol may also need
 registering inside its worker (vector tile parsing runs there) — this app
-uses MapLibre's *stock*, unmodified worker, so if real-device testing
+uses MapLibre's _stock_, unmodified worker, so if real-device testing
 shows vector tiles bypassing the cache, that's the fix.
 
 ### Added
@@ -923,14 +948,14 @@ removed from `WaypointEditPanel`.
   data URLs.
 - `components/WaypointPhotos.tsx`: photo grid + "add photo" tile, rendered
   inside `WaypointEditPanel`. Adding a photo is a plain `<input
-  type="file" accept="image/*" capture="environment">` — delegates
+type="file" accept="image/*" capture="environment">` — delegates
   entirely to the device's camera/gallery picker. This is **not** Phase
   12's camera tool (live preview, filters, exposure); slice 2.4 only
   attaches an already-taken photo, per "don't build ahead of the
   roadmap."
 - `Waypoint.photoIds` now writes through on add/delete, so
   `WaypointsPage`'s list can show a photo count per waypoint (camera icon
-  + count) without querying the photos table.
+  - count) without querying the photos table.
 - Deleting a waypoint (`waypointsStore.deleteWaypoint`) now also deletes
   its photos (`deletePhotosForWaypoint`) — otherwise they'd be orphaned
   in Dexie forever.
@@ -956,7 +981,7 @@ truth) since neither is generated from the other.
 ### Changed
 
 - `ROADMAP` entries now carry a `status` (`'done' | 'in-progress' |
-  'pending'`) instead of a plain boolean — phases 0 and 1 marked `done`,
+'pending'`) instead of a plain boolean — phases 0 and 1 marked `done`,
   phase 2 `in-progress`, matching `PROJECT_SPECIFICATION.md`.
 - Roadmap list: a third visual state (amber dot icon + amber text) for
   `in-progress`, distinct from the green checkmark (`done`) and gray
@@ -985,7 +1010,7 @@ gesture).
 
 `AppShell`'s root was `min-h-dvh`, not `h-dvh` — a min-height lets the
 whole page grow taller than the viewport to fit its content, which
-defeats `<main>`'s own `overflow-y-auto` (nothing to scroll *within* once
+defeats `<main>`'s own `overflow-y-auto` (nothing to scroll _within_ once
 the outer page already grew to match) and left the Map page's `h-full`
 map container without a real bound to size against — it fell back to
 `min-h-[60vh]`, which combined with the header/nav chrome could push
@@ -1009,7 +1034,7 @@ floating controls below the fold.
 In-browser at a 375×812 mobile viewport: confirmed `document.documentElement.scrollHeight`
 now equals `window.innerHeight` (no more page-level overflow) on the Map
 page, and that the Dashboard page (long content) still scrolls correctly
-*inside* `<main>` rather than the whole page. Could not visually confirm
+_inside_ `<main>` rather than the whole page. Could not visually confirm
 the GPS button's exact on-screen position with a live map (no API key in
 the local `.env`) — the underlying page-scroll bug is fixed regardless of
 that, since it was a layout issue independent of the map itself.
@@ -1069,7 +1094,7 @@ in `MapLibreProvider.test.ts` and the mocked-provider tests in
 ## Map: more zoomed-in default view (2026-08-16)
 
 Further user feedback: even with the GPS recenter zoom fix above, the
-map's *initial* view (before any GPS fix or recenter tap) still opened at
+map's _initial_ view (before any GPS fix or recenter tap) still opened at
 zoom 6 — whole-province scale, not useful to actually look at.
 
 ### Changed
@@ -1108,13 +1133,13 @@ markers), and GPS recenter left the view too zoomed out to be useful.
   just its row in the (not yet built) list page — `setWaypoints()` was
   only diffing position before, not category/color
 - GPS recenter (`GpsControl` → `MapPage.locate()`) now also zooms to at
-  least 16 (never zooms *out*) — before, it only panned, which could
+  least 16 (never zooms _out_) — before, it only panned, which could
   leave the view too far out to be useful in the field
 
 ### Fixed
 
 - Race condition in `waypointsStore.placeWaypointAt`: `isPlacing` was
-  only cleared *after* the async Dexie write completed, so two map
+  only cleared _after_ the async Dexie write completed, so two map
   clicks landing before that write resolved (found while testing — two
   events dispatched for what was meant to be one click) both passed the
   "is placing" guard and created two waypoints from one tap. Now cleared
@@ -1276,7 +1301,7 @@ Reported by the user on both desktop and mobile, on the live deploy: the
 Map page crashed ("Cannot read properties of undefined (reading 'lng')")
 the moment a real GPS position arrived — present since slice 1.3, never
 caught before because neither the automated tests nor manual browser
-verification ever exercised a *real* fix (the test browser has no GPS, so
+verification ever exercised a _real_ fix (the test browser has no GPS, so
 the marker-creation branch of `setUserLocationMarker` never ran until a
 real device tried it).
 

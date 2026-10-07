@@ -18,7 +18,7 @@ concern as waypoint photo deletion.
 ## Photos, generalized
 
 `Photo` (`types/photo.ts`, Phase 2/12) previously belonged to exactly one
-waypoint. It now belongs to *either* a waypoint *or* an observation
+waypoint. It now belongs to _either_ a waypoint _or_ an observation
 (`waypointId?`/`observationId?`, mutually exclusive) — `photosRepository`
 gained `listPhotosForObservation`/`deletePhotosForObservation` alongside
 the existing waypoint-scoped functions, and `CreatePhotoInput` is a
@@ -31,7 +31,7 @@ by `observationId` instead.
 
 `JournalPage.tsx`'s `snapshotConditions()` builds a real conditions
 reading from whatever weather (Phase 5) and wind (Phase 6) data the app
-*already has loaded* — never fetched specifically for a journal entry,
+_already has loaded_ — never fetched specifically for a journal entry,
 and never a partial/fabricated snapshot: it only attaches one when both
 a real forecast and a real wind-field sample exist for that coordinate;
 otherwise `conditions` stays `undefined` entirely.

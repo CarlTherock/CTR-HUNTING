@@ -43,11 +43,14 @@ const SCALES: Record<WeatherMapLayer, ColorStop[]> = {
 
 /** Each layer's real value bounds + unit, for the legend gradient bar —
  * kept in sync with `SCALES` above rather than re-deriving it. */
-export const LAYER_LEGEND: Record<WeatherMapLayer, { min: number; max: number; unit: string; label: string }> = {
-  wind: { min: 0, max: 65, unit: 'km/h', label: 'Wind speed' },
-  temperature: { min: -20, max: 32, unit: '°C', label: 'Temperature' },
-  precipitation: { min: 0, max: 12, unit: 'mm/h', label: 'Precipitation' },
-  clouds: { min: 0, max: 100, unit: '%', label: 'Cloud cover' },
+export const LAYER_LEGEND: Record<
+  WeatherMapLayer,
+  { min: number; max: number; unit: string; label: string }
+> = {
+  wind: { min: 0, max: 65, unit: 'km/h', label: 'Vitesse du vent' },
+  temperature: { min: -20, max: 32, unit: '°C', label: 'Température' },
+  precipitation: { min: 0, max: 12, unit: 'mm/h', label: 'Précipitations' },
+  clouds: { min: 0, max: 100, unit: '%', label: 'Couverture nuageuse' },
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -57,7 +60,11 @@ function lerp(a: number, b: number, t: number): number {
 /** Interpolated RGBA color string for `value` on `layer`'s scale —
  * clamped at the scale's ends (below the first stop reads as the first
  * stop's color, above the last as the last). */
-export function weatherLayerColor(layer: WeatherMapLayer, value: number, alpha = 0.55): string {
+export function weatherLayerColor(
+  layer: WeatherMapLayer,
+  value: number,
+  alpha = 0.55,
+): string {
   const stops = SCALES[layer]
   if (value <= stops[0].value) return rgba(stops[0].color, alpha)
   const last = stops[stops.length - 1]
@@ -99,7 +106,10 @@ export function weatherLayerGradientCss(layer: WeatherMapLayer): string {
 /** Pulls the real value a given layer visualizes out of an hourly
  * reading — the single place that maps "which field backs which layer",
  * so the canvas renderer and the legend never disagree. */
-export function valueForLayer(layer: WeatherMapLayer, reading: WindHourlyReading): number {
+export function valueForLayer(
+  layer: WeatherMapLayer,
+  reading: WindHourlyReading,
+): number {
   switch (layer) {
     case 'wind':
       return reading.speedKmh

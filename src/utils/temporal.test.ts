@@ -57,22 +57,22 @@ describe('getMoonTimes', () => {
 
 describe('moonPhaseName', () => {
   it('names the 4 exact instants correctly', () => {
-    expect(moonPhaseName(0)).toBe('New Moon')
-    expect(moonPhaseName(0.25)).toBe('First Quarter')
-    expect(moonPhaseName(0.5)).toBe('Full Moon')
-    expect(moonPhaseName(0.75)).toBe('Last Quarter')
+    expect(moonPhaseName(0)).toBe('Nouvelle lune')
+    expect(moonPhaseName(0.25)).toBe('Premier quartier')
+    expect(moonPhaseName(0.5)).toBe('Pleine lune')
+    expect(moonPhaseName(0.75)).toBe('Dernier quartier')
   })
 
   it('names the 4 in-between ranges correctly', () => {
-    expect(moonPhaseName(0.1)).toBe('Waxing Crescent')
-    expect(moonPhaseName(0.37)).toBe('Waxing Gibbous')
-    expect(moonPhaseName(0.6)).toBe('Waning Gibbous')
-    expect(moonPhaseName(0.85)).toBe('Waning Crescent')
+    expect(moonPhaseName(0.1)).toBe('Premier croissant')
+    expect(moonPhaseName(0.37)).toBe('Lune gibbeuse croissante')
+    expect(moonPhaseName(0.6)).toBe('Lune gibbeuse décroissante')
+    expect(moonPhaseName(0.85)).toBe('Dernier croissant')
   })
 
   it('wraps correctly near the 0/1 boundary', () => {
-    expect(moonPhaseName(0.99)).toBe('New Moon')
-    expect(moonPhaseName(-0.01)).toBe('New Moon')
+    expect(moonPhaseName(0.99)).toBe('Nouvelle lune')
+    expect(moonPhaseName(-0.01)).toBe('Nouvelle lune')
   })
 })
 
@@ -101,7 +101,9 @@ describe('computeSolunarPeriods', () => {
   it('every period has start strictly before end', () => {
     const periods = computeSolunarPeriods(DATE, QUEBEC)
     for (const period of periods) {
-      expect(new Date(period.start).getTime()).toBeLessThan(new Date(period.end).getTime())
+      expect(new Date(period.start).getTime()).toBeLessThan(
+        new Date(period.end).getTime(),
+      )
     }
   })
 
@@ -117,16 +119,33 @@ describe('timeToPercent', () => {
 
   it('places midnight at 0 and the following midnight at 100', () => {
     expect(timeToPercent(dayStart.toISOString(), dayStart)).toBe(0)
-    expect(timeToPercent(new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString(), dayStart)).toBe(100)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(100)
   })
 
   it('places noon at 50', () => {
-    expect(timeToPercent(new Date(dayStart.getTime() + 12 * 60 * 60_000).toISOString(), dayStart)).toBe(50)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 12 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(50)
   })
 
   it('clamps times outside the 24h window', () => {
-    expect(timeToPercent(new Date(dayStart.getTime() - 60_000).toISOString(), dayStart)).toBe(0)
-    expect(timeToPercent(new Date(dayStart.getTime() + 25 * 60 * 60_000).toISOString(), dayStart)).toBe(100)
+    expect(
+      timeToPercent(new Date(dayStart.getTime() - 60_000).toISOString(), dayStart),
+    ).toBe(0)
+    expect(
+      timeToPercent(
+        new Date(dayStart.getTime() + 25 * 60 * 60_000).toISOString(),
+        dayStart,
+      ),
+    ).toBe(100)
   })
 })
 

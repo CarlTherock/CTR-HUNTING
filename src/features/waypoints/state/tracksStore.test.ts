@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/database/db'
-import { useTracksStore } from './tracksStore'
+import { isInterruptedTrack, useTracksStore } from './tracksStore'
 
 const RESET_STATE = {
   tracks: [],
@@ -10,6 +10,7 @@ const RESET_STATE = {
   recordingStartedAt: null,
   points: [],
   distanceMeters: 0,
+  persistError: null,
 }
 
 afterEach(async () => {
@@ -122,5 +123,185 @@ describe('tracksStore', () => {
     expect(useTracksStore.getState().status).toBe('idle')
     expect(useTracksStore.getState().recordingId).toBeNull()
     expect(await db.tracks.get(id as string)).toBeUndefined()
+  })
+
+  describe('durability', () => {
+    it('writes every accepted point to the device as it arrives', async () => {
+      await useTracksStore.getState().start()
+      const id = useTracksStore.getState().recordingId as string
+
+      useTracksStore.getState().addPoint({ lat: 46.8, lng: -71.2 })
+      useTracksStore.getState().addPoint({ lat: 46.801, lng: -71.2 })
+      await useTracksStore.getState().flush()
+
+      expect((await db.tracks.get(id))?.points).toHaveLength(2)
+    })
+
+    it('shows a visible error and keeps the points in memory when a write fails', async () => {
+      await useTracksStore.getState().start()
+      const spy = vi
+        .spyOn(db.tracks, 'update')
+        .mockRejectedValueOnce(new Error('disk full'))
+
+      useTracksStore.getState().addPoint({ lat: 46.8, lng: -71.2 })
+      await useTracksStore.getState().flush()
+
+      expect(useTracksStore.getState().persistError).toContain('disk full')
+      expect(useTracksStore.getState().points).toHaveLength(1)
+      spy.mockRestore()
+    })
+
+    it('clears the error and saves everything once the device accepts writes again', async () => {
+      await useTracksStore.getState().start()
+      const id = useTracksStore.getState().recordingId as string
+      const spy = vi
+        .spyOn(db.tracks, 'update')
+        .mockRejectedValueOnce(new Error('blocked'))
+      useTracksStore.getState().addPoint({ lat: 46.8, lng: -71.2 })
+      await useTracksStore.getState().flush()
+      spy.mockRestore()
+      expect(useTracksStore.getState().persistError).not.toBeNull()
+
+      useTracksStore.getState().addPoint({ lat: 46.801, lng: -71.2 })
+      await useTracksStore.getState().flush()
+
+      expect(useTracksStore.getState().persistError).toBeNull()
+      expect((await db.tracks.get(id))?.points).toHaveLength(2)
+    })
+
+    it('does not start recording when the track cannot be created', async () => {
+      const spy = vi.spyOn(db.tracks, 'add').mockRejectedValueOnce(new Error('no space'))
+
+      await useTracksStore.getState().start()
+
+      expect(useTracksStore.getState().status).toBe('idle')
+      expect(useTracksStore.getState().persistError).toContain('no space')
+      spy.mockRestore()
+    })
+
+    it('stays in recording state when the final write fails, so nothing is lost', async () => {
+      await useTracksStore.getState().start()
+      useTracksStore.getState().addPoint({ lat: 46.8, lng: -71.2 })
+      await useTracksStore.getState().flush()
+      const spy = vi.spyOn(db.tracks, 'update').mockRejectedValueOnce(new Error('locked'))
+
+      await useTracksStore.getState().stop()
+
+      expect(useTracksStore.getState().status).toBe('recording')
+      expect(useTracksStore.getState().points).toHaveLength(1)
+      expect(useTracksStore.getState().persistError).toContain('locked')
+      spy.mockRestore()
+    })
+  })
+
+  describe('interrupted tracks (app closed or phone locked mid-recording)', () => {
+    const points = [
+      { lat: 46.8, lng: -71.2, timestamp: '2026-08-16T10:00:05.000Z' },
+      { lat: 46.801, lng: -71.2, timestamp: '2026-08-16T10:00:35.000Z' },
+    ]
+
+    async function seedInterrupted() {
+      await db.tracks.add({
+        id: 'cut',
+        name: 'Trace coupée',
+        points,
+        startedAt: '2026-08-16T10:00:00.000Z',
+        distanceMeters: 111,
+      })
+      await useTracksStore.getState().load()
+    }
+
+    it('flags a loaded track without an end time as interrupted, data untouched', async () => {
+      await seedInterrupted()
+
+      const [track] = useTracksStore.getState().tracks
+      expect(isInterruptedTrack(track, useTracksStore.getState().recordingId)).toBe(true)
+      expect(track.points).toEqual(points)
+      expect(track.endedAt).toBeUndefined()
+    })
+
+    it('does not flag a finished track, nor the one being recorded now', async () => {
+      await db.tracks.add({
+        id: 'done',
+        name: 'Finie',
+        points,
+        startedAt: points[0].timestamp,
+        endedAt: points[1].timestamp,
+      })
+      await useTracksStore.getState().load()
+      await useTracksStore.getState().start()
+
+      for (const track of useTracksStore.getState().tracks) {
+        expect(isInterruptedTrack(track, useTracksStore.getState().recordingId)).toBe(
+          false,
+        )
+      }
+    })
+
+    it('finishInterrupted ends the track at its last real point, never later', async () => {
+      await seedInterrupted()
+
+      await useTracksStore.getState().finishInterrupted('cut')
+
+      expect((await db.tracks.get('cut'))?.endedAt).toBe(points[1].timestamp)
+      expect(useTracksStore.getState().tracks[0].endedAt).toBe(points[1].timestamp)
+    })
+
+    it('resumeInterrupted continues into the same track, keeping the earlier points', async () => {
+      await seedInterrupted()
+
+      useTracksStore.getState().resumeInterrupted('cut')
+      expect(useTracksStore.getState().status).toBe('recording')
+      expect(useTracksStore.getState().recordingId).toBe('cut')
+
+      useTracksStore.getState().addPoint({ lat: 46.81, lng: -71.2 })
+      await useTracksStore.getState().flush()
+
+      expect((await db.tracks.get('cut'))?.points).toHaveLength(3)
+      expect(useTracksStore.getState().tracks).toHaveLength(1)
+    })
+
+    it('refuses to resume while another recording is active', async () => {
+      await seedInterrupted()
+      await useTracksStore.getState().start()
+      const activeId = useTracksStore.getState().recordingId
+
+      useTracksStore.getState().resumeInterrupted('cut')
+
+      expect(useTracksStore.getState().recordingId).toBe(activeId)
+    })
+  })
+
+  describe('renameTrack', () => {
+    it('renames and persists, trimming whitespace', async () => {
+      await db.tracks.add({
+        id: 'r',
+        name: 'Avant',
+        points: [],
+        startedAt: '2026-08-16T10:00:00.000Z',
+      })
+      await useTracksStore.getState().load()
+
+      expect(await useTracksStore.getState().renameTrack('r', '  Crête nord  ')).toBe(
+        true,
+      )
+
+      expect((await db.tracks.get('r'))?.name).toBe('Crête nord')
+      expect(useTracksStore.getState().tracks[0].name).toBe('Crête nord')
+    })
+
+    it('rejects an empty name and leaves the track unchanged', async () => {
+      await db.tracks.add({
+        id: 'r',
+        name: 'Avant',
+        points: [],
+        startedAt: '2026-08-16T10:00:00.000Z',
+      })
+      await useTracksStore.getState().load()
+
+      expect(await useTracksStore.getState().renameTrack('r', '   ')).toBe(false)
+
+      expect((await db.tracks.get('r'))?.name).toBe('Avant')
+    })
   })
 })

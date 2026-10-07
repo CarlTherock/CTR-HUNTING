@@ -32,7 +32,7 @@ describe('JournalPhotos', () => {
     const user = userEvent.setup()
     render(<JournalPhotos observationId="o1" photoIds={[]} />)
 
-    await user.click(screen.getByRole('button', { name: 'Open camera' }))
+    await user.click(screen.getByRole('button', { name: 'Ouvrir la caméra' }))
     const coordinate = { lat: 46.8, lng: -71.2 }
 
     await vi.waitFor(() => expect(cameraSaveHandler).not.toBeNull())
@@ -57,7 +57,7 @@ describe('JournalPhotos', () => {
     render(<JournalPhotos observationId="o1" photoIds={[]} />)
 
     const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' })
-    const input = screen.getByLabelText('Choose a photo') as HTMLInputElement
+    const input = screen.getByLabelText('Choisir une photo') as HTMLInputElement
     await user.upload(input, file)
 
     await vi.waitFor(async () => {

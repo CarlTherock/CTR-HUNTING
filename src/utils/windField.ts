@@ -1,12 +1,21 @@
 import { haversineMeters } from './geo'
-import type { Coordinate, WindField, WindFieldSample, WindHourlyReading, WindReading } from '@/types'
+import type {
+  Coordinate,
+  WindField,
+  WindFieldSample,
+  WindHourlyReading,
+  WindReading,
+} from '@/types'
 
 const METERS_PER_DEGREE_LAT = 111_320
 
 /** The real grid sample nearest `coordinate` — never interpolated
  * between samples or otherwise fabricated, always one genuine fetched
  * reading. `null` only when the field has no samples at all. */
-export function nearestSample(field: WindField, coordinate: Coordinate): WindFieldSample | null {
+export function nearestSample(
+  field: WindField,
+  coordinate: Coordinate,
+): WindFieldSample | null {
   if (field.samples.length === 0) return null
   let best = field.samples[0]
   let bestDistance = haversineMeters(coordinate, best.coordinate)

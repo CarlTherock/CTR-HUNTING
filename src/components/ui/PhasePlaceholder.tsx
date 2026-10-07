@@ -41,12 +41,12 @@ export function PhasePlaceholder({
       />
       <EmptyState
         icon={<Construction size={28} aria-hidden="true" />}
-        title="Not built yet"
-        description="This section is on the roadmap and hasn't been implemented. Nothing shown here is real data."
+        title="Pas encore réalisé"
+        description="Cette section figure à la feuille de route, mais n’est pas encore réalisée. Rien de ce qui est affiché ici n’est une donnée réelle."
       />
       <div>
         <h2 className="text-ink-300 mb-2 text-sm font-semibold">
-          Planned for this phase
+          Prévu pour cette phase
         </h2>
         <ul className="text-ink-500 grid list-inside list-disc grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           {upcoming.map((item) => (

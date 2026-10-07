@@ -56,7 +56,10 @@ describe('tileCache', () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue(
-          new Response(bytes, { status: 200, headers: { 'Content-Type': 'application/x-protobuf' } }),
+          new Response(bytes, {
+            status: 200,
+            headers: { 'Content-Type': 'application/x-protobuf' },
+          }),
         ),
       )
 
@@ -70,7 +73,10 @@ describe('tileCache', () => {
 
     it('throws on a non-OK response and does not cache it', async () => {
       const cache = installFakeCaches()
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(null, { status: 404 })),
+      )
 
       await expect(fetchAndCacheTile('https://example.com/missing.pbf')).rejects.toThrow(
         /404/,

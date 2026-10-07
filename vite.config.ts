@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { buildCsp } from './build/csp.ts'
 
 // GitHub Pages serves this project from https://carltherock.github.io/CTR-HUNTING/,
 // a subpath — production assets must be built with that base, but the local
@@ -14,6 +15,9 @@ const base = process.env.GITHUB_PAGES === 'true' ? '/CTR-HUNTING/' : '/'
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  // Local `vite preview` only (never part of the deployed site): lets a Cloudflare
+  // quick tunnel reach it so a branch can be tried on a phone over HTTPS.
+  preview: { allowedHosts: ['.trycloudflare.com'] },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -30,6 +34,21 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      // Build only: the dev server needs inline scripts for HMR.
+      name: 'ctr-csp',
+      apply: 'build',
+      transformIndexHtml() {
+        const extra = (process.env.CSP_EXTRA_HOSTS ?? '').split(',').filter(Boolean)
+        return [
+          {
+            tag: 'meta',
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: buildCsp(extra) },
+            injectTo: 'head-prepend',
+          },
+        ]
+      },
+    },
     tailwindcss(),
     // MapLibre's worker (maplibre-gl-worker.mjs) imports a sibling chunk
     // (maplibre-gl-shared.mjs) via a relative path. Vite's `?url` asset
@@ -57,8 +76,9 @@ export default defineConfig({
       manifest: {
         name: 'CTR Hunting — Field Terrain Intelligence',
         short_name: 'CTR Hunting',
+        lang: 'fr',
         description:
-          'Offline-first terrain mapping, navigation and field intelligence platform.',
+          'Plateforme de cartographie, de navigation et de renseignement terrain, utilisable hors ligne.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
@@ -85,9 +105,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Phase 0: cache the app shell only. Map tile / large asset caching
-        // strategies are introduced in Phase 3 (Offline architecture).
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // App shell + the MapLibre engine. The worker (`maplibre/*.mjs`) is
+        // loaded by `setWorkerUrl` at runtime, so without `mjs` here a cold
+        // start offline has a shell but no map engine. The main bundle is
+        // above Workbox's 2 MiB default, so the limit is raised explicitly.
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/api\//],
       },
       devOptions: {
@@ -100,5 +123,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Playwright specs live in e2e/ and run with `npm run e2e`, not Vitest.
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 })

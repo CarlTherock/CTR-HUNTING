@@ -18,7 +18,13 @@ export interface DayTimelineBarProps {
  * bar spanning local midnight to midnight: night/dawn/day/dusk shading
  * from real sun times, major/minor solunar period bands, and a "now"
  * marker. All positions come from `timeToPercent`, never hand-tuned. */
-export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHour }: DayTimelineBarProps) {
+export function DayTimelineBar({
+  dayStart,
+  sun,
+  solunarPeriods,
+  now,
+  selectedHour,
+}: DayTimelineBarProps) {
   const dawn = sun.dawn ? timeToPercent(sun.dawn, dayStart) : null
   const sunrise = sun.sunrise ? timeToPercent(sun.sunrise, dayStart) : null
   const sunset = sun.sunset ? timeToPercent(sun.sunset, dayStart) : null
@@ -40,7 +46,10 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
         {dayBandStart !== null && dayBandEnd !== null && (
           <div
             className="bg-brand-500/25 absolute inset-y-0"
-            style={{ left: `${dayBandStart}%`, width: `${Math.max(0, dayBandEnd - dayBandStart)}%` }}
+            style={{
+              left: `${dayBandStart}%`,
+              width: `${Math.max(0, dayBandEnd - dayBandStart)}%`,
+            }}
             aria-hidden="true"
           />
         )}
@@ -57,7 +66,7 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
           return (
             <div
               key={i}
-              title={`${period.type === 'major' ? 'Major' : 'Minor'} solunar period`}
+              title={`Période solunaire ${period.type === 'major' ? 'majeure' : 'mineure'}`}
               className={
                 period.type === 'major'
                   ? 'absolute inset-y-0 bg-amber-500/80'
@@ -75,47 +84,47 @@ export function DayTimelineBar({ dayStart, sun, solunarPeriods, now, selectedHou
           <div
             className="bg-ink-100 absolute inset-y-0 w-1 shadow-[0_0_4px_rgba(0,0,0,0.8)]"
             style={{ left: `${selectedHourPercent}%` }}
-            aria-label="Selected hour (shared timeline cursor)"
-            title="Selected hour"
+            aria-label="Heure sélectionnée (curseur partagé de la ligne du temps)"
+            title="Heure sélectionnée"
           />
         )}
         {nowPercent !== null && (
           <div
             className="bg-status-danger absolute inset-y-0 w-1 shadow-[0_0_4px_rgba(0,0,0,0.8)]"
             style={{ left: `${nowPercent}%` }}
-            aria-label="Now"
-            title="Now"
+            aria-label="Maintenant"
+            title="Maintenant"
           />
         )}
       </div>
       <div className="text-ink-500 mt-1 flex justify-between text-[10px]">
-        <span>12 AM</span>
-        <span>6 AM</span>
-        <span>12 PM</span>
-        <span>6 PM</span>
-        <span>12 AM</span>
+        <span>0 h</span>
+        <span>6 h</span>
+        <span>12 h</span>
+        <span>18 h</span>
+        <span>24 h</span>
       </div>
       <div className="text-ink-500 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
         <span className="flex items-center gap-1">
           <span className="bg-brand-400/60 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
-          Daylight
+          Jour
         </span>
         <span className="flex items-center gap-1">
-          <span className="bg-amber-500/80 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
-          Major solunar
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/80" aria-hidden="true" />
+          Solunaire majeure
         </span>
         <span className="flex items-center gap-1">
-          <span className="bg-amber-500/40 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
-          Minor solunar
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/40" aria-hidden="true" />
+          Solunaire mineure
         </span>
         <span className="flex items-center gap-1">
           <span className="bg-status-danger h-2.5 w-1 rounded-sm" aria-hidden="true" />
-          Now
+          Maintenant
         </span>
         {selectedHourPercent !== null && (
           <span className="flex items-center gap-1">
             <span className="bg-ink-100 h-2.5 w-1 rounded-sm" aria-hidden="true" />
-            Selected hour
+            Heure sélectionnée
           </span>
         )}
       </div>

@@ -68,7 +68,10 @@ describe('offlineAreasRepository (IndexedDB via Dexie)', () => {
       tileCount: 4,
     })
 
-    await updateOfflineArea(area.id, { status: 'complete', completedAt: '2026-08-16T12:00:00.000Z' })
+    await updateOfflineArea(area.id, {
+      status: 'complete',
+      completedAt: '2026-08-16T12:00:00.000Z',
+    })
 
     const [reloaded] = await listOfflineAreas()
     expect(reloaded.status).toBe('complete')

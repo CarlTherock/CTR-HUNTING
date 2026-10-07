@@ -17,13 +17,19 @@ describe('GeoMet time dimension parsing', () => {
   })
 
   it('expands start/end/period and comma lists', () => {
-    expect(parseTimeDimension('2026-09-25T12:00:00Z/2026-09-25T13:00:00Z/PT30M')).toHaveLength(3)
-    expect(parseTimeDimension('2026-09-25T12:00:00Z,2026-09-25T12:06:00Z')).toHaveLength(2)
+    expect(
+      parseTimeDimension('2026-09-25T12:00:00Z/2026-09-25T13:00:00Z/PT30M'),
+    ).toHaveLength(3)
+    expect(parseTimeDimension('2026-09-25T12:00:00Z,2026-09-25T12:06:00Z')).toHaveLength(
+      2,
+    )
   })
 
   it('extracts the time dimension from a real-shaped capabilities doc', () => {
     const xml = `<Layer><Name>RADAR_1KM_RRAI</Name><Dimension name="time" units="ISO8601" default="2026-09-25T15:00:00Z">2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M</Dimension></Layer>`
-    expect(extractTimeDimension(xml)).toBe('2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M')
+    expect(extractTimeDimension(xml)).toBe(
+      '2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M',
+    )
   })
 })
 
@@ -70,7 +76,10 @@ describe('GeoMetProvider', () => {
           ),
       }),
     )
-    const frames = await new GeoMetProvider().fetchFrames(layerDef('radar'), new Date('2026-09-25T15:10:00Z'))
+    const frames = await new GeoMetProvider().fetchFrames(
+      layerDef('radar'),
+      new Date('2026-09-25T15:10:00Z'),
+    )
     expect(frames).toHaveLength(14)
   })
 
@@ -83,7 +92,10 @@ describe('GeoMetProvider', () => {
         json: () => Promise.resolve({ features: [{ properties: { value: 5 } }] }),
       }),
     )
-    const value = await new GeoMetProvider().fetchValueAt(layerDef('wind'), 't', { lat: 46, lng: -72 })
+    const value = await new GeoMetProvider().fetchValueAt(layerDef('wind'), 't', {
+      lat: 46,
+      lng: -72,
+    })
     expect(value).toBe('18 km/h')
   })
 
@@ -96,7 +108,10 @@ describe('GeoMetProvider', () => {
         json: () => Promise.resolve({ features: [] }),
       }),
     )
-    const value = await new GeoMetProvider().fetchValueAt(layerDef('radar'), 't', { lat: 46, lng: -72 })
+    const value = await new GeoMetProvider().fetchValueAt(layerDef('radar'), 't', {
+      lat: 46,
+      lng: -72,
+    })
     expect(value).toBeNull()
   })
 })

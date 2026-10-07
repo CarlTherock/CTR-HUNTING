@@ -72,7 +72,12 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
 
   setLayer: async (layer) => {
     if (layer === get().activeLayer && get().frames.length > 0) return
-    set({ activeLayer: layer, playing: false, centerValue: null, centerValueStatus: 'idle' })
+    set({
+      activeLayer: layer,
+      playing: false,
+      centerValue: null,
+      centerValueStatus: 'idle',
+    })
     await get().loadFrames()
   },
 
@@ -81,7 +86,12 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
     const def = layerDef(layer)
     const cached = get().cache[layer]
     if (!force && cached && Date.now() - cached.fetchedAt < FRAME_TTL_MS[def.kind]) {
-      set({ frames: cached.frames, frameIndex: defaultIndex(cached.frames), status: 'available', errorReason: null })
+      set({
+        frames: cached.frames,
+        frameIndex: defaultIndex(cached.frames),
+        status: 'available',
+        errorReason: null,
+      })
       return
     }
     set({ status: 'loading', errorReason: null })
@@ -91,7 +101,8 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
       // must never overwrite the current one.
       if (get().activeLayer !== layer) return
       const previousTime = get().frames[get().frameIndex]?.time
-      const keptIndex = force && previousTime ? frames.findIndex((f) => f.time === previousTime) : -1
+      const keptIndex =
+        force && previousTime ? frames.findIndex((f) => f.time === previousTime) : -1
       set({
         frames,
         frameIndex: keptIndex >= 0 ? keptIndex : defaultIndex(frames),
@@ -100,7 +111,11 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
       })
     } catch (err) {
       if (get().activeLayer !== layer) return
-      set({ status: 'error', errorReason: err instanceof Error ? err.message : 'Erreur inconnue', frames: [] })
+      set({
+        status: 'error',
+        errorReason: err instanceof Error ? err.message : 'Erreur inconnue',
+        frames: [],
+      })
     }
   },
 

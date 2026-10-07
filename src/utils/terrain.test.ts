@@ -35,7 +35,7 @@ describe('compassLabel', () => {
     expect(compassLabel(0)).toBe('N')
     expect(compassLabel(90)).toBe('E')
     expect(compassLabel(180)).toBe('S')
-    expect(compassLabel(270)).toBe('W')
+    expect(compassLabel(270)).toBe('O')
     expect(compassLabel(45)).toBe('NE')
     expect(compassLabel(135)).toBe('SE')
   })

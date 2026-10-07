@@ -58,7 +58,7 @@ export class OpenMeteoWindProvider implements WindProvider {
 
     const response = await fetch(url)
     if (!response.ok) {
-      throw new Error(`Wind request failed (${response.status})`)
+      throw new Error(`Requête de vent échouée (${response.status})`)
     }
     const data: unknown = await response.json()
     // A single-location request returns one object, not an array —

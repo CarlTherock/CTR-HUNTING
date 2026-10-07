@@ -48,7 +48,9 @@ describe('terrainToolsStore', () => {
 
     useTerrainToolsStore.getState().removeLastProfilePoint()
 
-    expect(useTerrainToolsStore.getState().profilePoints).toEqual([{ lat: 46.8, lng: -71.2 }])
+    expect(useTerrainToolsStore.getState().profilePoints).toEqual([
+      { lat: 46.8, lng: -71.2 },
+    ])
   })
 
   it('finishProfile stores the data and exits profiling mode, keeping the points', () => {
@@ -65,7 +67,9 @@ describe('terrainToolsStore', () => {
   it('closeProfile clears both the points and the computed data', () => {
     useTerrainToolsStore.getState().startProfiling()
     useTerrainToolsStore.getState().addProfilePoint({ lat: 46.8, lng: -71.2 })
-    useTerrainToolsStore.getState().finishProfile([{ distanceMeters: 0, elevationMeters: 300 }])
+    useTerrainToolsStore
+      .getState()
+      .finishProfile([{ distanceMeters: 0, elevationMeters: 300 }])
 
     useTerrainToolsStore.getState().closeProfile()
 

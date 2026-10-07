@@ -1,4 +1,9 @@
-import type { Coordinate, WeatherFrameKind, WeatherMapFrame, WeatherMapLayerId } from '@/types'
+import type {
+  Coordinate,
+  WeatherFrameKind,
+  WeatherMapFrame,
+  WeatherMapLayerId,
+} from '@/types'
 
 /** MSC GeoMet WMS — verified live 2026-09-25: GetCapabilities advertises
  * `RADAR_1KM_RRAI`/`RADAR_1KM_RSNO` (3 h of real radar, PT6M steps) and
@@ -25,7 +30,10 @@ export interface GeoMetLayerDef {
 }
 
 const fmt = (n: number, digits = 0) =>
-  n.toLocaleString('fr-CA', { maximumFractionDigits: digits, minimumFractionDigits: digits })
+  n.toLocaleString('fr-CA', {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  })
 
 export const GEOMET_LAYERS: GeoMetLayerDef[] = [
   {
@@ -37,7 +45,9 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
     timeLayer: 'RADAR_1KM_RRAI',
     // RRAI title: "precipitation rate for rain [mm/h]"; RSNO: "[cm/h]".
     formatValue: (raw, layer) =>
-      layer === 'RADAR_1KM_RSNO' ? `Neige ${fmt(raw, 1)} cm/h` : `Pluie ${fmt(raw, 1)} mm/h`,
+      layer === 'RADAR_1KM_RSNO'
+        ? `Neige ${fmt(raw, 1)} cm/h`
+        : `Pluie ${fmt(raw, 1)} mm/h`,
   },
   {
     id: 'precipitation',
@@ -100,7 +110,7 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
 
 export function layerDef(id: WeatherMapLayerId): GeoMetLayerDef {
   const def = GEOMET_LAYERS.find((l) => l.id === id)
-  if (!def) throw new Error(`Unknown weather layer ${id}`)
+  if (!def) throw new Error(`Couche météo inconnue : ${id}`)
   return def
 }
 
@@ -129,7 +139,8 @@ export function parseTimeDimension(value: string): Date[] {
     const endMs = Date.parse(end)
     if (!step || Number.isNaN(startMs) || Number.isNaN(endMs)) return []
     const times: Date[] = []
-    for (let t = startMs; t <= endMs && times.length < 2000; t += step) times.push(new Date(t))
+    for (let t = startMs; t <= endMs && times.length < 2000; t += step)
+      times.push(new Date(t))
     return times
   }
   return trimmed
@@ -141,7 +152,9 @@ export function parseTimeDimension(value: string): Date[] {
 /** Pulls the `time` dimension out of a (single-layer) GetCapabilities
  * document. */
 export function extractTimeDimension(capabilitiesXml: string): string | null {
-  const match = /<Dimension[^>]*name="time"[^>]*>([^<]+)<\/Dimension>/i.exec(capabilitiesXml)
+  const match = /<Dimension[^>]*name="time"[^>]*>([^<]+)<\/Dimension>/i.exec(
+    capabilitiesXml,
+  )
   return match ? match[1] : null
 }
 
@@ -152,7 +165,11 @@ export function toIsoSeconds(date: Date): string {
 /** Radar: ~3 h at every 2nd 6-min step (12 min) ending on the latest
  * real frame. Forecast: every hour from the current hour up to
  * +48 h, within what the model actually published. */
-export function buildFrames(def: GeoMetLayerDef, times: Date[], now: Date): WeatherMapFrame[] {
+export function buildFrames(
+  def: GeoMetLayerDef,
+  times: Date[],
+  now: Date,
+): WeatherMapFrame[] {
   if (times.length === 0) return []
   if (def.kind === 'observed') {
     // GeoMet's radar window rolls every 6 min: the oldest advertised
@@ -161,7 +178,8 @@ export function buildFrames(def: GeoMetLayerDef, times: Date[], now: Date): Weat
     // PNG. Skip the 3 oldest (18 min of margin, covers the 5-min refresh).
     const usable = times.slice(3)
     const picked: Date[] = []
-    for (let i = usable.length - 1; i >= 0 && picked.length < 15; i -= 2) picked.unshift(usable[i])
+    for (let i = usable.length - 1; i >= 0 && picked.length < 15; i -= 2)
+      picked.unshift(usable[i])
     return picked.map((t) => ({ time: toIsoSeconds(t), kind: 'observed' }))
   }
   const currentHour = new Date(now)

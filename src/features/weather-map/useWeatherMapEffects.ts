@@ -23,7 +23,11 @@ export function frameKey(layer: string, time: string): string {
 
 /** Playback, auto-refresh, center readout, wind-particle sync. Pure
  * timing/orchestration — the data rules live in the stores/providers. */
-export function useWeatherMapEffects({ isFrameReady, getBounds, viewCenter }: WeatherMapEffectsOptions) {
+export function useWeatherMapEffects({
+  isFrameReady,
+  getBounds,
+  viewCenter,
+}: WeatherMapEffectsOptions) {
   const enabled = useWeatherMapStore((s) => s.enabled)
   const playing = useWeatherMapStore((s) => s.playing)
   const activeLayer = useWeatherMapStore((s) => s.activeLayer)
@@ -43,7 +47,11 @@ export function useWeatherMapEffects({ isFrameReady, getBounds, viewCenter }: We
   useEffect(() => {
     if (!enabled || !playing) return
     const timer = setInterval(() => {
-      const { frames: fs, frameIndex: i, activeLayer: layer } = useWeatherMapStore.getState()
+      const {
+        frames: fs,
+        frameIndex: i,
+        activeLayer: layer,
+      } = useWeatherMapStore.getState()
       if (fs.length < 2) return
       const next = (i + 1) % fs.length
       const ready = isFrameReadyRef.current(frameKey(layer, fs[next].time))
@@ -60,7 +68,10 @@ export function useWeatherMapEffects({ isFrameReady, getBounds, viewCenter }: We
   // Radar: pick up newly published images every 5 min.
   useEffect(() => {
     if (!enabled || activeLayer !== 'radar') return
-    const timer = setInterval(() => void useWeatherMapStore.getState().loadFrames(true), RADAR_REFRESH_MS)
+    const timer = setInterval(
+      () => void useWeatherMapStore.getState().loadFrames(true),
+      RADAR_REFRESH_MS,
+    )
     return () => clearInterval(timer)
   }, [enabled, activeLayer])
 
@@ -99,7 +110,8 @@ export function useWeatherMapEffects({ isFrameReady, getBounds, viewCenter }: We
     if (inside) return
     const timer = setTimeout(() => {
       const bounds = getBoundsRef.current()
-      if (bounds && useWindStore.getState().status !== 'loading') void useWindStore.getState().fetch(bounds)
+      if (bounds && useWindStore.getState().status !== 'loading')
+        void useWindStore.getState().fetch(bounds)
     }, 900)
     return () => clearTimeout(timer)
   }, [windEnabled, windField, viewCenter])

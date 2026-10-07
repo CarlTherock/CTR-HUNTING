@@ -21,7 +21,10 @@ describe('observationsRepository (IndexedDB via Dexie)', () => {
   })
 
   it('creates an observation with a generated id and real timestamp', async () => {
-    const observation = await createObservation({ coordinate: COORDINATE, notes: 'Fresh tracks' })
+    const observation = await createObservation({
+      coordinate: COORDINATE,
+      notes: 'Fresh tracks',
+    })
 
     expect(observation.id).toBeTruthy()
     expect(observation.timestamp).toBeTruthy()
@@ -36,13 +39,20 @@ describe('observationsRepository (IndexedDB via Dexie)', () => {
       windDirectionDegrees: 270,
       cloudCoverPercent: 40,
     }
-    const observation = await createObservation({ coordinate: COORDINATE, notes: '', conditions })
+    const observation = await createObservation({
+      coordinate: COORDINATE,
+      notes: '',
+      conditions,
+    })
 
     expect(observation.conditions).toEqual(conditions)
   })
 
   it('creates an observation with no conditions when none were available, never a fabricated one', async () => {
-    const observation = await createObservation({ coordinate: COORDINATE, notes: 'No data yet' })
+    const observation = await createObservation({
+      coordinate: COORDINATE,
+      notes: 'No data yet',
+    })
 
     expect(observation.conditions).toBeUndefined()
   })
@@ -58,7 +68,10 @@ describe('observationsRepository (IndexedDB via Dexie)', () => {
   })
 
   it('updates real fields on an observation', async () => {
-    const observation = await createObservation({ coordinate: COORDINATE, notes: 'Draft' })
+    const observation = await createObservation({
+      coordinate: COORDINATE,
+      notes: 'Draft',
+    })
 
     await updateObservation(observation.id, { notes: 'Final', photoIds: ['p1'] })
 

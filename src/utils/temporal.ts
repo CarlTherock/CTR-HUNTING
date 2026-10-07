@@ -29,7 +29,8 @@ function isoOrNull(date: Date | null | undefined): string | null {
 
 export function getSunTimes(date: Date, coordinate: Coordinate): SunTimes {
   const t = SunCalc.getTimes(date, coordinate.lat, coordinate.lng)
-  const dayLengthMs = t.sunrise && t.sunset ? t.sunset.getTime() - t.sunrise.getTime() : null
+  const dayLengthMs =
+    t.sunrise && t.sunset ? t.sunset.getTime() - t.sunrise.getTime() : null
   return {
     sunrise: isoOrNull(t.sunrise),
     sunset: isoOrNull(t.sunset),
@@ -58,25 +59,30 @@ export function getMoonTimes(date: Date, coordinate: Coordinate): MoonTimes {
  * quarter) get a narrower band since they're single moments; the 4
  * "between" phases each get the bulk of the ~29.53-day cycle — this
  * bucketing width is a real, common convention (matching how most
- * moon-phase calendars label a many-day span "Waxing Crescent"), not a
+ * moon-phase calendars label a many-day span « premier croissant »), not a
  * fabricated astronomical fact — the underlying `phase` value itself is
  * SunCalc's real computed number.
  */
 export function moonPhaseName(phase: number): MoonPhaseName {
   const p = ((phase % 1) + 1) % 1
-  if (p < 0.03 || p >= 0.97) return 'New Moon'
-  if (p < 0.22) return 'Waxing Crescent'
-  if (p < 0.28) return 'First Quarter'
-  if (p < 0.47) return 'Waxing Gibbous'
-  if (p < 0.53) return 'Full Moon'
-  if (p < 0.72) return 'Waning Gibbous'
-  if (p < 0.78) return 'Last Quarter'
-  return 'Waning Crescent'
+  if (p < 0.03 || p >= 0.97) return 'Nouvelle lune'
+  if (p < 0.22) return 'Premier croissant'
+  if (p < 0.28) return 'Premier quartier'
+  if (p < 0.47) return 'Lune gibbeuse croissante'
+  if (p < 0.53) return 'Pleine lune'
+  if (p < 0.72) return 'Lune gibbeuse décroissante'
+  if (p < 0.78) return 'Dernier quartier'
+  return 'Dernier croissant'
 }
 
 export function getMoonIllumination(date: Date): MoonIllumination {
   const i = SunCalc.getMoonIllumination(date)
-  return { fraction: i.fraction, phase: i.phase, waxing: i.waxing, phaseName: moonPhaseName(i.phase) }
+  return {
+    fraction: i.fraction,
+    phase: i.phase,
+    waxing: i.waxing,
+    phaseName: moonPhaseName(i.phase),
+  }
 }
 
 /** ±90 min around moon transit/anti-transit — roughly the major-period
@@ -107,7 +113,10 @@ const SAMPLE_INTERVAL_MS = 10 * 60_000
 function findMoonExtremes(
   date: Date,
   coordinate: Coordinate,
-): { highest: { time: Date; altitude: number }; lowest: { time: Date; altitude: number } } {
+): {
+  highest: { time: Date; altitude: number }
+  lowest: { time: Date; altitude: number }
+} {
   const dayStart = new Date(date)
   dayStart.setHours(0, 0, 0, 0)
 
@@ -170,7 +179,8 @@ export function computeSolunarPeriods(
  * dawn/dusk/solunar time can technically fall just outside that window.
  * Powers `DayTimelineBar`'s day/night shading and period markers. */
 export function timeToPercent(iso: string, dayStart: Date): number {
-  const percent = ((new Date(iso).getTime() - dayStart.getTime()) / (24 * 60 * 60_000)) * 100
+  const percent =
+    ((new Date(iso).getTime() - dayStart.getTime()) / (24 * 60 * 60_000)) * 100
   return Math.max(0, Math.min(100, percent))
 }
 

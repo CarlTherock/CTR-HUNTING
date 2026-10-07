@@ -46,7 +46,7 @@ export async function putTile(url: string, response: Response): Promise<void> {
 export async function fetchAndCacheTile(url: string): Promise<number> {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`Tile request failed (${response.status}): ${url}`)
+    throw new Error(`Requête de tuile échouée (${response.status}) : ${url}`)
   }
   const blob = await response.clone().blob()
   await putTile(url, response)
@@ -64,7 +64,10 @@ export async function deleteTiles(urls: string[]): Promise<void> {
 /** Real, browser-reported storage usage/quota
  * (`navigator.storage.estimate()`) — `null` if the API isn't available
  * (older Safari). Never estimated/guessed client-side. */
-export async function estimateStorageUsage(): Promise<{ usage: number; quota: number } | null> {
+export async function estimateStorageUsage(): Promise<{
+  usage: number
+  quota: number
+} | null> {
   if (!navigator.storage?.estimate) return null
   const { usage, quota } = await navigator.storage.estimate()
   if (usage === undefined || quota === undefined) return null

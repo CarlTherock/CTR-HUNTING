@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { db } from './db'
-import { createWaypoint, deleteWaypoint, listWaypoints, updateWaypoint } from './waypointsRepository'
+import {
+  createWaypoint,
+  deleteWaypoint,
+  listWaypoints,
+  updateWaypoint,
+} from './waypointsRepository'
 
 describe('waypointsRepository (IndexedDB via Dexie)', () => {
   afterEach(async () => {
@@ -30,7 +35,10 @@ describe('waypointsRepository (IndexedDB via Dexie)', () => {
       category: 'trailhead',
     })
 
-    await updateWaypoint(waypoint.id, { name: 'Main trailhead', notes: 'Parking for 3 trucks' })
+    await updateWaypoint(waypoint.id, {
+      name: 'Main trailhead',
+      notes: 'Parking for 3 trucks',
+    })
 
     const [reloaded] = await listWaypoints()
     expect(reloaded.name).toBe('Main trailhead')
@@ -69,5 +77,30 @@ describe('waypointsRepository (IndexedDB via Dexie)', () => {
     const remaining = await listWaypoints()
     expect(remaining).toHaveLength(1)
     expect(remaining[0].id).toBe(b.id)
+  })
+})
+
+describe('waypointsRepository — location lock', () => {
+  afterEach(async () => {
+    await db.waypoints.clear()
+  })
+
+  it('refuses to update the coordinate of a saved waypoint', async () => {
+    const waypoint = await createWaypoint({
+      name: 'Fixe',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      category: 'general',
+    })
+
+    await expect(
+      updateWaypoint(waypoint.id, { coordinate: { lat: 0, lng: 0 } } as unknown as {
+        name: string
+      }),
+    ).rejects.toThrow(/locked/)
+
+    expect((await db.waypoints.get(waypoint.id))?.coordinate).toEqual({
+      lat: 46.8,
+      lng: -71.2,
+    })
   })
 })

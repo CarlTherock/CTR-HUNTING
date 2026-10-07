@@ -7,7 +7,7 @@ manual resync (3.4).
 
 Everything here lives on the **Map page** — a downloaded area needs a
 live map to sweep for real tiles, so there's no separate "Offline" nav
-page for *creating* areas. `SettingsPage` is the read/delete counterpart
+page for _creating_ areas. `SettingsPage` is the read/delete counterpart
 (same "creation stays where the live resource is, management is
 elsewhere" split as Phase 2's waypoints/tracks).
 
@@ -42,9 +42,34 @@ URLs ourselves, `MapLibreProvider.downloadArea()`:
 not silently assumed to work): MapLibre's own docs note a custom
 protocol registered on the main thread may also need registering inside
 its worker for requests the worker itself issues — vector tile parsing
-runs there, and this app copies MapLibre's *stock* worker unmodified
+runs there, and this app copies MapLibre's _stock_ worker unmodified
 (`vite.config.ts`). If real-device testing shows vector tiles bypass the
 cache, that worker-side registration is the fix.
+
+## Honest status, ledger and retries
+
+Every download run keeps a **ledger** (`services/map/downloadLedger.ts`):
+distinct tile URLs by outcome (`succeeded`, `reused` from cache, `failed`,
+`absent` for provider 404/204), retries, sweep steps (completed / timed
+out) and failures of style/sprite/glyph resources. URLs are stored
+**without their query string** (API keys). Requests have a 15 s timeout;
+during a download they get up to 3 attempts (250 ms / 750 ms backoff) on
+network error, timeout, 5xx, 408 and 429 only. A sweep step that is not
+`idle` in time is retried once, then recorded as timed out, never skipped.
+
+`areaStatus.ts#deriveAreaStatus` grants `complete` only when every step
+finished, nothing failed, no essential resource failed and at least one
+tile is available; otherwise `incomplete`. `interrupted` = cancelled or the
+app died mid-download (a stored `downloading` record found at `load()`),
+`error` = could not run. Legacy records are mapped by `effectiveAreaStatus`
+(`complete` without summary: "non vérifiée"; `cancelled`: interrupted).
+`retryArea` resumes the same record: cached tiles are reused, `tileUrls`
+are unioned, nothing cached is ever deleted on cancel/failure. The UI shows
+request counts, never a geographic coverage percentage.
+
+`ctrfresh` (style/TileJSON/sprite JSON) serves its cached copy only for a
+network failure, timeout or 5xx; 401/403/404 propagate so the map can fall
+back to another base layer.
 
 ## State
 

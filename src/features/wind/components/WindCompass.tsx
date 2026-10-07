@@ -15,7 +15,7 @@ const CARDINALS = [
   { label: 'N', degrees: 0 },
   { label: 'E', degrees: 90 },
   { label: 'S', degrees: 180 },
-  { label: 'W', degrees: 270 },
+  { label: 'O', degrees: 270 },
 ]
 
 /**
@@ -29,16 +29,32 @@ const CARDINALS = [
  * an honest "is the wind actually blowing from a direction I saved as
  * good for this spot" signal.
  */
-export function WindCompass({ directionDegrees, speedKmh, optimalDirections, size = 140 }: WindCompassProps) {
+export function WindCompass({
+  directionDegrees,
+  speedKmh,
+  optimalDirections,
+  size = 140,
+}: WindCompassProps) {
   const center = size / 2
   const outerRadius = center - 16
   const color = weatherLayerColor('wind', speedKmh, 1)
   const arrowTip = pointOnCircle(center, center, outerRadius - 6, directionDegrees)
   const arrowLeft = pointOnCircle(center, center, outerRadius - 24, directionDegrees - 12)
-  const arrowRight = pointOnCircle(center, center, outerRadius - 24, directionDegrees + 12)
+  const arrowRight = pointOnCircle(
+    center,
+    center,
+    outerRadius - 24,
+    directionDegrees + 12,
+  )
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Wind compass">
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label="Boussole du vent"
+    >
       {optimalDirections?.map((octant) => (
         <path
           key={octant}

@@ -24,7 +24,7 @@ export function wedgePath(
 ): string {
   const start = pointOnCircle(cx, cy, radius, startDegrees)
   const end = pointOnCircle(cx, cy, radius, endDegrees)
-  const span = ((endDegrees - startDegrees) % 360 + 360) % 360
+  const span = (((endDegrees - startDegrees) % 360) + 360) % 360
   const largeArc = span > 180 ? 1 : 0
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`
 }

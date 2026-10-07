@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Trees, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import { FOREST_LAYER_OPTIONS } from '@/services/map/forestLayerTiles'
 import { useForestLayersStore } from '../state/forestLayersStore'
@@ -26,19 +27,14 @@ export function ForestLayersControl() {
 
   return (
     <>
-      <button
-        type="button"
+      <ToolTrigger
+        label="Forêt ouverte (cadastre, coupes)"
+        icon={<Trees size={18} aria-hidden="true" />}
         onClick={() => setPanelOpen((open) => !open)}
-        aria-pressed={panelOpen}
-        title="Couches Forêt ouverte"
-        aria-label="Toggle Forêt ouverte layers panel"
-        className={cn(
-          'border-surface-600 bg-surface-900/90 hover:bg-surface-800 absolute top-[55rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors',
-          anyEnabled ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300',
-        )}
-      >
-        <Trees size={18} aria-hidden="true" />
-      </button>
+        pressed={panelOpen}
+        active={anyEnabled}
+        order={50}
+      />
 
       {panelOpen && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -49,7 +45,7 @@ export function ForestLayersControl() {
                 type="button"
                 onClick={() => setPanelOpen(false)}
                 aria-label="Fermer"
-                className="text-ink-500 hover:text-ink-100"
+                className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
               >
                 <X size={16} aria-hidden="true" />
               </button>
@@ -64,7 +60,7 @@ export function ForestLayersControl() {
                   aria-checked={!!enabled[option.id]}
                   onClick={() => toggle(option.id)}
                   className={cn(
-                    'flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                    'flex flex-col items-start rounded-md border px-2.5 py-1.5 text-left transition-colors pointer-coarse:min-h-11',
                     enabled[option.id]
                       ? 'border-brand-400 bg-brand-500/15 text-brand-400'
                       : 'border-surface-600 text-ink-300 hover:bg-surface-800',
@@ -80,7 +76,7 @@ export function ForestLayersControl() {
               <div className="mt-2">
                 <label className="text-ink-500 flex items-center justify-between text-xs">
                   <span>Opacité</span>
-                  <span>{Math.round(opacity * 100)}%</span>
+                  <span>{Math.round(opacity * 100)} %</span>
                 </label>
                 <input
                   type="range"
@@ -96,7 +92,8 @@ export function ForestLayersControl() {
             )}
 
             <p className="text-ink-500 mt-2 text-[10px]">
-              Données réelles © Gouvernement du Québec (Forêt ouverte / MRNF, cadastre) — CC-BY 4.0.
+              Données réelles © Gouvernement du Québec (Forêt ouverte / MRNF, cadastre) —
+              CC-BY 4.0.
             </p>
           </div>
         </div>

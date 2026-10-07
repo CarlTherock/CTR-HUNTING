@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Camera, ImagePlus, Trash2 } from 'lucide-react'
-import { addPhoto, deletePhoto, listPhotosForWaypoint } from '@/database/photosRepository'
 import { CameraCapture } from '@/features/camera/components/CameraCapture'
 import type { CapturedPhoto } from '@/features/camera/components/CameraCapture'
+import { usePhotoGallery } from '@/features/camera/state/usePhotoGallery'
 import { useWaypointsStore } from '../state/waypointsStore'
-import type { Photo } from '@/types'
-
-type PhotoWithUrl = Photo & { url: string }
 
 /** Photo grid for the waypoint currently open in `WaypointEditPanel`,
  * with two ways to add one: `CameraCapture` (Phase 12 — a real live
@@ -15,7 +12,7 @@ type PhotoWithUrl = Photo & { url: string }
  * `<input type="file" capture="environment">` delegating to the
  * device's own camera/gallery picker (slice 2.4's original, simpler
  * path — still useful for picking an existing photo, which the in-app
- * camera can't do). */
+ * camera can't do). Data access lives in `usePhotoGallery`. */
 export function WaypointPhotos({
   waypointId,
   photoIds,
@@ -24,65 +21,24 @@ export function WaypointPhotos({
   photoIds: string[]
 }) {
   const updateWaypoint = useWaypointsStore((state) => state.updateWaypoint)
-  const [photos, setPhotos] = useState<PhotoWithUrl[]>([])
   const [cameraOpen, setCameraOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Object URLs are created alongside the data that needs them (this
-  // load, or `handleFileChange` below) rather than via a second
-  // effect+setState derived purely from `photos` — React's rules
-  // discourage synchronous setState calls in an effect body outside a
-  // subscription callback (this `.then()` counts as one; a bare
-  // `setState` right in the effect body wouldn't).
-  const photosRef = useRef<PhotoWithUrl[]>([])
-  useEffect(() => {
-    photosRef.current = photos
-  }, [photos])
-
-  useEffect(() => {
-    let cancelled = false
-    void listPhotosForWaypoint(waypointId).then((loaded) => {
-      if (cancelled) return
-      setPhotos(loaded.map((photo) => ({ ...photo, url: URL.createObjectURL(photo.blob) })))
-    })
-    return () => {
-      cancelled = true
-      // Covers both "switched to a different waypoint" and "unmounted
-      // entirely" — `photosRef` always holds whatever's currently shown,
-      // including photos added after the initial load.
-      for (const photo of photosRef.current) URL.revokeObjectURL(photo.url)
-    }
-  }, [waypointId])
+  const { photos, error, addFile, addCaptured, remove } = usePhotoGallery(
+    { kind: 'waypoint', id: waypointId },
+    photoIds,
+    (ids) => void updateWaypoint(waypointId, { photoIds: ids }),
+  )
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = '' // allow picking the same file again immediately
     if (!file) return
-
-    const photo = await addPhoto({ waypointId, blob: file })
-    const url = URL.createObjectURL(photo.blob)
-    setPhotos((prev) => [...prev, { ...photo, url }])
-    void updateWaypoint(waypointId, { photoIds: [...photoIds, photo.id] })
-  }
-
-  async function handleDelete(photo: PhotoWithUrl) {
-    await deletePhoto(photo.id)
-    URL.revokeObjectURL(photo.url)
-    setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
-    void updateWaypoint(waypointId, { photoIds: photoIds.filter((id) => id !== photo.id) })
+    await addFile(file)
   }
 
   async function handleCameraSave(captured: CapturedPhoto) {
     setCameraOpen(false)
-    const photo = await addPhoto({
-      waypointId,
-      blob: captured.editedBlob,
-      originalBlob: captured.originalBlob,
-      coordinate: captured.coordinate,
-    })
-    const url = URL.createObjectURL(photo.blob)
-    setPhotos((prev) => [...prev, { ...photo, url }])
-    void updateWaypoint(waypointId, { photoIds: [...photoIds, photo.id] })
+    await addCaptured(captured)
   }
 
   return (
@@ -90,13 +46,16 @@ export function WaypointPhotos({
       <span className="text-ink-500 text-xs font-medium">Photos</span>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {photos.map((photo) => (
-          <div key={photo.id} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md">
+          <div
+            key={photo.id}
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md"
+          >
             <img src={photo.url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
-              onClick={() => void handleDelete(photo)}
-              aria-label="Delete photo"
-              className="bg-surface-950/80 text-status-danger absolute top-0.5 right-0.5 rounded-full p-1"
+              onClick={() => void remove(photo)}
+              aria-label="Supprimer la photo"
+              className="bg-surface-950/80 text-status-danger absolute top-0.5 right-0.5 rounded-full p-1 pointer-coarse:p-4"
             >
               <Trash2 size={12} aria-hidden="true" />
             </button>
@@ -105,8 +64,8 @@ export function WaypointPhotos({
         <button
           type="button"
           onClick={() => setCameraOpen(true)}
-          aria-label="Open camera"
-          title="Open camera"
+          aria-label="Ouvrir la caméra"
+          title="Ouvrir la caméra"
           className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
         >
           <Camera size={18} aria-hidden="true" />
@@ -114,14 +73,17 @@ export function WaypointPhotos({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Add photo"
-          title="Choose a photo"
+          aria-label="Ajouter une photo"
+          title="Choisir une photo"
           className="border-surface-600 text-ink-500 hover:text-brand-400 hover:border-brand-400 flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed transition-colors"
         >
           <ImagePlus size={18} aria-hidden="true" />
         </button>
         {cameraOpen && (
-          <CameraCapture onSave={(captured) => void handleCameraSave(captured)} onClose={() => setCameraOpen(false)} />
+          <CameraCapture
+            onSave={(captured) => void handleCameraSave(captured)}
+            onClose={() => setCameraOpen(false)}
+          />
         )}
         <input
           ref={fileInputRef}
@@ -130,9 +92,14 @@ export function WaypointPhotos({
           capture="environment"
           onChange={(e) => void handleFileChange(e)}
           className="hidden"
-          aria-label="Choose a photo"
+          aria-label="Choisir une photo"
         />
       </div>
+      {error && (
+        <p role="alert" className="text-status-danger mt-1 text-xs">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

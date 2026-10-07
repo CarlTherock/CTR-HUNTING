@@ -1,6 +1,7 @@
 import type {
   AnalysisHeatmapCell,
   Coordinate,
+  DownloadSummary,
   MapBaseLayerId,
   MapOverlayId,
   MapViewState,
@@ -12,9 +13,15 @@ import type {
 import type { LngLatBounds } from '@/utils/tiles'
 
 export interface DownloadAreaProgress {
+  /** Tiles available for the area after this run: fetched now + already
+   * cached (`summary.succeeded + summary.reused`). */
   tilesDownloaded: number
+  /** Bytes fetched from the network during this run (reused tiles: 0). */
   bytesDownloaded: number
+  /** Tiles this run fetched itself — the ones the area owns for deletion. */
   tileUrls: string[]
+  /** Honest ledger of the run: requests, retries, failures, sweep steps. */
+  summary: DownloadSummary
 }
 
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
@@ -34,9 +41,35 @@ export interface MapInstance {
   /** Replace the set of waypoint markers shown on the map (diffed
    * internally by id — does not recreate markers that haven't moved). */
   setWaypoints(waypoints: Waypoint[]): void
+  /** Shows (or moves/removes, with `null`) the draggable marker of the
+   * waypoint being created. Not part of `setWaypoints` on purpose: saved
+   * markers are fixed, only this one can be adjusted before Save. */
+  setDraftWaypoint(coordinate: Coordinate | null): void
+  /** Highlights the saved waypoint with this id (larger, double ring) so the
+   * open waypoint sheet and the map visibly refer to the same marker. `null`
+   * clears it. Presentation only: never moves a marker or blocks the others. */
+  setSelectedWaypoint(id: string | null): void
+  /** Shows (or removes, with `null`) the PREVIEW of a point received through
+   * a shared link: a distinct, non-draggable marker that is not a saved
+   * waypoint. `name` is plain text. */
+  setSharedPoint(coordinate: Coordinate | null, name: string): void
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
+  /** Draws (or clears, with `null`) the dashed straight line of "Aller à"
+   * between the device position and the destination. Its own source and
+   * layers, a colour distinct from the track preview and the measure path,
+   * re-added after a base-layer switch. It is a drawing only: never a track,
+   * never persisted. */
+  setGuidanceLine(line: readonly [Coordinate, Coordinate] | null): void
+  /** Sets the direction the phone points, in degrees clockwise from TRUE north,
+   * on the device-position marker (a cone, aligned with the MAP so a rotated
+   * map stays correct). `null` hides the cone: pass it unless the heading is
+   * reliable. Never pass a GPS travel course here. */
+  setUserHeading(trueHeadingDegrees: number | null): void
+  /** Tells the engine its container changed size (immersive/fullscreen,
+   * rotation, keyboard) so the canvas matches it again. */
+  resize(): void
   /** The geographic bounds currently visible — the real basis for "make
    * this area available offline" (Phase 3), not a guessed/typed-in box. */
   getBounds(): LngLatBounds
@@ -47,8 +80,12 @@ export interface MapInstance {
    * issues its own real tile requests — this never has to know or guess a
    * vendor's tile URL template) while a request interceptor captures and
    * caches whatever tiles that triggers. `onProgress` fires after each
-   * newly-cached tile with the running totals; `signal` cancels the sweep
-   * (already-cached tiles are kept, not rolled back).
+   * change of the ledger (tile fetched / reused / failed / absent / retried,
+   * sweep step done or timed out) with the running totals; `signal` cancels
+   * the sweep (already-cached tiles are kept, not rolled back).
+   * The result's `summary` is what decides whether the download was complete:
+   * a step that never reaches `idle` or a request that fails is recorded,
+   * never skipped silently. Rejects if the map style is not loaded.
    */
   downloadArea(
     bounds: LngLatBounds,
@@ -91,6 +128,14 @@ export interface MapInstance {
    */
   setWindField(field: WindField | null, hourOffset: number, layer: WeatherMapLayer): void
   /**
+   * Pauses (`true`) or resumes (`false`) the wind particle animation.
+   * While paused the layer renders a single static frame (no
+   * `requestAnimationFrame` loop) — used for `prefers-reduced-motion`
+   * and for the visible Pause/Lecture button. Optional so adapters
+   * without an animated layer need not implement it.
+   */
+  setWindAnimationPaused?(paused: boolean): void
+  /**
    * Renders (Phase 9) or clears (`null`) the analysis heatmap: a soft
    * color-graded overlay, one blob per real `AnalysisHeatmapCell`,
    * colored by that cell's combined analyzer score
@@ -117,7 +162,11 @@ export interface MapInstance {
    * shown. Frames near the active one are preloaded invisibly so playback
    * swaps instantly without flicker. `null` clears everything.
    */
-  setWeatherFrames(frames: WeatherTileFrame[] | null, activeIndex: number, opacity: number): void
+  setWeatherFrames(
+    frames: WeatherTileFrame[] | null,
+    activeIndex: number,
+    opacity: number,
+  ): void
   /** Whether a frame's tiles for the current view have finished loading —
    * playback waits on this so it never flashes an empty frame. */
   isWeatherFrameReady(key: string): boolean
@@ -139,10 +188,19 @@ export interface CreateMapOptions {
   onMapClick?: (coordinate: Coordinate) => void
   /** Called when the user taps/clicks an existing waypoint marker. */
   onWaypointClick?: (waypointId: string) => void
-  /** Called when the user finishes dragging a waypoint marker to a new
-   * position (drag-to-move) — the caller is responsible for persisting
-   * it; the marker's on-screen position already reflects the drop point. */
-  onWaypointDragEnd?: (waypointId: string, coordinate: Coordinate) => void
+  /** Called when the user finishes dragging the *draft* marker (a waypoint
+   * not saved yet) to a new position. Saved waypoint markers are never
+   * draggable: a saved waypoint's location is locked. */
+  onDraftMove?: (coordinate: Coordinate) => void
+  /** Called when the USER moves the camera by gesture (drag, pinch/wheel/
+   * double-tap zoom, rotate, tilt, or the zoom/compass buttons) — never for
+   * a move made by the app itself (`setView`). Used to pause "follow my
+   * position" so the app never fights the user's hand. */
+  onUserInteraction?: () => void
+  /** Called once per base-layer load attempt when the style itself (not an
+   * individual tile) could not be loaded: provider unreachable, invalid key,
+   * nothing cached offline. The caller decides the fallback. */
+  onBaseLayerError?: (layer: MapBaseLayerId, message: string) => void
 }
 
 /**

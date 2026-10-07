@@ -10,15 +10,17 @@ describe('App startup', () => {
     expect(await screen.findByText('CTR HUNTING')).toBeInTheDocument()
 
     // Dashboard is the index route.
-    expect(await screen.findByRole('heading', { name: 'CTR Hunting' })).toBeInTheDocument()
-    expect(screen.getByText(/Phase 14 — AI & Assistant/i)).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'CTR Hunting' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Phase 14 — IA et assistant/i)).toBeInTheDocument()
   })
 
   it('lists every roadmap phase with phase 0 marked done', async () => {
     render(<App />)
 
-    expect(await screen.findByText(/0\. Foundation/)).toBeInTheDocument()
-    expect(screen.getByText(/17\. Commercial Release/)).toBeInTheDocument()
+    expect(await screen.findByText(/0\. Fondations/)).toBeInTheDocument()
+    expect(screen.getByText(/17\. Lancement commercial/)).toBeInTheDocument()
   })
 
   it('shows the splash screen only for a standalone/installed launch, not an ordinary tab', () => {

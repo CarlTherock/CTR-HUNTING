@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { advancePosition, isOptimalWind, nearestSample, octantOf, windAt } from './windField'
+import {
+  advancePosition,
+  isOptimalWind,
+  nearestSample,
+  octantOf,
+  windAt,
+} from './windField'
 import type { WindField } from '@/types'
 
 const FIELD: WindField = {
@@ -92,13 +98,23 @@ describe('windAt', () => {
 describe('advancePosition', () => {
   it('moves toward the opposite of the meteorological "from" direction', () => {
     // Wind FROM the north (0°) blows TOWARD the south — latitude decreases.
-    const next = advancePosition({ lat: 46.8, lng: -71.2 }, { directionDegrees: 0, speedKmh: 20, gustsKmh: 20 }, 1, 100)
+    const next = advancePosition(
+      { lat: 46.8, lng: -71.2 },
+      { directionDegrees: 0, speedKmh: 20, gustsKmh: 20 },
+      1,
+      100,
+    )
     expect(next.lat).toBeLessThan(46.8)
     expect(next.lng).toBeCloseTo(-71.2, 5)
   })
 
   it('moves east when the wind is from the west', () => {
-    const next = advancePosition({ lat: 46.8, lng: -71.2 }, { directionDegrees: 270, speedKmh: 20, gustsKmh: 20 }, 1, 100)
+    const next = advancePosition(
+      { lat: 46.8, lng: -71.2 },
+      { directionDegrees: 270, speedKmh: 20, gustsKmh: 20 },
+      1,
+      100,
+    )
     expect(next.lng).toBeGreaterThan(-71.2)
   })
 
@@ -141,7 +157,9 @@ describe('hourIndexAt / localHourKey', () => {
   it('formats a real instant as the local wall-clock hour Open-Meteo uses', async () => {
     const { localHourKey } = await import('./windField')
     // 14:30 UTC = 10:30 EDT
-    expect(localHourKey(new Date('2026-08-17T14:30:00Z'), 'America/Toronto')).toBe('2026-08-17T10:00')
+    expect(localHourKey(new Date('2026-08-17T14:30:00Z'), 'America/Toronto')).toBe(
+      '2026-08-17T10:00',
+    )
   })
 
   it('finds the hourly sample covering an instant, or null outside the window', async () => {

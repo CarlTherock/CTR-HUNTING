@@ -4,13 +4,7 @@ import type { Coordinate } from './geo'
  * tag values (`landuse=*`/`natural=*`/`leisure=park` — public, documented
  * OSM wiki values, not invented) — never a fabricated classification. */
 export type VegetationCategory =
-  | 'forest'
-  | 'wetland'
-  | 'agricultural'
-  | 'grassland'
-  | 'water'
-  | 'developed'
-  | 'other'
+  'forest' | 'wetland' | 'agricultural' | 'grassland' | 'water' | 'developed' | 'other'
 
 export interface VegetationSample {
   coordinate: Coordinate

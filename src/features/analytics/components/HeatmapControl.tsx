@@ -1,6 +1,6 @@
 import { LayoutGrid, X } from 'lucide-react'
+import { ToolTrigger } from '@/components/map-tools'
 import { analysisHeatmapColor } from '@/utils/analysisHeatmapColors'
-import { cn } from '@/utils/cn'
 import { useHeatmapStore } from '../state/heatmapStore'
 import type { HeatmapView } from '../state/heatmapStore'
 import type { Coordinate } from '@/types'
@@ -40,7 +40,11 @@ function legendGradient(): string {
  * red/unfavorable through green/favorable, explicitly labeled a
  * probabilistic read, not a certainty.
  */
-export function HeatmapControl({ getBounds, queryElevation, viewCenter }: HeatmapControlProps) {
+export function HeatmapControl({
+  getBounds,
+  queryElevation,
+  viewCenter,
+}: HeatmapControlProps) {
   const enabled = useHeatmapStore((state) => state.enabled)
   const status = useHeatmapStore((state) => state.status)
   const errorReason = useHeatmapStore((state) => state.errorReason)
@@ -71,19 +75,14 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
 
   return (
     <>
-      <button
-        type="button"
+      <ToolTrigger
+        label="Carte de potentiel"
+        icon={<LayoutGrid size={18} aria-hidden="true" />}
         onClick={handleToggle}
-        aria-pressed={enabled}
-        title="Carte de potentiel"
-        aria-label="Toggle analysis heatmap"
-        className={cn(
-          'border-surface-600 bg-surface-900/90 hover:bg-surface-800 absolute top-[44rem] right-3 z-10 rounded-lg border p-2.5 shadow-lg backdrop-blur-sm transition-colors',
-          enabled ? 'bg-brand-500/15 text-brand-400' : 'text-ink-300',
-        )}
-      >
-        <LayoutGrid size={18} aria-hidden="true" />
-      </button>
+        pressed={enabled}
+        active={enabled}
+        order={41}
+      />
 
       {enabled && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -93,18 +92,24 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
               <button
                 type="button"
                 onClick={handleToggle}
-                aria-label="Hide analysis heatmap"
-                className="text-ink-500 hover:text-ink-100"
+                aria-label="Masquer la carte de potentiel"
+                className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
               >
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
 
-            {status === 'loading' && <p className="text-ink-500 text-sm">Analyse de la zone…</p>}
+            {status === 'loading' && (
+              <p className="text-ink-500 text-sm">Analyse de la zone…</p>
+            )}
             {status === 'error' && (
               <p className="text-status-danger text-sm">
                 Carte indisponible — {errorReason}.{' '}
-                <button type="button" onClick={refresh} className="underline">
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="underline pointer-coarse:min-h-11"
+                >
                   Réessayer
                 </button>
               </p>
@@ -117,7 +122,7 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                     value={selectedView}
                     onChange={(e) => setSelectedView(e.target.value as HeatmapView)}
                     aria-label="Score affiché"
-                    className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 rounded-md border px-2 py-1.5 text-sm outline-none focus-visible:outline-2"
+                    className="border-surface-600 bg-surface-800 text-ink-100 focus-visible:outline-brand-400 rounded-md border px-2 py-1.5 text-sm outline-none focus-visible:outline-2 pointer-coarse:min-h-11"
                   >
                     {VIEW_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -129,31 +134,39 @@ export function HeatmapControl({ getBounds, queryElevation, viewCenter }: Heatma
                 {areaChanged && (
                   <div className="bg-status-warning/15 text-status-warning mb-2 flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs">
                     <span>La carte a bougé hors de la zone analysée.</span>
-                    <button type="button" onClick={refresh} className="font-semibold underline">
+                    <button
+                      type="button"
+                      onClick={refresh}
+                      className="font-semibold underline pointer-coarse:min-h-11"
+                    >
                       Recalculer
                     </button>
                   </div>
                 )}
                 {unavailableSources.length > 0 && (
                   <p className="text-ink-500 mb-2 text-xs">
-                    Indisponible pour l'instant : {unavailableSources.join(', ')} — ces analyseurs sont
-                    exclus du score.
+                    Indisponible pour l'instant : {unavailableSources.join(', ')} — ces
+                    analyseurs sont exclus du score.
                   </p>
                 )}
-                <div className="h-2 w-full rounded-full" style={{ background: legendGradient() }} aria-hidden="true" />
+                <div
+                  className="h-2 w-full rounded-full"
+                  style={{ background: legendGradient() }}
+                  aria-hidden="true"
+                />
                 <div className="text-ink-500 mt-0.5 flex justify-between text-[10px]">
                   <span>Défavorable</span>
                   <span>Neutre</span>
                   <span>Favorable</span>
                 </div>
                 <p className="text-ink-500 mt-2 text-xs">
-                  Lecture probabiliste des 6 mêmes analyseurs que « Analyser ce point », pas une
-                  garantie.
+                  Lecture probabiliste des 6 mêmes analyseurs que « Analyser ce point »,
+                  pas une garantie.
                 </p>
                 <button
                   type="button"
                   onClick={refresh}
-                  className="text-ink-500 hover:text-ink-100 mt-2 text-xs underline"
+                  className="text-ink-500 hover:text-ink-100 mt-2 text-xs underline pointer-coarse:min-h-11"
                 >
                   Recalculer pour la zone visible
                 </button>

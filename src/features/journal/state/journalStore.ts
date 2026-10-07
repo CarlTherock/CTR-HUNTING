@@ -5,7 +5,10 @@ import {
   listObservations,
   updateObservation,
 } from '@/database/observationsRepository'
-import type { CreateObservationInput, UpdateObservationInput } from '@/database/observationsRepository'
+import type {
+  CreateObservationInput,
+  UpdateObservationInput,
+} from '@/database/observationsRepository'
 import type { Observation } from '@/types'
 
 interface JournalState {
@@ -33,7 +36,10 @@ export const useJournalStore = create<JournalState>((set) => ({
 
   create: async (input) => {
     const observation = await createObservation(input)
-    set((state) => ({ observations: [...state.observations, observation], editingId: observation.id }))
+    set((state) => ({
+      observations: [...state.observations, observation],
+      editingId: observation.id,
+    }))
     return observation
   },
 

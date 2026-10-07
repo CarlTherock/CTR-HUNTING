@@ -1,0 +1,451 @@
+{
+  "viewport": {
+    "innerWidth": 390,
+    "innerHeight": 844,
+    "visualWidth": 390,
+    "visualHeight": 844,
+    "scale": 1
+  },
+  "document": {
+    "scrollWidth": 390,
+    "scrollHeight": 925,
+    "clientWidth": 390,
+    "clientHeight": 844
+  },
+  "rects": {
+    "html": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 925
+    },
+    "body": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 925
+    },
+    "root": {
+      "x": 0,
+      "y": 47,
+      "width": 390,
+      "height": 844
+    },
+    "shell": {
+      "x": 0,
+      "y": 47,
+      "width": 390,
+      "height": 844
+    },
+    "main": {
+      "x": 0,
+      "y": 103,
+      "width": 390,
+      "height": 788
+    },
+    "mapContainer": {
+      "x": 16,
+      "y": 208,
+      "width": 358,
+      "height": 603
+    },
+    "canvas": {
+      "x": 17,
+      "y": 209,
+      "width": 356,
+      "height": 601
+    }
+  },
+  "controls": [
+    {
+      "label": "Zoom in",
+      "rect": {
+        "x": 334,
+        "y": 219,
+        "width": 29,
+        "height": 29
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 29
+    },
+    {
+      "label": "Zoom out",
+      "rect": {
+        "x": 334,
+        "y": 248,
+        "width": 29,
+        "height": 29
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 29
+    },
+    {
+      "label": "Drag to rotate map, click to reset north",
+      "rect": {
+        "x": 334,
+        "y": 277,
+        "width": 29,
+        "height": 29
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 29
+    },
+    {
+      "label": "MapLibre",
+      "rect": {
+        "x": 281.71875,
+        "y": 780,
+        "width": 53.28125,
+        "height": 15
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": false,
+      "minSide": 15
+    },
+    {
+      "label": "Close base layer panel",
+      "rect": {
+        "x": 177,
+        "y": 230,
+        "width": 14,
+        "height": 14
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 14
+    },
+    {
+      "label": "Outdoor (topo)",
+      "rect": {
+        "x": 37,
+        "y": 268,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Satellite",
+      "rect": {
+        "x": 37,
+        "y": 302,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Topographic",
+      "rect": {
+        "x": 37,
+        "y": 361,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Imagery Hybrid",
+      "rect": {
+        "x": 37,
+        "y": 395,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Imagery",
+      "rect": {
+        "x": 37,
+        "y": 429,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Terrain",
+      "rect": {
+        "x": 37,
+        "y": 463,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Hillshade",
+      "rect": {
+        "x": 37,
+        "y": 497,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Light Gray",
+      "rect": {
+        "x": 37,
+        "y": 531,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Dark Gray",
+      "rect": {
+        "x": 37,
+        "y": 565,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Navigation",
+      "rect": {
+        "x": 37,
+        "y": 599,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Trails",
+      "rect": {
+        "x": 37,
+        "y": 670,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Hydrography",
+      "rect": {
+        "x": 37,
+        "y": 704,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Contour lines",
+      "rect": {
+        "x": 37,
+        "y": 738,
+        "width": 158,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": false,
+      "minSide": 32
+    },
+    {
+      "label": "2D",
+      "rect": {
+        "x": 247.75,
+        "y": 337,
+        "width": 56.0625,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "3D",
+      "rect": {
+        "x": 303.8125,
+        "y": 337,
+        "width": 57.1875,
+        "height": 32
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 32
+    },
+    {
+      "label": "Center on my position",
+      "rect": {
+        "x": 322,
+        "y": 759,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": false,
+      "minSide": 40
+    },
+    {
+      "label": "Add waypoint",
+      "rect": {
+        "x": 322,
+        "y": 384,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 40
+    },
+    {
+      "label": "Record a GPS track",
+      "rect": {
+        "x": 322,
+        "y": 432,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 40
+    },
+    {
+      "label": "Download this area for offline use",
+      "rect": {
+        "x": 322,
+        "y": 480,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 40
+    },
+    {
+      "label": "Get elevation, slope and aspect at a point",
+      "rect": {
+        "x": 322,
+        "y": 608,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 40
+    },
+    {
+      "label": "Draw a path to see its elevation profile",
+      "rect": {
+        "x": 322,
+        "y": 672,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": true,
+      "minSide": 40
+    },
+    {
+      "label": "Toggle weather map",
+      "rect": {
+        "x": 322,
+        "y": 736,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": true,
+      "hit": false,
+      "minSide": 40
+    },
+    {
+      "label": "Toggle Forêt ouverte layers panel",
+      "rect": {
+        "x": 322,
+        "y": 1088,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": false,
+      "hit": false,
+      "minSide": 40
+    },
+    {
+      "label": "Analyze this spot",
+      "rect": {
+        "x": 322,
+        "y": 824,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": false,
+      "hit": false,
+      "minSide": 40
+    },
+    {
+      "label": "Toggle analysis heatmap",
+      "rect": {
+        "x": 322,
+        "y": 912,
+        "width": 40,
+        "height": 40
+      },
+      "rendered": true,
+      "inViewport": false,
+      "hit": false,
+      "minSide": 40
+    }
+  ]
+}

@@ -53,6 +53,6 @@ it will link to them once they exist.
 **Not verified live**: the Map page's field-mode-specific control
 hiding/enlarging (no map API key in this environment) — same caveat as
 other map-dependent features. The Field Mode toggle itself (Settings
-page) *was* verified live: it persists correctly across a real reload.
+page) _was_ verified live: it persists correctly across a real reload.
 The compass hook's DeviceOrientationEvent handling is fully unit-tested
 (mocked events), not verified against a real physical device/sensor.

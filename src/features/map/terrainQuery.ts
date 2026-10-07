@@ -17,7 +17,8 @@ export function sampleSlopeAspect(
   spacingMeters = 15,
 ): SlopeAspect | null {
   const dLat = spacingMeters / METERS_PER_DEGREE_LAT
-  const dLng = spacingMeters / (METERS_PER_DEGREE_LAT * Math.cos((coordinate.lat * Math.PI) / 180))
+  const dLng =
+    spacingMeters / (METERS_PER_DEGREE_LAT * Math.cos((coordinate.lat * Math.PI) / 180))
 
   const north = queryElevation({ lat: coordinate.lat + dLat, lng: coordinate.lng })
   const south = queryElevation({ lat: coordinate.lat - dLat, lng: coordinate.lng })
@@ -54,7 +55,10 @@ export function sampleElevationProfile(
   for (let i = 0; i <= sampleCount; i++) {
     const targetDistance = (totalLength * i) / sampleCount
     const coordinate = pointAlongPath(points, segmentLengths, targetDistance)
-    result.push({ distanceMeters: targetDistance, elevationMeters: queryElevation(coordinate) })
+    result.push({
+      distanceMeters: targetDistance,
+      elevationMeters: queryElevation(coordinate),
+    })
   }
   return result
 }

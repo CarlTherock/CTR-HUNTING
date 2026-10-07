@@ -6,7 +6,8 @@
  * added to the map as a raster overlay (`MapInstance.setRasterOverlay`),
  * never a fabricated boundary.
  */
-export type ForestLayerId = 'cadastre' | 'coupes-forestieres' | 'peuplements-ecoforestiers'
+export type ForestLayerId =
+  'cadastre' | 'coupes-forestieres' | 'peuplements-ecoforestiers'
 
 export interface ForestLayerOption {
   id: ForestLayerId

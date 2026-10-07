@@ -38,7 +38,12 @@ const FIELD: WindField = {
 }
 
 afterEach(() => {
-  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
+  useWaypointsStore.setState({
+    waypoints: [],
+    loaded: false,
+    isPlacing: false,
+    editingId: null,
+  })
   useWindStore.setState({
     status: 'idle',
     field: null,
@@ -51,7 +56,9 @@ afterEach(() => {
 
 describe('WindComparisonPanel', () => {
   it('renders nothing when no waypoint has an optimal wind preference set', () => {
-    useWaypointsStore.setState({ waypoints: [makeWaypoint({ optimalWindDirections: undefined })] })
+    useWaypointsStore.setState({
+      waypoints: [makeWaypoint({ optimalWindDirections: undefined })],
+    })
 
     const { container } = render(<WindComparisonPanel />)
 
@@ -59,11 +66,13 @@ describe('WindComparisonPanel', () => {
   })
 
   it('prompts to enable the wind layer when candidates exist but no field is loaded', () => {
-    useWaypointsStore.setState({ waypoints: [makeWaypoint({ optimalWindDirections: [0, 45] })] })
+    useWaypointsStore.setState({
+      waypoints: [makeWaypoint({ optimalWindDirections: [0, 45] })],
+    })
 
     render(<WindComparisonPanel />)
 
-    expect(screen.getByText(/Turn on the wind layer/)).toBeInTheDocument()
+    expect(screen.getByText(/Activez la couche de vent/)).toBeInTheDocument()
   })
 
   it('flags a mismatch when the live wind does not match the saved optimal directions', () => {
@@ -75,7 +84,7 @@ describe('WindComparisonPanel', () => {
     render(<WindComparisonPanel />)
 
     expect(screen.getByText('Ridge stand')).toBeInTheDocument()
-    expect(screen.getByText(/not optimal/)).toBeInTheDocument()
+    expect(screen.getByText(/direction non optimale/)).toBeInTheDocument()
   })
 
   it('flags a match when the live wind does match the saved optimal directions', () => {
@@ -86,6 +95,6 @@ describe('WindComparisonPanel', () => {
 
     render(<WindComparisonPanel />)
 
-    expect(screen.getByText(/matches optimal/)).toBeInTheDocument()
+    expect(screen.getByText(/direction optimale/)).toBeInTheDocument()
   })
 })

@@ -1,13 +1,47 @@
 import { Activity, Compass, History, LayoutGrid, Sun, Wind } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader } from '@/components/ui'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+} from '@/components/ui'
 
 const ANALYZERS = [
-  { icon: Compass, label: 'Terrain', description: 'Real slope/aspect from the map\'s elevation data.' },
-  { icon: Activity, label: 'Vegetation', description: 'Real OpenStreetMap land-cover tags near the point.' },
-  { icon: Sun, label: 'Weather', description: 'A fresh on-demand forecast for that exact spot.' },
-  { icon: Wind, label: 'Wind', description: 'A focused reading for that spot, checked against any saved optimal wind.' },
-  { icon: Sun, label: 'Time', description: 'Sun/moon/solunar data for the current moment.' },
-  { icon: History, label: 'History', description: 'Your own nearby waypoints and past GPS tracks.' },
+  {
+    icon: Compass,
+    label: 'Terrain',
+    description:
+      'Pente et exposition réelles, tirées des données d’élévation de la carte.',
+  },
+  {
+    icon: Activity,
+    label: 'Végétation',
+    description: 'Étiquettes réelles d’occupation du sol d’OpenStreetMap près du point.',
+  },
+  {
+    icon: Sun,
+    label: 'Météo',
+    description: 'Une prévision à jour, obtenue sur demande, pour cet endroit précis.',
+  },
+  {
+    icon: Wind,
+    label: 'Vent',
+    description:
+      'Une lecture ciblée pour cet endroit, comparée au vent optimal enregistré, le cas échéant.',
+  },
+  {
+    icon: Sun,
+    label: 'Moment',
+    description:
+      'Données de soleil, de lune et de période solunaire pour le moment présent.',
+  },
+  {
+    icon: History,
+    label: 'Historique',
+    description: 'Vos propres points de repère à proximité et vos traces GPS passées.',
+  },
 ]
 
 /**
@@ -21,40 +55,45 @@ export function AnalysisPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Terrain Analysis"
-        description="6 independent, explainable analyzers — open the Map page to use them."
+        title="Analyse du terrain"
+        description="6 analyseurs indépendants et explicables — ouvrez la page Carte pour les utiliser."
       />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid size={18} className="text-brand-400" aria-hidden="true" />
-            Where to find it
+            Où les trouver
           </CardTitle>
           <CardDescription>
-            Both tools live on the Map page, since they need a live elevation query at the tapped
-            point.
+            Les deux outils se trouvent sur la page Carte, car ils ont besoin d’une
+            requête d’élévation en direct au point touché.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
           <p className="text-ink-300">
-            <span className="text-ink-100 font-medium">Analyze this spot</span> — tap the activity
-            icon, then tap the map once, for a full explainable breakdown of one point.
+            <span className="text-ink-100 font-medium">Analyser cet endroit</span> —
+            touchez l’icône d’activité, puis touchez la carte une fois, pour obtenir une
+            analyse détaillée et explicable d’un point.
           </p>
           <p className="text-ink-300">
-            <span className="text-ink-100 font-medium">Analysis heatmap</span> — tap the grid icon
-            to color the whole visible area by score, switchable between the combined score or any
-            single analyzer.
+            <span className="text-ink-100 font-medium">Carte thermique d’analyse</span> —
+            touchez l’icône de grille pour colorer toute la zone visible selon le
+            pointage, en alternant entre le pointage combiné et celui d’un seul analyseur.
           </p>
         </CardContent>
       </Card>
 
       <div>
-        <h2 className="text-ink-300 mb-3 text-sm font-semibold">The 6 analyzers</h2>
+        <h2 className="text-ink-300 mb-3 text-sm font-semibold">Les 6 analyseurs</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ANALYZERS.map((analyzer) => (
             <Card key={analyzer.label} className="flex items-start gap-3 p-3">
-              <analyzer.icon size={18} className="text-brand-400 mt-0.5 shrink-0" aria-hidden="true" />
+              <analyzer.icon
+                size={18}
+                className="text-brand-400 mt-0.5 shrink-0"
+                aria-hidden="true"
+              />
               <div>
                 <p className="text-ink-100 text-sm font-medium">{analyzer.label}</p>
                 <p className="text-ink-500 text-xs">{analyzer.description}</p>
@@ -65,8 +104,9 @@ export function AnalysisPage() {
       </div>
 
       <p className="text-ink-500 text-xs">
-        Every score is a probabilistic read from real data, never presented as certainty — expand
-        any analyzer's factors to see exactly what produced it.
+        Chaque pointage est une estimation probabiliste fondée sur des données réelles,
+        jamais présentée comme une certitude — déployez les facteurs d’un analyseur pour
+        voir exactement ce qui l’a produit.
       </p>
     </div>
   )

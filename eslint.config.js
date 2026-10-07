@@ -32,5 +32,36 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
     },
   },
+  {
+    // UI never talks to the local database directly: components and pages
+    // go through feature hooks/stores (`features/*/state`), which own the
+    // repositories in `src/database`.
+    files: [
+      'src/features/**/{components,pages}/**/*.{ts,tsx}',
+      'src/app/**/*.{ts,tsx}',
+      'src/components/**/*.{ts,tsx}',
+    ],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/database', '@/database/*'],
+              message:
+                'UI must not import repositories directly — use a feature hook/store (features/*/state).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Playwright fixtures receive a callback named `use`, which the React
+    // hooks rule mistakes for React's `use` hook.
+    files: ['e2e/**/*.ts'],
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
+  },
   prettierConfig,
 )

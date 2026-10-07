@@ -15,7 +15,9 @@ vi.mock('@/services/weather', () => ({
 
 const fetchVegetationGrid = vi.fn()
 vi.mock('@/services/vegetation', () => ({
-  vegetationProvider: { fetchVegetationGrid: (...args: unknown[]) => fetchVegetationGrid(...args) },
+  vegetationProvider: {
+    fetchVegetationGrid: (...args: unknown[]) => fetchVegetationGrid(...args),
+  },
 }))
 
 const BOUNDS = { west: -71.3, south: 46.7, east: -71.1, north: 46.9 }
@@ -67,9 +69,28 @@ function mockVegetation(sampleCount: number) {
 
 afterEach(() => {
   vi.clearAllMocks()
-  useHeatmapStore.setState({ status: 'idle', enabled: false, cells: [], errorReason: null, selectedView: 'combined' })
-  useWaypointsStore.setState({ waypoints: [], loaded: false, isPlacing: false, editingId: null })
-  useTracksStore.setState({ tracks: [], loaded: false, status: 'idle', recordingId: null, recordingStartedAt: null, points: [], distanceMeters: 0 })
+  useHeatmapStore.setState({
+    status: 'idle',
+    enabled: false,
+    cells: [],
+    errorReason: null,
+    selectedView: 'combined',
+  })
+  useWaypointsStore.setState({
+    waypoints: [],
+    loaded: false,
+    isPlacing: false,
+    editingId: null,
+  })
+  useTracksStore.setState({
+    tracks: [],
+    loaded: false,
+    status: 'idle',
+    recordingId: null,
+    recordingStartedAt: null,
+    points: [],
+    distanceMeters: 0,
+  })
 })
 
 describe('heatmapStore', () => {
@@ -129,7 +150,9 @@ describe('heatmapStore', () => {
     const state = useHeatmapStore.getState()
     expect(state.status).toBe('ready')
     expect(state.unavailableSources).toEqual(['Végétation'])
-    const vegetation = state.cells[0].combined.results.find((r) => r.analyzer === 'vegetation')
+    const vegetation = state.cells[0].combined.results.find(
+      (r) => r.analyzer === 'vegetation',
+    )
     expect(vegetation?.score).toBeNull()
     expect(state.computedBounds).toEqual(BOUNDS)
   })
@@ -164,7 +187,9 @@ describe('heatmapStore', () => {
 
     await useHeatmapStore.getState().compute(BOUNDS, queryElevation)
 
-    const wind = useHeatmapStore.getState().cells[0].combined.results.find((r) => r.analyzer === 'wind')
+    const wind = useHeatmapStore
+      .getState()
+      .cells[0].combined.results.find((r) => r.analyzer === 'wind')
     expect(wind?.score).not.toBeNull()
     expect(JSON.stringify(wind?.factors)).toContain('12')
     expect(JSON.stringify(wind?.factors)).not.toContain('99')

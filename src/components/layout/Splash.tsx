@@ -50,10 +50,10 @@ export function Splash({ onDone }: SplashProps) {
         className="text-brand-400 [animation:splash-icon_0.7s_ease-out_forwards]"
       />
       <div className="flex flex-col items-center gap-1.5">
-        <p className="text-ink-100 text-2xl font-bold tracking-[0.2em] [animation:splash-text_0.5s_ease-out_0.3s_both]">
+        <p className="text-ink-100 [animation:splash-text_0.5s_ease-out_0.3s_both] text-2xl font-bold tracking-[0.2em]">
           CTR HUNTING
         </p>
-        <p className="text-ink-500 text-xs tracking-[0.15em] uppercase [animation:splash-text_0.5s_ease-out_0.48s_both]">
+        <p className="text-ink-500 [animation:splash-text_0.5s_ease-out_0.48s_both] text-xs tracking-[0.15em] uppercase">
           Field Terrain Intelligence
         </p>
       </div>

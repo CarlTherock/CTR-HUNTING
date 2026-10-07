@@ -53,7 +53,7 @@ wired from `MapPage`:
 - **Real elevation relief** — `ViewModeToggle`'s 3D button now calls
   `setTerrainEnabled(true, exaggeration)` (and `false` back in 2D), with
   an exaggeration stepper (1×–10×, whole-number steps,
-  `mapStore.terrainExaggeration`) shown only in 3D — laid out *beside*
+  `mapStore.terrainExaggeration`) shown only in 3D — laid out _beside_
   the 2D/3D buttons in one row, not stacked below them (stacking used to
   grow the control down into `WaypointControl`'s button in 3D mode). The
   DEM source is AWS's public **Terrarium** elevation
@@ -68,7 +68,7 @@ wired from `MapPage`:
 - **Orientation** — the existing `NavigationControl` (compass + pan)
   already handles rotate/tilt gestures; `ViewModeToggle`'s "2D" button
   doubles as a bearing-reset (`onChange(0, 0)`). The 3D preset pitch is
-  80° (not MapLibre's 60° *default* `maxPitch`, which was silently
+  80° (not MapLibre's 60° _default_ `maxPitch`, which was silently
   capping how far users could manually drag-tilt too) — `maxPitch: 85` is
   now set explicitly on the map, the real ceiling MapLibre's own docs
   describe for the `pitch` option before flagging values as
@@ -86,7 +86,7 @@ wired from `MapPage`:
   inline SVG line chart — no charting library added just for this; that's
   a Phase 10 (Advanced Charts) decision, not this slice's to make. Each
   tapped point is drawn on the map immediately (`MapInstance
-  .setMeasurePath()`, its own dot+line source — independent of
+.setMeasurePath()`, its own dot+line source — independent of
   `setTrackPreview()` so a GPS recording and a measurement never
   interfere with each other), and the connecting line/dots stay visible
   after "Done" too, until the chart panel is discarded.
@@ -99,7 +99,7 @@ happened to be in 3D view. Root cause, confirmed directly in MapLibre's
 own type definitions: `queryTerrainElevation` "Returns null if terrain
 is not enabled" — and terrain was only ever set (`map.setTerrain(...)`)
 while the 3D toggle was on; in the default 2D view it was `null`. Fixed
-by keeping terrain *always* set (real scale, exaggeration 1, when not in
+by keeping terrain _always_ set (real scale, exaggeration 1, when not in
 3D) — with pitch 0 (looking straight down), true-scale terrain
 displacement isn't visually different from no terrain, so 2D still
 looks flat, but elevation queries now work everywhere. A second bug came

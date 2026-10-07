@@ -6,6 +6,8 @@ import {
   updateOfflineArea,
 } from '@/database/offlineAreasRepository'
 import { deleteTiles } from '@/offline/tileCache'
+import { emptyDownloadSummary } from '@/services/map/downloadLedger'
+import { deriveAreaStatus } from '../areaStatus'
 import type { DownloadAreaProgress, MapInstance } from '@/services/map'
 import { tileCountForBounds } from '@/utils/tiles'
 import type { LngLatBounds } from '@/utils/tiles'
@@ -28,6 +30,9 @@ interface OfflineState {
   selectedZoom: number | null
   activeAreaId: string | null
   downloadProgress: DownloadAreaProgress | null
+  /** Area whose download run just ended — drives the result banner on the
+   * map until the user dismisses it. */
+  lastResultAreaId: string | null
 
   load: () => Promise<void>
   startSelecting: (bounds: LngLatBounds, zoom: number) => void
@@ -39,17 +44,32 @@ interface OfflineState {
    * first saved. Overwrites that area's record in place rather than
    * creating a new one. */
   refreshArea: (map: MapInstance, area: OfflineArea) => Promise<void>
+  /** Resumes an incomplete / interrupted / failed area on the same record:
+   * tiles already cached are reused, only missing ones are re-fetched. */
+  retryArea: (map: MapInstance, area: OfflineArea) => Promise<void>
+  /** Retry requested from Réglages (no map there): consumed by the Carte page
+   * once its map exists, which then calls `retryArea` — the same function. */
+  pendingRetryAreaId: string | null
+  requestRetry: (areaId: string) => void
+  clearPendingRetry: () => void
   cancelDownload: () => void
+  dismissResult: () => void
   deleteArea: (id: string) => Promise<void>
 }
 
 let nextDefaultNumber = 1
 let activeAbortController: AbortController | null = null
+/** Minimum delay between two progress writes to IndexedDB. */
+const PERSIST_INTERVAL_MS = 500
+
+const union = (a: string[], b: string[]): string[] => [...new Set([...a, ...b])]
 
 export const useOfflineStore = create<OfflineState>((set, get) => {
-  /** Shared by `startDownload` and `refreshArea` — both just run the same
-   * download-and-persist sequence against an already-created `area`
-   * record, differing only in how that record came to exist. */
+  /** Shared by `startDownload`, `refreshArea` and `retryArea` — all run the
+   * same download-and-persist sequence against an already-created `area`
+   * record. Tiles already in the cache are reused (cache-first), so a retry
+   * only re-fetches what is missing; `tileUrls` are merged, never replaced,
+   * and nothing already cached is ever deleted on cancel/failure. */
   async function runDownload(
     map: MapInstance,
     area: OfflineArea,
@@ -57,23 +77,49 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
     minZoom: number,
     maxZoom: number,
   ): Promise<void> {
+    if (activeAbortController) return // one download at a time
     const controller = new AbortController()
     activeAbortController = controller
+
+    const baselineUrls = area.tileUrls
+    const baselineBytes = area.bytesDownloaded
+    const attempts = (area.attempts ?? 0) + 1
+    const lastAttemptAt = new Date().toISOString()
+    const patchArea = (patch: Partial<OfflineArea>) =>
+      set((state) => ({
+        areas: state.areas.map((a) => (a.id === area.id ? { ...a, ...patch } : a)),
+      }))
+
+    const initial: DownloadAreaProgress = {
+      tilesDownloaded: 0,
+      bytesDownloaded: 0,
+      tileUrls: [],
+      summary: emptyDownloadSummary(),
+    }
     set({
       mode: 'downloading',
       activeAreaId: area.id,
-      downloadProgress: { tilesDownloaded: 0, bytesDownloaded: 0, tileUrls: [] },
+      downloadProgress: initial,
+      lastResultAreaId: null,
+    })
+    patchArea({ status: 'downloading', attempts, lastAttemptAt })
+    await updateOfflineArea(area.id, {
+      status: 'downloading',
+      attempts,
+      lastAttemptAt,
+      lastError: undefined,
     })
 
-    const persistProgress = (progress: DownloadAreaProgress, status: OfflineAreaStatus) =>
-      updateOfflineArea(area.id, {
-        status,
-        tilesDownloaded: progress.tilesDownloaded,
-        bytesDownloaded: progress.bytesDownloaded,
-        tileUrls: progress.tileUrls,
-        ...(status === 'complete' ? { completedAt: new Date().toISOString() } : {}),
-      })
+    /** What gets stored for a run's progress: this run's numbers on top of
+     * what earlier runs already cached. */
+    const merged = (progress: DownloadAreaProgress) => ({
+      tilesDownloaded: progress.tilesDownloaded,
+      bytesDownloaded: baselineBytes + progress.bytesDownloaded,
+      tileUrls: union(baselineUrls, progress.tileUrls),
+      summary: progress.summary,
+    })
 
+    let lastPersist = 0
     try {
       const result = await map.downloadArea(
         bounds,
@@ -81,36 +127,46 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
         maxZoom,
         (progress) => {
           set({ downloadProgress: progress })
-          void updateOfflineArea(area.id, {
-            tilesDownloaded: progress.tilesDownloaded,
-            bytesDownloaded: progress.bytesDownloaded,
-            tileUrls: progress.tileUrls,
-          })
+          const now = Date.now()
+          if (now - lastPersist < PERSIST_INTERVAL_MS) return
+          lastPersist = now
+          void updateOfflineArea(area.id, merged(progress))
         },
         controller.signal,
       )
-      await persistProgress(result, 'complete')
-      set((state) => ({
+      const status = deriveAreaStatus(result.summary)
+      const patch: Partial<OfflineArea> = {
+        ...merged(result),
+        status,
+        ...(status === 'complete' ? { completedAt: new Date().toISOString() } : {}),
+      }
+      await updateOfflineArea(area.id, patch)
+      set({
         mode: 'idle',
         activeAreaId: null,
         downloadProgress: null,
-        areas: state.areas.map((a) =>
-          a.id === area.id
-            ? { ...a, status: 'complete', ...result, completedAt: new Date().toISOString() }
-            : a,
-        ),
-      }))
+        lastResultAreaId: area.id,
+      })
+      patchArea(patch)
     } catch (err) {
       const isCancelled = err instanceof DOMException && err.name === 'AbortError'
-      const progress = get().downloadProgress ?? { tilesDownloaded: 0, bytesDownloaded: 0, tileUrls: [] }
-      const status: OfflineAreaStatus = isCancelled ? 'cancelled' : 'error'
-      await persistProgress(progress, status)
-      set((state) => ({
+      const progress = get().downloadProgress ?? initial
+      const status: OfflineAreaStatus = isCancelled ? 'interrupted' : 'error'
+      const patch: Partial<OfflineArea> = {
+        ...merged(progress),
+        status,
+        ...(isCancelled
+          ? {}
+          : { lastError: err instanceof Error ? err.message : String(err) }),
+      }
+      await updateOfflineArea(area.id, patch)
+      set({
         mode: 'idle',
         activeAreaId: null,
         downloadProgress: null,
-        areas: state.areas.map((a) => (a.id === area.id ? { ...a, status, ...progress } : a)),
-      }))
+        lastResultAreaId: area.id,
+      })
+      patchArea(patch)
       // Cancellation is a deliberate user action, not a failure — only
       // real errors should surface (e.g. to an error boundary/toast).
       if (!isCancelled) throw err
@@ -128,17 +184,33 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
     selectedZoom: null,
     activeAreaId: null,
     downloadProgress: null,
+    lastResultAreaId: null,
 
     load: async () => {
-      const areas = await listOfflineAreas()
+      let areas = await listOfflineAreas()
       nextDefaultNumber = areas.length + 1
+      // A record still "downloading" while no download runs here means the
+      // app was closed or killed mid-download: say so, and persist it.
+      if (!activeAbortController) {
+        const stuck = areas.filter((a) => a.status === 'downloading')
+        if (stuck.length > 0) {
+          await Promise.all(
+            stuck.map((a) => updateOfflineArea(a.id, { status: 'interrupted' })),
+          )
+          areas = areas.map((a) =>
+            a.status === 'downloading' ? { ...a, status: 'interrupted' as const } : a,
+          )
+        }
+      }
       set({ areas, loaded: true })
     },
 
     startSelecting: (bounds, zoom) =>
       set({ mode: 'selecting', selectedBounds: bounds, selectedZoom: zoom }),
-    cancelSelecting: () => set({ mode: 'idle', selectedBounds: null, selectedZoom: null }),
-    setExtraZoomLevels: (levels) => set({ extraZoomLevels: Math.max(0, Math.min(3, levels)) }),
+    cancelSelecting: () =>
+      set({ mode: 'idle', selectedBounds: null, selectedZoom: null }),
+    setExtraZoomLevels: (levels) =>
+      set({ extraZoomLevels: Math.max(0, Math.min(3, levels)) }),
 
     startDownload: async (map, baseLayer) => {
       const { selectedBounds: bounds, selectedZoom } = get()
@@ -149,22 +221,39 @@ export const useOfflineStore = create<OfflineState>((set, get) => {
       const tileCount = tileCountForBounds(bounds, minZoom, maxZoom)
 
       const area = await createOfflineArea({
-        name: `Offline area ${nextDefaultNumber++}`,
+        name: `Zone hors ligne ${nextDefaultNumber++}`,
         bounds,
         minZoom,
         maxZoom,
         baseLayer,
         tileCount,
       })
-      set((state) => ({ areas: [...state.areas, area], selectedBounds: null, selectedZoom: null }))
+      set((state) => ({
+        areas: [...state.areas, area],
+        selectedBounds: null,
+        selectedZoom: null,
+      }))
       await runDownload(map, area, bounds, minZoom, maxZoom)
     },
 
     refreshArea: async (map, area) => {
-      await runDownload(map, area, area.bounds, area.minZoom, area.maxZoom)
+      const current = get().areas.find((a) => a.id === area.id) ?? area
+      await runDownload(map, current, current.bounds, current.minZoom, current.maxZoom)
     },
 
+    retryArea: async (map, area) => {
+      // Always from the stored record: the caller's copy may be stale.
+      const current = get().areas.find((a) => a.id === area.id) ?? area
+      await runDownload(map, current, current.bounds, current.minZoom, current.maxZoom)
+    },
+
+    pendingRetryAreaId: null,
+    requestRetry: (areaId) => set({ pendingRetryAreaId: areaId }),
+    clearPendingRetry: () => set({ pendingRetryAreaId: null }),
+
     cancelDownload: () => activeAbortController?.abort(),
+
+    dismissResult: () => set({ lastResultAreaId: null }),
 
     deleteArea: async (id) => {
       const area = get().areas.find((a) => a.id === id)
