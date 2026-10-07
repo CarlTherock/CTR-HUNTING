@@ -53,3 +53,57 @@ contrôles visibles et non masqués, cibles tactiles ≥ 44 px (écrans tactiles
 
 `E2E_SCREENSHOTS=1 npm run e2e -- e2e/layout.spec.ts` réécrit
 `docs/validation/apres-*.png`.
+
+## Hors ligne : quatre choses distinctes
+
+Une simple première visite **ne prouve pas** qu'une zone est téléchargée.
+Quatre niveaux différents, chacun avec sa preuve :
+
+| Niveau | Ce que c'est | Comment il arrive sur l'appareil | Ce que prouve un test automatisé | Ce qui n'est PAS prouvé |
+| --- | --- | --- | --- | --- |
+| 1. Shell | HTML, JS, CSS de l'app | Service worker (précache) à la 1re visite | `offline.spec.ts` étape 1 : rechargement sans réseau | Comportement du service worker sous Safari/iOS |
+| 2. Moteur | Worker MapLibre (`maplibre-gl-worker.mjs`) | Précache du service worker | `offline.spec.ts` étape 2 : worker présent dans le cache, aucune requête en échec | Idem, et WebGL sur l'iPhone réel |
+| 3. Styles et ressources | JSON de style, sprites, glyphes **du fond déjà affiché** | Mis en cache **au fil de l'usage en ligne** (`ctrfresh://`, `ctrstatic://`) | `offline.spec.ts` étape 3 avec ressources simulées | Que les vraies ressources MapTiler/Esri se mettent en cache (formats, en-têtes, quotas réels) |
+| 4. Tuiles de la zone préparée | Tuiles raster du fond actif, pour la zone affichée et les niveaux de zoom choisis | **Uniquement** via « Télécharger cette zone hors ligne » (outil de la carte) | Logique de téléchargement et de cache testée en unitaire | **Aucun E2E ne télécharge une vraie zone** : les tuiles E2E sont des images unies fabriquées |
+
+Conséquences :
+
+- Après une première visite seule, on a les niveaux 1 et 2, et du niveau 3
+  seulement pour ce qui a été affiché. **Hors de la zone regardée, ou à un autre
+  zoom, la carte sera vide hors ligne.**
+- Seul le niveau 4 garantit des tuiles sur une zone. Il est propre à **un fond
+  de carte** (celui actif au moment du téléchargement) : une zone téléchargée en
+  « Imagerie hybride » n'existe pas pour « Satellite ».
+- Les couches superposées (météo, radar, forêt, cadastre) ne sont pas dans le
+  téléchargement de zone.
+
+### Tester une vraie zone hors ligne sur l'iPhone
+
+À faire sur le site installé (Safari → Partager → « Sur l'écran d'accueil »),
+**en Wi-Fi**, avec les vraies clés configurées sur le déploiement testé.
+
+1. Ouvrir l'app installée en ligne. Laisser la carte s'afficher en « Imagerie hybride ».
+2. Se placer sur la zone voulue et choisir le zoom de départ (zoom plus large = plus de tuiles).
+3. Outils → « Télécharger cette zone hors ligne ». Régler les « niveaux de zoom supplémentaires » (0 à 3). Noter le nombre de tuiles annoncé.
+4. « Lancer le téléchargement » et attendre la fin **sans quitter l'app** (iOS suspend les pages en arrière-plan). Le compteur de tuiles doit s'arrêter ; aucun message d'échec.
+5. Réglages → zones hors ligne : vérifier la zone, le nombre de tuiles, la taille et la plage de zoom, sans mention « Échec » ni « Annulé ».
+6. Fermer l'app complètement (balayer pour la fermer), puis **couper le réseau** : mode avion, Wi-Fi coupé.
+7. Rouvrir l'app installée : la carte doit s'afficher dans la zone, aux zooms téléchargés, avec le bandeau « Hors ligne ».
+8. Vérifier aussi : zoomer **au-delà** du zoom maximal téléchargé et **sortir** de la zone → vide attendu. Ce n'est pas un bogue, c'est la limite du téléchargement.
+9. Changer de fond (Satellite) : il doit rester vide hors ligne si ce fond n'a pas été téléchargé non plus.
+10. Remettre le réseau, rouvrir : la carte se recharge normalement.
+
+Limites iOS à connaître : Safari peut vider le stockage d'un site non installé
+après une période d'inactivité ; une app installée est mieux protégée mais pas
+garantie. Les points de repère et les traces sont dans IndexedDB, non dans le
+cache des tuiles.
+
+### Limites des tests utilisant des services simulés
+
+- Les E2E répondent à la place de MapTiler et d'Esri avec des fixtures. Ils
+  prouvent la logique de cache de l'application, pas la disponibilité réelle,
+  les clés, les quotas ni les conditions d'utilisation des fournisseurs.
+- Aucun test n'a téléchargé de vraie zone, ni vérifié le volume réel de
+  stockage, ni testé un manque d'espace.
+- Chromium seulement : le comportement du cache et du service worker sous
+  WebKit/iOS n'est pas couvert.
