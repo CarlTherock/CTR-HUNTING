@@ -4,6 +4,19 @@ Ce document dit honnêtement ce que prouvent les tests automatisés de la
 branche `fix/audit-mobile-offline-gps`. Aucun test ci-dessous n'est une
 validation sur un vrai iPhone.
 
+## Versions de Node réellement utilisées
+
+- **Première série de validation** (rapport initial de la PR) : Node **22.22.0**,
+  alors que le projet cible Node 24 (`.nvmrc`). Le rapport l'a signalé trop tard.
+- **Série finale** (typecheck, lint, 520 tests unitaires, build, `npm audit`, 21
+  E2E) : Node **24.21.0**, exécutée localement dans l'environnement de travail.
+- **GitHub Actions** : le workflow lit `.nvmrc` (24). Les exécutions du commit
+  `12886b5` sont « success » (jobs `validate` et `e2e`), constaté par l'API
+  GitHub. Les journaux ne sont pas téléchargeables depuis l'environnement de
+  travail : la version exacte de Node utilisée par Actions n'a donc **pas** été
+  lue. Le résultat de la CI sur les commits ajoutés ensuite est à relire dans
+  l'onglet « Checks » de la PR.
+
 ## Ce qui est exécuté
 
 | Niveau                 | Outil                                                          | Environnement           |
@@ -59,12 +72,12 @@ contrôles visibles et non masqués, cibles tactiles ≥ 44 px (écrans tactiles
 Une simple première visite **ne prouve pas** qu'une zone est téléchargée.
 Quatre niveaux différents, chacun avec sa preuve :
 
-| Niveau | Ce que c'est | Comment il arrive sur l'appareil | Ce que prouve un test automatisé | Ce qui n'est PAS prouvé |
-| --- | --- | --- | --- | --- |
-| 1. Shell | HTML, JS, CSS de l'app | Service worker (précache) à la 1re visite | `offline.spec.ts` étape 1 : rechargement sans réseau | Comportement du service worker sous Safari/iOS |
-| 2. Moteur | Worker MapLibre (`maplibre-gl-worker.mjs`) | Précache du service worker | `offline.spec.ts` étape 2 : worker présent dans le cache, aucune requête en échec | Idem, et WebGL sur l'iPhone réel |
-| 3. Styles et ressources | JSON de style, sprites, glyphes **du fond déjà affiché** | Mis en cache **au fil de l'usage en ligne** (`ctrfresh://`, `ctrstatic://`) | `offline.spec.ts` étape 3 avec ressources simulées | Que les vraies ressources MapTiler/Esri se mettent en cache (formats, en-têtes, quotas réels) |
-| 4. Tuiles de la zone préparée | Tuiles raster du fond actif, pour la zone affichée et les niveaux de zoom choisis | **Uniquement** via « Télécharger cette zone hors ligne » (outil de la carte) | Logique de téléchargement et de cache testée en unitaire | **Aucun E2E ne télécharge une vraie zone** : les tuiles E2E sont des images unies fabriquées |
+| Niveau                        | Ce que c'est                                                                      | Comment il arrive sur l'appareil                                             | Ce que prouve un test automatisé                                                  | Ce qui n'est PAS prouvé                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1. Shell                      | HTML, JS, CSS de l'app                                                            | Service worker (précache) à la 1re visite                                    | `offline.spec.ts` étape 1 : rechargement sans réseau                              | Comportement du service worker sous Safari/iOS                                                |
+| 2. Moteur                     | Worker MapLibre (`maplibre-gl-worker.mjs`)                                        | Précache du service worker                                                   | `offline.spec.ts` étape 2 : worker présent dans le cache, aucune requête en échec | Idem, et WebGL sur l'iPhone réel                                                              |
+| 3. Styles et ressources       | JSON de style, sprites, glyphes **du fond déjà affiché**                          | Mis en cache **au fil de l'usage en ligne** (`ctrfresh://`, `ctrstatic://`)  | `offline.spec.ts` étape 3 avec ressources simulées                                | Que les vraies ressources MapTiler/Esri se mettent en cache (formats, en-têtes, quotas réels) |
+| 4. Tuiles de la zone préparée | Tuiles raster du fond actif, pour la zone affichée et les niveaux de zoom choisis | **Uniquement** via « Télécharger cette zone hors ligne » (outil de la carte) | Logique de téléchargement et de cache testée en unitaire                          | **Aucun E2E ne télécharge une vraie zone** : les tuiles E2E sont des images unies fabriquées  |
 
 Conséquences :
 
