@@ -316,12 +316,12 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
         </div>
       ) : null}
 
-      <div className="flex items-stretch gap-2">
+      <div className="flex flex-wrap items-stretch gap-2">
         <button
           type="button"
           onClick={() => void press('blood')}
           disabled={busy || session.status === 'finished'}
-          className="flex min-h-14 flex-1 items-center justify-center gap-2 rounded-lg bg-[#dc2626] px-4 text-lg font-bold text-white outline outline-2 outline-white/80 disabled:opacity-60"
+          className="flex min-h-14 min-w-full flex-1 items-center justify-center gap-2 rounded-lg bg-[#dc2626] px-4 text-lg font-bold whitespace-nowrap text-white outline outline-2 outline-white/80 disabled:opacity-60 min-[480px]:min-w-[8rem]"
         >
           <Droplets size={22} aria-hidden="true" />+ Sang
         </button>
