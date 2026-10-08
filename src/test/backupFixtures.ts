@@ -8,7 +8,9 @@ import Dexie from 'dexie'
  */
 let counter = 0
 
-export function createTestDatabase(options: { territories?: boolean } = {}): Dexie {
+export function createTestDatabase(
+  options: { territories?: boolean; bloodSessions?: boolean } = {},
+): Dexie {
   const database = new Dexie(`backup-test-${Date.now()}-${counter++}`)
   database.version(1).stores({
     waypoints: 'id, category, createdAt',
@@ -26,6 +28,13 @@ export function createTestDatabase(options: { territories?: boolean } = {}): Dex
       waypoints: 'id, category, createdAt, territoryId',
       tracks: 'id, startedAt, territoryId',
       observations: 'id, waypointId, timestamp, territoryId',
+    })
+  }
+  if (options.territories !== false && options.bloodSessions !== false) {
+    database.version(6).stores({
+      bloodSessions: 'id, status, createdAt, territoryId',
+      waypoints: 'id, category, createdAt, territoryId, sessionId',
+      tracks: 'id, startedAt, territoryId, sessionId',
     })
   }
   return database

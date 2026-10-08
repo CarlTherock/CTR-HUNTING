@@ -4,6 +4,7 @@ import {
   createBloodSession,
   deleteBloodSession,
   listBloodSessions,
+  sessionContentCounts,
   updateBloodSession,
 } from '@/database/bloodSessionsRepository'
 import { listPhotosForWaypoint } from '@/database/photosRepository'
@@ -72,6 +73,10 @@ interface BloodState {
   rename: (id: string, name: string) => Promise<boolean>
   setShowLinks: (value: boolean) => void
   deleteSession: (id: string, deleteContent: boolean) => Promise<void>
+  /** What a deletion would affect (points, photos, traces), to show first. */
+  contentCounts: (
+    id: string,
+  ) => Promise<{ waypoints: number; photos: number; tracks: number }>
 }
 
 export const useBloodStore = create<BloodState>((set, get) => {
@@ -287,6 +292,8 @@ export const useBloodStore = create<BloodState>((set, get) => {
     },
 
     setShowLinks: (value) => set({ showLinks: value }),
+
+    contentCounts: (id) => sessionContentCounts(id),
 
     deleteSession: async (id, deleteContent) => {
       const session = get().sessions.find((s) => s.id === id)

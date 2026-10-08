@@ -4,6 +4,7 @@ export const HELP_TOPICS: readonly (readonly [string, string])[] = [
   ['installer', 'Installer l’application'],
   ['waypoints', 'Points de repère'],
   ['traces', 'Traces'],
+  ['recherche-de-sang', 'Recherche de sang'],
   ['guidage', 'Aller à et boussole'],
   ['hors-ligne', 'Cartes hors ligne'],
   ['territoires', 'Territoires'],

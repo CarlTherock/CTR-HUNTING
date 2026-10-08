@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test code asserts presence right before use */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/database/db'
 import { useTracksStore } from './tracksStore'

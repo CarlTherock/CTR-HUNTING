@@ -12,6 +12,7 @@ import { useTerritoriesStore } from '@/features/territories/state/territoriesSto
 import { CATEGORY_ICON, CATEGORY_LABEL, DEFAULT_WAYPOINT_COLOR } from '../categories'
 import { WaypointEditPanel } from '../components/WaypointEditPanel'
 import { WindComparisonPanel } from '../components/WindComparisonPanel'
+import { BloodSessionList } from '@/features/blood/components/BloodSessionList'
 import { TrackList } from '../components/TrackList'
 import { useTracksStore } from '../state/tracksStore'
 import { useWaypointsStore } from '../state/waypointsStore'
@@ -185,6 +186,8 @@ export function WaypointsPage() {
           </div>
         )}
       </div>
+
+      <BloodSessionList />
 
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">

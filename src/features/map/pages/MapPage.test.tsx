@@ -37,6 +37,7 @@ const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setTraces = vi.fn()
+const setClueLinks = vi.fn()
 const setMeasurePath = vi.fn()
 const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
@@ -65,6 +66,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSharedPoint,
     setTrackPreview,
     setTraces,
+    setClueLinks,
     setMeasurePath,
     setMeasureShape,
     setGuidanceLine,
@@ -1055,6 +1057,34 @@ describe('MapPage', () => {
     expect(lastTraces[0].points).toEqual([
       expect.objectContaining({ lat: 46.8, lng: -71.2 }),
     ])
+  })
+
+  it('starts a blood search: red track on the map, panel with + Sang, a Sang point appears', async () => {
+    const user = userEvent.setup()
+    mockGpsReading = {
+      status: 'available',
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5, timestampMs: FIX_TIME_MS },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    render(<MapPage />)
+
+    await useTool(user, 'Démarrer une recherche de sang')
+    expect(await screen.findByTestId('blood-panel')).toBeInTheDocument()
+    await vi.waitFor(() => {
+      const last = setTraces.mock.calls.at(-1)?.[0] as { kind: string; color: string }[]
+      expect(last[0]).toMatchObject({ kind: 'blood', color: '#dc2626' })
+    })
+    // The generic recorder banner does not duplicate the blood panel.
+    expect(screen.queryByTestId('recorder-kind')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /\+ Sang/ }))
+    await vi.waitFor(() => {
+      const names = (setWaypoints.mock.calls.at(-1)?.[0] as { name: string }[]).map(
+        (w) => w.name,
+      )
+      expect(names).toContain('Sang 01')
+    })
   })
 
   it('clears the map track preview once recording stops', async () => {

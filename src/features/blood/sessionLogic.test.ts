@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test code asserts presence right before use */
 import { describe, expect, it } from 'vitest'
 import type { Waypoint } from '@/types'
 import {
