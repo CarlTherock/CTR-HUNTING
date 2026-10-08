@@ -115,4 +115,41 @@ describe('backup of DeerTracker entries', () => {
     expect(restored).not.toHaveProperty('deer')
     expect(validateRecord('observations', { ...moose, species: 'wolf' }).ok).toBe(false)
   })
+
+  it('keeps a shot record from « Après le tir » untouched and rejects a malformed one', async () => {
+    const shot = {
+      id: 'o-shot',
+      coordinate: { lat: 46.8, lng: -71.2, accuracyMeters: 5 },
+      timestamp: NOW,
+      notes: 'vent de face',
+      positionOrigin: 'gps',
+      photoIds: ['p1'],
+      shot: {
+        species: 'deer',
+        reaction: 'a sursauté',
+        fleeDirectionDegrees: 90,
+        estimatedAnimalPosition: { lat: 46.81, lng: -71.21 },
+        lastConfirmedPosition: { lat: 46.802, lng: -71.201 },
+        searchSessionId: 's1',
+      },
+    }
+    const source = newDb()
+    await source.table('observations').bulkAdd([shot])
+    const { blob } = await createBackup({ database: source })
+    const target = newDb()
+    const plan = await planRestore(await readBackup(blob), { database: target })
+    await applyRestore(plan, { database: target, mode: 'keep-local' })
+    expect(await target.table('observations').get('o-shot')).toEqual(shot)
+
+    expect(validateRecord('observations', shot).ok).toBe(true)
+    expect(
+      validateRecord('observations', { ...shot, shot: { species: 'wolf' } }).ok,
+    ).toBe(false)
+    expect(
+      validateRecord('observations', {
+        ...shot,
+        shot: { species: 'deer', estimatedAnimalPosition: { lat: 'x' } },
+      }).ok,
+    ).toBe(false)
+  })
 })

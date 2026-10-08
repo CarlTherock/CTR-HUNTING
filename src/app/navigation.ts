@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
+  Crosshair,
   Bot,
   Database,
   DatabaseBackup,
@@ -161,6 +162,16 @@ export const navItems: NavItem[] = [
     label: 'Journal et observations',
     description: 'Notes, photos, position et conditions réelles.',
     icon: NotebookPen,
+    phase: null,
+    group: 'data',
+    hub: 'data',
+  },
+  {
+    path: '/after-shot',
+    label: 'Après le tir',
+    description:
+      'Cerf ou orignal : consigner le tir, les indices, reprendre la recherche.',
+    icon: Crosshair,
     phase: null,
     group: 'data',
     hub: 'data',

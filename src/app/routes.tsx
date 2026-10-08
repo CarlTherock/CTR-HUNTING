@@ -47,6 +47,12 @@ export const router = createBrowserRouter(
           }),
         },
         {
+          path: 'after-shot',
+          lazy: async () => ({
+            Component: (await import('@/features/aftershot/pages/AfterShotPage')).default,
+          }),
+        },
+        {
           path: 'project',
           lazy: async () => ({
             Component: (await import('@/features/project/pages/ProjectPage')).default,
