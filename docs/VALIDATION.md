@@ -237,3 +237,12 @@ un presse-papiers fabriqués.
 12. Trace récupérable après fermeture complète de l'app.
 13. Zone téléchargée puis rechargement à froid en mode avion (procédure plus haut).
 14. Guidage hors ligne vers un waypoint local en mode avion.
+
+## Limite connue du test de restauration (E2E)
+
+Dans `e2e/backup.spec.ts`, `setInputFiles` de Playwright n'a pas déclenché le
+`onChange` de l'entrée de fichier masquée (cause non établie ; l'événement
+`change` envoyé à la main fonctionne et la restauration réussit). Le test
+transmet donc les octets réels du .zip téléchargé via `DataTransfer`. Le
+sélecteur de fichiers du système n'est **pas** exercé : à vérifier sur iPhone
+(« Restaurer une sauvegarde » → choisir le .zip dans Fichiers).

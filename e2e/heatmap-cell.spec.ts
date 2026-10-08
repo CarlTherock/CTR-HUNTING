@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { installAnalysisProviders } from './support/analysisProviders'
+import { installAnalysisProviders, specialHour } from './support/analysisProviders'
 import {
   applySafeArea,
   IPHONE_LANDSCAPE_SAFE_AREA,
@@ -157,13 +157,15 @@ test.describe('carte de potentiel : fiche de cellule (390x844)', () => {
         text: el.textContent ?? '',
       })),
     )
+    // L'heure « spéciale » du fournisseur simulé (18 h, ou 9 h s'il est 18 h).
+    const slotTime = `${String(specialHour()).padStart(2, '0')}:00`
     const slot = options.find(
-      (o) => o.text.includes('18:00') && !o.text.includes('demain'),
+      (o) => o.text.includes(slotTime) && !o.text.includes('demain'),
     )
-    expect(slot, 'le créneau de 18 h est dans les données chargées').toBeTruthy()
+    expect(slot, `le créneau de ${slotTime} est dans les données chargées`).toBeTruthy()
     await hourSelect.selectOption(slot?.value ?? '')
     await expect(
-      sheet.getByText(/(prévision pour|heure passée) 18:00/).first(),
+      sheet.getByText(new RegExp(`(prévision pour|heure passée) ${slotTime}`)).first(),
     ).toBeVisible()
     expect(counts).toEqual({ weather: 1, wind: 1, overpass: 1 })
 
@@ -290,7 +292,8 @@ for (const viewport of VIEWPORTS) {
       const save = sheet.getByRole('button', {
         name: 'Enregistrer cette cellule comme waypoint',
       })
-      await save.scrollIntoViewIfNeeded()
+      // Centré : un défilement « au plus près » peut le glisser sous l'en-tête collant.
+      await save.evaluate((el) => el.scrollIntoView({ block: 'center' }))
       const saveBox = await save.boundingBox()
       expect(saveBox).not.toBeNull()
       if (saveBox) {

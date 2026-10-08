@@ -28,6 +28,13 @@ function localParts(date: Date) {
   }
 }
 
+/** Heure d'aujourd'hui où le fournisseur simulé met pluie et vent fort : 18 h,
+ * sauf s'il est justement 18 h (l'heure serait alors « actuelle », et la
+ * comparaison « maintenant / autre créneau » n'aurait plus de sens). */
+export function specialHour(): number {
+  return Number(localParts(new Date()).hour) === 18 ? 9 : 18
+}
+
 function hourlyTimes(): string[] {
   const today = localParts(new Date()).date
   const tomorrow = localParts(new Date(Date.now() + 24 * 3600_000)).date
@@ -58,8 +65,10 @@ export async function installAnalysisProviders(page: Page): Promise<ProviderCoun
         timezone: TZ,
         hourly: {
           time: times,
-          // Varie par point de grille, et plus fort à 18 h.
-          wind_speed_10m: times.map((_, h) => 8 + (i % 6) + (h === 18 ? 22 : 0)),
+          // Varie par point de grille, et plus fort à l'heure spéciale.
+          wind_speed_10m: times.map(
+            (_, h) => 8 + (i % 6) + (h === specialHour() ? 22 : 0),
+          ),
           wind_direction_10m: times.map(() => 270),
           wind_gusts_10m: times.map(() => 20),
           temperature_2m: times.map(() => 17),
@@ -98,8 +107,8 @@ export async function installAnalysisProviders(page: Page): Promise<ProviderCoun
           temperature_2m: times.map(() => 18),
           relative_humidity_2m: times.map(() => 55),
           surface_pressure: times.map(() => 1013),
-          // Forte pluie à 18 h : une différence nette « maintenant / ce soir ».
-          precipitation: times.map((_, h) => (h === 18 ? 7 : 0)),
+          // Forte pluie à l'heure spéciale : une différence nette « maintenant / ce soir ».
+          precipitation: times.map((_, h) => (h === specialHour() ? 7 : 0)),
           cloud_cover: times.map(() => 30),
           visibility: times.map(() => 20000),
           wind_speed_10m: times.map(() => 10),
