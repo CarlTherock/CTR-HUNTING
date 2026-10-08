@@ -1,6 +1,12 @@
 import { db } from './db'
 import { deletePhotosForObservation } from './photosRepository'
-import type { Coordinate, Observation } from '@/types'
+import type {
+  ConditionsMeta,
+  Coordinate,
+  DeerEntry,
+  Observation,
+  PositionOrigin,
+} from '@/types'
 
 export interface CreateObservationInput {
   coordinate: Coordinate
@@ -8,10 +14,27 @@ export interface CreateObservationInput {
   waypointId?: string
   territoryId?: string
   conditions?: Observation['conditions']
+  conditionsMeta?: ConditionsMeta
+  /** When it was observed (defaults to now). */
+  observedAt?: string
+  positionOrigin?: PositionOrigin
+  deer?: DeerEntry
+  trackId?: string
 }
 
 export type UpdateObservationInput = Partial<
-  Pick<Observation, 'notes' | 'photoIds' | 'waypointId' | 'conditions' | 'territoryId'>
+  Pick<
+    Observation,
+    | 'notes'
+    | 'photoIds'
+    | 'waypointId'
+    | 'conditions'
+    | 'conditionsMeta'
+    | 'territoryId'
+    | 'timestamp'
+    | 'deer'
+    | 'trackId'
+  >
 >
 
 /** Observation (Phase 13 — Journal) CRUD against the local Dexie
@@ -24,15 +47,23 @@ export async function listObservations(): Promise<Observation[]> {
 export async function createObservation(
   input: CreateObservationInput,
 ): Promise<Observation> {
+  const now = new Date().toISOString()
   const observation: Observation = {
     id: crypto.randomUUID(),
     coordinate: input.coordinate,
-    timestamp: new Date().toISOString(),
+    timestamp: input.observedAt ?? now,
     notes: input.notes,
     waypointId: input.waypointId,
     territoryId: input.territoryId,
     conditions: input.conditions,
+    createdAt: now,
   }
+  // Optional fields are only written when given, so a plain journal entry keeps
+  // exactly the shape it always had.
+  if (input.conditionsMeta) observation.conditionsMeta = input.conditionsMeta
+  if (input.positionOrigin) observation.positionOrigin = input.positionOrigin
+  if (input.deer) observation.deer = input.deer
+  if (input.trackId) observation.trackId = input.trackId
   await db.observations.add(observation)
   return observation
 }

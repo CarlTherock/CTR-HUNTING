@@ -40,6 +40,13 @@ export const router = createBrowserRouter(
         },
         { path: 'settings', element: <SettingsPage /> },
         {
+          path: 'deertracker',
+          lazy: async () => ({
+            Component: (await import('@/features/deertracker/pages/DeerTrackerPage'))
+              .default,
+          }),
+        },
+        {
           path: 'project',
           lazy: async () => ({
             Component: (await import('@/features/project/pages/ProjectPage')).default,

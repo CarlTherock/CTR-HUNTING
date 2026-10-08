@@ -164,6 +164,8 @@ function validateBloodSession(raw: Rec): Validation<Rec> {
   }
 }
 
+const DEER_KINDS: readonly string[] = ['sighting', 'track', 'rub', 'scrape', 'other_sign']
+
 function validateObservation(raw: Rec): Validation<Rec> {
   if (!validCoordinate(raw.coordinate)) return fail('coordonnées invalides')
   if (!validIsoLike(raw.timestamp)) return fail('horodatage invalide')
@@ -175,6 +177,11 @@ function validateObservation(raw: Rec): Validation<Rec> {
   }
   if (raw.photoIds !== undefined && !isStringArray(raw.photoIds)) {
     return fail('liste de photos invalide')
+  }
+  if (raw.deer !== undefined) {
+    if (!isRecord(raw.deer) || !DEER_KINDS.includes(raw.deer.kind as string)) {
+      return fail('entrée DeerTracker invalide')
+    }
   }
   return {
     ok: true,
