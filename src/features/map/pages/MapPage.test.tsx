@@ -36,6 +36,7 @@ const setDraftWaypoint = vi.fn()
 const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
+const setTraces = vi.fn()
 const setMeasurePath = vi.fn()
 const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
@@ -63,6 +64,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSelectedWaypoint,
     setSharedPoint,
     setTrackPreview,
+    setTraces,
     setMeasurePath,
     setMeasureShape,
     setGuidanceLine,
@@ -1048,7 +1050,9 @@ describe('MapPage', () => {
     // The GPS effect (already firing on mount, since mockGpsReading is
     // 'available' from the start) feeds the recording — confirm the map
     // gets the live line, not just the store.
-    expect(setTrackPreview).toHaveBeenLastCalledWith([
+    const lastTraces = setTraces.mock.calls.at(-1)?.[0] as { points: unknown[] }[]
+    expect(lastTraces).toHaveLength(1)
+    expect(lastTraces[0].points).toEqual([
       expect.objectContaining({ lat: 46.8, lng: -71.2 }),
     ])
   })
@@ -1067,7 +1071,7 @@ describe('MapPage', () => {
     // IndexedDB transaction-complete callback, so the final store update
     // (and the setTrackPreview(null) it triggers) can lag behind the click.
     await vi.waitFor(() => {
-      expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+      expect(useTracksStore.getState().status).toBe('idle')
     })
     await openTools(user)
     expect(
@@ -1500,7 +1504,6 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
       { lat: 46.8, lng: -71.2 },
       { lat: 46.801, lng: -71.2 },
     ])
-    expect(setTrackPreview).toHaveBeenLastCalledWith(null)
     expect(useTracksStore.getState().status).toBe('idle')
 
     await user.click(screen.getByRole('button', { name: 'Arrêter le guidage' }))
@@ -1579,14 +1582,21 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
       await seedTerritories('nord')
       useTracksStore.setState({
         status: 'recording',
+        recordingId: 'live',
+        tracks: [
+          { id: 'live', name: 'Trace', points: [], startedAt: 'x', territoryId: 'other' },
+        ],
         points: [{ lat: 1, lng: 2, timestamp: 'x' }],
       })
       render(<MapPage />)
-      await vi.waitFor(() =>
-        expect(setTrackPreview).toHaveBeenLastCalledWith([
-          { lat: 1, lng: 2, timestamp: 'x' },
-        ]),
-      )
+      await vi.waitFor(() => {
+        const last = setTraces.mock.calls.at(-1)?.[0] as {
+          id: string
+          points: unknown[]
+        }[]
+        expect(last.map((t) => t.id)).toEqual(['live'])
+        expect(last[0].points).toEqual([{ lat: 1, lng: 2, timestamp: 'x' }])
+      })
     })
   })
 })

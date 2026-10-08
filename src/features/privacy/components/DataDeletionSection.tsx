@@ -16,6 +16,7 @@ function SummaryList({ summary }: { summary: LocalDataSummary }) {
     ['Entrées de journal', summary.observations],
     ['Photos', summary.photos],
     ['Territoires', summary.territories],
+    ['Recherches de sang', summary.bloodSessions],
     ['Zones de carte hors ligne (et leurs tuiles)', summary.offlineAreas],
     ['Réglages et dernière prévision enregistrée', summary.settings],
   ]

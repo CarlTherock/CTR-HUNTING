@@ -5,6 +5,7 @@ import type { RestorePlan } from './engine/restorePlan'
 
 export const TABLE_LABEL: Record<BackupTableName, string> = {
   territories: 'Territoires',
+  bloodSessions: 'Recherches de sang',
   waypoints: 'Points de repère',
   tracks: 'Traces',
   observations: 'Journal',
@@ -15,6 +16,7 @@ export const TABLE_LABEL: Record<BackupTableName, string> = {
 
 export const TABLE_ORDER: BackupTableName[] = [
   'territories',
+  'bloodSessions',
   'waypoints',
   'tracks',
   'observations',

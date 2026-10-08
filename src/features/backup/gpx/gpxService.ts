@@ -243,6 +243,9 @@ export async function commitGpxImport(
         distanceMeters: item.distanceMeters,
         notes: item.notes,
         territoryId: item.territoryId,
+        kind: item.kind,
+        color: item.color,
+        breaks: item.breaks,
       }),
     )
   await database.transaction(

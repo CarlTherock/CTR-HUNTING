@@ -126,6 +126,9 @@ export function buildGpx(input: GpxExportInput): string {
         territory: territoryId ? territoryName.get(territoryId) : undefined,
         updatedAt: isoOrNull(waypoint.updatedAt) ?? undefined,
         accuracyMeters,
+        sessionId: waypoint.sessionId,
+        bloodKind: waypoint.bloodKind,
+        origin: waypoint.origin,
         optimalWind: waypoint.optimalWindDirections?.length
           ? waypoint.optimalWindDirections.join(',')
           : undefined,
@@ -147,13 +150,20 @@ export function buildGpx(input: GpxExportInput): string {
         startedAt: isoOrNull(track.startedAt) ?? undefined,
         endedAt: isoOrNull(track.endedAt) ?? undefined,
         distanceMeters: track.distanceMeters,
+        kind: track.kind,
+        color: track.color,
+        sessionId: track.sessionId,
         territoryId,
         territory: territoryId ? territoryName.get(territoryId) : undefined,
       })}/>\n`,
     )
     out.push('    </extensions>\n')
+    // One <trkseg> per continuous segment: a pause or an unobserved gap is
+    // never bridged by a line in the exported file.
+    const cuts = new Set(track.breaks ?? [])
     out.push('    <trkseg>\n')
-    for (const point of track.points) {
+    for (const [index, point] of track.points.entries()) {
+      if (cuts.has(index) && index > 0) out.push('    </trkseg>\n    <trkseg>\n')
       out.push(
         `      <trkpt lat="${formatNumber(point.lat)}" lon="${formatNumber(point.lng)}">\n`,
       )

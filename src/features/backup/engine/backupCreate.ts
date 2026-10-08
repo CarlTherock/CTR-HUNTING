@@ -201,6 +201,7 @@ export async function createBackup(
 function tableLabel(name: BackupTableName): string {
   const labels: Record<BackupTableName, string> = {
     territories: 'Territoires',
+    bloodSessions: 'Recherches de sang',
     waypoints: 'Points de repère',
     tracks: 'Traces',
     observations: 'Journal',

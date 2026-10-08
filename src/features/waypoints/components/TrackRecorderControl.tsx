@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Pause, Play, Square } from 'lucide-react'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
-import { ToolTrigger } from '@/components/map-tools'
+import { ToolSlot, ToolTrigger } from '@/components/map-tools'
+import { useTraceDisplayStore } from '../state/traceDisplayStore'
 import { useTracksStore } from '../state/tracksStore'
+import { TRACK_KIND_LABEL } from '../trackStyle'
+import { TripColorPicker } from './TripColorPicker'
 import { useRecordingWakeLock } from '../useRecordingWakeLock'
 
 /** Ticks every second while mounted, showing elapsed time since
@@ -41,7 +44,15 @@ export function TrackRecorderControl() {
   const resume = useTracksStore((state) => state.resume)
   const stop = useTracksStore((state) => state.stop)
   const flush = useTracksStore((state) => state.flush)
-  const wakeLock = useRecordingWakeLock(status === 'recording')
+  const kind = useTracksStore((state) => state.recordingKind)
+  const recordingId = useTracksStore((state) => state.recordingId)
+  const recordingColor = useTracksStore((state) => state.recordingColor)
+  const setColor = useTracksStore((state) => state.setColor)
+  const nextTripColor = useTraceDisplayStore((state) => state.nextTripColor)
+  const setNextTripColor = useTraceDisplayStore((state) => state.setNextTripColor)
+  // A blood search is driven by its own panel (it keeps the wake lock too).
+  const isBlood = kind === 'blood'
+  const wakeLock = useRecordingWakeLock(status === 'recording' && !isBlood)
   const recording = status !== 'idle' && recordingStartedAt !== null
 
   // Save immediately when the page is about to be hidden or closed: on iPhone
@@ -65,9 +76,19 @@ export function TrackRecorderControl() {
         <ToolTrigger
           label="Enregistrer une trace GPS"
           icon={<Play size={18} aria-hidden="true" />}
-          onClick={() => void start()}
+          onClick={() => void start({ kind: 'normal', color: nextTripColor })}
           order={10}
         />
+        <ToolSlot order={11}>
+          <div className="border-surface-600 rounded-lg border px-3 py-2">
+            <p className="text-ink-300 mb-1 text-xs">Couleur du prochain trajet</p>
+            <TripColorPicker
+              label="Couleur du prochain trajet"
+              value={nextTripColor}
+              onChange={setNextTripColor}
+            />
+          </div>
+        </ToolSlot>
         {persistError && (
           <p
             role="alert"
@@ -80,11 +101,25 @@ export function TrackRecorderControl() {
     )
   }
 
+  if (isBlood) return null
+
   return (
     <div className="absolute top-12 left-1/2 z-20 flex w-[min(24rem,calc(100%-1rem))] -translate-x-1/2 flex-col gap-1">
       <div className="border-surface-600 bg-surface-900/95 text-ink-100 flex items-center justify-between gap-2 rounded-lg border px-3 py-1 text-sm shadow-lg">
         <span className={status === 'paused' ? 'text-ink-500' : 'text-status-danger'}>
           {status === 'paused' ? 'En pause' : '● Enregistrement'}
+        </span>
+        <span
+          className="flex items-center gap-1 text-xs"
+          data-testid="recorder-kind"
+          title={`${TRACK_KIND_LABEL.normal} · couleur affichée`}
+        >
+          <span
+            className="block h-3 w-3 rounded-full border border-white/70"
+            style={{ background: recordingColor }}
+            aria-hidden="true"
+          />
+          {TRACK_KIND_LABEL.normal}
         </span>
         <ElapsedTime startedAtIso={recordingStartedAt} />
         <span className="text-ink-300 tabular-nums">
@@ -117,6 +152,13 @@ export function TrackRecorderControl() {
         >
           <Square size={18} aria-hidden="true" />
         </button>
+      </div>
+      <div className="bg-surface-900/95 rounded-lg px-3 py-1 shadow-lg">
+        <TripColorPicker
+          label="Couleur de ce trajet"
+          value={recordingColor}
+          onChange={(color) => recordingId && void setColor(recordingId, color)}
+        />
       </div>
       {persistError && (
         <p

@@ -1,5 +1,6 @@
 import type { Coordinate, TrackPoint, WaypointCategory, WaypointColor } from '@/types'
-import { totalDistanceMeters } from '@/utils/geo'
+import { sanitizeTripColor } from '@/features/waypoints/trackStyle'
+import { totalDistanceBySegments } from '@/utils/geo'
 import { isValidLatLng } from '../engine/validate'
 import {
   CTR_NS,
@@ -55,6 +56,11 @@ export interface ParsedGpxTrack {
   endedAt?: string
   distanceMeters: number
   territoryId?: string
+  kind?: 'normal' | 'blood'
+  /** Display colour read from the ctr extension (normal trips only). */
+  color?: string
+  /** Indexes in `points` that start a new <trkseg>. */
+  breaks?: number[]
   /** Points whose time was missing (they got the track start / import time). */
   pointsWithoutTime: number
 }
@@ -322,8 +328,20 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     const segments = children(trk, 'trkseg')
     const rawPoints = segments.flatMap((segment) => children(segment, 'trkpt'))
     const valid: { coordinate: Coordinate; time: string | null }[] = []
+    const breaks: number[] = []
     let invalid = 0
+    let pendingSegmentStart = false
+    const segmentOfPoint = new Map<Element, number>()
+    segments.forEach((segment, segmentIndex) => {
+      for (const pt of children(segment, 'trkpt')) segmentOfPoint.set(pt, segmentIndex)
+    })
+    let previousSegment = -1
     for (const pt of rawPoints) {
+      const segmentIndex = segmentOfPoint.get(pt) ?? 0
+      if (previousSegment !== -1 && segmentIndex !== previousSegment) {
+        pendingSegmentStart = true
+      }
+      previousSegment = segmentIndex
       const lat = parseStrictNumber(pt.getAttribute('lat'))
       const lng = parseStrictNumber(pt.getAttribute('lon'))
       if (lat === null || lng === null || !isValidLatLng(lat, lng)) {
@@ -337,6 +355,8 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
         ctrElement(pt, 'pt')?.getAttribute('accuracyMeters'),
       )
       if (accuracy !== null && accuracy >= 0) coordinate.accuracyMeters = accuracy
+      if (pendingSegmentStart && valid.length > 0) breaks.push(valid.length)
+      pendingSegmentStart = false
       valid.push({ coordinate, time: parseTime(childText(pt, 'time')) })
     }
     stats.pointsInvalid += invalid
@@ -355,7 +375,7 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
     if (segments.length > 1) {
       issue(
         'info',
-        `${label} : ${segments.length} segments fusionnés en une seule trace.`,
+        `${label} : ${segments.length} segments conservés dans une seule trace (aucune ligne entre eux).`,
       )
     }
     const ext = ctrElement(trk, 'track')
@@ -388,7 +408,13 @@ export function parseGpx(text: string, options: ParseGpxOptions = {}): GpxParseR
       points,
       startedAt,
       endedAt: parseTime(ext?.getAttribute('endedAt')) ?? lastTime ?? undefined,
-      distanceMeters: totalDistanceMeters(points),
+      distanceMeters: totalDistanceBySegments(points, breaks),
+      ...(ext?.getAttribute('kind') === 'blood' ? { kind: 'blood' as const } : {}),
+      ...(ext?.getAttribute('kind') !== 'blood' &&
+      /^#[0-9a-fA-F]{6}$/.test(ext?.getAttribute('color') ?? '')
+        ? { color: sanitizeTripColor(ext?.getAttribute('color') ?? undefined) }
+        : {}),
+      ...(breaks.length > 0 ? { breaks } : {}),
       territoryId:
         territoryId && SAFE_ID_PATTERN.test(territoryId) ? territoryId : undefined,
       pointsWithoutTime: withoutTime,

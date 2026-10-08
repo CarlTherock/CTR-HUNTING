@@ -6,6 +6,14 @@ const NOW = '2026-10-07T12:00:00.000Z'
 
 async function seedEverything() {
   await db.territories.add({ id: 't1', name: 'Nord', createdAt: NOW, updatedAt: NOW })
+  await db.bloodSessions.add({
+    id: 's1',
+    name: 'Recherche 1',
+    createdAt: NOW,
+    updatedAt: NOW,
+    status: 'finished',
+    counters: {},
+  })
   await db.waypoints.bulkAdd([
     {
       id: 'w1',
@@ -81,6 +89,7 @@ describe('summarizeLocalData', () => {
       observations: 1,
       photos: 1,
       territories: 1,
+      bloodSessions: 1,
       offlineAreas: 1,
       settings: 2,
     })
@@ -91,6 +100,7 @@ describe('summarizeLocalData', () => {
 describe('deleteAllLocalData', () => {
   it('covers every table of the database (a table added later is included)', async () => {
     expect(db.tables.map((t) => t.name).sort()).toEqual([
+      'bloodSessions',
       'observations',
       'offlineAreas',
       'photos',

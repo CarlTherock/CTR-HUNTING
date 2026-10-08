@@ -224,11 +224,12 @@ describe('GPX import of third-party files', () => {
     expect(parsed.tracks).toHaveLength(1)
     expect(parsed.tracks[0].points).toHaveLength(3)
     expect(parsed.tracks[0].pointsWithoutTime).toBe(1)
+    expect(parsed.tracks[0].breaks).toEqual([2])
     expect(parsed.tracks[0].points[1].timestamp).toBe('2026-09-01T10:00:00.000Z')
     const messages = parsed.issues.map((i) => i.message).join('\n')
     expect(messages).toMatch(/itinéraire/)
     expect(messages).toMatch(/sans heure/)
-    expect(messages).toMatch(/segments fusionnés/)
+    expect(messages).toMatch(/segments conservés/)
   })
 
   it('refuses lat/lon that are out of range, non-finite or not numbers, and reports them', () => {

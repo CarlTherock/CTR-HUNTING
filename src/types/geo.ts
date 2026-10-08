@@ -33,6 +33,7 @@ export type WaypointCategory =
   | 'campsite'
   | 'hazard'
   | 'gate'
+  | 'blood'
   | 'custom'
 
 /** Preset marker colors — a fixed palette (not a free-form color picker)
@@ -67,9 +68,29 @@ export interface Waypoint {
   optimalWindDirections?: number[]
   /** Logical folder (`Territory.id`). Absent means « Non classé ». */
   territoryId?: string
+  /** Blood-search session this point belongs to (`BloodSession.id`). */
+  sessionId?: string
+  /** Kind of clue, for waypoints created from a blood-search session. */
+  bloodKind?: BloodMarkerKind
+  /** How the position was obtained: the phone's GPS or placed by hand. */
+  origin?: 'gps' | 'manual'
   createdAt: string // ISO 8601
   updatedAt: string // ISO 8601
 }
+
+/** Quick markers of a blood-search session. */
+export type BloodMarkerKind =
+  | 'blood'
+  | 'shot_site'
+  | 'last_seen'
+  | 'blood_confirmed'
+  | 'other_clue'
+  | 'animal_found'
+  | 'vehicle'
+
+/** « normal » = ordinary trip with a user-chosen colour; « blood » = red path
+ * of a blood-search session (the searcher's own movement, not the animal's). */
+export type TrackKind = 'normal' | 'blood'
 
 export interface Track {
   id: string
@@ -81,4 +102,14 @@ export interface Track {
   notes?: string
   /** Logical folder (`Territory.id`). Absent means « Non classé ». */
   territoryId?: string
+  /** Absent on tracks recorded before this field existed = « normal ». */
+  kind?: TrackKind
+  /** Display colour (hex). Absent = default for the kind. Display only: it
+   * never touches the recorded GPS points. */
+  color?: string
+  /** Blood-search session this track belongs to. */
+  sessionId?: string
+  /** Indexes in `points` that start a NEW segment (after a pause or an
+   * unobserved interruption): no line is drawn from the previous point. */
+  breaks?: number[]
 }

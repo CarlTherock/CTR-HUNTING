@@ -20,11 +20,12 @@ export const MAX_ENTRY_COUNT = 100_000
 
 /**
  * Tables that go into a backup, in write order (parents before children).
- * `territories` only exists from Dexie schema v5: the engine includes each
- * table only if the open database actually has it.
+ * `territories` only exists from Dexie schema v5 and `bloodSessions` from v6:
+ * the engine includes each table only if the open database actually has it.
  */
 export const BACKUP_TABLES = [
   'territories',
+  'bloodSessions',
   'waypoints',
   'tracks',
   'observations',

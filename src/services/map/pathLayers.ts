@@ -1,9 +1,15 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { Coordinate } from '@/types'
-import type { MeasureShape } from './MapProvider'
+import type { MapTrace, MeasureShape } from './MapProvider'
 
 export const TRACK_PREVIEW_SOURCE_ID = 'track-preview'
 export const TRACK_PREVIEW_LAYER_ID = 'track-preview-line'
+
+export const TRACES_SOURCE_ID = 'traces'
+export const TRACES_CASING_LAYER_ID = 'traces-casing'
+export const TRACES_LAYER_ID = 'traces-line'
+export const CLUE_LINK_SOURCE_ID = 'clue-links'
+export const CLUE_LINK_LAYER_ID = 'clue-links-line'
 
 export const GUIDANCE_SOURCE_ID = 'guidance-line'
 export const GUIDANCE_CASING_LAYER_ID = 'guidance-line-casing'
@@ -33,6 +39,67 @@ export function trackPreviewGeoJson(points: Coordinate[] | null) {
             },
           ]
         : [],
+  }
+}
+
+/** Splits a path into continuous segments at the given break indexes (a break
+ * at index i means point i does NOT connect to point i-1). Segments with a
+ * single point are dropped: one point draws no line. */
+export function splitSegments<T>(
+  points: readonly T[],
+  breaks?: readonly number[],
+): T[][] {
+  const cuts = new Set((breaks ?? []).filter((i) => i > 0 && i < points.length))
+  const segments: T[][] = []
+  let current: T[] = []
+  points.forEach((point, index) => {
+    if (cuts.has(index) && current.length > 0) {
+      segments.push(current)
+      current = []
+    }
+    current.push(point)
+  })
+  if (current.length > 0) segments.push(current)
+  return segments.filter((segment) => segment.length >= 2)
+}
+
+/** One MultiLineString per trace (one line per continuous segment) carrying
+ * its colour and kind. A trace without a drawable segment yields no feature. */
+export function tracesGeoJson(traces: readonly MapTrace[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: traces.flatMap((trace) => {
+      const segments = splitSegments(trace.points, trace.breaks)
+      if (segments.length === 0) return []
+      return [
+        {
+          type: 'Feature' as const,
+          properties: { id: trace.id, kind: trace.kind, color: trace.color },
+          geometry: {
+            type: 'MultiLineString' as const,
+            coordinates: segments.map((segment) => segment.map((p) => [p.lng, p.lat])),
+          },
+        },
+      ]
+    }),
+  }
+}
+
+/** Optional dashed link between consecutive clues — a visual aid only, never
+ * the animal's path. */
+export function clueLinksGeoJson(links: readonly (readonly Coordinate[])[] | null) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: (links ?? [])
+      .filter((link) => link.length >= 2)
+      .map((link) => ({
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: link.map((p) => [p.lng, p.lat]),
+        },
+      })),
   }
 }
 
@@ -146,6 +213,8 @@ export function createPathLayers(map: MapLibreMap) {
   let trackPreviewPoints: Coordinate[] | null = null
   let measurePathPoints: Coordinate[] | null = null
   let guidanceLine: readonly [Coordinate, Coordinate] | null = null
+  let traces: readonly MapTrace[] = []
+  let clueLinks: readonly (readonly Coordinate[])[] | null = null
   let measureShape: MeasureShape | null = null
 
   return {
@@ -161,6 +230,38 @@ export function createPathLayers(map: MapLibreMap) {
         source: TRACK_PREVIEW_SOURCE_ID,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#3b82f6', 'line-width': 4 },
+      })
+      map.addSource(TRACES_SOURCE_ID, { type: 'geojson', data: tracesGeoJson(traces) })
+      // Light outline under the coloured line so it stays readable on
+      // satellite imagery as well as on pale topographic styles.
+      map.addLayer({
+        id: TRACES_CASING_LAYER_ID,
+        type: 'line',
+        source: TRACES_SOURCE_ID,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': 0.85 },
+      })
+      map.addLayer({
+        id: TRACES_LAYER_ID,
+        type: 'line',
+        source: TRACES_SOURCE_ID,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 4 },
+      })
+      map.addSource(CLUE_LINK_SOURCE_ID, {
+        type: 'geojson',
+        data: clueLinksGeoJson(clueLinks),
+      })
+      map.addLayer({
+        id: CLUE_LINK_LAYER_ID,
+        type: 'line',
+        source: CLUE_LINK_SOURCE_ID,
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': '#7f1d1d',
+          'line-width': 2,
+          'line-dasharray': [1, 2],
+        },
       })
       map.addSource(MEASURE_SOURCE_ID, {
         type: 'geojson',
@@ -244,6 +345,16 @@ export function createPathLayers(map: MapLibreMap) {
       trackPreviewPoints = points
       const source = map.getSource(TRACK_PREVIEW_SOURCE_ID) as GeoJSONSource | undefined
       source?.setData(trackPreviewGeoJson(points))
+    },
+    setTraces(next: readonly MapTrace[]) {
+      traces = next
+      const source = map.getSource(TRACES_SOURCE_ID) as GeoJSONSource | undefined
+      source?.setData(tracesGeoJson(next))
+    },
+    setClueLinks(links: readonly (readonly Coordinate[])[] | null) {
+      clueLinks = links
+      const source = map.getSource(CLUE_LINK_SOURCE_ID) as GeoJSONSource | undefined
+      source?.setData(clueLinksGeoJson(links))
     },
     setGuidanceLine(line: readonly [Coordinate, Coordinate] | null) {
       guidanceLine = line

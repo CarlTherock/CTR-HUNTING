@@ -205,6 +205,16 @@ function buildRow(
   if (copyId) row.id = copyId
   if (row.territoryId !== undefined)
     row.territoryId = remap('territories', row.territoryId)
+  // Links of a blood-search session follow the ids a copy may have been given.
+  if (
+    (item.table === 'waypoints' || item.table === 'tracks') &&
+    row.sessionId !== undefined
+  ) {
+    row.sessionId = remap('bloodSessions', row.sessionId)
+  }
+  if (item.table === 'bloodSessions' && row.trackId !== undefined) {
+    row.trackId = remap('tracks', row.trackId)
+  }
   if (item.table === 'waypoints' || item.table === 'observations') {
     if (Array.isArray(row.photoIds)) {
       row.photoIds = row.photoIds.map((id: unknown) => remap('photos', id))

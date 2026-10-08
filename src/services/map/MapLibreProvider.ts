@@ -21,6 +21,7 @@ import type {
   DownloadAreaProgress,
   MapInstance,
   MapProvider,
+  MapTrace,
   MeasureShape,
 } from './MapProvider'
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
@@ -210,6 +211,12 @@ export class MapLibreProvider implements MapProvider {
       },
       setTrackPreview(points: Coordinate[] | null) {
         pathLayers.setTrackPreview(points)
+      },
+      setTraces(traces: readonly MapTrace[]) {
+        pathLayers.setTraces(traces)
+      },
+      setClueLinks(links: readonly (readonly Coordinate[])[] | null) {
+        pathLayers.setClueLinks(links)
       },
       setMeasurePath(points: Coordinate[] | null) {
         pathLayers.setMeasurePath(points)

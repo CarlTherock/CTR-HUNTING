@@ -5,10 +5,23 @@ export interface CreateTrackInput {
   name: string
   startedAt: string
   territoryId?: string
+  kind?: Track['kind']
+  color?: string
+  sessionId?: string
 }
 
 export type UpdateTrackInput = Partial<
-  Pick<Track, 'name' | 'points' | 'distanceMeters' | 'endedAt' | 'notes' | 'territoryId'>
+  Pick<
+    Track,
+    | 'name'
+    | 'points'
+    | 'distanceMeters'
+    | 'endedAt'
+    | 'notes'
+    | 'territoryId'
+    | 'color'
+    | 'breaks'
+  >
 >
 
 /** Track CRUD against the local Dexie database — same real
@@ -27,6 +40,9 @@ export async function createTrack(input: CreateTrackInput): Promise<Track> {
     points: [],
     startedAt: input.startedAt,
     territoryId: input.territoryId,
+    ...(input.kind ? { kind: input.kind } : {}),
+    ...(input.color ? { color: input.color } : {}),
+    ...(input.sessionId ? { sessionId: input.sessionId } : {}),
   }
   await db.tracks.add(track)
   return track

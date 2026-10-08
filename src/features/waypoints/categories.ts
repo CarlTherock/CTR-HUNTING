@@ -3,6 +3,7 @@ import {
   Car,
   DoorOpen,
   Droplet,
+  Droplets,
   Footprints,
   MapPin,
   Moon,
@@ -38,6 +39,7 @@ export const CATEGORY_OPTIONS: {
   { value: 'campsite', label: 'Camp', Icon: Tent },
   { value: 'hazard', label: 'Danger', Icon: TriangleAlert },
   { value: 'gate', label: 'Barrière', Icon: DoorOpen },
+  { value: 'blood', label: 'Sang', Icon: Droplets },
   { value: 'custom', label: 'Personnalisé', Icon: Star },
 ]
 
