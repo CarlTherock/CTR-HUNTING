@@ -50,11 +50,13 @@ export function AddPointControl({ gpsReading, large }: AddPointControlProps) {
           data-testid="add-point-button"
           className={cn(
             'bg-brand-500 text-surface-950 hover:bg-brand-400 flex flex-col items-center justify-center rounded-2xl font-bold shadow-lg outline outline-2 outline-white/70',
-            large ? 'h-20 w-20 text-base' : 'h-14 w-14 text-xs leading-tight',
+            large
+              ? 'h-20 w-20 text-base'
+              : 'h-14 w-14 text-xs leading-tight [@media(max-height:480px)]:h-11 [@media(max-height:480px)]:w-11',
           )}
         >
           <Plus size={large ? 30 : 22} strokeWidth={3} aria-hidden="true" />
-          <span>Repère</span>
+          <span className="[@media(max-height:480px)]:sr-only">Repère</span>
         </button>
       </ToolSlot>
       {open && <AddPointSheet gpsReading={gpsReading} />}
