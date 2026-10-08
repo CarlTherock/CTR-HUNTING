@@ -23,3 +23,10 @@ Exécuté le 2026-10-07 : typecheck, ESLint (0 problème), Prettier, Vitest,
 build, `npm audit --omit=dev` (0 vulnérabilité), 192 E2E Chromium (fournisseurs
 simulés). **Non exécuté** : WebKit/iPhone réel, GPS et boussole réels, vrais
 fournisseurs de cartes, installation PWA sur appareil.
+
+## Recherche de sang, traces et caméra (T9)
+
+Livré (voir `CHANGELOG.md`) : types et couleurs de traces, sessions de recherche de sang, « + Sang », persistance et
+reprise, sauvegarde/GPX, aide, caméra **expérimentale**. Non validé : iPhone/Safari réel, GPS réel, caméra et lampe
+réelles, mode avion réel. La caméra n'affirme aucun taux de détection ; elle ne remplace ni une aide qualifiée ni un
+conducteur de chien de sang.

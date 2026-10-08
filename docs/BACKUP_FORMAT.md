@@ -21,6 +21,7 @@ compressés (deflate).
 ```
 manifest.json            version de format, version de l'app, date, comptes, longueur + CRC-32 de chaque fichier
 data/territories.json    (si la base a la table territories)
+data/bloodSessions.json  sessions de recherche de sang (compteurs de numérotation inclus)
 data/waypoints.json      coordonnées EXACTES (nombres JSON, aller-retour identique)
 data/tracks.json         points, pauses, interruption, statut… : l'enregistrement entier, champs inconnus compris
 data/observations.json
@@ -34,6 +35,16 @@ media/photos/000001.original.bin   originalBlob, présent seulement s'il diffèr
 Les enregistrements sont écrits tels quels (sans réécriture de schéma) : un champ ajouté plus tard par une autre
 fonctionnalité (par exemple `status`, `pauses`, `territoryId`) survit à l'aller-retour sans que le moteur le connaisse.
 Les relations (`waypointId`, `observationId`, `photoIds`, `territoryId`) sont conservées par identifiant.
+
+### Recherche de sang et types de traces (base v6, additive)
+
+- `bloodSessions` : `id`, `name`, `status`, `trackId`, `territoryId`, compteurs par type d'indice (jamais décrémentés,
+  jamais réutilisés), dates. Aucune migration destructive : la table est ajoutée, aucun enregistrement existant n'est modifié.
+- Champs optionnels ajoutés : points de repère `sessionId`, `bloodKind`, `origin` (`gps` | `manual`) ; traces `kind`
+  (`normal` | `blood`), `color`, `sessionId`, `breaks` (index des points qui ouvrent un nouveau segment). Une trace
+  ancienne sans `kind` est un « trajet normal » et n'est pas recolorée.
+- À la restauration (copie « garder les deux »), les références `sessionId` et `trackId` suivent les copies.
+- Une archive sans `bloodSessions` reste valide (rien à restaurer).
 
 ### Ce qui n'est PAS sauvegardé
 
@@ -92,6 +103,12 @@ Les observations dont `waypointId` (ou `territoryId`) ne correspond plus à rien
 état légitime de l'application (supprimer un point de repère ne supprime pas le journal).
 
 ## GPX (échange, pas sauvegarde)
+
+**Recherche de sang et GPX.** Conservés : un `<trkseg>` par segment (pauses et interruptions restent des trous), le
+type de trace et la couleur (attributs `ctr:`, couleur validée à l'import), la catégorie « Sang » (symbole générique
+`Scenic Area` pour les lecteurs tiers), `sessionId`/`bloodKind`/`origin` en extension. **Non conservés à l'import** :
+les liens de session, les compteurs de numérotation et les associations : seule la sauvegarde .zip les restaure. Les
+lecteurs tiers peuvent ignorer la couleur et le type.
 
 GPX 1.1 : `<wpt>` (ele, time, name, desc, sym, type), `<trk><trkseg><trkpt>` (ele, time). Les données propres à l'app
 (id, catégorie, couleur, territoire, précision, vents favorables, dates de début/fin) sont dans `<extensions>` sous

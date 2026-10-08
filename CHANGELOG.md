@@ -3,6 +3,19 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Recherche de sang, types de traces et caméra expérimentale (2026-10-07)
+
+### Added
+
+- Deux types de traces : « Trajet normal » (couleur choisie avant le départ, modifiable ensuite sans toucher aux points GPS) et « Recherche de sang » (rouge réservé). Filtres Toutes / Trajets normaux / Recherches de sang. Pauses et interruptions = segments distincts.
+- Sessions de recherche de sang : démarrage explicite (avec ou sans GPS), bouton « + Sang » (un vrai point de repère, « Sang 01 »…, coordonnées verrouillées), annulation du dernier ajout, pause/reprise/fin, reprise après interruption, retour au dernier indice, liaison facultative entre indices, liste des sessions, partage/export GPX.
+- Caméra expérimentale (HSV local, sans IA lourde) : original/filtré, sensibilité, atténuation du fond, surbrillance, option tons roux, capture original + traité, confirmation d'un indice, avertissement permanent.
+- Base Dexie v6 (additive), sauvegarde .zip et GPX étendus, aide, tests unitaires et E2E (8 tailles d'écran).
+
+### Notes
+
+- Limites : voir `docs/VALIDATION.md` (GPS écran verrouillé sur iPhone, caméra testée sur images synthétiques, applications de référence non consultées, aucune validation iPhone réelle).
+
 ## Finition produit (2026-10-07)
 
 ### Added
