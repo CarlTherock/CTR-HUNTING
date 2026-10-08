@@ -19,7 +19,10 @@ const hour = (h: number, dir: number) => ({
 const field: WindField = {
   timezone: 'America/Toronto',
   samples: [
-    { coordinate: { lat: 46.8, lng: -71.2 }, hourly: [hour(8, 315), hour(9, 0), hour(10, 90)] },
+    {
+      coordinate: { lat: 46.8, lng: -71.2 },
+      hourly: [hour(8, 315), hour(9, 0), hour(10, 90)],
+    },
   ],
 }
 
@@ -30,7 +33,9 @@ describe('windHourlyRow', () => {
     expect(rows[0]).toMatchObject({ directionLabel: 'NO', speedKmh: 18, gustsKmh: 28 })
   })
   it('starts at the requested offset and keeps the shared offsets', () => {
-    expect(windHourlyRow(field, { lat: 46.8, lng: -71.2 }, 1, 5).map((r) => r.offset)).toEqual([1, 2])
+    expect(
+      windHourlyRow(field, { lat: 46.8, lng: -71.2 }, 1, 5).map((r) => r.offset),
+    ).toEqual([1, 2])
   })
   it('is empty without a field or when the nearest sample is too far', () => {
     expect(windHourlyRow(null, { lat: 46.8, lng: -71.2 })).toEqual([])

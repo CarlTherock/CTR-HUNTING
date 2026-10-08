@@ -52,12 +52,7 @@ export interface ConditionsMeta {
 }
 
 /** What the user saw. */
-export type DeerEntryKind =
-  | 'sighting'
-  | 'track'
-  | 'rub'
-  | 'scrape'
-  | 'other_sign'
+export type DeerEntryKind = 'sighting' | 'track' | 'rub' | 'scrape' | 'other_sign'
 
 export type DeerSex = 'male' | 'female'
 export type DeerAgeClass = 'fawn' | 'young' | 'adult'

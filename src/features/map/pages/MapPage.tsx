@@ -796,7 +796,9 @@ export function MapPage() {
                 />
                 <ForestLayersControl
                   currentZoom={view.zoom}
-                  onRetry={(id) => instanceRef.current?.retryRasterOverlay?.(`forest-${id}`)}
+                  onRetry={(id) =>
+                    instanceRef.current?.retryRasterOverlay?.(`forest-${id}`)
+                  }
                 />
                 <TerritoryMapControl />
                 <AnalysisControl />

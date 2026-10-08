@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUp, Wind } from 'lucide-react'
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui'
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
@@ -48,7 +55,12 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
     // Only fetch when nothing usable covers this point (no field, or the
     // field loaded for another map area).
     if (status === 'loading' || rows.length > 0 || status === 'error') return
-    void fetchField({ west: lng - BOX, east: lng + BOX, south: lat - BOX, north: lat + BOX })
+    void fetchField({
+      west: lng - BOX,
+      east: lng + BOX,
+      south: lat - BOX,
+      north: lat + BOX,
+    })
   }, [rows.length, status, fetchField, lat, lng])
 
   const current = rows.find((r) => r.offset === selected) ?? rows[0]
@@ -64,7 +76,9 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
         </CardTitle>
         <CardDescription>
           Prévision Open-Meteo (modèle), pas une mesure sur place
-          {fetchedAt ? ` · chargée à ${new Date(fetchedAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}` : ''}
+          {fetchedAt
+            ? ` · chargée à ${new Date(fetchedAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}`
+            : ''}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -78,7 +92,12 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
               type="button"
               className="text-brand-400 min-h-11 underline"
               onClick={() =>
-                void fetchField({ west: lng - BOX, east: lng + BOX, south: lat - BOX, north: lat + BOX })
+                void fetchField({
+                  west: lng - BOX,
+                  east: lng + BOX,
+                  south: lat - BOX,
+                  north: lat + BOX,
+                })
               }
             >
               Réessayer
@@ -169,20 +188,32 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
                     aria-hidden="true"
                     style={{ transform: `rotate(${row.directionDegrees}deg)` }}
                   />
-                  <span className="text-ink-100 font-semibold">{Math.round(row.speedKmh)}</span>
-                  <span className="text-ink-500">{compassLabel(row.directionDegrees)}</span>
+                  <span className="text-ink-100 font-semibold">
+                    {Math.round(row.speedKmh)}
+                  </span>
+                  <span className="text-ink-500">
+                    {compassLabel(row.directionDegrees)}
+                  </span>
                 </button>
               ))}
             </div>
 
             <ul className="text-ink-500 list-disc pl-4 text-xs">
-              <li>La flèche pleine de la boussole pointe vers la provenance du vent (vent de…).</li>
-              <li>Chaque heure : flèche vers la provenance, vitesse en km/h, rafales dans le détail.</li>
+              <li>
+                La flèche pleine de la boussole pointe vers la provenance du vent (vent
+                de…).
+              </li>
+              <li>
+                Chaque heure : flèche vers la provenance, vitesse en km/h, rafales dans le
+                détail.
+              </li>
               <li>
                 Le cap du téléphone, l’orientation de la carte et la direction vers une
                 destination sont d’autres repères, affichés ailleurs.
               </li>
-              <li>Indication de vent seulement : aucune prévision de déplacement du gibier.</li>
+              <li>
+                Indication de vent seulement : aucune prévision de déplacement du gibier.
+              </li>
             </ul>
           </>
         )}

@@ -17,7 +17,9 @@ const hour = (h: number, dir: number) => ({
 })
 const field: WindField = {
   timezone: 'America/Toronto',
-  samples: [{ coordinate: { lat: 46.8, lng: -71.2 }, hourly: [hour(8, 315), hour(9, 180)] }],
+  samples: [
+    { coordinate: { lat: 46.8, lng: -71.2 }, hourly: [hour(8, 315), hour(9, 180)] },
+  ],
 }
 const here = { lat: 46.8, lng: -71.2 }
 
@@ -63,7 +65,9 @@ describe('WindPanel', () => {
 
   it('only offers the hours that really exist', () => {
     render(<WindPanel coordinate={here} />)
-    expect(screen.getAllByRole('button', { pressed: false }).length).toBeLessThanOrEqual(3)
+    expect(screen.getAllByRole('button', { pressed: false }).length).toBeLessThanOrEqual(
+      3,
+    )
     expect(screen.getByText(/aucune prévision de déplacement du gibier/)).toBeVisible()
   })
 

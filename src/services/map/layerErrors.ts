@@ -78,13 +78,15 @@ export function layerErrorMessage(kind: LayerErrorKind): string {
 function kindOf(input: LayerErrorInput): LayerErrorKind {
   if (input.keyMissing) return 'missing-key'
   if (input.incompatibleWithBase) return 'incompatible'
-  if (!input.online) return input.offlineUnsupported === false ? 'tile-failure' : 'not-offline'
+  if (!input.online)
+    return input.offlineUnsupported === false ? 'tile-failure' : 'not-offline'
   const raw = input.rawMessage ?? ''
   if (/LayerNotDefined|layer.*not (found|defined)|unknown layer/i.test(raw))
     return 'layer-not-found'
   if (/style/i.test(raw) && /(unavailable|failed|not found|404)/i.test(raw))
     return 'style-unavailable'
-  if (/InvalidCRS|InvalidParameter|projection|srs|crs|bbox/i.test(raw)) return 'bad-params'
+  if (/InvalidCRS|InvalidParameter|projection|srs|crs|bbox/i.test(raw))
+    return 'bad-params'
   switch (input.status) {
     case 401:
     case 403:
@@ -99,7 +101,8 @@ function kindOf(input: LayerErrorInput): LayerErrorKind {
       break
   }
   if (input.status !== undefined && input.status >= 500) return 'tile-failure'
-  if (input.status !== undefined || /tile|network|fetch|load/i.test(raw)) return 'tile-failure'
+  if (input.status !== undefined || /tile|network|fetch|load/i.test(raw))
+    return 'tile-failure'
   return 'unknown'
 }
 

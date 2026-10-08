@@ -31,7 +31,8 @@ export function windHourlyRow(
   if (!field) return []
   const sample = nearestSample(field, coordinate)
   if (!sample) return []
-  if (haversineMeters(coordinate, sample.coordinate) > MAX_SAMPLE_DISTANCE_METERS) return []
+  if (haversineMeters(coordinate, sample.coordinate) > MAX_SAMPLE_DISTANCE_METERS)
+    return []
   return sample.hourly.slice(startOffset, startOffset + count).map((reading, i) => ({
     offset: startOffset + i,
     hourLabel: reading.time.slice(11, 16),
@@ -61,5 +62,8 @@ export const FAVORABILITY_LABEL: Record<WindFavorability, string> = {
 /** « N, NE, E » for the saved sectors, in compass order. */
 export function sectorsLabel(sectors: number[] | undefined): string {
   if (!sectors || sectors.length === 0) return 'aucun'
-  return [...sectors].sort((a, b) => a - b).map(compassLabel).join(', ')
+  return [...sectors]
+    .sort((a, b) => a - b)
+    .map(compassLabel)
+    .join(', ')
 }

@@ -29,7 +29,11 @@ describe('classifyLayerError', () => {
   })
 
   it('always gives a French message that never leaks the raw service text', () => {
-    const error = classifyLayerError({ ...online, status: 500, rawMessage: 'SECRET internal' })
+    const error = classifyLayerError({
+      ...online,
+      status: 500,
+      rawMessage: 'SECRET internal',
+    })
     expect(error.message).not.toMatch(/SECRET/)
     expect(error.message.length).toBeGreaterThan(20)
   })

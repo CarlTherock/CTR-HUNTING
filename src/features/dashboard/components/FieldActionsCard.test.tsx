@@ -22,8 +22,14 @@ describe('FieldActionsCard', () => {
       'href',
       '/waypoints#recherches-de-sang',
     )
-    expect(screen.getByRole('link', { name: 'DeerTracker' })).toHaveAttribute('href', '/deertracker')
-    expect(screen.getByRole('link', { name: 'Journal et photos' })).toHaveAttribute('href', '/journal')
+    expect(screen.getByRole('link', { name: 'DeerTracker' })).toHaveAttribute(
+      'href',
+      '/deertracker',
+    )
+    expect(screen.getByRole('link', { name: 'Journal et photos' })).toHaveAttribute(
+      'href',
+      '/journal',
+    )
   })
 
   it('offers to resume an open blood-search session', () => {
@@ -32,11 +38,16 @@ describe('FieldActionsCard', () => {
     })
     renderCard()
     expect(screen.getByText('Recherche du 8 octobre')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Reprendre sur la carte' })).toHaveAttribute('href', '/map')
+    expect(screen.getByRole('link', { name: 'Reprendre sur la carte' })).toHaveAttribute(
+      'href',
+      '/map',
+    )
   })
 
   it('does not show finished sessions as in progress', () => {
-    useBloodStore.setState({ sessions: [{ id: 's', name: 'Ancienne', status: 'finished' } as never] })
+    useBloodStore.setState({
+      sessions: [{ id: 's', name: 'Ancienne', status: 'finished' } as never],
+    })
     renderCard()
     expect(screen.queryByText(/Recherche de sang en cours/)).not.toBeInTheDocument()
   })

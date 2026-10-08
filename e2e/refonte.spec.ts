@@ -53,7 +53,10 @@ async function expectReachable(page: Page, names: (string | RegExp)[]) {
       const a = boxes[i]
       const b = boxes[j]
       const overlap =
-        a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1
+        a.x < b.x + b.w - 1 &&
+        b.x < a.x + a.w - 1 &&
+        a.y < b.y + b.h - 1 &&
+        b.y < a.y + a.h - 1
       expect(overlap, `${a.name} chevauche ${b.name}`).toBe(false)
     }
   }
@@ -83,9 +86,13 @@ for (const size of SIZES) {
       await expectReachable(page, ['2D', '3D', 'Couches', 'Outils'])
 
       // Relief : seulement en 3D, sans chevauchement ni recouvrement.
-      await expect(page.getByRole('group', { name: 'Exagération du relief' })).toHaveCount(0)
+      await expect(
+        page.getByRole('group', { name: 'Exagération du relief' }),
+      ).toHaveCount(0)
       await page.getByRole('button', { name: '3D', exact: true }).click()
-      await expect(page.getByRole('group', { name: 'Exagération du relief' })).toBeVisible()
+      await expect(
+        page.getByRole('group', { name: 'Exagération du relief' }),
+      ).toBeVisible()
       await expectReachable(page, [
         '2D',
         '3D',
@@ -133,7 +140,8 @@ for (const size of SIZES) {
       ] as const) {
         await page.goto(path)
         await expect(page.locator('main')).toBeVisible()
-        if (heading) await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible()
+        if (heading)
+          await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible()
         await noHorizontalOverflow(page)
         await shot(page, size, name)
       }

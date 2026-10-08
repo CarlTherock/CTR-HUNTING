@@ -40,7 +40,9 @@ export const useForestLayersStore = create<ForestLayersState>((set) => ({
   retries: {},
 
   noteRetry: (id) =>
-    set((state) => ({ retries: { ...state.retries, [id]: (state.retries[id] ?? 0) + 1 } })),
+    set((state) => ({
+      retries: { ...state.retries, [id]: (state.retries[id] ?? 0) + 1 },
+    })),
 
   toggle: (id) =>
     set((state) => ({
