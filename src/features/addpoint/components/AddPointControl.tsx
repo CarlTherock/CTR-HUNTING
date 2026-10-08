@@ -13,6 +13,7 @@ import {
   describeGps,
   type AddPointType,
 } from '../addPointLogic'
+import { fingerIsDown, onFingerRelease } from '../fingerDown'
 import { useAddPointStore } from '../state/addPointStore'
 
 export interface AddPointControlProps {
@@ -113,19 +114,26 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
   const now = useGpsClock(2000)
   const gps = describeGps(gpsReading, now)
   const panelRef = useRef<HTMLDivElement>(null)
-  // A long press opens the panel; the click the browser emits when the finger
-  // lifts must not land on the backdrop and close it again.
-  const openedAtRef = useRef(Infinity)
+  // A long press opens the panel while the finger is still down: the click the
+  // browser emits when it lifts must not land on the backdrop and close it.
+  const suppressClickUntilRef = useRef(0)
   const store = useAddPointStore.getState
 
   useEffect(() => {
-    openedAtRef.current = Date.now()
     panelRef.current?.focus()
+    const stopWatching = fingerIsDown()
+      ? onFingerRelease(() => {
+          suppressClickUntilRef.current = Date.now() + 700
+        })
+      : undefined
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') store().closeSheet()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      stopWatching?.()
+      document.removeEventListener('keydown', onKey)
+    }
   }, [store])
 
   const isAnimal = type === 'deer' || type === 'moose'
@@ -136,7 +144,7 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
         className="absolute inset-0 z-30 bg-black/40"
         aria-hidden="true"
         onClick={() => {
-          if (Date.now() - openedAtRef.current < 700) return
+          if (Date.now() < suppressClickUntilRef.current) return
           store().closeSheet()
         }}
       />

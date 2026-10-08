@@ -307,9 +307,11 @@ test.describe('terrain : appui long sur la carte', () => {
       type: 'touchStart',
       touchPoints: [{ x, y }],
     })
-    await page.waitForTimeout(900)
+    // The finger stays down until the panel is open (a loaded machine may fire
+    // the timer late); then it lifts, and the panel must still be there.
+    await expect(page.getByTestId('add-point-sheet')).toBeVisible({ timeout: 15_000 })
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-
+    await page.waitForTimeout(900)
     await expect(page.getByTestId('add-point-sheet')).toBeVisible()
     await expect(page.getByTestId('add-point-gps-line')).toContainText('Point pressé')
     // Same type choice as the button.
