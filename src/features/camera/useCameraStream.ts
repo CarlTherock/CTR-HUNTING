@@ -42,6 +42,9 @@ export function useCameraStream() {
   const [errorReason, setErrorReason] = useState<string | null>(null)
   const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null)
   const [zoom, setZoomValue] = useState<number | null>(null)
+  // Torch (flash) is only offered when the camera track itself reports it.
+  const [torchSupported, setTorchSupported] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const trackRef = useRef<MediaStreamTrack | null>(null)
@@ -54,6 +57,8 @@ export function useCameraStream() {
     setStatus('idle')
     setZoomRange(null)
     setZoomValue(null)
+    setTorchSupported(false)
+    setTorchOn(false)
   }, [])
 
   const start = useCallback(async () => {
@@ -86,6 +91,9 @@ export function useCameraStream() {
         setZoomValue(settings.zoom ?? capabilities.zoom.min)
       }
 
+      const torchCapabilities = capabilities as { torch?: boolean } | undefined
+      setTorchSupported(torchCapabilities?.torch === true)
+
       setStatus('streaming')
     } catch (err) {
       setStatus('error')
@@ -108,6 +116,21 @@ export function useCameraStream() {
     }
   }, [])
 
+  const setTorch = useCallback(async (on: boolean) => {
+    const track = trackRef.current
+    if (!track) return false
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: on } as MediaTrackConstraintSet],
+      })
+      setTorchOn(on)
+      return true
+    } catch {
+      // The device refused: the torch state is left unchanged, not faked.
+      return false
+    }
+  }, [])
+
   useEffect(() => stop, [stop])
 
   return {
@@ -117,6 +140,9 @@ export function useCameraStream() {
     zoomRange,
     zoom,
     setZoom,
+    torchSupported,
+    torchOn,
+    setTorch,
     start,
     stop,
   }

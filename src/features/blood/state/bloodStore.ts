@@ -7,7 +7,7 @@ import {
   sessionContentCounts,
   updateBloodSession,
 } from '@/database/bloodSessionsRepository'
-import { listPhotosForWaypoint } from '@/database/photosRepository'
+import { addPhoto, listPhotosForWaypoint } from '@/database/photosRepository'
 import { getActiveTerritoryId } from '@/features/territories/state/territoriesStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
@@ -73,6 +73,16 @@ interface BloodState {
   rename: (id: string, name: string) => Promise<boolean>
   setShowLinks: (value: boolean) => void
   deleteSession: (id: string, deleteContent: boolean) => Promise<void>
+  /** Adds an optional note and/or photo (processed + untouched original) to a
+   * clue that was just saved. The clue itself is already safe: a failure here
+   * is reported and never removes it. */
+  attachClueMedia: (
+    waypointId: string,
+    media: {
+      note?: string
+      photo?: { processed: Blob; original: Blob; coordinate?: Coordinate }
+    },
+  ) => Promise<boolean>
   /** What a deletion would affect (points, photos, traces), to show first. */
   contentCounts: (
     id: string,
@@ -292,6 +302,31 @@ export const useBloodStore = create<BloodState>((set, get) => {
     },
 
     setShowLinks: (value) => set({ showLinks: value }),
+
+    attachClueMedia: async (waypointId, media) => {
+      try {
+        const waypoints = useWaypointsStore.getState()
+        const note = media.note?.trim()
+        if (note) await waypoints.updateWaypoint(waypointId, { notes: note })
+        if (media.photo) {
+          const photo = await addPhoto({
+            waypointId,
+            blob: media.photo.processed,
+            originalBlob: media.photo.original,
+            coordinate: media.photo.coordinate,
+          })
+          const current = useWaypointsStore
+            .getState()
+            .waypoints.find((w) => w.id === waypointId)
+          await waypoints.updateWaypoint(waypointId, {
+            photoIds: [...(current?.photoIds ?? []), photo.id],
+          })
+        }
+        return true
+      } catch {
+        return false
+      }
+    },
 
     contentCounts: (id) => sessionContentCounts(id),
 

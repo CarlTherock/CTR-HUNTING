@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
   Crosshair,
+  Camera,
   Droplets,
   Eye,
   Navigation,
@@ -32,6 +33,12 @@ import {
   sessionClues,
 } from '../sessionLogic'
 import { useBloodStore } from '../state/bloodStore'
+
+const BloodCameraAssist = lazy(() =>
+  import('../camera/BloodCameraAssist').then((module) => ({
+    default: module.BloodCameraAssist,
+  })),
+)
 
 interface BloodPanelProps {
   gpsReading: GeolocationReading
@@ -82,6 +89,7 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
   const [needsFallback, setNeedsFallback] = useState<BloodMarkerKind | null>(null)
   const [undoWarning, setUndoWarning] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const clues = useMemo(
     () => (session ? sessionClues(waypoints, session.id) : []),
@@ -250,7 +258,7 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
         </div>
       )}
 
-      {manual ? (
+      {manual && !cameraOpen ? (
         <div
           className="border-surface-600 rounded-lg border p-2"
           role="group"
@@ -284,7 +292,7 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
             </Button>
           </div>
         </div>
-      ) : needsFallback ? (
+      ) : needsFallback && !cameraOpen ? (
         <div className="border-surface-600 rounded-lg border p-2" role="alert">
           <p>
             {gpsLine ?? 'Position GPS indisponible.'} Le point ne peut pas être placé à la
@@ -433,6 +441,10 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
             </div>
           </div>
 
+          <button type="button" className={SECONDARY} onClick={() => setCameraOpen(true)}>
+            <Camera size={16} aria-hidden="true" /> Caméra (expérimental)
+          </button>
+
           <button
             type="button"
             className={SECONDARY}
@@ -487,6 +499,14 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
               : 'Gardez l’application ouverte et l’écran allumé : sur iPhone, le GPS s’arrête quand l’écran se verrouille.'}
           </p>
         </div>
+      )}
+      {cameraOpen && (
+        <Suspense fallback={null}>
+          <BloodCameraAssist
+            gpsReading={gpsReading}
+            onClose={() => setCameraOpen(false)}
+          />
+        </Suspense>
       )}
     </section>
   )
