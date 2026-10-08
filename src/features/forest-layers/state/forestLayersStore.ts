@@ -13,6 +13,9 @@ interface ForestLayersState {
   layerOpacity: Partial<Record<ForestLayerId, number>>
   /** Load state reported by the map engine, per enabled layer. */
   status: Partial<Record<ForestLayerId, OverlayStatus>>
+  /** Manual retries used per layer (capped by the UI: no infinite loop). */
+  retries: Partial<Record<ForestLayerId, number>>
+  noteRetry: (id: ForestLayerId) => void
   toggle: (id: ForestLayerId) => void
   setOpacity: (opacity: number) => void
   setLayerOpacity: (id: ForestLayerId, opacity: number) => void
@@ -34,9 +37,17 @@ export const useForestLayersStore = create<ForestLayersState>((set) => ({
   opacity: 0.65,
   layerOpacity: {},
   status: {},
+  retries: {},
+
+  noteRetry: (id) =>
+    set((state) => ({ retries: { ...state.retries, [id]: (state.retries[id] ?? 0) + 1 } })),
 
   toggle: (id) =>
-    set((state) => ({ enabled: { ...state.enabled, [id]: !state.enabled[id] } })),
+    set((state) => ({
+      enabled: { ...state.enabled, [id]: !state.enabled[id] },
+      // A fresh toggle starts a fresh retry budget.
+      retries: { ...state.retries, [id]: 0 },
+    })),
 
   setOpacity: (opacity) => set({ opacity: clamp01(opacity) }),
 

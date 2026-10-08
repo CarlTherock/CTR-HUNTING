@@ -193,6 +193,9 @@ export interface MapInstance {
     opacity: number,
     attribution?: string,
   ): void
+  /** Manual « Réessayer » for one raster overlay: clears its latched error
+   * and requests its tiles again. No-op when the overlay is not shown. */
+  retryRasterOverlay?(id: string): void
   /**
    * Weather-app-style animated raster (radar loop / hourly forecast):
    * `frames` are real GeoMet WMS tile templates, `activeIndex` the one

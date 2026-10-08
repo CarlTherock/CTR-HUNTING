@@ -263,6 +263,9 @@ export class MapLibreProvider implements MapProvider {
       ) {
         rasterOverlays.set(id, tileUrlTemplate, opacity, attribution)
       },
+      retryRasterOverlay(id: string) {
+        rasterOverlays.retry(id)
+      },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         // Terrain itself stays set either way — "2D" means "real scale,
         // not visually exaggerated," not "no terrain at all."
