@@ -10,6 +10,7 @@ import { TemporalPage } from '@/features/temporal/pages/TemporalPage'
 import { AnalysisPage } from '@/features/analytics/pages/AnalysisPage'
 import { JournalPage } from '@/features/journal/pages/JournalPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { DataHubPage, MoreHubPage } from '@/features/hubs/pages/HubPages'
 
 export const router = createBrowserRouter(
   [
@@ -23,6 +24,8 @@ export const router = createBrowserRouter(
         { index: true, element: <DashboardPage /> },
         { path: 'map', element: <MapPage /> },
         { path: 'waypoints', element: <WaypointsPage /> },
+        { path: 'data', element: <DataHubPage /> },
+        { path: 'more', element: <MoreHubPage /> },
         { path: 'weather', element: <WeatherPage /> },
         { path: 'temporal', element: <TemporalPage /> },
         { path: 'analysis', element: <AnalysisPage /> },
@@ -36,6 +39,19 @@ export const router = createBrowserRouter(
           }),
         },
         { path: 'settings', element: <SettingsPage /> },
+        {
+          path: 'deertracker',
+          lazy: async () => ({
+            Component: (await import('@/features/deertracker/pages/DeerTrackerPage'))
+              .default,
+          }),
+        },
+        {
+          path: 'project',
+          lazy: async () => ({
+            Component: (await import('@/features/project/pages/ProjectPage')).default,
+          }),
+        },
         // Secondary pages: reached from Réglages, the home page and the help
         // links (not from the navigation bars) and loaded on demand so they
         // stay out of the initial bundle.

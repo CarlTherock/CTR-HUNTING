@@ -1,4 +1,4 @@
-import { Box, Minus, Plus, Square } from 'lucide-react'
+import { Minus, Plus } from 'lucide-react'
 import { ToolSlot } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 
@@ -26,6 +26,12 @@ export interface ViewModeToggleProps {
   onTerrainExaggerationChange: (exaggeration: number) => void
 }
 
+export const RELIEF_EXPLANATION =
+  'Le relief exagère la hauteur du terrain en 3D (de 1× à 10×). Ce n’est pas un zoom : la carte ne se rapproche pas.'
+
+const STEP_BUTTON =
+  'text-ink-300 hover:bg-surface-800 flex h-11 w-11 items-center justify-center disabled:cursor-not-allowed disabled:opacity-40'
+
 export function ViewModeToggle({
   pitch,
   onChange,
@@ -35,78 +41,81 @@ export function ViewModeToggle({
   const is3D = pitch > 0
 
   return (
-    // A single row, not a stack: the exaggeration control sits *beside*
-    // the 2D/3D toggle (only appearing in 3D), never below it — stacking
-    // it below previously grew this control downward into
-    // `WaypointControl`'s button at top-44, making it untappable.
-    <ToolSlot order={5}>
-      <div className="flex flex-wrap items-center gap-1.5">
+    // Always-visible controls on the right rail (replacing the zoom +/−):
+    // a vertical 2D/3D switch, and — in 3D only — the relief stepper under it.
+    <ToolSlot order={5} placement="rail">
+      <div className="flex flex-col items-end gap-2">
+        <div
+          role="group"
+          aria-label="Mode d'affichage"
+          className="border-surface-600 bg-surface-900/90 flex flex-col overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm [@media(max-height:480px)]:flex-row"
+        >
+          <button
+            type="button"
+            aria-pressed={!is3D}
+            title="Carte à plat (2D)"
+            onClick={() => onChange(0, 0)}
+            className={cn(
+              'flex h-11 w-11 items-center justify-center text-sm font-semibold transition-colors',
+              !is3D
+                ? 'bg-brand-500/15 text-brand-400'
+                : 'text-ink-300 hover:bg-surface-800',
+            )}
+          >
+            2D
+          </button>
+          <button
+            type="button"
+            aria-pressed={is3D}
+            title="Carte inclinée avec relief (3D)"
+            onClick={() => onChange(THREE_D_PITCH, THREE_D_BEARING)}
+            className={cn(
+              'border-surface-600 flex h-11 w-11 items-center justify-center border-t text-sm font-semibold transition-colors [@media(max-height:480px)]:border-t-0 [@media(max-height:480px)]:border-l',
+              is3D
+                ? 'bg-brand-500/15 text-brand-400'
+                : 'text-ink-300 hover:bg-surface-800',
+            )}
+          >
+            3D
+          </button>
+        </div>
+
         {is3D && (
           <div
             role="group"
             aria-label="Exagération du relief"
-            className="border-surface-600 bg-surface-900/90 flex items-center gap-1.5 rounded-lg border px-1.5 py-1 shadow-lg backdrop-blur-sm"
+            title={RELIEF_EXPLANATION}
+            className="border-surface-600 bg-surface-900/90 flex flex-col items-center overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm [@media(max-height:480px)]:flex-row"
           >
-            <button
-              type="button"
-              onClick={() => onTerrainExaggerationChange(terrainExaggeration - 1)}
-              disabled={terrainExaggeration <= 1}
-              aria-label="Réduire l'exagération du relief"
-              className="text-ink-300 hover:bg-surface-800 flex h-11 w-11 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Minus size={16} aria-hidden="true" />
-            </button>
-            <span className="text-ink-100 w-6 text-center text-xs tabular-nums">
-              {terrainExaggeration.toFixed(0)}×
+            <span className="text-ink-500 pt-1 text-[10px] leading-none font-medium uppercase [@media(max-height:480px)]:pt-0 [@media(max-height:480px)]:pl-2">
+              Relief
             </span>
             <button
               type="button"
               onClick={() => onTerrainExaggerationChange(terrainExaggeration + 1)}
               disabled={terrainExaggeration >= MAX_EXAGGERATION}
               aria-label="Augmenter l'exagération du relief"
-              className="text-ink-300 hover:bg-surface-800 flex h-11 w-11 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-40"
+              className={STEP_BUTTON}
             >
               <Plus size={16} aria-hidden="true" />
             </button>
+            <span
+              className="text-ink-100 text-xs tabular-nums"
+              data-testid="relief-value"
+            >
+              {terrainExaggeration.toFixed(0)}×
+            </span>
+            <button
+              type="button"
+              onClick={() => onTerrainExaggerationChange(terrainExaggeration - 1)}
+              disabled={terrainExaggeration <= 1}
+              aria-label="Réduire l'exagération du relief"
+              className={STEP_BUTTON}
+            >
+              <Minus size={16} aria-hidden="true" />
+            </button>
           </div>
         )}
-
-        <div
-          role="group"
-          aria-label="Mode d'affichage"
-          className="border-surface-600 bg-surface-900/90 flex overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
-        >
-          <button
-            type="button"
-            aria-pressed={!is3D}
-            title="2D"
-            onClick={() => onChange(0, 0)}
-            className={cn(
-              'flex min-h-11 items-center gap-1.5 px-3 text-sm font-medium transition-colors',
-              !is3D
-                ? 'bg-brand-500/15 text-brand-400'
-                : 'text-ink-300 hover:bg-surface-800',
-            )}
-          >
-            <Square size={14} aria-hidden="true" />
-            2D
-          </button>
-          <button
-            type="button"
-            aria-pressed={is3D}
-            title="3D"
-            onClick={() => onChange(THREE_D_PITCH, THREE_D_BEARING)}
-            className={cn(
-              'border-surface-600 flex min-h-11 items-center gap-1.5 border-l px-3 text-sm font-medium transition-colors',
-              is3D
-                ? 'bg-brand-500/15 text-brand-400'
-                : 'text-ink-300 hover:bg-surface-800',
-            )}
-          >
-            <Box size={14} aria-hidden="true" />
-            3D
-          </button>
-        </div>
       </div>
     </ToolSlot>
   )

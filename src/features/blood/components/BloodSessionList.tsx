@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Check,
   Droplets,
@@ -58,7 +58,6 @@ export function BloodSessionList() {
     if (!loaded) void useBloodStore.getState().load()
   }, [loaded])
 
-  if (sessions.length === 0) return null
   const sorted = [...sessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
   async function exportOne(sessionId: string, share: boolean) {
@@ -97,7 +96,11 @@ export function BloodSessionList() {
   }
 
   return (
-    <div className="flex flex-col gap-2" data-testid="blood-session-list">
+    <div
+      id="recherches-de-sang"
+      className="flex scroll-mt-4 flex-col gap-2"
+      data-testid="blood-session-list"
+    >
       <h2 className="text-ink-300 flex items-center gap-2 text-sm font-semibold">
         <Droplets size={16} aria-hidden="true" />
         Recherches de sang ({sessions.length})
@@ -106,6 +109,24 @@ export function BloodSessionList() {
         <p role="status" className="text-ink-300 text-xs">
           {message}
         </p>
+      )}
+      {sessions.length === 0 && (
+        <Card className="text-ink-300 flex flex-col gap-2 p-3 text-sm">
+          <p>
+            Aucune recherche enregistrée. Une recherche se démarre depuis la carte :{' '}
+            <strong className="text-ink-100">
+              Outils → Démarrer une recherche de sang
+            </strong>
+            . Pendant la recherche, le bouton « Caméra (expérimental) » ouvre l’aide
+            visuelle.
+          </p>
+          <Link
+            to="/map"
+            className="text-brand-400 inline-flex min-h-11 items-center font-medium underline"
+          >
+            Ouvrir la carte
+          </Link>
+        </Card>
       )}
       {sorted.map((session) => {
         const track = tracks.find((t) => t.id === session.trackId)

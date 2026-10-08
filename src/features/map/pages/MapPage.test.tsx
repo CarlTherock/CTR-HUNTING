@@ -509,6 +509,20 @@ describe('MapPage', () => {
     expect(screen.getByRole('checkbox', { name: 'Hydrographie' })).toBeDisabled()
   })
 
+  it('has no always-visible zoom buttons: 2D/3D is on the rail and zoom lives in Outils', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    expect(screen.queryByRole('button', { name: 'Zoom avant' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '3D' })).toBeInTheDocument()
+
+    await openTools(user)
+    const before = useMapStore.getState().view.zoom
+    await user.click(screen.getByRole('button', { name: 'Zoom avant' }))
+    expect(useMapStore.getState().view.zoom).toBe(Math.round(before) + 1)
+    await user.click(screen.getByRole('button', { name: 'Zoom arrière' }))
+    expect(useMapStore.getState().view.zoom).toBe(Math.round(before))
+  })
+
   it('switches to the 3D camera preset and back without recreating the map', async () => {
     const user = userEvent.setup()
     render(<MapPage />)

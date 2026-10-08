@@ -99,6 +99,56 @@ export default function HelpPage() {
         </p>
       </Section>
 
+      <Section id="navigation" title="S’orienter dans l’application">
+        <p>
+          Cinq entrées en bas de l’écran :{' '}
+          <strong className="text-ink-100">Accueil</strong>,{' '}
+          <strong className="text-ink-100">Carte</strong>,{' '}
+          <strong className="text-ink-100">Mes données</strong> (repères, traces,
+          recherches de sang, journal, DeerTracker),{' '}
+          <strong className="text-ink-100">Météo</strong> et{' '}
+          <strong className="text-ink-100">Plus</strong> (analyse, assistant, Projet et
+          progression, réglages, aide). Rien n’a été supprimé : chaque fonction existante
+          a gardé un emplacement.
+        </p>
+      </Section>
+
+      <Section id="carte-3d" title="Carte : 2D/3D, relief et zoom">
+        <p>
+          À droite de la carte, « 2D » met la carte à plat et « 3D » l’incline avec le
+          relief. En 3D, le réglage « Relief » (1× à 10×) exagère la{' '}
+          <em>hauteur verticale</em> du terrain : ce n’est pas un zoom. Le zoom se fait en
+          pinçant la carte, en la touchant deux fois, au clavier (+ / −) ou avec « Zoom »
+          dans Outils. Les couches (fonds, superpositions) sont dans « Couches » ; la
+          forêt, le LiDAR et les territoires dans Outils › « Couches du Québec ». Si une
+          couche ne charge pas, un message dit pourquoi et propose « Réessayer » (trois
+          essais au plus) ; la carte reste utilisable.
+        </p>
+      </Section>
+
+      <Section id="vent" title="Lire le vent">
+        <p>
+          Page Météo › Vent : la boussole indique d’où vient le vent (flèche pleine), avec
+          la vitesse en grand et les rafales en second. Chaque heure affiche une flèche
+          vers la provenance. Le statut « favorable / défavorable » compare seulement le
+          vent avec les secteurs que <em>vous</em> avez enregistrés sur un repère ; sans
+          secteur, il est « non renseigné ». C’est une prévision de modèle (Open-Meteo),
+          pas une mesure sur place, et aucune prévision de déplacement des animaux n’est
+          faite.
+        </p>
+      </Section>
+
+      <Section id="deertracker" title="DeerTracker">
+        <p>
+          Mes données › DeerTracker sert à consigner <em>vos</em> observations et indices
+          (cerf vu, piste, grattage, frottis…), avec photos, notes, territoire et lien
+          vers un repère ou une trace. Il ne localise aucun animal en direct et ne prédit
+          pas leur présence. Le résumé (nombre, répartition par heure, types) est un
+          simple calcul sur vos propres entrées. Les données restent sur l’appareil et
+          font partie de la sauvegarde ZIP.
+        </p>
+      </Section>
+
       <Section id="waypoints" title="Points de repère">
         <p>
           Sur la carte, le bouton d’ajout de point de repère permet de toucher l’endroit

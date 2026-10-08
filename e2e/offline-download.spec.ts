@@ -1,6 +1,18 @@
+import type { Page } from '@playwright/test'
 import { colorsClose, dominantColor } from './support/pixels'
 import { TILE_COLOR } from './support/mockMapBackend'
 import { expect, test } from './support/test'
+
+/** Réglages sits under « Plus » on phones and in the sidebar on desktop. */
+async function openSettings(page: Page) {
+  const settings = page.getByRole('link', { name: /Réglages/ }).first()
+  if (!(await settings.isVisible()))
+    await page.getByRole('link', { name: /^Plus/ }).click()
+  await page
+    .getByRole('link', { name: /Réglages/ })
+    .first()
+    .click()
+}
 
 /**
  * Downloading an area must be honest: tile failures show up as an
@@ -73,7 +85,7 @@ test.describe('téléchargement de zone hors ligne', () => {
       .click()
 
     // One area only (retry reused the record), listed as complete in Réglages.
-    await page.getByRole('link', { name: /Réglages/ }).click()
+    await openSettings(page)
     await expect(page.getByText('Zone hors ligne 1')).toHaveCount(1)
     await expect(page.getByText('Terminée', { exact: true })).toBeVisible()
     await expect(page.getByText('Zone hors ligne 2')).toHaveCount(0)
@@ -106,7 +118,7 @@ test.describe('téléchargement de zone hors ligne', () => {
 
     // Failures lifted; retry from Réglages (no map there).
     backend.failTiles(null)
-    await page.getByRole('link', { name: /Réglages/ }).click()
+    await openSettings(page)
     await expect(page.getByText('Incomplète', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Réessayer', exact: true }).click()
 

@@ -8,37 +8,14 @@ import { TerritoryFilterBar } from '@/features/territories/components/TerritoryF
 import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
 import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
 import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
-import { useWeatherStore } from '@/features/weather/state/weatherStore'
-import { useWindStore } from '@/features/wind/state/windStore'
-import { windAt } from '@/utils/windField'
 import { compassLabel } from '@/utils/terrain'
 import { useJournalStore } from '../state/journalStore'
 import { JournalPhotos } from '../components/JournalPhotos'
+import { snapshotConditions } from '../conditionsSnapshot'
 import type { Observation } from '@/types'
 
 function formatCoordinate(lat: number, lng: number): string {
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
-}
-
-/** A real conditions snapshot from whatever weather/wind data the app
- * already has loaded (Phases 5/6) — only built when there's a genuine
- * reading for every field; otherwise `undefined`, never a partially
- * fabricated snapshot. */
-function snapshotConditions(coordinate: {
-  lat: number
-  lng: number
-}): Observation['conditions'] {
-  const forecast = useWeatherStore.getState().forecast
-  const windField = useWindStore.getState().field
-  if (!forecast || !windField) return undefined
-  const reading = windAt(windField, coordinate, 0)
-  if (!reading) return undefined
-  return {
-    temperatureCelsius: forecast.current.temperatureCelsius,
-    windSpeedKmh: reading.speedKmh,
-    windDirectionDegrees: reading.directionDegrees,
-    cloudCoverPercent: forecast.current.cloudCoverPercent,
-  }
 }
 
 /**
@@ -73,7 +50,14 @@ export function JournalPage() {
   const coordinate = usingGps ? gpsReading.value : mapCenter
 
   async function handleNewEntry() {
-    await create({ coordinate, notes: '', conditions: snapshotConditions(coordinate) })
+    const snapshot = snapshotConditions(coordinate)
+    await create({
+      coordinate,
+      notes: '',
+      conditions: snapshot?.conditions,
+      conditionsMeta: snapshot?.meta,
+      positionOrigin: usingGps ? 'gps' : 'manual',
+    })
   }
 
   function viewOnMap(observation: Observation) {

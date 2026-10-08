@@ -272,3 +272,13 @@ Dans `e2e/backup.spec.ts`, `setInputFiles` de Playwright n'a pas déclenché le
 transmet donc les octets réels du .zip téléchargé via `DataTransfer`. Le
 sélecteur de fichiers du système n'est **pas** exercé : à vérifier sur iPhone
 (« Restaurer une sauvegarde » → choisir le .zip dans Fichiers).
+
+## Refonte visuelle, menus, cartes, vent et DeerTracker
+
+Réellement exécuté sur la branche `feat/refonte-visuelle-deertracker` (Node 24) :
+
+- typecheck, lint, Prettier, tests unitaires (181 fichiers, 1 700 tests) et build : voir le rapport de la PR pour les chiffres du dernier commit.
+- E2E `e2e/refonte.spec.ts` aux 8 tailles (320×568, 375×812, 390×844, 430×932, 568×320, 844×390, 768×1024, 1440×900) : contrôles de carte visibles, dans l'écran, non recouverts, sans chevauchement ; pas de bouton de zoom permanent ; zoom dans Outils ; 2D/3D + relief ; panneau des couches borné ; pages Accueil / Données / Météo (vent) / DeerTracker / Projet / Plus sans débordement horizontal.
+- Un défaut réel trouvé par ce test et corrigé : à 568×320 le réglage « Relief » dépassait de la colonne de droite ; en paysage court, 2D/3D et Relief passent en rangée.
+
+Limites : Chromium uniquement, carte, GPS et fournisseurs SIMULÉS. Ce n'est **pas** une validation iPhone et cela ne valide aucun fournisseur de cartes réel. Les couches WMS Québec (forêt / LiDAR) restent « non validées » (voir `docs/SOURCES_QUEBEC.md`) : l'erreur est désormais expliquée et bornée, pas corrigée à la source. Les captures « avant » sont celles de l'iPhone de l'utilisateur ; les captures « après » (`docs/validation/refonte-*.png`) sont simulées.

@@ -243,6 +243,12 @@ for (const size of SIZES) {
       await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
       await openTool(page, /Couches du Québec/)
       await expect(page.getByRole('heading', { name: 'Couches du Québec' })).toBeVisible()
+      // Groups are collapsed unless a layer in them is on: open the first one.
+      await page
+        .getByRole('dialog', { name: 'Couches du Québec' })
+        .locator('summary')
+        .first()
+        .click()
       await page.getByRole('switch').first().click()
       await shot(page, 'couches-quebec')
     })

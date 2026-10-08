@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trees, X } from 'lucide-react'
+import { RefreshCw, Trees, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import {
@@ -7,7 +7,8 @@ import {
   OFFICIAL_HUNTING_LINKS,
   WARNING_FRONTIERE,
 } from '@/services/map/forestLayerTiles'
-import type { ForestLayerGroup } from '@/types'
+import { MAX_LAYER_RETRIES, isRetryableKind } from '@/services/map/layerErrors'
+import type { ForestLayerGroup, ForestLayerId } from '@/types'
 import { effectiveOpacity, useForestLayersStore } from '../state/forestLayersStore'
 import { enabledAttributions, layerNotice } from '../utils/layerNotices'
 
@@ -30,11 +31,20 @@ const TONE_CLASS = {
  * independently, any combination at once, each with its own opacity so the
  * LiDAR relief can be compared with the satellite view underneath.
  */
-export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
+export function ForestLayersControl({
+  currentZoom,
+  onRetry,
+}: {
+  currentZoom: number
+  /** Asks the map engine to request this layer's tiles again. */
+  onRetry?: (id: ForestLayerId) => void
+}) {
   const enabled = useForestLayersStore((state) => state.enabled)
   const opacity = useForestLayersStore((state) => state.opacity)
   const layerOpacity = useForestLayersStore((state) => state.layerOpacity)
   const status = useForestLayersStore((state) => state.status)
+  const retries = useForestLayersStore((state) => state.retries)
+  const noteRetry = useForestLayersStore((state) => state.noteRetry)
   const toggle = useForestLayersStore((state) => state.toggle)
   const setLayerOpacity = useForestLayersStore((state) => state.setLayerOpacity)
 
@@ -47,6 +57,11 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
   // never turns off already-toggled layers — same split as
   // `WeatherMapControl`'s panel visibility vs. its layer toggle.
   const [panelOpen, setPanelOpen] = useState(false)
+  const inGroup = (id: ForestLayerGroup) =>
+    FOREST_LAYER_OPTIONS.filter((option) => option.group === id)
+  const activeCount = (id: ForestLayerGroup) =>
+    inGroup(id).filter((option) => enabled[option.id]).length
+  const groupActive = (id: ForestLayerGroup) => activeCount(id) > 0
 
   return (
     <>
@@ -60,8 +75,12 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
       />
 
       {panelOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div className="border-surface-600 bg-surface-900/95 max-h-[75dvh] w-full max-w-sm overflow-y-auto rounded-lg border p-3 shadow-2xl">
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 z-30 flex justify-center">
+          <div
+            role="dialog"
+            aria-label="Couches du Québec"
+            className="border-surface-600 bg-surface-900/95 pointer-events-auto max-h-[min(60dvh,28rem)] w-full max-w-sm overflow-y-auto rounded-lg border p-3 shadow-2xl"
+          >
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-ink-100 text-sm font-semibold">Couches du Québec</h2>
               <button
@@ -75,10 +94,17 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
             </div>
 
             {GROUPS.map((group) => (
-              <section key={group.id} className="mb-3">
-                <h3 className="text-ink-300 mb-1 text-xs font-semibold uppercase">
-                  {group.title}
-                </h3>
+              <details
+                key={group.id}
+                open={groupActive(group.id)}
+                className="mb-2 [&>summary]:list-none"
+              >
+                <summary className="text-ink-300 flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold uppercase">
+                  <span>{group.title}</span>
+                  <span className="text-ink-500 normal-case">
+                    {activeCount(group.id)} active(s)
+                  </span>
+                </summary>
                 <div className="flex flex-col gap-1.5">
                   {FOREST_LAYER_OPTIONS.filter((option) => option.group === group.id).map(
                     (option) => {
@@ -105,6 +131,9 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
                             <span className="text-ink-500 text-xs">
                               {option.description}
                             </span>
+                            <span className="text-ink-500 mt-0.5 text-[10px]">
+                              {on ? 'Active · ' : ''}Réseau requis (pas hors ligne)
+                            </span>
                           </button>
 
                           {on && (
@@ -117,6 +146,28 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
                                   {notice.text}
                                 </p>
                               )}
+                              {status[option.id]?.state === 'error' &&
+                                isRetryableKind(status[option.id]?.errorKind) &&
+                                (retries[option.id] ?? 0) < MAX_LAYER_RETRIES && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      noteRetry(option.id)
+                                      onRetry?.(option.id)
+                                    }}
+                                    className="border-surface-600 text-ink-100 hover:bg-surface-800 mb-1 flex min-h-11 items-center gap-1.5 rounded-md border px-2.5 text-xs"
+                                  >
+                                    <RefreshCw size={13} aria-hidden="true" />
+                                    Réessayer
+                                  </button>
+                                )}
+                              {status[option.id]?.state === 'error' &&
+                                (retries[option.id] ?? 0) >= MAX_LAYER_RETRIES && (
+                                  <p className="text-ink-500 mb-1 text-xs">
+                                    Plusieurs essais ont échoué : réessayez plus tard ou
+                                    désactivez la couche. La carte reste utilisable.
+                                  </p>
+                                )}
                               <label className="text-ink-500 flex items-center justify-between text-xs">
                                 <span>Opacité (comparer avec le fond)</span>
                                 <span>{Math.round(value * 100)} %</span>
@@ -159,7 +210,7 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
                     },
                   )}
                 </div>
-              </section>
+              </details>
             ))}
 
             {anyLegalEnabled && (
@@ -195,9 +246,12 @@ export function ForestLayersControl({ currentZoom }: { currentZoom: number }) {
               connexion.
             </p>
             {attributions.length > 0 && (
-              <p className="text-ink-500 mt-1 text-[10px]">
-                Données : {attributions.join(' ; ')}.
-              </p>
+              <details className="text-ink-500 mt-1 text-[10px]">
+                <summary className="min-h-11 cursor-pointer py-2">
+                  Sources et attributions ({attributions.length})
+                </summary>
+                <p>Données : {attributions.join(' ; ')}.</p>
+              </details>
             )}
           </div>
         </div>

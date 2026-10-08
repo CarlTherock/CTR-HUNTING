@@ -21,10 +21,24 @@ export type ForestLayerGroup = 'foret' | 'relief' | 'frontieres'
 /** Load state of one raster overlay, as seen by the map engine. */
 export type OverlayLoadState = 'idle' | 'loading' | 'ready' | 'error'
 
+/** Why a map layer failed — see `services/map/layerErrors.ts`. */
+export type LayerErrorKind =
+  | 'missing-key'
+  | 'provider-refused'
+  | 'style-unavailable'
+  | 'tile-failure'
+  | 'layer-not-found'
+  | 'bad-params'
+  | 'incompatible'
+  | 'not-offline'
+  | 'unknown'
+
 export interface OverlayStatus {
   state: OverlayLoadState
   /** Human-readable reason, French, only for `error`. */
   message?: string
+  /** Typed cause, only for `error` (older callers may omit it). */
+  errorKind?: LayerErrorKind
 }
 
 export interface ForestLayerOption {

@@ -66,7 +66,7 @@ export function LayerManagerPanel() {
         <div className="mb-1.5 flex items-center justify-between gap-1.5 px-1">
           <div className="text-ink-500 flex items-center gap-1.5 text-xs font-semibold">
             <LayersIcon size={14} aria-hidden="true" />
-            Fond de carte
+            Fond de carte (un seul à la fois)
           </div>
           <button
             type="button"
@@ -143,6 +143,10 @@ export function LayerManagerPanel() {
             </button>
           ))}
         </div>
+        <p className="border-surface-700 text-ink-500 mt-2 border-t px-1 pt-2 text-xs">
+          Forêt, propriété, relief LiDAR et territoires : Outils › « Couches du Québec ».
+          Météo, vent et potentiel : Outils › Météo / Analyse.
+        </p>
       </div>
     </>
   )

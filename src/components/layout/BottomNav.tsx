@@ -1,18 +1,16 @@
 import { NavLink } from 'react-router-dom'
-import { navItems } from '@/app/navigation'
+import { primaryNavItems } from '@/app/navigation'
 import { cn } from '@/utils/cn'
 
 /** Mobile field navigation: large touch targets, primary sections only. */
 export function BottomNav() {
-  const primaryItems = navItems.filter((item) => item.primary)
-
   return (
     <nav
       className="border-surface-800 bg-surface-900 flex shrink-0 border-t md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Navigation principale"
     >
-      {primaryItems.map((item) => (
+      {primaryNavItems.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}

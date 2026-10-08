@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { OverlayStatus, WeatherTileFrame } from '@/types'
 import { TRACK_PREVIEW_LAYER_ID } from './pathLayers'
+import { classifyLayerError } from './layerErrors'
 
 /** Named external raster overlays (radar, Forêt ouverte's cadastre/
  * coupes/peuplements, …) — re-applied on every style load, since a base
@@ -70,10 +71,15 @@ export function createRasterOverlays(
   map.on('error', (event: object) => {
     const id = overlayIdOf((event as SourceEvent).sourceId)
     if (!id) return
-    const message =
-      'Chargement impossible : service indisponible, réponse invalide, accès bloqué ou hors ligne.'
+    const raw = (event as { error?: { status?: number; message?: string } }).error
+    const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false
+    const { kind, message } = classifyLayerError({
+      status: raw?.status,
+      rawMessage: raw?.message,
+      online,
+    })
     failed.set(id, message)
-    onStatus?.(id, { state: 'error', message })
+    onStatus?.(id, { state: 'error', message, errorKind: kind })
   })
 
   return {
@@ -112,6 +118,15 @@ export function createRasterOverlays(
     },
     applyAll() {
       for (const id of overlays.keys()) apply(id)
+    },
+    /** Manual retry: drops the latched error and re-adds the source. */
+    retry(id: string) {
+      if (!overlays.has(id)) return
+      try {
+        apply(id)
+      } catch {
+        // Style mid-switch: `applyAll` re-adds it on `style.load`.
+      }
     },
   }
 }
