@@ -212,27 +212,41 @@ describe('BloodPanel', () => {
     ).toBeInTheDocument()
   })
 
-  it('last blood / last clue shortcuts use Aller à; recenter and overview are wired', async () => {
+  it('Caméra sang and Dernier indice are visible without expanding; shortcuts use Aller à; recenter and overview are wired', async () => {
     const user = userEvent.setup()
     await useBloodStore.getState().startSession({ hasUsableFix: true })
     const { onCenter, onOverview } = renderPanel(fix())
+    // Always visible (not inside « Indices et outils »), « Dernier indice » off until a clue exists.
+    expect(screen.getByRole('button', { name: /Caméra sang/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Dernier indice/ })).toBeDisabled()
+
     await user.click(screen.getByRole('button', { name: /\+ Sang/ }))
     await waitFor(() => screen.getByText('Sang 01 enregistré.'))
-    await user.click(screen.getByRole('button', { name: /Indices et outils/ }))
-    // Last clue is the last blood: only one shortcut is active.
-    expect(screen.getByRole('button', { name: /Aller au dernier indice/ })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: /Revenir au dernier sang/ }))
     const [waypoint] = await db.waypoints.toArray()
+    await user.click(screen.getByRole('button', { name: /Dernier indice/ }))
     expect(useGuidanceStore.getState().destinationId).toBe(waypoint.id)
 
+    await user.click(screen.getByRole('button', { name: /Indices et outils/ }))
     await user.click(screen.getByRole('button', { name: /Autre indice/ }))
     await waitFor(() => screen.getByText('Autre indice 01 enregistré.'))
-    expect(screen.getByRole('button', { name: /Aller au dernier indice/ })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: /Revenir au dernier sang/ }))
+    expect(useGuidanceStore.getState().destinationId).toBe(waypoint.id)
+    await user.click(screen.getByRole('button', { name: /Dernier indice/ }))
+    expect(useGuidanceStore.getState().destinationId).not.toBe(waypoint.id)
 
     await user.click(screen.getByRole('button', { name: /Recentrer/ }))
     expect(onCenter).toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: /Vue d’ensemble/ }))
     expect(onOverview).toHaveBeenCalledWith(expect.arrayContaining([expect.any(Object)]))
+  })
+
+  it('the visible Caméra sang button opens the camera through the store', async () => {
+    const user = userEvent.setup()
+    await useBloodStore.getState().startSession({ hasUsableFix: true })
+    renderPanel(fix())
+    await user.click(screen.getByRole('button', { name: /Caméra sang/ }))
+    expect(useBloodStore.getState().cameraOpen).toBe(true)
+    useBloodStore.getState().closeCamera()
   })
 
   it('undo deletes only the last clue, after a warning when it has a note', async () => {

@@ -48,12 +48,12 @@ export function AddPointControl({ gpsReading, large }: AddPointControlProps) {
           aria-expanded={open}
           data-testid="add-point-button"
           className={cn(
-            'bg-brand-500 text-surface-950 hover:bg-brand-400 flex items-center justify-center gap-1.5 rounded-full font-bold shadow-lg outline outline-2 outline-white/70',
-            large ? 'min-h-16 px-5 text-lg' : 'min-h-11 px-4 text-sm',
+            'bg-brand-500 text-surface-950 hover:bg-brand-400 flex flex-col items-center justify-center rounded-2xl font-bold shadow-lg outline outline-2 outline-white/70',
+            large ? 'h-20 w-20 text-base' : 'h-14 w-14 text-xs leading-tight',
           )}
         >
-          <Plus size={large ? 26 : 18} aria-hidden="true" />
-          Repère
+          <Plus size={large ? 30 : 22} strokeWidth={3} aria-hidden="true" />
+          <span>Repère</span>
         </button>
       </ToolSlot>
       {open && <AddPointSheet gpsReading={gpsReading} />}
@@ -78,7 +78,7 @@ export function AddPointControl({ gpsReading, large }: AddPointControlProps) {
         <p
           role="status"
           data-testid="add-point-notice"
-          className="border-surface-600 bg-surface-900/95 text-ink-100 absolute top-14 left-1/2 z-20 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-lg border px-3 py-2 text-xs shadow-lg"
+          className="border-surface-600 bg-surface-900/95 text-ink-100 pointer-events-none absolute top-3 left-1/2 z-20 max-w-[calc(100%-1rem)] -translate-x-1/2 rounded-lg border px-3 py-2 text-xs shadow-lg"
         >
           {notice}
         </p>
@@ -113,9 +113,13 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
   const now = useGpsClock(2000)
   const gps = describeGps(gpsReading, now)
   const panelRef = useRef<HTMLDivElement>(null)
+  // A long press opens the panel; the click the browser emits when the finger
+  // lifts must not land on the backdrop and close it again.
+  const openedAtRef = useRef(Infinity)
   const store = useAddPointStore.getState
 
   useEffect(() => {
+    openedAtRef.current = Date.now()
     panelRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') store().closeSheet()
@@ -131,7 +135,10 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
       <div
         className="absolute inset-0 z-30 bg-black/40"
         aria-hidden="true"
-        onClick={() => store().closeSheet()}
+        onClick={() => {
+          if (Date.now() - openedAtRef.current < 700) return
+          store().closeSheet()
+        }}
       />
       <div
         ref={panelRef}
@@ -139,9 +146,9 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
         aria-label="Ajouter un repère"
         tabIndex={-1}
         data-testid="add-point-sheet"
-        className="border-surface-600 bg-surface-900 text-ink-100 absolute inset-x-0 bottom-0 z-40 max-h-[80%] overflow-y-auto rounded-t-xl border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl outline-none"
+        className="border-surface-600 bg-surface-900 text-ink-100 absolute inset-x-0 bottom-0 z-40 flex max-h-[92%] flex-col overflow-hidden rounded-t-xl border-t shadow-2xl outline-none"
       >
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between px-3 pt-2">
           <h2 className="text-sm font-semibold">Ajouter à la carte</h2>
           <button
             type="button"
@@ -153,231 +160,241 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
           </button>
         </div>
 
-        <div
-          role="radiogroup"
-          aria-label="Type de repère"
-          className="grid grid-cols-2 gap-2 min-[700px]:grid-cols-5"
-        >
-          {ADD_POINT_TYPES.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="radio"
-              aria-checked={type === entry.id}
-              onClick={() => store().setType(entry.id)}
-              className={cn(
-                CHIP,
-                type === entry.id
-                  ? 'border-brand-400 bg-brand-500/15 text-brand-400'
-                  : 'border-surface-600 hover:bg-surface-800',
-              )}
-            >
-              <span className="flex items-center gap-1.5">
-                {entry.id === 'blood' && (
-                  <Droplets size={15} className="text-[#dc2626]" aria-hidden="true" />
-                )}
-                {entry.id === 'camera' && <Camera size={15} aria-hidden="true" />}
-                {entry.id !== 'blood' && entry.id !== 'camera' && (
-                  <MapPin size={15} aria-hidden="true" />
-                )}
-                {entry.label}
-              </span>
-              <span className="text-ink-500 block text-[11px] font-normal">
-                {entry.hint}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {type !== 'camera' && (
-          <fieldset className="mt-3">
-            <legend className="text-ink-300 mb-1 text-xs font-semibold">Position</legend>
-            <div
-              role="radiogroup"
-              aria-label="Mode de position"
-              className="grid grid-cols-2 gap-2"
-            >
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+          <div
+            role="radiogroup"
+            aria-label="Type de repère"
+            className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-5 [@media(max-height:480px)]:grid-cols-3"
+          >
+            {ADD_POINT_TYPES.map((entry) => (
               <button
+                key={entry.id}
                 type="button"
                 role="radio"
-                aria-checked={mode === 'gps'}
-                onClick={() => store().setMode('gps')}
+                aria-checked={type === entry.id}
+                onClick={() => store().setType(entry.id)}
                 className={cn(
                   CHIP,
-                  mode === 'gps'
+                  type === entry.id
                     ? 'border-brand-400 bg-brand-500/15 text-brand-400'
                     : 'border-surface-600 hover:bg-surface-800',
                 )}
               >
                 <span className="flex items-center gap-1.5">
-                  <Crosshair size={15} aria-hidden="true" /> Ma position GPS
+                  {entry.id === 'blood' && (
+                    <Droplets size={15} className="text-[#dc2626]" aria-hidden="true" />
+                  )}
+                  {entry.id === 'camera' && <Camera size={15} aria-hidden="true" />}
+                  {entry.id !== 'blood' && entry.id !== 'camera' && (
+                    <MapPin size={15} aria-hidden="true" />
+                  )}
+                  {entry.label}
+                </span>
+                <span className="text-ink-500 block text-[11px] font-normal [@media(max-height:480px)]:hidden">
+                  {entry.hint}
                 </span>
               </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === 'map'}
-                onClick={() => store().setMode('map')}
-                className={cn(
-                  CHIP,
-                  mode === 'map'
-                    ? 'border-brand-400 bg-brand-500/15 text-brand-400'
-                    : 'border-surface-600 hover:bg-surface-800',
-                )}
-              >
-                Position sur la carte
-              </button>
-            </div>
-            <p
-              data-testid="add-point-gps-line"
-              className={cn(
-                'mt-1 text-xs',
-                gps.usable ? 'text-ink-300' : 'text-status-warning',
-              )}
-            >
-              {mode === 'gps'
-                ? gps.line
-                : pressed
-                  ? `Point pressé sur la carte : ${pressed.lat.toFixed(5)}, ${pressed.lng.toFixed(5)}`
-                  : 'Vous toucherez la carte pour choisir l’endroit. Aucune position n’est inventée.'}
-            </p>
-          </fieldset>
-        )}
+            ))}
+          </div>
 
-        {type === 'blood' && (
-          <div className="mt-3 flex flex-col gap-2">
-            <p className="text-ink-300 text-xs font-semibold">Type d’indice</p>
-            <div className="flex flex-wrap gap-2">
-              {(['blood', ...QUICK_MARKER_KINDS] as const).map((kind) => (
+          {type !== 'camera' && (
+            <fieldset className="mt-3">
+              <legend className="text-ink-300 mb-1 text-xs font-semibold">
+                Position
+              </legend>
+              <div
+                role="radiogroup"
+                aria-label="Mode de position"
+                className="grid grid-cols-2 gap-2"
+              >
                 <button
-                  key={kind}
                   type="button"
-                  aria-pressed={bloodKind === kind}
-                  onClick={() => store().setBloodKind(kind)}
+                  role="radio"
+                  aria-checked={mode === 'gps'}
+                  onClick={() => store().setMode('gps')}
                   className={cn(
                     CHIP,
-                    bloodKind === kind
-                      ? 'border-[#dc2626] bg-[#dc2626]/15'
+                    mode === 'gps'
+                      ? 'border-brand-400 bg-brand-500/15 text-brand-400'
                       : 'border-surface-600 hover:bg-surface-800',
                   )}
                 >
-                  {BLOOD_MARKER_LABEL[kind]}
+                  <span className="flex items-center gap-1.5">
+                    <Crosshair size={15} aria-hidden="true" /> Ma position GPS
+                  </span>
                 </button>
-              ))}
-            </div>
-            {!hasSearch && !needsSearch && (
-              <p className="text-ink-300 text-xs">
-                Aucune recherche ouverte : un indice sang se rattache à une recherche.
-                Vous choisirez à l’enregistrement.
-              </p>
-            )}
-          </div>
-        )}
-
-        {isAnimal && (
-          <div className="mt-3 flex flex-col gap-2">
-            <label className="text-ink-300 flex flex-col gap-1 text-xs font-semibold">
-              Ce que vous avez vu
-              <select
-                value={animal.kind}
-                onChange={(e) =>
-                  store().patchAnimal({ kind: e.target.value as typeof animal.kind })
-                }
-                className="border-surface-600 bg-surface-900 text-ink-100 min-h-11 rounded-lg border px-2 text-base font-normal"
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === 'map'}
+                  onClick={() => store().setMode('map')}
+                  className={cn(
+                    CHIP,
+                    mode === 'map'
+                      ? 'border-brand-400 bg-brand-500/15 text-brand-400'
+                      : 'border-surface-600 hover:bg-surface-800',
+                  )}
+                >
+                  Position sur la carte
+                </button>
+              </div>
+              <p
+                data-testid="add-point-gps-line"
+                className={cn(
+                  'mt-1 text-xs',
+                  gps.usable ? 'text-ink-300' : 'text-status-warning',
+                )}
               >
-                {ANIMAL_KINDS.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.label}
-                  </option>
+                {mode === 'gps'
+                  ? gps.line
+                  : pressed
+                    ? `Point pressé sur la carte : ${pressed.lat.toFixed(5)}, ${pressed.lng.toFixed(5)}`
+                    : 'Vous toucherez la carte pour choisir l’endroit. Aucune position n’est inventée.'}
+              </p>
+            </fieldset>
+          )}
+
+          {type === 'blood' && (
+            <div className="mt-3 flex flex-col gap-2">
+              <p className="text-ink-300 text-xs font-semibold">Type d’indice</p>
+              <div className="flex flex-wrap gap-2">
+                {(['blood', ...QUICK_MARKER_KINDS] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={bloodKind === kind}
+                    onClick={() => store().setBloodKind(kind)}
+                    className={cn(
+                      CHIP,
+                      bloodKind === kind
+                        ? 'border-[#dc2626] bg-[#dc2626]/15'
+                        : 'border-surface-600 hover:bg-surface-800',
+                    )}
+                  >
+                    {BLOOD_MARKER_LABEL[kind]}
+                  </button>
                 ))}
-              </select>
-            </label>
-            <label className="text-ink-300 flex flex-col gap-1 text-xs font-semibold">
-              Nombre (facultatif)
-              <input
-                inputMode="numeric"
-                value={animal.count}
-                onChange={(e) =>
-                  store().patchAnimal({
-                    count: e.target.value.replace(/\D/g, '').slice(0, 2),
-                  })
-                }
-                className="border-surface-600 bg-surface-900 text-ink-100 min-h-11 rounded-lg border px-3 text-base font-normal"
+              </div>
+              {!hasSearch && !needsSearch && (
+                <p className="text-ink-300 text-xs">
+                  Aucune recherche ouverte : un indice sang se rattache à une recherche.
+                  Vous choisirez à l’enregistrement.
+                </p>
+              )}
+            </div>
+          )}
+
+          {isAnimal && (
+            <div className="mt-3 flex flex-col gap-2">
+              <label className="text-ink-300 flex flex-col gap-1 text-xs font-semibold">
+                Ce que vous avez vu
+                <select
+                  value={animal.kind}
+                  onChange={(e) =>
+                    store().patchAnimal({ kind: e.target.value as typeof animal.kind })
+                  }
+                  className="border-surface-600 bg-surface-900 text-ink-100 min-h-11 rounded-lg border px-2 text-base font-normal"
+                >
+                  {ANIMAL_KINDS.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-ink-300 flex flex-col gap-1 text-xs font-semibold">
+                Nombre (facultatif)
+                <input
+                  inputMode="numeric"
+                  value={animal.count}
+                  onChange={(e) =>
+                    store().patchAnimal({
+                      count: e.target.value.replace(/\D/g, '').slice(0, 2),
+                    })
+                  }
+                  className="border-surface-600 bg-surface-900 text-ink-100 min-h-11 rounded-lg border px-3 text-base font-normal"
+                />
+              </label>
+              <p className="text-ink-500 text-[11px]">
+                Observation notée à l’heure de l’enregistrement. Ce n’est que ce que vous
+                saisissez : aucune identification ni prévision.
+              </p>
+            </div>
+          )}
+
+          {(type === 'blood' || isAnimal) && (
+            <label className="text-ink-300 mt-3 flex flex-col gap-1 text-xs font-semibold">
+              Note (facultative)
+              <textarea
+                value={note}
+                onChange={(e) => store().setNote(e.target.value.slice(0, 500))}
+                rows={2}
+                className="border-surface-600 bg-surface-900 text-ink-100 rounded-lg border px-3 py-2 text-base font-normal"
               />
             </label>
-            <p className="text-ink-500 text-[11px]">
-              Observation notée à l’heure de l’enregistrement. Ce n’est que ce que vous
-              saisissez : aucune identification ni prévision.
+          )}
+
+          {type === 'normal' && (
+            <p className="text-ink-500 mt-3 text-xs">
+              Nom, icône, couleur, photo et notes se règlent juste après, dans la fiche du
+              repère.
             </p>
-          </div>
-        )}
-
-        {(type === 'blood' || isAnimal) && (
-          <label className="text-ink-300 mt-3 flex flex-col gap-1 text-xs font-semibold">
-            Note (facultative)
-            <textarea
-              value={note}
-              onChange={(e) => store().setNote(e.target.value.slice(0, 500))}
-              rows={2}
-              className="border-surface-600 bg-surface-900 text-ink-100 rounded-lg border px-3 py-2 text-base font-normal"
-            />
-          </label>
-        )}
-
-        {type === 'normal' && (
-          <p className="text-ink-500 mt-3 text-xs">
-            Nom, icône, couleur, photo et notes se règlent juste après, dans la fiche du
-            repère.
-          </p>
-        )}
-        {type === 'camera' && (
-          <p className="text-ink-300 mt-3 text-xs">
-            Aide visuelle expérimentale : elle surligne des zones de couleur candidates,
-            avec des faux positifs possibles, et ne confirme jamais du sang. Elle s’ouvre
-            sans recherche en cours.
-          </p>
-        )}
-
-        {error && (
-          <p role="alert" className="text-status-danger mt-2 text-xs">
-            {error}
-          </p>
-        )}
-
-        {needsSearch ? (
-          <div
-            role="alertdialog"
-            aria-label="Aucune recherche de sang ouverte"
-            className="border-surface-600 mt-3 flex flex-col gap-2 rounded-lg border p-2 text-sm"
-          >
-            <p>
-              Aucune recherche de sang n’est ouverte. Créer une recherche démarre
-              l’enregistrement de la trace rouge si le GPS est prêt ; rien ne démarre sans
-              votre choix.
+          )}
+          {type === 'camera' && (
+            <p className="text-ink-300 mt-3 text-xs">
+              Aide visuelle expérimentale : elle surligne des zones de couleur candidates,
+              avec des faux positifs possibles, et ne confirme jamais du sang. Elle
+              s’ouvre sans recherche en cours.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => void store().createSearchAndSubmit(gpsReading)}
-              >
-                Créer une recherche et enregistrer
-              </Button>
-              <Button variant="secondary" size="md" onClick={() => store().dismissGate()}>
-                Annuler
-              </Button>
+          )}
+        </div>
+
+        <div className="border-surface-700 shrink-0 border-t px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          {error && (
+            <p role="alert" className="text-status-danger mt-2 text-xs">
+              {error}
+            </p>
+          )}
+
+          {needsSearch ? (
+            <div
+              role="alertdialog"
+              aria-label="Aucune recherche de sang ouverte"
+              className="border-surface-600 mt-3 flex flex-col gap-2 rounded-lg border p-2 text-sm"
+            >
+              <p>
+                Aucune recherche de sang n’est ouverte. Créer une recherche démarre
+                l’enregistrement de la trace rouge si le GPS est prêt ; rien ne démarre
+                sans votre choix.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => void store().createSearchAndSubmit(gpsReading)}
+                >
+                  Créer une recherche et enregistrer
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => store().dismissGate()}
+                >
+                  Annuler
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <Button
-            variant="primary"
-            size="lg"
-            className="mt-3 w-full"
-            onClick={() => void store().submit(gpsReading)}
-          >
-            {actionLabel(type, mode, pressed !== null)}
-          </Button>
-        )}
+          ) : (
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={() => void store().submit(gpsReading)}
+            >
+              {actionLabel(type, mode, pressed !== null)}
+            </Button>
+          )}
+        </div>
       </div>
     </>
   )

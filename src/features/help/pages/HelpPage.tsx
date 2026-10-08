@@ -149,6 +149,40 @@ export default function HelpPage() {
         </p>
       </Section>
 
+      <Section id="ajouter-repere" title="« + Repère » et appui long">
+        <p>
+          Le bouton <strong className="text-ink-100">+ Repère</strong> est toujours sur la
+          carte. Il ouvre un choix : repère normal, sang / indice, observation cerf,
+          observation orignal ou caméra sang. La position est soit{' '}
+          <strong className="text-ink-100">Ma position GPS</strong> (précision et
+          ancienneté affichées) soit une{' '}
+          <strong className="text-ink-100">position choisie sur la carte</strong>. Sans
+          signal GPS récent, l’application le dit : elle n’invente aucune position. Un
+          appui long sur la carte ouvre le même choix pour le point touché. Changer de
+          type ne vide pas ce que vous avez saisi.
+        </p>
+        <p>
+          Un indice sang est rattaché à une recherche de sang. S’il n’y en a pas
+          d’ouverte, l’application vous propose d’en créer une ou d’annuler ; la trace
+          rouge ne démarre jamais sans votre choix.
+        </p>
+      </Section>
+
+      <Section id="apres-le-tir" title="Après le tir">
+        <p>
+          <strong className="text-ink-100">Mes données → Après le tir</strong> (cerf ou
+          orignal) : consigner le tir (heure, position, réaction et direction de fuite
+          observées, estimation manuelle de la position de l’animal, dernière position
+          confirmée), consigner les indices, démarrer ou reprendre la recherche, ouvrir la
+          caméra sang, revoir le dernier indice, la chronologie, la carte et les photos.
+          Tout est ce que vous saisissez ; l’application ne déduit ni la position de
+          l’animal, ni la gravité d’une blessure, ni un délai d’attente.{' '}
+          <strong className="text-ink-100">Le guide expert reste à compléter</strong> avec
+          des sources vérifiables. Ce n’est pas le journal DeerTracker, qui garde vos
+          observations de cerfs.
+        </p>
+      </Section>
+
       <Section id="waypoints" title="Points de repère">
         <p>
           Sur la carte, le bouton d’ajout de point de repère permet de toucher l’endroit
@@ -200,9 +234,9 @@ export default function HelpPage() {
         </p>
         <p>
           Pause, reprise et fin sont dans le panneau. « Revenir au dernier sang » et «
-          Aller au dernier indice » utilisent Aller à (distance et cap à vol d’oiseau, pas
-          un itinéraire). Sans signal GPS récent, vous pouvez attendre ou placer le point
-          à la main (la position choisie n’est pas celle du téléphone). La « liaison entre
+          Dernier indice » utilisent Aller à (distance et cap à vol d’oiseau, pas un
+          itinéraire). Sans signal GPS récent, vous pouvez attendre ou placer le point à
+          la main (la position choisie n’est pas celle du téléphone). La « liaison entre
           indices » est une aide visuelle, pas le trajet de l’animal.
         </p>
         <p>
@@ -212,13 +246,16 @@ export default function HelpPage() {
         </p>
         <p>
           <strong className="text-ink-100">Aide visuelle expérimentale (caméra).</strong>{' '}
-          Elle surligne des zones de couleur ; ce ne sont pas du sang confirmé et son
-          absence ne prouve rien. L’application ne pose aucun diagnostic de blessure à
-          partir d’une couleur, ne donne aucun délai universel avant de reprendre la
-          recherche et ne remplace ni une aide qualifiée ni un conducteur de chien de
-          sang. Sauvegarde : les recherches, couleurs et compteurs sont dans la sauvegarde
-          complète ; le fichier GPX garde les segments, le type et la couleur des traces
-          mais pas les sessions.
+          Accès sans recherche ouverte : + Repère → Caméra sang, Outils → Caméra sang, le
+          panneau d’une recherche en cours, ou la carte « Caméra sang » de la page
+          Recherches de sang. Si la caméra est refusée ou absente, vous pouvez importer
+          une photo (distinguée du direct). Elle surligne des zones de couleur ; ce ne
+          sont pas du sang confirmé et son absence ne prouve rien. L’application ne pose
+          aucun diagnostic de blessure à partir d’une couleur, ne donne aucun délai
+          universel avant de reprendre la recherche et ne remplace ni une aide qualifiée
+          ni un conducteur de chien de sang. Sauvegarde : les recherches, couleurs et
+          compteurs sont dans la sauvegarde complète ; le fichier GPX garde les segments,
+          le type et la couleur des traces mais pas les sessions.
         </p>
       </Section>
 
