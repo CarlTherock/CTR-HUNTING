@@ -82,6 +82,7 @@ import { sampleSlopeAspect } from '../terrainQuery'
 import { ElevationProfileControl } from '../components/ElevationProfileControl'
 import { TerrainInfoControl } from '../components/TerrainInfoControl'
 import { ViewModeToggle } from '../components/ViewModeToggle'
+import { ZoomTool } from '../components/ZoomTool'
 
 /** Field/street scale — close enough to make out individual trails and
  * terrain features after tapping "recenter on me", per user feedback
@@ -598,6 +599,12 @@ export function MapPage() {
     instanceRef.current?.setView(nextView)
   }
 
+  function changeZoom(delta: number) {
+    const zoom = Math.min(22, Math.max(0, Math.round(view.zoom) + delta))
+    setView({ zoom })
+    instanceRef.current?.setView({ zoom })
+  }
+
   function setViewMode(pitch: number, bearing: number) {
     setView({ pitch, bearing })
     instanceRef.current?.setView({ pitch, bearing })
@@ -670,6 +677,7 @@ export function MapPage() {
             ) : (
               <LayerManagerPanel />
             )}
+            <ZoomTool zoom={view.zoom} onZoom={changeZoom} />
             {!fieldModeEnabled && (
               <ViewModeToggle
                 pitch={view.pitch}

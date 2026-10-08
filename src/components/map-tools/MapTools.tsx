@@ -108,14 +108,18 @@ export function ToolTrigger({
 export function ToolSlot({
   children,
   order = 0,
+  placement = 'sheet',
 }: {
   children: ReactNode
   order?: number
+  /** `rail`: always-visible column on the right edge; `sheet`: Outils. */
+  placement?: ToolPlacement
 }) {
   const ctx = useContext(MapToolsContext)
   const content = <div style={{ order }}>{children}</div>
   if (!ctx) return content
-  return ctx.sheetHost ? createPortal(content, ctx.sheetHost) : null
+  const host = placement === 'rail' ? ctx.railHost : ctx.sheetHost
+  return host ? createPortal(content, host) : null
 }
 
 export interface MapToolRailProps {
@@ -124,8 +128,9 @@ export interface MapToolRailProps {
 
 /**
  * Quick-action column on the right edge of the map, below MapLibre's own
- * zoom/compass control (which grows to 44 px buttons on touch devices, hence
- * the larger offset there). If the screen is too short it wraps into a second
+ * compass control (the zoom +/− buttons were removed: zoom is done by
+ * gesture, keyboard or the Zoom entry of « Outils »; the compass grows to 44 px
+ * on touch devices, hence the larger offset there). If the screen is too short it wraps into a second
  * column instead of running off-screen.
  */
 export function MapToolRail({ setHost }: MapToolRailProps) {
@@ -133,7 +138,7 @@ export function MapToolRail({ setHost }: MapToolRailProps) {
     <div
       ref={setHost}
       data-testid="map-tool-rail"
-      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3.5rem)] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:6.5rem] pointer-coarse:[--rail-top:9.75rem]"
+      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3.5rem)] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:4.5rem] pointer-coarse:[--rail-top:6rem]"
     />
   )
 }

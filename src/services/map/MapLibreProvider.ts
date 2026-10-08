@@ -101,7 +101,13 @@ export class MapLibreProvider implements MapProvider {
       locale: MAP_LOCALE_FR,
     })
 
-    map.addControl(new NavigationControl(), 'top-right')
+    // Compass only: the always-visible zoom +/− buttons are replaced by the
+    // 2D/3D + relief controls (zoom stays available by gesture, keyboard and
+    // the « Outils » sheet).
+    map.addControl(
+      new NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }),
+      'top-right',
+    )
     const windLayer = createWindLayer(map, container)
     const analysisHeatmapLayer = createAnalysisHeatmapLayer(map, container)
     const markers = createMarkerController(map, { onWaypointClick, onDraftMove })
