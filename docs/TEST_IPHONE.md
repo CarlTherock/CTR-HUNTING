@@ -51,7 +51,7 @@ git fetch origin
 git switch feat/refonte-visuelle-deertracker
 git pull --ff-only
 git status                      # doit dire : nothing to commit, working tree clean
-git rev-parse --short HEAD      # doit afficher : e65891e
+git diff --stat e65891e HEAD    # vide, ou seulement des fichiers sous docs/
 npm ci
 ```
 
@@ -87,14 +87,14 @@ disparaît à l'arrêt du tunnel).
 
 ## 4. Confirmer que c'est bien e65891e
 
-1. Avant `npm run build` : `git rev-parse --short HEAD` = `e65891e` et `git status` propre.
+1. Avant `npm run build` : `git status` propre et `git diff --stat e65891e HEAD` vide ou limité à `docs/` (le code est alors celui de e65891e ; seule la documentation a pu changer depuis).
 2. L'app : Plus › À propos affiche « compilée le … » (UTC) : doit correspondre à l'heure
    de votre `npm run build` (ex. 15 h 30 à Montréal = 19 h 30 UTC en heure d'été).
 3. Signes visibles de cette version : barre du bas Accueil / Carte / Mes données / Météo /
    Plus ; à droite de la carte, boutons « 2D » « 3D » et aucun zoom +/− ; page Plus ›
    Projet et progression ; Mes données › DeerTracker.
 
-Cela prouve que le code construit vient de ce commit seulement si l'étape 1 était vraie : c'est
+Cela prouve que le code construit est celui de e65891e seulement si l'étape 1 était vraie : c'est
 une vérification par procédure, pas par empreinte dans l'application.
 
 ## 5. Erreurs possibles
