@@ -138,7 +138,7 @@ export function MapToolRail({ setHost }: MapToolRailProps) {
     <div
       ref={setHost}
       data-testid="map-tool-rail"
-      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3.5rem)] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:4.5rem] pointer-coarse:[--rail-top:6rem]"
+      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3rem)] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:4rem] pointer-coarse:[--rail-top:4rem]"
     />
   )
 }

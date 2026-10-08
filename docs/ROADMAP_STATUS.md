@@ -30,3 +30,7 @@ Livré (voir `CHANGELOG.md`) : types et couleurs de traces, sessions de recherch
 reprise, sauvegarde/GPX, aide, caméra **expérimentale**. Non validé : iPhone/Safari réel, GPS réel, caméra et lampe
 réelles, mode avion réel. La caméra n'affirme aucun taux de détection ; elle ne remplace ni une aide qualifiée ni un
 conducteur de chien de sang.
+
+## Refonte visuelle, menus, cartes, vent et DeerTracker
+
+Implémenté et testé automatiquement (unitaires + E2E Chromium simulé) : navigation à 5 entrées, Projet et progression, DeerTracker, contrôles de carte (2D/3D, relief, zoom dans Outils), erreurs de couche typées avec réessai borné, panneau Vent, accueil « Sur le terrain ». Validation iPhone réelle : **non faite**. Priorités inchangées : voir la page Projet et progression (`src/features/about/roadmap.ts`).
