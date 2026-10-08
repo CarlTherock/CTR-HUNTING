@@ -48,7 +48,7 @@ export function ViewModeToggle({
         <div
           role="group"
           aria-label="Mode d'affichage"
-          className="border-surface-600 bg-surface-900/90 flex flex-col overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
+          className="border-surface-600 bg-surface-900/90 flex flex-col [@media(max-height:480px)]:flex-row overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
         >
           <button
             type="button"
@@ -70,7 +70,7 @@ export function ViewModeToggle({
             title="Carte inclinée avec relief (3D)"
             onClick={() => onChange(THREE_D_PITCH, THREE_D_BEARING)}
             className={cn(
-              'border-surface-600 flex h-11 w-11 items-center justify-center border-t text-sm font-semibold transition-colors',
+              'border-surface-600 flex h-11 w-11 items-center justify-center border-t [@media(max-height:480px)]:border-t-0 [@media(max-height:480px)]:border-l text-sm font-semibold transition-colors',
               is3D
                 ? 'bg-brand-500/15 text-brand-400'
                 : 'text-ink-300 hover:bg-surface-800',
@@ -85,9 +85,9 @@ export function ViewModeToggle({
             role="group"
             aria-label="Exagération du relief"
             title={RELIEF_EXPLANATION}
-            className="border-surface-600 bg-surface-900/90 flex flex-col items-center overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
+            className="border-surface-600 bg-surface-900/90 flex flex-col [@media(max-height:480px)]:flex-row items-center overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm"
           >
-            <span className="text-ink-500 pt-1 text-[10px] leading-none font-medium uppercase">
+            <span className="text-ink-500 pt-1 [@media(max-height:480px)]:pt-0 [@media(max-height:480px)]:pl-2 text-[10px] leading-none font-medium uppercase">
               Relief
             </span>
             <button
