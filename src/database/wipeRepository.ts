@@ -21,23 +21,42 @@ export interface LocalDataSummary {
   observations: number
   photos: number
   territories: number
+  bloodSessions: number
   offlineAreas: number
   /** Preferences, caches of the last forecast, reminders… (the `settings` table). */
   settings: number
 }
 
 export async function summarizeLocalData(): Promise<LocalDataSummary> {
-  const [waypoints, tracks, observations, photos, territories, offlineAreas, settings] =
-    await Promise.all([
-      db.waypoints.count(),
-      db.tracks.count(),
-      db.observations.count(),
-      db.photos.count(),
-      db.territories.count(),
-      db.offlineAreas.count(),
-      db.settings.count(),
-    ])
-  return { waypoints, tracks, observations, photos, territories, offlineAreas, settings }
+  const [
+    waypoints,
+    tracks,
+    observations,
+    photos,
+    territories,
+    bloodSessions,
+    offlineAreas,
+    settings,
+  ] = await Promise.all([
+    db.waypoints.count(),
+    db.tracks.count(),
+    db.observations.count(),
+    db.photos.count(),
+    db.territories.count(),
+    db.bloodSessions.count(),
+    db.offlineAreas.count(),
+    db.settings.count(),
+  ])
+  return {
+    waypoints,
+    tracks,
+    observations,
+    photos,
+    territories,
+    bloodSessions,
+    offlineAreas,
+    settings,
+  }
 }
 
 /** Clears every table in a single transaction (all or nothing). */

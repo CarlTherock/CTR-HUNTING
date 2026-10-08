@@ -12,6 +12,7 @@ export type GpxExportScope =
   | { kind: 'territory'; territoryId: string }
   | { kind: 'waypoint'; waypointId: string }
   | { kind: 'track'; trackId: string }
+  | { kind: 'session'; sessionId: string }
 
 export interface GpxExportResult {
   xml: string
@@ -99,6 +100,19 @@ export async function exportGpx(
     waypoints = []
     title = `CTR Hunting — ${tracks[0]?.name ?? 'trace'}`
     part = slug(tracks[0]?.name ?? 'trace')
+  }
+
+  if (scope.kind === 'session') {
+    waypoints = waypoints.filter((w) => w.sessionId === scope.sessionId)
+    tracks = tracks.filter((t) => t.sessionId === scope.sessionId)
+    const name = hasTable(database, 'bloodSessions')
+      ? (
+          (await database.table('bloodSessions').get(scope.sessionId)) as
+            { name?: string } | undefined
+        )?.name
+      : undefined
+    title = `CTR Hunting — ${name ?? 'recherche de sang'}`
+    part = slug(name ?? 'recherche-de-sang')
   }
 
   const xml = buildGpx({
@@ -243,6 +257,9 @@ export async function commitGpxImport(
         distanceMeters: item.distanceMeters,
         notes: item.notes,
         territoryId: item.territoryId,
+        kind: item.kind,
+        color: item.color,
+        breaks: item.breaks,
       }),
     )
   await database.transaction(

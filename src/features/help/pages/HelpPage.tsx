@@ -126,8 +126,49 @@ export default function HelpPage() {
           <strong className="text-ink-100">Trace interrompue.</strong> Si l’application
           est fermée ou l’écran verrouillé pendant l’enregistrement, la trace reste avec
           les points déjà reçus et apparaît comme « interrompue » dans Repères et traces.
-          Vous pouvez la terminer là où elle s’arrête, ou la reprendre : la reprise relie
-          le dernier point au suivant par une ligne droite, qui n’est pas un trajet réel.
+          Vous pouvez la terminer là où elle s’arrête, ou la reprendre : la reprise ne
+          relie pas le dernier point au suivant, la période non observée reste un trou
+          dans la trace.
+        </p>
+        <p>
+          <strong className="text-ink-100">Types et couleurs.</strong> Un trajet normal
+          prend la couleur choisie avant de démarrer (Outils › Couleur du prochain
+          trajet), modifiable ensuite depuis Repères et traces sans toucher aux points
+          GPS. Le rouge est réservé aux recherches de sang. Les anciennes traces gardent
+          leur aspect.
+        </p>
+      </Section>
+
+      <Section id="recherche-de-sang" title="Recherche de sang">
+        <p>
+          Outils › « Démarrer une recherche de sang » enregistre <em>votre</em>{' '}
+          déplacement en rouge (ce n’est pas le trajet de l’animal). Chaque appui sur « +
+          Sang » crée un vrai point de repère (Sang 01, Sang 02…) à la position du
+          téléphone, avec l’heure et la précision GPS. Sa position est verrouillée à
+          l’enregistrement ; le nom, la note et les photos restent modifiables. Le numéro
+          d’un point supprimé n’est jamais réutilisé.
+        </p>
+        <p>
+          Pause, reprise et fin sont dans le panneau. « Revenir au dernier sang » et «
+          Aller au dernier indice » utilisent Aller à (distance et cap à vol d’oiseau, pas
+          un itinéraire). Sans signal GPS récent, vous pouvez attendre ou placer le point
+          à la main (la position choisie n’est pas celle du téléphone). La « liaison entre
+          indices » est une aide visuelle, pas le trajet de l’animal.
+        </p>
+        <p>
+          Si l’application est fermée en cours de route, la recherche et ses points sont
+          conservés ; vous pourrez la reprendre ou la terminer. Sur iPhone, le GPS
+          s’arrête quand l’écran se verrouille : gardez l’application ouverte.
+        </p>
+        <p>
+          <strong className="text-ink-100">Aide visuelle expérimentale (caméra).</strong>{' '}
+          Elle surligne des zones de couleur ; ce ne sont pas du sang confirmé et son
+          absence ne prouve rien. L’application ne pose aucun diagnostic de blessure à
+          partir d’une couleur, ne donne aucun délai universel avant de reprendre la
+          recherche et ne remplace ni une aide qualifiée ni un conducteur de chien de
+          sang. Sauvegarde : les recherches, couleurs et compteurs sont dans la sauvegarde
+          complète ; le fichier GPX garde les segments, le type et la couleur des traces
+          mais pas les sessions.
         </p>
       </Section>
 

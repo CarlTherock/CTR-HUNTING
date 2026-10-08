@@ -1,5 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Waypoint, Track, Observation, Photo, OfflineArea, Territory } from '@/types'
+import type {
+  BloodSession,
+  Waypoint,
+  Track,
+  Observation,
+  Photo,
+  OfflineArea,
+  Territory,
+} from '@/types'
 
 /**
  * Local-first persistence layer (IndexedDB via Dexie).
@@ -43,6 +51,8 @@ export class FieldTerrainDatabase extends Dexie {
   offlineAreas!: EntityTable<OfflineArea, 'id'>
   /** Logical folders grouping waypoints/tracks/observations (v5). */
   territories!: EntityTable<Territory, 'id'>
+  /** Blood-search sessions (v6). */
+  bloodSessions!: EntityTable<BloodSession, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -83,6 +93,15 @@ export class FieldTerrainDatabase extends Dexie {
       waypoints: 'id, category, createdAt, territoryId',
       tracks: 'id, startedAt, territoryId',
       observations: 'id, waypointId, timestamp, territoryId',
+    })
+
+    // Blood-search sessions. ADDITIVE like v5: one new table and a
+    // `sessionId` index on waypoints and tracks. Nothing is rewritten or
+    // deleted, so no `.upgrade()`: existing records simply have no session.
+    this.version(6).stores({
+      bloodSessions: 'id, status, createdAt, territoryId',
+      waypoints: 'id, category, createdAt, territoryId, sessionId',
+      tracks: 'id, startedAt, territoryId, sessionId',
     })
   }
 }

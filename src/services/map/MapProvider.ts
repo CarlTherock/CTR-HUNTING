@@ -35,6 +35,17 @@ export interface MeasureShape {
   closed: boolean
 }
 
+/** A GPS trace as drawn on the map. */
+export interface MapTrace {
+  id: string
+  kind: 'normal' | 'blood'
+  /** Hex colour. */
+  color: string
+  points: readonly Coordinate[]
+  /** Indexes in `points` that start a new, unconnected segment. */
+  breaks?: readonly number[]
+}
+
 export interface MapInstance {
   /** Programmatically move the camera (e.g. "recenter on GPS"). */
   setView(view: Partial<MapViewState>): void
@@ -64,6 +75,13 @@ export interface MapInstance {
   /** Draws (or updates) the in-progress GPS track as a line while
    * recording. Pass `null` (or fewer than 2 points) to clear it. */
   setTrackPreview(points: Coordinate[] | null): void
+  /** Draws the given GPS traces, each with its own colour and continuous
+   * segments (no line across a pause or an interruption). Replaces the whole
+   * set; pass `[]` to clear. Presentation only. */
+  setTraces(traces: readonly MapTrace[]): void
+  /** Draws dashed links between consecutive clues (`null`/`[]` clears). A
+   * visual aid between observed points: never the animal's path. */
+  setClueLinks(links: readonly (readonly Coordinate[])[] | null): void
   /** Draws (or clears, with `null`) the dashed straight line of "Aller à"
    * between the device position and the destination. Its own source and
    * layers, a colour distinct from the track preview and the measure path,

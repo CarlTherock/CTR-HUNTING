@@ -100,7 +100,8 @@ describe('Dexie migration v4 -> v5 (territories)', () => {
     const upgraded = new FieldTerrainDatabase()
     await upgraded.open()
     try {
-      expect(upgraded.verno).toBe(5)
+      // The current schema is v6 (blood-search sessions, additive on top of v5).
+      expect(upgraded.verno).toBe(6)
 
       // Records come back byte-for-byte as stored: no territoryId invented,
       // no field dropped or rewritten.
@@ -161,11 +162,11 @@ describe('Dexie migration v4 -> v5 (territories)', () => {
     }
   })
 
-  it('opens an empty database directly at version 5', async () => {
+  it('opens an empty database directly at version 6 (current schema)', async () => {
     const fresh = new FieldTerrainDatabase()
     await fresh.open()
     try {
-      expect(fresh.verno).toBe(5)
+      expect(fresh.verno).toBe(6)
       expect(fresh.tables.map((t) => t.name)).toContain('territories')
       expect(fresh.table('waypoints').schema.idxByName.territoryId).toBeDefined()
       expect(fresh.table('tracks').schema.idxByName.territoryId).toBeDefined()

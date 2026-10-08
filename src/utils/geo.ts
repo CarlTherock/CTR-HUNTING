@@ -27,6 +27,22 @@ export function totalDistanceMeters(points: Coordinate[]): number {
   return total
 }
 
+/** Length of a recorded path made of continuous segments: no distance is
+ * counted across a break (index i in `breaks` = point i is NOT connected to
+ * point i-1), because nothing was observed between those two points. */
+export function totalDistanceBySegments(
+  points: Coordinate[],
+  breaks: readonly number[] = [],
+): number {
+  const cuts = new Set(breaks)
+  let total = 0
+  for (let i = 1; i < points.length; i++) {
+    if (cuts.has(i)) continue
+    total += haversineMeters(points[i - 1], points[i])
+  }
+  return total
+}
+
 /** Exact definition of the international acre. */
 export const SQUARE_METERS_PER_ACRE = 4046.8564224
 export const SQUARE_METERS_PER_HECTARE = 10_000

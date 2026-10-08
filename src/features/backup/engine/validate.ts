@@ -67,9 +67,12 @@ function validateWaypoint(raw: Rec): Validation<Rec> {
   if (!validCoordinate(raw.coordinate)) return fail('coordonnées invalides')
   if (typeof raw.category !== 'string') return fail('catégorie manquante')
   if (!validIsoLike(raw.createdAt)) return fail('date de création invalide')
-  for (const key of ['notes', 'territoryId', 'color']) {
+  for (const key of ['notes', 'territoryId', 'color', 'sessionId', 'bloodKind']) {
     const problem = optionalString(raw, key)
     if (problem) return fail(problem)
+  }
+  if (raw.origin !== undefined && raw.origin !== 'gps' && raw.origin !== 'manual') {
+    return fail('origine invalide')
   }
   if (raw.photoIds !== undefined && !isStringArray(raw.photoIds)) {
     return fail('liste de photos invalide')
@@ -104,11 +107,61 @@ function validateTrack(raw: Rec): Validation<Rec> {
   if (raw.distanceMeters !== undefined && !isFiniteNumber(raw.distanceMeters)) {
     return fail('distance invalide')
   }
-  for (const key of ['notes', 'territoryId']) {
+  for (const key of ['notes', 'territoryId', 'color', 'sessionId']) {
     const problem = optionalString(raw, key)
     if (problem) return fail(problem)
   }
+  if (raw.kind !== undefined && raw.kind !== 'normal' && raw.kind !== 'blood') {
+    return fail('type de trace invalide')
+  }
+  if (
+    raw.breaks !== undefined &&
+    !(
+      Array.isArray(raw.breaks) &&
+      raw.breaks.every(
+        (i) => Number.isInteger(i) && i > 0 && i < (raw.points as unknown[]).length,
+      )
+    )
+  ) {
+    return fail('coupures de segment invalides')
+  }
   return { ok: true, value: { ...raw } }
+}
+
+const SESSION_STATUSES = ['waiting_gps', 'active', 'paused', 'finished']
+
+function validateBloodSession(raw: Rec): Validation<Rec> {
+  if (typeof raw.name !== 'string') return fail('nom manquant')
+  if (!validIsoLike(raw.createdAt)) return fail('date de création invalide')
+  if (typeof raw.status !== 'string' || !SESSION_STATUSES.includes(raw.status)) {
+    return fail('statut invalide')
+  }
+  for (const key of ['species', 'territoryId', 'trackId', 'notes']) {
+    const problem = optionalString(raw, key)
+    if (problem) return fail(problem)
+  }
+  for (const key of ['startedAt', 'endedAt']) {
+    if (raw[key] !== undefined && !validIsoLike(raw[key]))
+      return fail(`« ${key} » invalide`)
+  }
+  let counters: Rec = {}
+  if (raw.counters !== undefined) {
+    if (
+      !isRecord(raw.counters) ||
+      !Object.values(raw.counters).every((n) => Number.isInteger(n) && (n as number) >= 0)
+    ) {
+      return fail('compteurs invalides')
+    }
+    counters = raw.counters
+  }
+  return {
+    ok: true,
+    value: {
+      ...raw,
+      counters,
+      updatedAt: validIsoLike(raw.updatedAt) ? raw.updatedAt : raw.createdAt,
+    },
+  }
 }
 
 function validateObservation(raw: Rec): Validation<Rec> {
@@ -173,6 +226,7 @@ export function validateRecord(
   if (!nonEmptyString(raw.id)) return fail('identifiant manquant')
   const validators: Record<typeof table, (r: Rec) => Validation<Rec>> = {
     territories: validateTerritory,
+    bloodSessions: validateBloodSession,
     waypoints: validateWaypoint,
     tracks: validateTrack,
     observations: validateObservation,

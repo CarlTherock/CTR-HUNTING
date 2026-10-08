@@ -66,11 +66,21 @@ describe('HelpPage', () => {
     )
   })
 
-  it('explains interrupted tracks and the straight line on resume', () => {
+  it('explains interrupted tracks and that resuming no longer draws a straight line', () => {
     renderPage()
 
     expect(section('traces')).toHaveTextContent(/interrompue/)
-    expect(section('traces')).toHaveTextContent(/ligne droite/)
+    expect(section('traces')).toHaveTextContent(/trou dans la trace/)
+  })
+
+  it('explains the blood search honestly (own path, no diagnosis, camera is only a visual aid)', () => {
+    renderPage()
+    const text = section('recherche-de-sang')
+    expect(text).toHaveTextContent(/votre déplacement/)
+    expect(text).toHaveTextContent(/pas le trajet de l’animal/)
+    expect(text).toHaveTextContent(/aucun diagnostic de blessure/)
+    expect(text).toHaveTextContent(/conducteur de chien de sang/)
+    expect(text).toHaveTextContent(/écran se verrouille/)
   })
 
   it('says what « Terminée » means and where « Réessayer » is', () => {

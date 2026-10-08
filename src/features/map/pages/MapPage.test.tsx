@@ -36,6 +36,8 @@ const setDraftWaypoint = vi.fn()
 const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
+const setTraces = vi.fn()
+const setClueLinks = vi.fn()
 const setMeasurePath = vi.fn()
 const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
@@ -63,6 +65,8 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSelectedWaypoint,
     setSharedPoint,
     setTrackPreview,
+    setTraces,
+    setClueLinks,
     setMeasurePath,
     setMeasureShape,
     setGuidanceLine,
@@ -1048,9 +1052,39 @@ describe('MapPage', () => {
     // The GPS effect (already firing on mount, since mockGpsReading is
     // 'available' from the start) feeds the recording — confirm the map
     // gets the live line, not just the store.
-    expect(setTrackPreview).toHaveBeenLastCalledWith([
+    const lastTraces = setTraces.mock.calls.at(-1)?.[0] as { points: unknown[] }[]
+    expect(lastTraces).toHaveLength(1)
+    expect(lastTraces[0].points).toEqual([
       expect.objectContaining({ lat: 46.8, lng: -71.2 }),
     ])
+  })
+
+  it('starts a blood search: red track on the map, panel with + Sang, a Sang point appears', async () => {
+    const user = userEvent.setup()
+    mockGpsReading = {
+      status: 'available',
+      value: { lat: 46.8, lng: -71.2, accuracyMeters: 5, timestampMs: FIX_TIME_MS },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    }
+    render(<MapPage />)
+
+    await useTool(user, 'Démarrer une recherche de sang')
+    expect(await screen.findByTestId('blood-panel')).toBeInTheDocument()
+    await vi.waitFor(() => {
+      const last = setTraces.mock.calls.at(-1)?.[0] as { kind: string; color: string }[]
+      expect(last[0]).toMatchObject({ kind: 'blood', color: '#dc2626' })
+    })
+    // The generic recorder banner does not duplicate the blood panel.
+    expect(screen.queryByTestId('recorder-kind')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /\+ Sang/ }))
+    await vi.waitFor(() => {
+      const names = (setWaypoints.mock.calls.at(-1)?.[0] as { name: string }[]).map(
+        (w) => w.name,
+      )
+      expect(names).toContain('Sang 01')
+    })
   })
 
   it('clears the map track preview once recording stops', async () => {
@@ -1067,7 +1101,7 @@ describe('MapPage', () => {
     // IndexedDB transaction-complete callback, so the final store update
     // (and the setTrackPreview(null) it triggers) can lag behind the click.
     await vi.waitFor(() => {
-      expect(setTrackPreview).toHaveBeenLastCalledWith(null)
+      expect(useTracksStore.getState().status).toBe('idle')
     })
     await openTools(user)
     expect(
@@ -1500,7 +1534,6 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
       { lat: 46.8, lng: -71.2 },
       { lat: 46.801, lng: -71.2 },
     ])
-    expect(setTrackPreview).toHaveBeenLastCalledWith(null)
     expect(useTracksStore.getState().status).toBe('idle')
 
     await user.click(screen.getByRole('button', { name: 'Arrêter le guidage' }))
@@ -1579,14 +1612,21 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
       await seedTerritories('nord')
       useTracksStore.setState({
         status: 'recording',
+        recordingId: 'live',
+        tracks: [
+          { id: 'live', name: 'Trace', points: [], startedAt: 'x', territoryId: 'other' },
+        ],
         points: [{ lat: 1, lng: 2, timestamp: 'x' }],
       })
       render(<MapPage />)
-      await vi.waitFor(() =>
-        expect(setTrackPreview).toHaveBeenLastCalledWith([
-          { lat: 1, lng: 2, timestamp: 'x' },
-        ]),
-      )
+      await vi.waitFor(() => {
+        const last = setTraces.mock.calls.at(-1)?.[0] as {
+          id: string
+          points: unknown[]
+        }[]
+        expect(last.map((t) => t.id)).toEqual(['live'])
+        expect(last[0].points).toEqual([{ lat: 1, lng: 2, timestamp: 'x' }])
+      })
     })
   })
 })

@@ -9,8 +9,9 @@ import {
   getActiveTerritoryId,
   onTerritoryDeleted,
 } from '@/features/territories/state/territoriesStore'
-import { haversineMeters, totalDistanceMeters } from '@/utils/geo'
-import type { Coordinate, Track, TrackPoint } from '@/types'
+import { haversineMeters, totalDistanceBySegments } from '@/utils/geo'
+import { DEFAULT_TRIP_COLOR, sanitizeTripColor } from '../trackStyle'
+import type { Coordinate, Track, TrackKind, TrackPoint } from '@/types'
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused'
 
@@ -19,6 +20,19 @@ export type RecordingStatus = 'idle' | 'recording' | 'paused'
  * and recording every wobble would make distance/duration meaningless. */
 const MIN_POINT_DISTANCE_METERS = 5
 
+/** No GPS reading for this long while recording = an unobserved gap (app in
+ * the background, phone locked…): the next point starts a NEW segment, so no
+ * line or distance is invented across the gap. */
+export const MAX_OBSERVATION_GAP_MS = 120_000
+
+export interface StartTrackOptions {
+  kind?: TrackKind
+  /** Colour of a normal trip (ignored for blood searches, always red). */
+  color?: string
+  sessionId?: string
+  name?: string
+}
+
 interface TracksState {
   tracks: Track[]
   loaded: boolean
@@ -26,6 +40,12 @@ interface TracksState {
   recordingId: string | null
   recordingStartedAt: string | null
   points: TrackPoint[]
+  /** Indexes in `points` that start a new, unconnected segment. */
+  breaks: number[]
+  /** Type and colour of the track being recorded. */
+  recordingKind: TrackKind
+  recordingColor: string
+  recordingSessionId: string | null
   distanceMeters: number
   /** Last failure to write the track to the device (storage full, database
    * blocked…), shown to the user until a later write succeeds. While set,
@@ -33,7 +53,12 @@ interface TracksState {
   persistError: string | null
 
   load: () => Promise<void>
-  start: () => Promise<void>
+  /** Starts a track. Returns its id, or `null` when one is already being
+   * recorded (a second track is never started silently) or creation failed. */
+  start: (options?: StartTrackOptions) => Promise<string | null>
+  /** Changes the display colour of a NORMAL track; GPS points are untouched
+   * and blood searches stay red. */
+  setColor: (id: string, color: string) => Promise<void>
   pause: () => void
   resume: () => void
   /** Appends a GPS sample to the in-progress track — a no-op while idle or
@@ -80,6 +105,12 @@ let nextDefaultNumber = 1
 let persistInFlight: Promise<void> | null = null
 let persistDirty = false
 
+/** The next accepted point starts a new segment (after a pause/interruption). */
+let pendingBreak = false
+/** Wall-clock time of the last GPS reading received while recording. */
+let lastObservedAt: number | null = null
+let startInFlight = false
+
 export const useTracksStore = create<TracksState>((set, get) => {
   function persistCurrent(): Promise<void> {
     persistDirty = true
@@ -88,9 +119,9 @@ export const useTracksStore = create<TracksState>((set, get) => {
       try {
         while (persistDirty) {
           persistDirty = false
-          const { recordingId, points, distanceMeters } = get()
+          const { recordingId, points, distanceMeters, breaks } = get()
           if (!recordingId) break
-          await updateTrackRecord(recordingId, { points, distanceMeters })
+          await updateTrackRecord(recordingId, { points, distanceMeters, breaks })
           set({ persistError: null })
         }
       } catch (error) {
@@ -111,6 +142,10 @@ export const useTracksStore = create<TracksState>((set, get) => {
     recordingId: null,
     recordingStartedAt: null,
     points: [],
+    breaks: [],
+    recordingKind: 'normal',
+    recordingColor: DEFAULT_TRIP_COLOR,
+    recordingSessionId: null,
     distanceMeters: 0,
     persistError: null,
 
@@ -120,30 +155,63 @@ export const useTracksStore = create<TracksState>((set, get) => {
       set({ tracks, loaded: true })
     },
 
-    start: async () => {
+    start: async (options = {}) => {
+      // One recording at a time: never start a second track silently.
+      if (get().status !== 'idle' || startInFlight) return null
+      startInFlight = true
       const startedAt = new Date().toISOString()
+      const kind: TrackKind = options.kind === 'blood' ? 'blood' : 'normal'
+      const color = kind === 'blood' ? undefined : sanitizeTripColor(options.color)
       try {
         const track = await createTrack({
-          name: `Trace ${nextDefaultNumber++}`,
+          name:
+            options.name?.trim().slice(0, MAX_NAME_LENGTH) ||
+            (kind === 'blood'
+              ? `Recherche ${nextDefaultNumber++}`
+              : `Trace ${nextDefaultNumber++}`),
           startedAt,
           // New tracks go in the territory the user is working in, if any.
           territoryId: getActiveTerritoryId(),
+          kind,
+          color,
+          sessionId: options.sessionId,
         })
+        lastObservedAt = null
         set((state) => ({
           status: 'recording',
           recordingId: track.id,
           recordingStartedAt: startedAt,
           points: [],
+          breaks: [],
+          recordingKind: kind,
+          recordingColor: color ?? DEFAULT_TRIP_COLOR,
+          recordingSessionId: options.sessionId ?? null,
           distanceMeters: 0,
           persistError: null,
           tracks: [...state.tracks, track],
         }))
+        pendingBreak = false
+        return track.id
       } catch (error) {
         // Never record a track that could not even be created on the device.
         set({
           persistError: `Impossible de démarrer l’enregistrement : ${describeError(error)}.`,
         })
+        return null
+      } finally {
+        startInFlight = false
       }
+    },
+
+    setColor: async (id, color) => {
+      const track = get().tracks.find((t) => t.id === id)
+      if (!track || track.kind === 'blood') return
+      const next = sanitizeTripColor(color)
+      await updateTrackRecord(id, { color: next })
+      set((state) => ({
+        tracks: state.tracks.map((t) => (t.id === id ? { ...t, color: next } : t)),
+        recordingColor: state.recordingId === id ? next : state.recordingColor,
+      }))
     },
 
     pause: () => {
@@ -151,19 +219,44 @@ export const useTracksStore = create<TracksState>((set, get) => {
     },
 
     resume: () => {
-      if (get().status === 'paused') set({ status: 'recording' })
+      if (get().status === 'paused') {
+        // What happened during the pause was not recorded: the next point
+        // starts a new segment instead of being linked to the last one.
+        pendingBreak = true
+        lastObservedAt = null
+        set({ status: 'recording' })
+      }
     },
 
     addPoint: (coordinate) => {
       const { status, points, recordingId } = get()
       if (status !== 'recording' || !recordingId) return
 
-      const last = points.at(-1)
-      if (last && haversineMeters(last, coordinate) < MIN_POINT_DISTANCE_METERS) return
+      const now = Date.now()
+      if (lastObservedAt !== null && now - lastObservedAt > MAX_OBSERVATION_GAP_MS) {
+        pendingBreak = true
+      }
+      lastObservedAt = now
 
-      const point: TrackPoint = { ...coordinate, timestamp: new Date().toISOString() }
+      const last = points.at(-1)
+      if (
+        !pendingBreak &&
+        last &&
+        haversineMeters(last, coordinate) < MIN_POINT_DISTANCE_METERS
+      ) {
+        return
+      }
+
+      const point: TrackPoint = { ...coordinate, timestamp: new Date(now).toISOString() }
       const nextPoints = [...points, point]
-      set({ points: nextPoints, distanceMeters: totalDistanceMeters(nextPoints) })
+      let { breaks } = get()
+      if (pendingBreak && points.length > 0) breaks = [...breaks, points.length]
+      pendingBreak = false
+      set({
+        points: nextPoints,
+        breaks,
+        distanceMeters: totalDistanceBySegments(nextPoints, breaks),
+      })
       void persistCurrent()
     },
 
@@ -172,10 +265,10 @@ export const useTracksStore = create<TracksState>((set, get) => {
       if (!recordingId) return
 
       await persistInFlight
-      const { points, distanceMeters } = get()
+      const { points, distanceMeters, breaks } = get()
       const endedAt = new Date().toISOString()
       try {
-        await updateTrackRecord(recordingId, { points, distanceMeters, endedAt })
+        await updateTrackRecord(recordingId, { points, distanceMeters, endedAt, breaks })
       } catch (error) {
         // Keep recording state so nothing in memory is lost and the user can retry.
         set({
@@ -188,10 +281,12 @@ export const useTracksStore = create<TracksState>((set, get) => {
         recordingId: null,
         recordingStartedAt: null,
         points: [],
+        breaks: [],
+        recordingSessionId: null,
         distanceMeters: 0,
         persistError: null,
         tracks: state.tracks.map((t) =>
-          t.id === recordingId ? { ...t, points, distanceMeters, endedAt } : t,
+          t.id === recordingId ? { ...t, points, distanceMeters, endedAt, breaks } : t,
         ),
       }))
     },
@@ -206,6 +301,8 @@ export const useTracksStore = create<TracksState>((set, get) => {
               recordingId: null,
               recordingStartedAt: null,
               points: [],
+              breaks: [],
+              recordingSessionId: null,
               distanceMeters: 0,
             }
           : {}),
@@ -239,12 +336,24 @@ export const useTracksStore = create<TracksState>((set, get) => {
       const { status, tracks } = get()
       const track = tracks.find((t) => t.id === id)
       if (status !== 'idle' || !track || !isInterruptedTrack(track, null)) return
+      // The time between the cut and now was not observed: the next point
+      // starts a new segment (no straight line across the gap).
+      pendingBreak = true
+      lastObservedAt = null
+      const kind: TrackKind = track.kind === 'blood' ? 'blood' : 'normal'
+      const breaks = track.breaks ?? []
       set({
         status: 'recording',
         recordingId: track.id,
         recordingStartedAt: track.startedAt,
         points: track.points,
-        distanceMeters: track.distanceMeters ?? totalDistanceMeters(track.points),
+        breaks,
+        recordingKind: kind,
+        recordingColor:
+          kind === 'blood' ? DEFAULT_TRIP_COLOR : sanitizeTripColor(track.color),
+        recordingSessionId: track.sessionId ?? null,
+        distanceMeters:
+          track.distanceMeters ?? totalDistanceBySegments(track.points, breaks),
         persistError: null,
       })
     },
@@ -254,7 +363,8 @@ export const useTracksStore = create<TracksState>((set, get) => {
       if (!track || !isInterruptedTrack(track, get().recordingId)) return
       // End at the last real fix; never invent an end time later than the data.
       const endedAt = track.points.at(-1)?.timestamp ?? track.startedAt
-      const distanceMeters = track.distanceMeters ?? totalDistanceMeters(track.points)
+      const distanceMeters =
+        track.distanceMeters ?? totalDistanceBySegments(track.points, track.breaks)
       await updateTrackRecord(id, { endedAt, distanceMeters })
       set((state) => ({
         tracks: state.tracks.map((t) =>

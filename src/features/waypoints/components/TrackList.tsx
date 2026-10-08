@@ -1,11 +1,30 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Pencil, Route, Trash2, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  Droplets,
+  Palette,
+  Pencil,
+  Route,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Card, EmptyState } from '@/components/ui'
 import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
 import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
 import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
+import { useBloodStore } from '@/features/blood/state/bloodStore'
+import { useTraceDisplayStore } from '../state/traceDisplayStore'
 import { isInterruptedTrack, useTracksStore } from '../state/tracksStore'
+import {
+  TRACK_FILTER_OPTIONS,
+  TRACK_KIND_LABEL,
+  matchesTrackFilter,
+  trackDisplayColor,
+  trackKind,
+} from '../trackStyle'
+import { TripColorPicker } from './TripColorPicker'
 import type { Track } from '@/types'
 
 const ACTION_BUTTON =
@@ -41,6 +60,13 @@ export function TrackList() {
   const resumeInterrupted = useTracksStore((state) => state.resumeInterrupted)
   const finishInterrupted = useTracksStore((state) => state.finishInterrupted)
   const setTerritory = useTracksStore((state) => state.setTerritory)
+  const setColor = useTracksStore((state) => state.setColor)
+  const kindFilter = useTraceDisplayStore((state) => state.filter)
+  const setKindFilter = useTraceDisplayStore((state) => state.setFilter)
+  const bloodSessions = useBloodStore((state) => state.sessions)
+  const resumeBlood = useBloodStore((state) => state.resumeInterrupted)
+  const finishBlood = useBloodStore((state) => state.finish)
+  const [colorEditingId, setColorEditingId] = useState<string | null>(null)
   const territories = useTerritoriesStore((state) => state.territories)
   const territoryFilter = useTerritoriesStore((state) => state.filter)
 
@@ -50,10 +76,14 @@ export function TrackList() {
   const [error, setError] = useState<string | null>(null)
 
   const visible = useMemo(
-    () => filterItems(tracks, territoryFilter, territories),
-    [tracks, territoryFilter, territories],
+    () =>
+      filterItems(tracks, territoryFilter, territories).filter((t) =>
+        matchesTrackFilter(t, kindFilter),
+      ),
+    [tracks, territoryFilter, territories, kindFilter],
   )
-  const hiddenCount = tracks.length - visible.length
+  const hiddenCount =
+    tracks.length - filterItems(tracks, territoryFilter, territories).length
   const sorted = [...visible].sort(
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
   )
@@ -96,6 +126,24 @@ export function TrackList() {
 
   return (
     <div className="flex flex-col gap-2">
+      <div role="radiogroup" aria-label="Type de trace" className="flex flex-wrap gap-2">
+        {TRACK_FILTER_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={kindFilter === option.value}
+            onClick={() => setKindFilter(option.value)}
+            className={`min-h-11 rounded-lg border px-3 text-sm ${
+              kindFilter === option.value
+                ? 'border-brand-400 bg-brand-500/15 text-brand-400'
+                : 'border-surface-600 text-ink-100'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
       {hiddenCount > 0 && (
         <p className="text-ink-500 text-xs">{hiddenByFilterMessage(hiddenCount)}</p>
       )}
@@ -109,6 +157,12 @@ export function TrackList() {
         const interrupted = isInterruptedTrack(track, recordingId)
         const renaming = renamingId === track.id
         const confirming = confirmingId === track.id
+        const kind = trackKind(track)
+        const color = trackDisplayColor(track)
+        const colorEditing = colorEditingId === track.id
+        const session = track.sessionId
+          ? bloodSessions.find((candidate) => candidate.id === track.sessionId)
+          : undefined
         return (
           <Card key={track.id} className="flex flex-col gap-2 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -160,6 +214,19 @@ export function TrackList() {
                         </span>
                       )}
                     </span>
+                    <span className="text-ink-300 flex items-center gap-1 text-xs">
+                      <span
+                        className="block h-3 w-3 shrink-0 rounded-full border border-white/70"
+                        style={{ background: color }}
+                        aria-hidden="true"
+                      />
+                      {kind === 'blood' ? (
+                        <Droplets size={12} aria-hidden="true" />
+                      ) : (
+                        <Route size={12} aria-hidden="true" />
+                      )}
+                      {TRACK_KIND_LABEL[kind]}
+                    </span>
                     <span className="text-ink-500 block truncate text-xs">
                       {formatDistanceMeters(track.distanceMeters ?? 0)} ·{' '}
                       {formatDuration(trackDurationMs(track, isRecording))} ·{' '}
@@ -167,6 +234,17 @@ export function TrackList() {
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center">
+                    {kind === 'normal' && (
+                      <button
+                        type="button"
+                        onClick={() => setColorEditingId(colorEditing ? null : track.id)}
+                        aria-label={`Couleur de ${track.name}`}
+                        aria-expanded={colorEditing}
+                        className={ACTION_BUTTON}
+                      >
+                        <Palette size={16} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -197,6 +275,19 @@ export function TrackList() {
               )}
             </div>
 
+            {colorEditing && kind === 'normal' && (
+              <TripColorPicker
+                label={`Couleur de ${track.name}`}
+                value={color}
+                onChange={(next) =>
+                  void run(
+                    () => setColor(track.id, next),
+                    'Impossible de changer la couleur : l’écriture sur l’appareil a échoué.',
+                  )
+                }
+              />
+            )}
+
             {!renaming && (
               <TerritorySelect
                 compact
@@ -220,13 +311,16 @@ export function TrackList() {
                     className="text-status-warning mt-0.5 shrink-0"
                   />
                   L’enregistrement s’est arrêté avant d’être terminé (
-                  {track.points.length} points conservés). Reprendre relie le dernier
-                  point au suivant par une ligne droite, sans trajet réel entre les deux.
+                  {track.points.length} points conservés). Reprendre ne relie pas le
+                  dernier point au suivant : la période non observée reste un trou dans la
+                  trace, sans trajet inventé.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => resumeInterrupted(track.id)}
+                    onClick={() =>
+                      session ? void resumeBlood(session.id) : resumeInterrupted(track.id)
+                    }
                     disabled={status !== 'idle'}
                     className={`${ACTION_BUTTON} border-surface-600 border`}
                   >
@@ -236,7 +330,8 @@ export function TrackList() {
                     type="button"
                     onClick={() =>
                       void run(
-                        () => finishInterrupted(track.id),
+                        () =>
+                          session ? finishBlood(session.id) : finishInterrupted(track.id),
                         'Impossible de terminer la trace : l’écriture sur l’appareil a échoué.',
                       )
                     }
@@ -259,6 +354,9 @@ export function TrackList() {
                 <p className="text-ink-100">
                   Supprimer définitivement « {track.name} » ({track.points.length} points)
                   ? Cette action est irréversible.
+                  {session
+                    ? ' Cette trace appartient à une recherche de sang : les indices (points Sang) sont conservés.'
+                    : ''}
                 </p>
                 <div className="flex gap-2">
                   <button

@@ -29,6 +29,7 @@ export const GPX_SYMBOL: Record<WaypointCategory, string> = {
   campsite: 'Campground',
   hazard: 'Danger Area',
   gate: 'Gate',
+  blood: 'Scenic Area',
   custom: 'Pin, Blue',
 }
 

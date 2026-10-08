@@ -238,6 +238,32 @@ un presse-papiers fabriqués.
 13. Zone téléchargée puis rechargement à froid en mode avion (procédure plus haut).
 14. Guidage hors ligne vers un waypoint local en mode avion.
 
+## Recherche de sang, traces et caméra (T9)
+
+| Élément                                                                                                                                                                                                                       | Statut                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Sessions, numérotation « Sang 01… », verrou des coordonnées, annulation, reprise, migration v6, sauvegarde/restauration, GPX                                                                                                  | Vitest (Dexie via fake-indexeddb), **simulé**                                                            |
+| Panneau de terrain aux 8 tailles (320×568, 375×812, 390×844, 430×932, 568×320, 844×390, 768×1024, 1440×900) : visible, boutons dans le panneau, + Sang cliquable, 2 points créés, mode immersif, pas de défilement horizontal | `e2e/blood.spec.ts`, Chromium, carte et GPS **simulés**                                                  |
+| Caméra : règle HSV, éclairage, seuils, alertes limitées, confirmation d'un indice                                                                                                                                             | Vitest avec images **synthétiques** et caméra/canvas simulés. **Aucun taux de détection n'est affirmé.** |
+| iPhone/Safari réel, GPS réel, vraie caméra et lampe, vibration réelle, mode avion réel                                                                                                                                        | **NON exécuté**                                                                                          |
+
+- Les applications de référence (Track Trail, Track'n Trail, BloodHound) n'ont **pas pu être consultées** (accès
+  refusé) : implémentation indépendante, sans analyse de brevets ni garantie de liberté d'exploitation (Track'n Trail
+  est annoncée comme brevet en instance).
+- La caméra est **expérimentale** : l'aide visuelle ne confirme pas du sang ; l'absence de surbrillance ne prouve rien.
+- L'enregistrement ne reçoit les points GPS que lorsque la page Carte est ouverte (comportement existant). Sur iPhone
+  le GPS s'arrête quand l'écran se verrouille : aucune promesse de suivi écran verrouillé ; le Wake Lock n'est
+  demandé que s'il est pris en charge.
+- Une session interrompue est proposée en reprise ; aucune période non observée n'est reliée.
+
+### Checklist iPhone — recherche de sang (NON exécutée)
+
+1. Démarrer une recherche : la trace rouge apparaît. 2. Démarrer sans GPS : « En attente du GPS », rien d'inventé.
+2. Plusieurs « + Sang » : de vrais points numérotés. 4. Fermer l'app : les gouttes sont conservées. 5. Positions
+   verrouillées après enregistrement. 6. Pause/Reprendre. 7. Session interrompue récupérable. 8. « Revenir au dernier sang ».
+3. Trajet normal avec couleur choisie ; plusieurs traces affichées. 10. Caméra : original/filtré, photo, confirmation.
+4. Partage/export/restauration. 12. Session et carte préparée en mode avion. 13. Portrait/paysage, commandes accessibles.
+
 ## Limite connue du test de restauration (E2E)
 
 Dans `e2e/backup.spec.ts`, `setInputFiles` de Playwright n'a pas déclenché le

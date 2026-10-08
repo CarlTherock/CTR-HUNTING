@@ -1,4 +1,4 @@
-import type { ForestLayerId, MapBaseLayerId } from '@/types'
+import type { Coordinate, ForestLayerId, MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
@@ -61,9 +61,16 @@ import { geoMetTileUrls, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
+import { TraceFilterControl } from '@/features/waypoints/components/TraceFilterControl'
+import { BloodPanel } from '@/features/blood/components/BloodPanel'
+import { BloodStartControl } from '@/features/blood/components/BloodStartControl'
+import { useBloodStore } from '@/features/blood/state/bloodStore'
+import { clueLinkPaths, overviewView, sessionClues } from '@/features/blood/sessionLogic'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
 import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
+import { useTraceDisplayStore } from '@/features/waypoints/state/traceDisplayStore'
+import { buildMapTraces } from '@/features/waypoints/mapTraces'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useMapStore } from '../state/mapStore'
 import { useFollowStore } from '../state/followStore'
@@ -131,6 +138,10 @@ export function MapPage() {
   const sharedPoint = useSharedPointStore((state) => state.point)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
+  const trackBreaks = useTracksStore((state) => state.breaks)
+  const recordingId = useTracksStore((state) => state.recordingId)
+  const storedTracks = useTracksStore((state) => state.tracks)
+  const traceFilter = useTraceDisplayStore((state) => state.filter)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
   const measureKind = useMeasureStore((state) => state.kind)
   const measurePoints = useMeasureStore((state) => state.points)
@@ -201,6 +212,12 @@ export function MapPage() {
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
       onMapClick: (coordinate) => {
+        // Manual placement of a blood clue (no usable GPS): the tap chooses
+        // the position, saved only after the user confirms in the panel.
+        if (useBloodStore.getState().manual) {
+          useBloodStore.getState().setManualCoordinate(coordinate)
+          return
+        }
         const waypoints = useWaypointsStore.getState()
         if (waypoints.isPlacing) {
           waypoints.placeWaypointAt(coordinate)
@@ -273,6 +290,7 @@ export function MapPage() {
     instanceRef.current = instance
     void useWaypointsStore.getState().load()
     void useTracksStore.getState().load()
+    void useBloodStore.getState().load()
     void useOfflineStore.getState().load()
     void useFieldModeStore.getState().load()
 
@@ -402,9 +420,21 @@ export function MapPage() {
     instanceRef.current?.setWaypoints(visibleWaypoints)
   }, [visibleWaypoints])
 
+  // A blood clue being placed by hand shows like a draft until confirmed.
+  const manualCoordinate = useBloodStore((state) => state.manual?.coordinate ?? null)
   useEffect(() => {
-    instanceRef.current?.setDraftWaypoint(draftCoordinate)
-  }, [draftCoordinate])
+    instanceRef.current?.setDraftWaypoint(draftCoordinate ?? manualCoordinate)
+  }, [draftCoordinate, manualCoordinate])
+
+  // Optional dashed links between the clues of the open blood search.
+  const bloodSessions = useBloodStore((state) => state.sessions)
+  const showClueLinks = useBloodStore((state) => state.showLinks)
+  useEffect(() => {
+    const open = bloodSessions.find((session) => session.status !== 'finished')
+    instanceRef.current?.setClueLinks(
+      showClueLinks && open ? clueLinkPaths(sessionClues(waypoints, open.id)) : null,
+    )
+  }, [bloodSessions, showClueLinks, waypoints])
 
   // The waypoint whose sheet is open is highlighted on the map.
   useEffect(() => {
@@ -427,8 +457,27 @@ export function MapPage() {
   }, [sharedPoint])
 
   useEffect(() => {
-    instanceRef.current?.setTrackPreview(trackStatus === 'idle' ? null : trackPoints)
-  }, [trackPoints, trackStatus])
+    const live =
+      recordingId && trackStatus !== 'idle'
+        ? { id: recordingId, points: trackPoints, breaks: trackBreaks }
+        : null
+    // The territory filter applies to stored traces like to waypoints; the
+    // recording in progress is never hidden by it.
+    const visible = filterItems(storedTracks, territoryFilter, territories).concat(
+      recordingId ? storedTracks.filter((t) => t.id === recordingId) : [],
+    )
+    const unique = visible.filter((t, i) => visible.findIndex((o) => o.id === t.id) === i)
+    instanceRef.current?.setTraces(buildMapTraces(unique, traceFilter, live))
+  }, [
+    storedTracks,
+    traceFilter,
+    recordingId,
+    trackPoints,
+    trackBreaks,
+    trackStatus,
+    territoryFilter,
+    territories,
+  ])
 
   useEffect(() => {
     // Shows each tapped point immediately (a dot) and, once there are 2+,
@@ -522,6 +571,22 @@ export function MapPage() {
     const nextView = { center: { lat: coordinate.lat, lng: coordinate.lng }, zoom }
     setView(nextView)
     instanceRef.current?.setView(nextView)
+  }
+
+  function centerOnPosition(coordinate: Coordinate) {
+    const nextView = {
+      center: { lat: coordinate.lat, lng: coordinate.lng },
+      zoom: Math.max(view.zoom, GPS_LOCATE_ZOOM),
+    }
+    setView(nextView)
+    instanceRef.current?.setView(nextView)
+  }
+
+  function showOverview(coordinates: Coordinate[]) {
+    const fitted = overviewView(coordinates)
+    if (!fitted) return
+    setView(fitted)
+    instanceRef.current?.setView(fitted)
   }
 
   function centerOnSharedPoint() {
@@ -681,6 +746,11 @@ export function MapPage() {
               className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-h-[75%] w-[calc(100%-0.5rem-var(--dock-reserve))] max-w-md flex-col items-start gap-2 [--dock-reserve:7rem]"
             >
               <ResumeFollowButton />
+              <BloodPanel
+                gpsReading={gpsReading}
+                onCenter={centerOnPosition}
+                onOverview={showOverview}
+              />
               <GuidancePanel gpsReading={gpsReading} getMapInstance={getMapInstance} />
               {!fieldModeEnabled && (
                 <MeasurePanel
@@ -693,6 +763,8 @@ export function MapPage() {
             <WaypointEditPanel gpsReading={gpsReading} />
             <SharedPointCard onCenter={centerOnSharedPoint} />
             <TrackRecorderControl />
+            <BloodStartControl gpsReading={gpsReading} />
+            <TraceFilterControl />
             {!fieldModeEnabled && (
               <>
                 <OfflineAreaControl
