@@ -24,6 +24,7 @@ import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import type { Observation, ShotSpecies } from '@/types'
 import { cn } from '@/utils/cn'
 import { ShotForm } from '../components/ShotForm'
+import { AfterShotGuide } from '../guide/AfterShotGuide'
 import {
   AFTERSHOT_DISCLAIMER,
   SHOT_SPECIES_LABEL,
@@ -364,6 +365,8 @@ export default function AfterShotPage() {
           )
         })}
       </section>
+
+      <AfterShotGuide />
     </div>
   )
 }

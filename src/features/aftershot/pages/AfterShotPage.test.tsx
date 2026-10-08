@@ -77,6 +77,15 @@ describe('Après le tir', () => {
     expect(screen.getByText(/distinct/)).toBeVisible()
   })
 
+  it('shows the guide structure as « Contenu à venir » : no unsourced advice', () => {
+    renderPage()
+    const guide = screen.getByTestId('aftershot-guide')
+    expect(guide).toBeVisible()
+    for (const node of screen.getAllByTestId('guide-pending')) {
+      expect(node).toHaveTextContent('Contenu à venir — sources en vérification')
+    }
+  })
+
   it('records a shot with only what was entered and lists it with a timeline', async () => {
     const user = userEvent.setup()
     renderPage()
