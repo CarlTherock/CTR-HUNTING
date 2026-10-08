@@ -14,6 +14,7 @@ import {
   windReadingForHour,
   zonedHourToDate,
 } from './analysisTime'
+import { localHourKey } from './windField'
 
 describe('zonedHourToDate', () => {
   it('convertit une heure locale d’été (EDT, UTC−4) vers le bon instant', () => {
@@ -75,7 +76,9 @@ describe('buildHourOptions : seulement ce qui est réellement chargé', () => {
 
   it('n’extrapole pas : sans données chargées il ne reste que l’heure en cours', () => {
     const options = buildHourOptions(null, null, NOW)
-    expect(options.map((o) => o.hourKey)).toEqual([NOW_KEY])
+    // Sans données, l'heure courante suit le fuseau de l'appareil (pas celui des données).
+    const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    expect(options.map((o) => o.hourKey)).toEqual([localHourKey(NOW, deviceZone)])
     expect(options[0].hasWind).toBe(false)
     expect(options[0].hasWeather).toBe(false)
   })
