@@ -279,19 +279,24 @@ test.describe('à propos', () => {
     await expect(page.locator('#version')).toContainText(
       'Comptes, abonnements et paiement : non disponibles / reportés',
     )
+    // The phase-by-phase state now lives on « Projet et progression »; À propos points to it.
+    await expect(page.locator('#phases')).toContainText('ne sont pas terminées')
+    await expect(
+      page.locator('#phases').getByRole('link', { name: /Projet et progression/ }),
+    ).toHaveAttribute('href', /\/project$/)
+    await page.goto('project')
     const phases = page.locator('#phases')
-    await expect(phases.locator('li', { hasText: '14. IA et assistant' })).toContainText(
-      'Non commencée',
-    )
     for (const phase of [
+      '14. IA et assistant',
       '15. Synchronisation',
       '16. Tests et optimisation',
       '17. Version commerciale',
     ]) {
       const item = phases.locator('li', { hasText: phase })
-      await expect(item).toContainText('Partielle')
-      await expect(item).not.toContainText('Livrée')
+      await expect(item).toContainText('Partiellement livrée')
+      await expect(item).not.toContainText('Terminée')
     }
+    await page.goto('about')
     await expect(page.locator('#sources')).toContainText('Open-Meteo')
     await expect(page.locator('#sources')).toContainText('OpenStreetMap')
   })

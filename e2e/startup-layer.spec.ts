@@ -79,7 +79,15 @@ test.describe('couche de départ', () => {
     await showing(satellite)
 
     // Leave the map page and come back (client-side navigation).
-    await page.getByRole('link', { name: 'Points de repère et traces' }).click()
+    // « Mes données » on phones, direct entry in the desktop sidebar.
+    const waypointsLink = page.getByRole('link', {
+      name: 'Points de repère',
+      exact: true,
+    })
+    if (!(await waypointsLink.isVisible())) {
+      await page.getByRole('link', { name: /^Mes données/ }).click()
+    }
+    await waypointsLink.first().click()
     await expect(
       page.getByRole('heading', { name: 'Points de repère et traces' }),
     ).toBeVisible()
