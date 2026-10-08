@@ -509,6 +509,19 @@ describe('MapPage', () => {
     expect(screen.getByRole('checkbox', { name: 'Hydrographie' })).toBeDisabled()
   })
 
+  it('opens the blood camera from Outils with no blood search open, and closing it frees it', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await useTool(user, 'Caméra sang')
+    const camera = await screen.findByRole('dialog', {
+      name: /Caméra de recherche de sang/,
+    })
+    expect(camera).toBeVisible()
+    expect(screen.getByTestId('camera-warning')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
+    expect(screen.queryByTestId('blood-camera')).not.toBeInTheDocument()
+  })
+
   it('has no always-visible zoom buttons: 2D/3D is on the rail and zoom lives in Outils', async () => {
     const user = userEvent.setup()
     render(<MapPage />)

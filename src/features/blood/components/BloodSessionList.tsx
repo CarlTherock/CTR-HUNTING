@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
+  Camera,
   Check,
   Droplets,
   Download,
@@ -105,6 +106,25 @@ export function BloodSessionList() {
         <Droplets size={16} aria-hidden="true" />
         Recherches de sang ({sessions.length})
       </h2>
+      <Card className="flex flex-col gap-2 p-3 text-sm">
+        <p className="text-ink-100 font-semibold">
+          Caméra sang (aide visuelle expérimentale)
+        </p>
+        <p className="text-ink-300 text-xs">
+          Surligne des zones de couleur candidates, sans jamais confirmer du sang. S’ouvre
+          sans recherche en cours ; un indice enregistré est rattaché à une recherche.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            useBloodStore.getState().openCamera()
+            void navigate('/map')
+          }}
+          className="bg-brand-500 text-surface-950 hover:bg-brand-400 inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg px-4 font-semibold"
+        >
+          <Camera size={16} aria-hidden="true" /> Ouvrir la caméra sang
+        </button>
+      </Card>
       {message && (
         <p role="status" className="text-ink-300 text-xs">
           {message}
@@ -117,8 +137,8 @@ export function BloodSessionList() {
             <strong className="text-ink-100">
               Outils → Démarrer une recherche de sang
             </strong>
-            . Pendant la recherche, le bouton « Caméra (expérimental) » ouvre l’aide
-            visuelle.
+            . La caméra sang est accessible sans recherche (bouton ci-dessus, ou Outils →
+            Caméra sang).
           </p>
           <Link
             to="/map"

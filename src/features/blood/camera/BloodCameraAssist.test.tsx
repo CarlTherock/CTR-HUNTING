@@ -386,4 +386,104 @@ describe('BloodCameraAssist', () => {
     expect(image.width).toBeLessThanOrEqual(320)
     expect(image.width).toBeLessThan(640)
   })
+
+  describe('without an open search (the camera never needs one to open)', () => {
+    async function captureThenConfirm(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: /Capturer/ }))
+      await user.click(await screen.findByRole('button', { name: /Confirmer un indice/ }))
+    }
+
+    it('opens and captures with no search, creates nothing until the user chooses', async () => {
+      const user = userEvent.setup()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await captureThenConfirm(user)
+
+      const gate = await screen.findByTestId('clue-gate')
+      expect(gate).toHaveTextContent(/démarre aussi l’enregistrement de votre trace/)
+      expect(await db.waypoints.count()).toBe(0)
+      expect(await db.bloodSessions.count()).toBe(0)
+      expect(useTracksStore.getState().status).toBe('idle')
+
+      await user.click(screen.getByRole('button', { name: 'Annuler' }))
+      expect(screen.queryByTestId('clue-gate')).not.toBeInTheDocument()
+      expect(await db.waypoints.count()).toBe(0)
+      expect(await db.bloodSessions.count()).toBe(0)
+    })
+
+    it('creating the search from the gate saves exactly ONE clue attached to it', async () => {
+      const user = userEvent.setup()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await captureThenConfirm(user)
+      await user.click(
+        await screen.findByRole('button', {
+          name: /Créer une recherche et démarrer ma trace/,
+        }),
+      )
+      await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+      expect(await db.bloodSessions.count()).toBe(1)
+      const [clue] = await db.waypoints.toArray()
+      const [session] = await db.bloodSessions.toArray()
+      expect(clue.sessionId).toBe(session.id)
+      expect(clue.bloodKind).toBe('blood')
+      expect(await db.photos.count()).toBe(1)
+    })
+
+    it('with a search open, shows which one the clue will join', async () => {
+      const user = userEvent.setup()
+      await openSession()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: /Capturer/ }))
+      expect(await screen.findByTestId('clue-target')).toHaveTextContent(/rattaché/)
+    })
+  })
+
+  it('permission refused: stays usable, offers a retry and a photo import, stops nothing silently', async () => {
+    const user = userEvent.setup()
+    const denied = Object.assign(new Error('no'), { name: 'NotAllowedError' })
+    const getUserMedia = vi.fn().mockRejectedValue(denied)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia },
+    })
+    const onClose = vi.fn()
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={onClose} />)
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: /Importer une photo/ })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: /Réessayer la caméra/ }))
+    expect(getUserMedia).toHaveBeenCalledTimes(2)
+    // The close button is still there: the screen is never a dead end.
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('no camera support (insecure context / absent): says so and offers the photo import', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: undefined,
+    })
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/pas pris en charge/)
+    expect(screen.getByRole('button', { name: /Importer une photo/ })).toBeVisible()
+  })
+
+  it('an imported photo is labelled as such (not the live view) and goes through the same confirmation', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 640, height: 480, close: vi.fn() }),
+    )
+    await openSession()
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+    const input = screen.getByLabelText('Choisir une photo à analyser')
+    await user.upload(input, new File(['x'], 'p.jpg', { type: 'image/jpeg' }))
+    expect(
+      await screen.findByText(/Photo importée : ce n’est pas le flux en direct/),
+    ).toBeVisible()
+    expect(await db.waypoints.count()).toBe(0)
+    await user.click(screen.getByRole('button', { name: /Confirmer un indice/ }))
+    await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+  })
 })

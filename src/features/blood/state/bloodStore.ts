@@ -41,6 +41,13 @@ interface BloodState {
   /** Saves the manually placed point. */
   confirmManual: () => Promise<MarkerResult>
 
+  /** The blood camera is opened from several places (map « + Repère », Outils,
+   * the search panel, the searches page): one flag, one component. It never
+   * needs an open search. */
+  cameraOpen: boolean
+  openCamera: () => void
+  closeCamera: () => void
+
   load: () => Promise<void>
   /** The session that is not finished, if any (at most one at a time). */
   openSession: () => BloodSession | null
@@ -136,6 +143,10 @@ export const useBloodStore = create<BloodState>((set, get) => {
       if (result.ok) set({ manual: null })
       return result
     },
+
+    cameraOpen: false,
+    openCamera: () => set({ cameraOpen: true }),
+    closeCamera: () => set({ cameraOpen: false }),
 
     load: async () => {
       const sessions = await listBloodSessions()

@@ -63,6 +63,7 @@ import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
 import { TraceFilterControl } from '@/features/waypoints/components/TraceFilterControl'
 import { BloodPanel } from '@/features/blood/components/BloodPanel'
+import { BloodCameraHost } from '@/features/blood/components/BloodCameraHost'
 import { BloodStartControl } from '@/features/blood/components/BloodStartControl'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { clueLinkPaths, overviewView, sessionClues } from '@/features/blood/sessionLogic'
@@ -772,6 +773,7 @@ export function MapPage() {
             <SharedPointCard onCenter={centerOnSharedPoint} />
             <TrackRecorderControl />
             <BloodStartControl gpsReading={gpsReading} />
+            <BloodCameraHost gpsReading={gpsReading} />
             <TraceFilterControl />
             {!fieldModeEnabled && (
               <>

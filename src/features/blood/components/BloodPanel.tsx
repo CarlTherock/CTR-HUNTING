@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -33,12 +33,6 @@ import {
   sessionClues,
 } from '../sessionLogic'
 import { useBloodStore } from '../state/bloodStore'
-
-const BloodCameraAssist = lazy(() =>
-  import('../camera/BloodCameraAssist').then((module) => ({
-    default: module.BloodCameraAssist,
-  })),
-)
 
 interface BloodPanelProps {
   gpsReading: GeolocationReading
@@ -89,7 +83,8 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
   const [needsFallback, setNeedsFallback] = useState<BloodMarkerKind | null>(null)
   const [undoWarning, setUndoWarning] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [cameraOpen, setCameraOpen] = useState(false)
+  const cameraOpen = useBloodStore((state) => state.cameraOpen)
+  const openCamera = useBloodStore((state) => state.openCamera)
 
   const clues = useMemo(
     () => (session ? sessionClues(waypoints, session.id) : []),
@@ -441,8 +436,8 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
             </div>
           </div>
 
-          <button type="button" className={SECONDARY} onClick={() => setCameraOpen(true)}>
-            <Camera size={16} aria-hidden="true" /> Caméra (expérimental)
+          <button type="button" className={SECONDARY} onClick={openCamera}>
+            <Camera size={16} aria-hidden="true" /> Caméra sang (expérimental)
           </button>
 
           <button
@@ -499,14 +494,6 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
               : 'Gardez l’application ouverte et l’écran allumé : sur iPhone, le GPS s’arrête quand l’écran se verrouille.'}
           </p>
         </div>
-      )}
-      {cameraOpen && (
-        <Suspense fallback={null}>
-          <BloodCameraAssist
-            gpsReading={gpsReading}
-            onClose={() => setCameraOpen(false)}
-          />
-        </Suspense>
       )}
     </section>
   )
