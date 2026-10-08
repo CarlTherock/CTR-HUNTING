@@ -207,7 +207,9 @@ describe('timeAnalyzer', () => {
   it('scores higher within the dawn/dusk crepuscular window', () => {
     const near = timeAnalyzer(DATA, new Date('2026-08-17T09:50:00.000Z'))
     const midday = timeAnalyzer(DATA, new Date('2026-08-17T16:00:00.000Z'))
-    expect(expectScore(near)).toBeGreaterThan(expectScore(midday))
+    expect(expectScore(near)).toBeGreaterThan(50)
+    // Adapté : sans indice actif, il n'y a plus de « 50 neutre » (score null).
+    expect(midday.score).toBeNull()
   })
 
   it('detects an active major solunar period', () => {
@@ -256,10 +258,11 @@ describe('historyAnalyzer', () => {
       makeWaypoint({ category: 'game_sign', coordinate: { lat: 10, lng: 10 } }),
     ]
     const result = historyAnalyzer(COORDINATE, waypoints, [])
-    expect(result.score).toBe(50)
+    // Adapté : rien d'enregistré à proximité = pas de donnée (plus un 50).
+    expect(result.score).toBeNull()
   })
 
-  it('scores above baseline with a real past track passing nearby', () => {
+  it('a real past track passing nearby is information only — it no longer raises the score', () => {
     const tracks: Track[] = [
       {
         id: 't1',
@@ -269,13 +272,16 @@ describe('historyAnalyzer', () => {
       },
     ]
     const result = historyAnalyzer(COORDINATE, [], tracks)
-    expect(expectScore(result)).toBeGreaterThan(50)
+    // Adapté : les visites sont un biais d'effort, pas un bonus d'habitat.
+    expect(result.score).toBeNull()
+    expect(result.factors.some((f) => f.label.includes('Visites'))).toBe(true)
   })
 
-  it('never returns unavailable — zero history is still a real (neutral) result', () => {
+  it('zero history is “no data here”, not a neutral 50 — and not a low score either', () => {
     const result = historyAnalyzer(COORDINATE, [], [])
-    expect(result.score).toBe(50)
-    expect(result.confidence).not.toBe('unavailable')
+    expect(result.score).toBeNull()
+    expect(result.covered).toBe(false)
+    expect(result.noSignalReason).toMatch(/pas un score bas/)
   })
 })
 

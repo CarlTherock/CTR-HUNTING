@@ -6,11 +6,12 @@ export interface CreateObservationInput {
   coordinate: Coordinate
   notes: string
   waypointId?: string
+  territoryId?: string
   conditions?: Observation['conditions']
 }
 
 export type UpdateObservationInput = Partial<
-  Pick<Observation, 'notes' | 'photoIds' | 'waypointId' | 'conditions'>
+  Pick<Observation, 'notes' | 'photoIds' | 'waypointId' | 'conditions' | 'territoryId'>
 >
 
 /** Observation (Phase 13 — Journal) CRUD against the local Dexie
@@ -29,6 +30,7 @@ export async function createObservation(
     timestamp: new Date().toISOString(),
     notes: input.notes,
     waypointId: input.waypointId,
+    territoryId: input.territoryId,
     conditions: input.conditions,
   }
   await db.observations.add(observation)

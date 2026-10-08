@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, Check, Pencil, Route, Trash2, X } from 'lucide-react'
 import { Card, EmptyState } from '@/components/ui'
+import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
+import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { formatDistanceMeters, formatDuration } from '@/utils/format'
 import { isInterruptedTrack, useTracksStore } from '../state/tracksStore'
 import type { Track } from '@/types'
@@ -37,13 +40,21 @@ export function TrackList() {
   const renameTrack = useTracksStore((state) => state.renameTrack)
   const resumeInterrupted = useTracksStore((state) => state.resumeInterrupted)
   const finishInterrupted = useTracksStore((state) => state.finishInterrupted)
+  const setTerritory = useTracksStore((state) => state.setTerritory)
+  const territories = useTerritoriesStore((state) => state.territories)
+  const territoryFilter = useTerritoriesStore((state) => state.filter)
 
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const sorted = [...tracks].sort(
+  const visible = useMemo(
+    () => filterItems(tracks, territoryFilter, territories),
+    [tracks, territoryFilter, territories],
+  )
+  const hiddenCount = tracks.length - visible.length
+  const sorted = [...visible].sort(
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
   )
 
@@ -73,8 +84,21 @@ export function TrackList() {
     )
   }
 
+  if (visible.length === 0) {
+    return (
+      <EmptyState
+        icon={<Route size={28} aria-hidden="true" />}
+        title="Aucune trace dans ce territoire"
+        description={`${hiddenByFilterMessage(hiddenCount)}. Changez le filtre « Territoire » pour les voir.`}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-2">
+      {hiddenCount > 0 && (
+        <p className="text-ink-500 text-xs">{hiddenByFilterMessage(hiddenCount)}</p>
+      )}
       {error && (
         <p role="alert" className="text-status-danger text-sm">
           {error}
@@ -172,6 +196,20 @@ export function TrackList() {
                 </>
               )}
             </div>
+
+            {!renaming && (
+              <TerritorySelect
+                compact
+                label={`Territoire de ${track.name}`}
+                value={track.territoryId}
+                onChange={(territoryId) =>
+                  void run(
+                    () => setTerritory(track.id, territoryId),
+                    'Impossible de classer la trace : l’écriture sur l’appareil a échoué.',
+                  )
+                }
+              />
+            )}
 
             {interrupted && (
               <div className="bg-surface-900 text-ink-300 flex flex-col gap-2 rounded-lg p-2 text-xs">

@@ -188,7 +188,7 @@ Phase 0 coverage, mapped to the project's minimum testing list:
 | Waypoint creation   | Not applicable yet — no waypoint feature exists; added in Phase 2                                                  |
 | Local persistence   | `src/database/settingsRepository.test.ts` (real IndexedDB round-trip)                                              |
 | Offline behavior    | `src/offline/useOnlineStatus.test.ts`                                                                              |
-| Synchronization     | Not applicable yet — Phase 15                                                                                      |
+| Synchronization     | Not applicable yet — Phase 15 (backup/restore round trips are tested: `src/features/backup/`)                      |
 | Important analytics | Not applicable yet — Phase 8                                                                                       |
 
 Testing a placeholder page beyond "it renders and is labeled as not built"
@@ -236,3 +236,71 @@ and refactor-safe as the tree grows.
 - No CI pipeline is configured yet; `npm run typecheck && npm run lint &&
 npm run test && npm run build` must be run locally before considering a
   change complete.
+
+## Potential map (T1)
+
+The potential-map engine (`src/features/analytics`) scores each grid cell
+with six analyzer groups arranged in three families (habitat, conditions,
+observations). Hour-independent factors are computed once per area
+(`computeCellStatics`); the selected hour only re-runs the pure
+`analyzeCellAtHour`, so the network stays at three requests. A group with
+no input data yields `null`, never a neutral score. See
+`src/features/analytics/README.md` for rules and limits.
+
+## Cache comparator (T4)
+
+`src/features/compare/` compares 2-4 saved waypoints for one hour. Layers:
+UI (`components/`) -> store (`state/compareStore.ts`, selection + abortable
+load) -> `compareData.ts` (grouped requests, TTL cache, shared/aborted
+in-flight requests, reuse of wind already loaded by the map) -> providers
+behind `services/wind` and `services/vegetation`. `compareCaches()` is pure
+and returns the structured `CacheComparison` (criteria, values, missing data,
+pros/cons, ranking with reasons) that the future assistant reuses. It reuses
+the potential-map analyzers (vegetation, observations) and their thresholds;
+it is not a second engine. Missing data are "non evaluable", never neutral.
+See `src/features/compare/README.md`.
+
+## Assistant (`src/features/ai/`, phase 14)
+
+Deterministic only. Layers: `pages/AssistantPage` (lazy route `/assistant`,
+secondary nav entry) -> components + `state/` (store, `useAssistantRecords`,
+abortable `useAssistantTask`) -> pure functions (`explainAnalysis`,
+`describeCacheComparison`, `summarizeTerritory`, `searchHistory`,
+`comparePeriods`) built with `ResultBuilder`, which enforces a nature label on
+every statement (`fait enregistré | calcul | estimation | interprétation IA`;
+the last is never produced) and a typed `AssistantContext`. Cited IDs open the
+item through the existing compare actions. `AssistantProvider` has a single
+implementation, `NullAssistantProvider`: no network, no key. The prompt
+envelope, minimization and consent preview exist but are inactive. Generative
+AI needs a server endpoint holding the key, auth/rate limits, a provider and
+cost decision, a privacy policy and user consent. See
+`src/features/ai/README.md`.
+
+## Backup, restore and GPX (`src/features/backup/`)
+
+UI (Réglages › « Données et sauvegarde », lazy-loaded) → `state/` stores →
+`engine/` (create, read, plan, apply) and `gpx/` → Dexie. The restore is
+three separate steps — read and verify the archive, plan against the local
+database (read-only, drives the preview), apply in one Dexie transaction —
+so nothing is written before the user confirms. `fflate` is imported
+dynamically, only on backup/restore. No Web Worker: photo bytes are stored
+(not compressed), so work is cut into ~12 ms slices with progress and
+cancellation instead. The engine takes the `Dexie` instance as a parameter
+and only includes tables that exist (`territories` arrives with schema v5).
+Format and duplicate policy: `docs/BACKUP_FORMAT.md`. Sync is not built:
+`docs/SYNC_PREPARATION.md`.
+
+## Product finish (T8)
+
+`features/dashboard` (field home: cards fed by the existing stores, summaries
+in `summary.ts`), `features/onboarding` (store + dialog; setting
+`onboardingCompletedAt`; never calls a permission API), `features/install`
+(`beforeinstallprompt` store, honest iOS steps), `features/help`,
+`features/privacy` and `features/about`. Help, Privacy and About are
+`React.lazy` routes, reachable from Réglages and not in the main navigation.
+The privacy page is generated from `features/privacy/networkProviders.ts`,
+which a test compares with `PROVIDER_HOSTS` in `build/csp.ts` and with the
+URLs in `src/services`. Total deletion lives in `database/wipeRepository.ts`
+(one Dexie transaction) and `offline/clearOfflineCaches.ts`, driven by
+`dataDeletionStore` (two confirmation steps). Version and build date come
+from `package.json` and a Vite `define` (`__APP_BUILD_DATE__`).

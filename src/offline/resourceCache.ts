@@ -8,10 +8,10 @@
  * per-offline-area, these small shared resources are not tied to any area
  * and are simply refreshed whenever the network answers.
  */
-const CACHE_NAME = 'ctr-hunting-offline-resources'
+export const RESOURCE_CACHE_NAME = 'ctr-hunting-offline-resources'
 
 async function openCache(): Promise<Cache> {
-  return caches.open(CACHE_NAME)
+  return caches.open(RESOURCE_CACHE_NAME)
 }
 
 export async function getResource(url: string): Promise<Response | null> {

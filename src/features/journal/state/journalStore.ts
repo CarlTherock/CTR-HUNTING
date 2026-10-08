@@ -9,6 +9,10 @@ import type {
   CreateObservationInput,
   UpdateObservationInput,
 } from '@/database/observationsRepository'
+import {
+  getActiveTerritoryId,
+  onTerritoryDeleted,
+} from '@/features/territories/state/territoriesStore'
 import type { Observation } from '@/types'
 
 interface JournalState {
@@ -35,7 +39,11 @@ export const useJournalStore = create<JournalState>((set) => ({
   },
 
   create: async (input) => {
-    const observation = await createObservation(input)
+    const observation = await createObservation({
+      ...input,
+      // New entries go in the territory the user is working in, if any.
+      territoryId: input.territoryId ?? getActiveTerritoryId(),
+    })
     set((state) => ({
       observations: [...state.observations, observation],
       editingId: observation.id,
@@ -60,3 +68,16 @@ export const useJournalStore = create<JournalState>((set) => ({
 
   select: (id) => set({ editingId: id }),
 }))
+
+// A deleted territory's entries were moved to « Non classé » in the
+// database; mirror that in memory.
+onTerritoryDeleted((territoryId) => {
+  useJournalStore.setState((state) => ({
+    observations: state.observations.map((o) => {
+      if (o.territoryId !== territoryId) return o
+      const released = { ...o }
+      delete released.territoryId
+      return released
+    }),
+  }))
+})

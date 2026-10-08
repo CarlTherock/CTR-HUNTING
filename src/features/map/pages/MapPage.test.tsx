@@ -8,8 +8,10 @@ import { useFollowStore } from '../state/followStore'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
+import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
@@ -35,6 +37,7 @@ const setSelectedWaypoint = vi.fn()
 const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setMeasurePath = vi.fn()
+const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
 const setUserHeading = vi.fn()
 const setWindField = vi.fn()
@@ -61,6 +64,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setSharedPoint,
     setTrackPreview,
     setMeasurePath,
+    setMeasureShape,
     setGuidanceLine,
     setUserHeading,
     setWindField,
@@ -223,6 +227,8 @@ afterEach(async () => {
     profilePoints: [],
     profileData: null,
   })
+  useMeasureStore.getState().close()
+  useMeasureStore.setState({ collapsed: false })
   useWindStore.setState({
     status: 'idle',
     field: null,
@@ -271,6 +277,13 @@ afterEach(async () => {
     points: [],
     distanceMeters: 0,
   })
+  useTerritoriesStore.setState({
+    territories: [],
+    loaded: false,
+    filter: { kind: 'all' },
+    pendingDelete: null,
+    error: null,
+  })
   useOfflineStore.setState({
     areas: [],
     loaded: false,
@@ -283,6 +296,8 @@ afterEach(async () => {
   })
   await db.waypoints.clear()
   await db.tracks.clear()
+  await db.territories.clear()
+  await db.settings.delete('territoryFilter')
   await db.offlineAreas.clear()
   await db.settings.delete('fieldModeEnabled')
   lastCreateMapOptions = undefined
@@ -586,6 +601,124 @@ describe('MapPage', () => {
     await user.click(screen.getByRole('button', { name: 'Abandonner' }))
 
     expect(setMeasurePath).toHaveBeenLastCalledWith(null)
+  })
+
+  describe('distance / area measure tools', () => {
+    const BOX = [
+      { lat: 46.8, lng: -71.2 },
+      { lat: 46.8, lng: -71.19 },
+      { lat: 46.81, lng: -71.19 },
+      { lat: 46.81, lng: -71.2 },
+    ]
+
+    it('draws each tapped point through setMeasureShape, never through the elevation-profile path', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+
+      await useTool(user, 'Mesurer une surface')
+      expect(
+        screen.getByRole('region', { name: 'Mesure de surface' }),
+      ).toBeInTheDocument()
+      for (const p of BOX.slice(0, 3)) lastCreateMapOptions?.onMapClick?.(p)
+
+      await vi.waitFor(() =>
+        expect(setMeasureShape).toHaveBeenLastCalledWith({
+          points: BOX.slice(0, 3),
+          closed: true,
+        }),
+      )
+      expect(setMeasurePath).not.toHaveBeenCalledWith(expect.arrayContaining([BOX[0]]))
+      expect(await db.waypoints.count()).toBe(0)
+    })
+
+    it('a distance measure is an open line; clearing and quitting empty the map drawing', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+      await vi.waitFor(() =>
+        expect(setMeasureShape).toHaveBeenLastCalledWith({
+          points: BOX.slice(0, 2),
+          closed: false,
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Effacer' }))
+      await vi.waitFor(() => expect(setMeasureShape).toHaveBeenLastCalledWith(null))
+
+      lastCreateMapOptions?.onMapClick?.(BOX[2])
+      await user.click(screen.getByRole('button', { name: 'Quitter la mesure' }))
+      await vi.waitFor(() => expect(setMeasureShape).toHaveBeenLastCalledWith(null))
+      expect(useMeasureStore.getState().kind).toBeNull()
+    })
+
+    it('does not swallow waypoint placement: arming it pauses the measure, and the tap places a waypoint', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+
+      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      await vi.waitFor(() => expect(useMeasureStore.getState().active).toBe(false))
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+
+      expect(await screen.findByText('Nouveau point de repère')).toBeInTheDocument()
+      expect(useMeasureStore.getState().points).toEqual([BOX[0]])
+      expect(screen.getByTestId('measure-status')).toHaveTextContent('En pause')
+    })
+
+    it('starting a measure cancels waypoint placement, terrain tools and spot analysis', async () => {
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      expect(useWaypointsStore.getState().isPlacing).toBe(true)
+
+      await useTool(user, 'Mesurer une surface')
+      expect(useWaypointsStore.getState().isPlacing).toBe(false)
+
+      await useTool(user, "Profil d'élévation")
+      expect(useTerrainToolsStore.getState().mode).toBe('profiling')
+      await vi.waitFor(() => expect(useMeasureStore.getState().active).toBe(false))
+
+      await useTool(user, 'Mesurer une distance')
+      expect(useTerrainToolsStore.getState().mode).toBe('idle')
+      expect(useMeasureStore.getState().active).toBe(true)
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      expect(useTerrainToolsStore.getState().profilePoints).toEqual([])
+      expect(useMeasureStore.getState().points).toEqual([BOX[0]])
+    })
+
+    it('shows 3D only with real elevations from the loaded terrain', async () => {
+      const user = userEvent.setup()
+      queryElevation.mockReturnValue(null)
+      render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      lastCreateMapOptions?.onMapClick?.(BOX[1])
+      expect(
+        await screen.findByText('indisponible : élévation non chargée'),
+      ).toBeInTheDocument()
+      queryElevation.mockReturnValue(null)
+    })
+
+    it('is dropped when the map unmounts (ephemeral) and hidden by Field Mode', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<MapPage />)
+      await useTool(user, 'Mesurer une distance')
+      lastCreateMapOptions?.onMapClick?.(BOX[0])
+      expect(useMeasureStore.getState().points).toHaveLength(1)
+
+      act(() => useFieldModeStore.setState({ enabled: true }))
+      await vi.waitFor(() => expect(useMeasureStore.getState().kind).toBeNull())
+      expect(screen.queryByTestId('measure-panel')).not.toBeInTheDocument()
+
+      useMeasureStore.getState().start('area')
+      unmount()
+      expect(setMeasureShape).toHaveBeenLastCalledWith(null)
+      expect(useMeasureStore.getState().kind).toBeNull()
+    })
   })
 
   /** Arms placing, taps the map at `coordinate`, and opens the details form. */
@@ -1137,7 +1270,9 @@ describe('MapPage', () => {
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
       8,
     )
-    expect(screen.getByText(/Lecture probabiliste/)).toBeInTheDocument()
+    // Adapté : le score n'est plus présenté comme une « lecture probabiliste »
+    // mais comme un indice de repère, explicitement pas une probabilité.
+    expect(screen.getByText(/pas une probabilité de/)).toBeInTheDocument()
 
     await useTool(user, 'Carte de potentiel')
     expect(setAnalysisHeatmap).toHaveBeenLastCalledWith(null)
@@ -1168,6 +1303,39 @@ describe('MapPage', () => {
         cells[0].combined.results.find((r: { analyzer: string }) => r.analyzer === 'wind')
           .score,
       )
+    })
+  })
+
+  it('toucher une cellule de la carte de potentiel ouvre sa fiche et la marque comme sélectionnée', async () => {
+    const user = userEvent.setup()
+    queryElevation.mockReturnValue(300)
+    render(<MapPage />)
+
+    await useTool(user, 'Carte de potentiel')
+    await vi.waitFor(() => {
+      expect(useHeatmapStore.getState().status).toBe('ready')
+    })
+    expect(screen.queryByTestId('heatmap-cell-sheet')).toBeNull()
+
+    act(() => {
+      lastCreateMapOptions?.onMapClick?.({ lat: 46.75, lng: -71.25 })
+    })
+
+    expect(await screen.findByTestId('heatmap-cell-sheet')).toBeInTheDocument()
+    await vi.waitFor(() => {
+      const [cells] =
+        setAnalysisHeatmap.mock.calls[setAnalysisHeatmap.mock.calls.length - 1]
+      expect(
+        cells.filter((c: { selected?: boolean }) => c.selected === true),
+      ).toHaveLength(1)
+    })
+
+    // Toucher hors de la zone analysée ferme la fiche.
+    act(() => {
+      lastCreateMapOptions?.onMapClick?.({ lat: 10, lng: 10 })
+    })
+    await vi.waitFor(() => {
+      expect(screen.queryByTestId('heatmap-cell-sheet')).toBeNull()
     })
   })
 
@@ -1338,5 +1506,87 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
     await user.click(screen.getByRole('button', { name: 'Arrêter le guidage' }))
     expect(setGuidanceLine).toHaveBeenLastCalledWith(null)
     expect(screen.queryByTestId('guidance-panel')).toBeNull()
+  })
+  describe('territory filter', () => {
+    const base = {
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const territory = {
+      id: 'nord',
+      name: 'Secteur nord',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const inNord = {
+      ...base,
+      id: 'w1',
+      name: 'Nord',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      territoryId: 'nord',
+    }
+    const loose = {
+      ...base,
+      id: 'w2',
+      name: 'Libre',
+      coordinate: { lat: 46.9, lng: -71.3 },
+    }
+
+    async function seedTerritories(filter: 'all' | 'nord') {
+      // The page reloads waypoints from the database on mount.
+      await db.territories.add(territory)
+      await db.waypoints.bulkAdd([inNord, loose])
+      useTerritoriesStore.setState({
+        territories: [territory],
+        loaded: true,
+        filter: filter === 'all' ? { kind: 'all' } : { kind: 'territory', id: 'nord' },
+      })
+      useWaypointsStore.setState({ waypoints: [inNord, loose], loaded: true })
+    }
+
+    it('shows every waypoint and no notice when nothing is filtered', async () => {
+      await seedTerritories('all')
+      render(<MapPage />)
+      await vi.waitFor(() =>
+        expect(setWaypoints).toHaveBeenLastCalledWith([inNord, loose]),
+      )
+      expect(screen.queryByText(/masqué/)).not.toBeInTheDocument()
+    })
+
+    it('draws only the waypoints of the filtered territory and says how many are hidden', async () => {
+      await seedTerritories('nord')
+      render(<MapPage />)
+      await vi.waitFor(() => expect(setWaypoints).toHaveBeenLastCalledWith([inNord]))
+      expect(screen.getByText('1 élément masqué par le filtre')).toBeInTheDocument()
+    })
+
+    it('« Tout afficher » clears the filter and brings the waypoints back', async () => {
+      await seedTerritories('nord')
+      const user = userEvent.setup()
+      render(<MapPage />)
+      await user.click(
+        await screen.findByRole('button', { name: /masqué par le filtre/ }),
+      )
+      await vi.waitFor(() =>
+        expect(setWaypoints).toHaveBeenLastCalledWith([inNord, loose]),
+      )
+      expect(screen.queryByText(/masqué/)).not.toBeInTheDocument()
+      expect(useTerritoriesStore.getState().filter).toEqual({ kind: 'all' })
+    })
+
+    it('never hides the recording in progress: the track preview is not filtered', async () => {
+      await seedTerritories('nord')
+      useTracksStore.setState({
+        status: 'recording',
+        points: [{ lat: 1, lng: 2, timestamp: 'x' }],
+      })
+      render(<MapPage />)
+      await vi.waitFor(() =>
+        expect(setTrackPreview).toHaveBeenLastCalledWith([
+          { lat: 1, lng: 2, timestamp: 'x' },
+        ]),
+      )
+    })
   })
 })

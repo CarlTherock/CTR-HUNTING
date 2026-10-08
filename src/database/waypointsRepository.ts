@@ -8,6 +8,7 @@ export interface CreateWaypointInput {
   color?: Waypoint['color']
   notes?: string
   optimalWindDirections?: number[]
+  territoryId?: string
 }
 
 /** Editable metadata of a saved waypoint. `coordinate` is deliberately absent:
@@ -16,7 +17,13 @@ export interface CreateWaypointInput {
 export type UpdateWaypointInput = Partial<
   Pick<
     Waypoint,
-    'name' | 'category' | 'color' | 'notes' | 'photoIds' | 'optimalWindDirections'
+    | 'name'
+    | 'category'
+    | 'color'
+    | 'notes'
+    | 'photoIds'
+    | 'optimalWindDirections'
+    | 'territoryId'
   >
 >
 
@@ -46,6 +53,7 @@ export async function createWaypoint(input: CreateWaypointInput): Promise<Waypoi
     color: input.color,
     notes: input.notes,
     optimalWindDirections: input.optimalWindDirections,
+    territoryId: input.territoryId,
     createdAt: now,
     updatedAt: now,
   }

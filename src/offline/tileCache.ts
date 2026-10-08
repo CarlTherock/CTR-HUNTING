@@ -10,10 +10,10 @@
  * functions, matching the project's "external capability behind an
  * adapter" pattern.
  */
-const CACHE_NAME = 'ctr-hunting-offline-tiles'
+export const TILE_CACHE_NAME = 'ctr-hunting-offline-tiles'
 
 async function openCache(): Promise<Cache> {
-  return caches.open(CACHE_NAME)
+  return caches.open(TILE_CACHE_NAME)
 }
 
 /** `true` if this exact tile URL is already cached — used to skip

@@ -3,6 +3,116 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Finition produit (2026-10-07)
+
+### Added
+
+- Accueil terrain (remplace l'accueil de développement) : météo et vent réels (« actuel » ou « prévision » avec l'heure, sinon « indisponible » et un bouton), accès à la carte, guidage actif (Reprendre / Arrêter), territoire sélectionné, dernière sortie du journal, cartes hors ligne, état des données et rappel de sauvegarde, états vides utiles.
+- Présentation de 4 écrans au premier lancement : passable, rejouable depuis Réglages ou l'aide, état enregistré dans les réglages ; elle ne demande aucune permission (GPS, caméra, boussole).
+- Pages Aide (`/help`), Confidentialité (`/privacy`) et À propos (`/about`), chargées à la demande et accessibles depuis Réglages (pas dans la barre principale). À propos : version du paquet, date de build, état honnête des phases, recherche de mise à jour du service worker existant, crédits, liens vers la documentation.
+- Confidentialité : description technique du stockage local et des requêtes réseau réelles (un test échoue si un hôte de la CSP manque sur la page), absence d'analytique et de compte. Ce n'est pas un avis juridique.
+- Suppression totale des données locales en deux étapes (résumé, option de sauvegarde préalable, mot de confirmation) : une seule transaction Dexie, puis effacement des caches hors ligne. Rien n'est supprimé sans confirmation.
+- Invite d'installation honnête : seulement si `beforeinstallprompt` existe ou sur iOS non installé, refus mémorisé.
+- `weatherStore.loadCached()` : relit la dernière prévision enregistrée sans requête réseau.
+- Variable `E2E_PORT` pour lancer les tests E2E sur un autre port.
+
+### Changed
+
+- Nom unique « CTR Hunting » (manifeste, index.html, barre, menu). Les infobulles des commandes MapLibre sont en français.
+- CSP : retrait des hôtes RainViewer, jamais utilisés par le code.
+
+### Notes
+
+- Reporté : comptes, abonnement, paiement, identité visuelle finale, tests d'installation sur appareils réels.
+
+## Assistant déterministe (2026-10-07)
+
+### Added
+
+- Page `/assistant` (entrée secondaire, import à la demande) avec 5 outils : résumer un territoire, rechercher l'historique, comparer deux périodes (« données insuffisantes » sous 3 éléments par période), expliquer une cellule/analyse, mettre en forme une comparaison de caches existante.
+- Chaque énoncé est étiqueté (fait enregistré, calcul, estimation) et les résultats portent « Calcul / résumé automatique »; chaque identifiant cité ouvre l'élément; contexte consulté, facteurs et données manquantes visibles.
+- Boutons « Expliquer cette cellule » (fiche de cellule) et « Résumer {territoire} » (gestionnaire de territoires).
+- Interface `AssistantProvider` avec `NullAssistantProvider`, carte « Assistant génératif : non activé » listant ce qui manque, aperçu de consentement inactif (rien n'est envoyé, tout décoché).
+
+### Not done
+
+- Aucune IA générative : pas de réseau, de clé ni de fournisseur. Phase 14 non terminée.
+
+## Comparateur de caches (2026-10-07)
+
+### Added
+
+- Page Points de repère : cases à cocher (zone tactile 44 px) et bouton « Comparer (N) » (actif pour 2 à 4 points). Le filtre de territoire s'applique : un point masqué quitte la sélection.
+- Comparaison pour un même créneau horaire pris parmi les heures réellement présentes dans le vent chargé : vent et rafales (source, heure, distance au point de grille), compatibilité avec les directions préférées, conditions (actuel / prévision / heure passée), habitat (végétation OSM, terrain « non évalué ici »), observations en comptes séparés (visites, signes de gibier, entrées de journal, animaux observés « non disponible »), distance depuis ma position (GPS frais et précis seulement, sinon « position indisponible »), âge des données.
+- Tri par 5 critères documentés, sur les seuls critères évaluables pour tous les points classés ; couverture « N/5 critères évaluables » par point, ex æquo, points non classés ou « non comparables » plutôt qu'un classement forcé. Aucun score caché. Libellé « Comparaison indicative : ce n'est pas une prévision de réussite. »
+- Actions par point : Voir sur la carte, Aller à, Ouvrir la fiche, Consulter les observations associées.
+- Cartes empilées sur petit écran, tableau à défilement interne sur grand écran.
+- `compareCaches()` : logique pure et type `CacheComparison` exporté, réutilisable par l'assistant.
+
+### Changed
+
+- Une seule requête de vent (qui porte aussi température, précipitations et nuages) et une seule de végétation pour l'emprise englobante ; cache mémoire de 10 min (clé : emprise arrondie + jour), requêtes partagées et annulées (AbortController) quand la sélection change, réutilisation du vent déjà chargé par la carte s'il est récent. Changer d'heure ne fait aucune requête.
+- `WindProvider.fetchWindField` et `VegetationProvider.fetchVegetationGrid` acceptent un `AbortSignal` optionnel ; `windStore` mémorise `fetchedAt`.
+
+## Organisation par territoire (2026-10-07)
+
+### Added
+
+- Territoires : dossiers logiques (sans limite géographique) pour classer points de repère, traces et entrées de journal. Créer, renommer, archiver/restaurer, supprimer depuis la page Points de repère (« Gérer les territoires »). Section « Non classé » toujours présente.
+- Filtre « Territoire » (Tous / territoire / Non classé / Archivés) sur les listes Points de repère, Traces et Journal, et sur la carte, avec l'indicateur « N éléments masqués par le filtre » et un outil « Territoire » dans la feuille « Outils ». Le filtre est enregistré dans les réglages.
+- Les nouveaux points, traces et entrées héritent du territoire sélectionné.
+- Supprimer un territoire demande une confirmation qui indique le nombre d'éléments, puis les déplace vers « Non classé » : aucune donnée n'est supprimée.
+
+### Changed
+
+- Base locale Dexie version 5 : nouvelle table `territories` et index `territoryId`. Migration additive, sans modification des données existantes (testée v4 → v5).
+- Affecter un territoire à un waypoint ne modifie jamais sa position (verrouillage inchangé).
+
+## Carte de potentiel : familles, heure, fiche de cellule (2026-10-07)
+
+### Fixed
+
+- Plus de « 50 neutre » caché : un groupe sans signal n'a pas de score. Vent compté une seule fois, pente de 22° mal décrite, visites ne gonflant plus le score, soleil calculé sur le bon jour local.
+
+### Added
+
+- Familles Habitat / Conditions / Observations, texte de couverture, cellules hachurées (partielles) et pointillées (sans donnée).
+- Sélecteur d'heure sans requête supplémentaire, fiche de cellule, comparaison de deux créneaux, création de waypoint depuis une cellule.
+
+## Outils de mesure distance / surface (2026-10-07)
+
+### Added
+
+- Outil « Mesurer une distance » (longueur du tracé, distance à vol d'oiseau, distance 3D seulement si toutes les élévations sont réelles) et « Mesurer une surface » (aire géodésique en ha, m² et acres, périmètre, avertissement de polygone croisé). Mesures éphémères, non enregistrées.
+- `utils/geo.ts` : aire sphérique par excès sphérique, périmètre, détection d'auto-intersection ; `utils/format.ts` : nombres français (virgule, espace fine insécable). `MapInstance.setMeasureShape`.
+- Cône d'odeur : reporté (incertitude non représentable honnêtement sans modèle).
+
+## Couches québécoises, LiDAR et territoires (2026-10-07)
+
+### Added
+
+- Relief ombré LiDAR (`lidar_ombre`) et année d'acquisition (`lidar_index_acquisition`), WMS Forêt ouverte : opacité par couche pour comparer avec le satellite, indice de zoom minimal, note de couverture et de fraîcheur.
+- Frontières : territoires fauniques (ZEC, pourvoiries à droits exclusifs, réserves/refuges fauniques…), parcs et réserves écologiques (TRQ), aires protégées (registre MELCCFP), avec l'avertissement « Une frontière ne prouve pas un droit de chasse… » et liens officiels.
+- État de chargement par couche (chargement / chargée / erreur visible) et attribution dans le contrôle d'attribution de la carte.
+- `docs/SOURCES_QUEBEC.md` : sources vérifiées, non intégrées et bloquées (TFS sous CC-BY-NC-ND, zones de chasse en PDF seulement, tenure introuvable).
+- CSP : hôte `servicescarto.mrnf.gouv.qc.ca`.
+
+### Notes
+
+- CORS et rendu réel des tuiles non vérifiés en navigateur ; les couches ne sont pas incluses dans les zones hors ligne.
+- Les noms de couche `ori_pee_interventions` / `ori_pee_ori_prov` n'ont pas été retrouvés dans la partie lisible du GetCapabilities actuel : à revérifier.
+
+## Export, import et sauvegarde (T3) (2026-10-07)
+
+### Added
+
+- Réglages › « Données et sauvegarde » : sauvegarde complète en `.zip` versionné (manifeste, sommes de contrôle, photos en fichiers, `originalBlob` conservé), restauration avec aperçu, confirmation et rapport, sans nuage ni compte.
+- Restauration sûre : validation complète avant écriture, ajout seulement (aucune suppression, aucun écrasement, coordonnées existantes intactes), une seule transaction Dexie (rollback complet en cas d'échec), politique de doublons documentée (`docs/BACKUP_FORMAT.md`).
+- Export / import GPX 1.1 (tout, un territoire, un point de repère, une trace) avec extensions dans un espace de noms dédié, import durci (limites, DOCTYPE refusé, coordonnées validées, texte jamais interprété comme HTML).
+- Rappel de sauvegarde (`BackupReminder`, `backupReminderState`), demande de `navigator.storage.persist()` avec état affiché honnêtement.
+- Dépendance `fflate` (~8 ko gzip), chargée en import dynamique seulement à la sauvegarde / restauration.
+- `docs/SYNC_PREPARATION.md` : ce qui reste à décider pour la synchronisation. La phase 15 (synchronisation) n'est PAS livrée.
+
 ## Audit mobile, hors ligne, GPS et sécurité (2026-10-07)
 
 ### Fixed

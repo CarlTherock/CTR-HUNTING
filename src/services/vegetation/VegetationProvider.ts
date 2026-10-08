@@ -13,5 +13,10 @@ export interface VegetationProvider {
    * single batched query over the whole area (never one request per
    * point) — a grid point with nothing nearby gets an empty
    * `categoryCounts`, never a fabricated one. */
-  fetchVegetationGrid(bounds: LngLatBounds, gridSize: number): Promise<VegetationSample[]>
+  fetchVegetationGrid(
+    bounds: LngLatBounds,
+    gridSize: number,
+    /** Optional: aborts the request (obsolete selection). */
+    signal?: AbortSignal,
+  ): Promise<VegetationSample[]>
 }

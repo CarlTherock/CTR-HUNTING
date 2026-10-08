@@ -57,6 +57,13 @@ feature-oriented `src/features/`, shared `src/components/`, domain
 `src/types/`, local persistence in `src/database/`, and external-API
 adapters (none yet) in `src/services/`.
 
+## Écrans de finition produit
+
+- Accueil terrain (`/`) : météo et vent réels ou « indisponible », carte, guidage, territoire, journal, cartes hors ligne, état des données.
+- Aide (`/help`), Confidentialité (`/privacy`) et À propos (`/about`) : accessibles depuis Réglages, hors de la barre principale.
+- Présentation de 4 écrans au premier lancement (sans permission), rejouable depuis Réglages.
+- Comptes, abonnement et paiement : non disponibles / reportés.
+
 ## Documentation
 
 - [`PROJECT_SPECIFICATION.md`](./PROJECT_SPECIFICATION.md) — product vision, 17-phase roadmap, hard rules

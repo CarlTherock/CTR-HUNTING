@@ -46,7 +46,11 @@ interface OpenMeteoLocation {
  * a single point repeated everywhere.
  */
 export class OpenMeteoWindProvider implements WindProvider {
-  async fetchWindField(bounds: LngLatBounds, gridSize: number): Promise<WindField> {
+  async fetchWindField(
+    bounds: LngLatBounds,
+    gridSize: number,
+    signal?: AbortSignal,
+  ): Promise<WindField> {
     const points = buildGrid(bounds, gridSize)
 
     const url = new URL(OPEN_METEO_URL)
@@ -56,7 +60,7 @@ export class OpenMeteoWindProvider implements WindProvider {
     url.searchParams.set('timezone', 'auto')
     url.searchParams.set('forecast_days', '2')
 
-    const response = await fetch(url)
+    const response = await (signal ? fetch(url, { signal }) : fetch(url))
     if (!response.ok) {
       throw new Error(`Requête de vent échouée (${response.status})`)
     }

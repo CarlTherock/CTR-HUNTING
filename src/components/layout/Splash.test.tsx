@@ -15,7 +15,7 @@ describe('Splash', () => {
     render(<Splash onDone={vi.fn()} />)
 
     expect(screen.getByText('CTR HUNTING')).toBeInTheDocument()
-    expect(screen.getByText('Field Terrain Intelligence')).toBeInTheDocument()
+    expect(screen.getByText('Renseignement terrain')).toBeInTheDocument()
   })
 
   it('calls onDone once, after the visible period and fade-out have elapsed', () => {

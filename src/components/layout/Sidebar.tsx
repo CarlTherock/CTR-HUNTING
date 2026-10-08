@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Compass } from 'lucide-react'
 import { navItems } from '@/app/navigation'
+import { APP_TAGLINE } from '@/app/appInfo'
 import { ConnectionStatus } from './ConnectionStatus'
 import { cn } from '@/utils/cn'
 
@@ -13,7 +14,7 @@ export function Sidebar() {
         <Compass className="text-brand-400" size={22} aria-hidden="true" />
         <div className="leading-tight">
           <p className="text-ink-100 text-sm font-semibold tracking-wide">CTR HUNTING</p>
-          <p className="text-ink-500 text-xs">Field Terrain Intelligence</p>
+          <p className="text-ink-500 text-xs">{APP_TAGLINE}</p>
         </div>
       </div>
 

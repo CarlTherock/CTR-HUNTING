@@ -150,3 +150,20 @@ waypoint list) extends this into a side-by-side view across _every_
 waypoint with a saved preference at once — modeled on onX Hunt's own
 "Wind Comparisons Tool" (verified via research). See
 `features/wind/README.md` for the full design.
+
+## Territoires (dossiers logiques)
+
+Les waypoints, les traces et les entrées de journal peuvent être classés dans
+un **territoire** (dossier logique, sans limite géographique) ; sans
+`territoryId` ils sont « Non classé ». Voir `src/features/territories/README.md`.
+
+- `WaypointEditPanel` : sélecteur « Territoire » (création et édition). Il ne
+  modifie que `territoryId` : la position reste verrouillée après
+  « Enregistrer ». Un nouveau waypoint reçoit le territoire actif (celui choisi
+  comme filtre), modifiable avant d'enregistrer.
+- `TrackList` : un sélecteur par trace (`tracksStore.setTerritory`) ; une
+  nouvelle trace reçoit le territoire actif.
+- `WaypointsPage` : filtre « Territoire » commun aux points et aux traces, et
+  bouton « Gérer les territoires » (créer, renommer, archiver, supprimer).
+- Carte : seuls les waypoints du filtre sont dessinés, avec un indicateur
+  « N élément(s) masqué(s) par le filtre ».

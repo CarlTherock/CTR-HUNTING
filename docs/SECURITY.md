@@ -34,6 +34,8 @@ Limites connues, inhérentes à GitHub Pages (pas d'en-têtes HTTP) :
 - La liste d'hôtes est celle des appels réels du code. **Non vérifiée en
   direct** contre les vrais services MapTiler/Esri (E2E : backend simulé).
   Si un nouveau fournisseur est ajouté, il faut l'ajouter à `build/csp.ts`.
+  Couches québécoises : `geoegl.msp.gouv.qc.ca`, `geo.environnement.gouv.qc.ca`,
+  `servicescarto.mrnf.gouv.qc.ca` (voir `docs/SOURCES_QUEBEC.md`).
 - Le serveur de développement n'applique pas la CSP (HMR).
 
 ## Dépendances et CI
@@ -43,3 +45,5 @@ Limites connues, inhérentes à GitHub Pages (pas d'en-têtes HTTP) :
 - La CI de validation (`ci.yml`) n'utilise aucun secret et un jeton en
   lecture seule ; le déploiement (`deploy.yml`) est séparé et seul le job
   `deploy` a les permissions Pages.
+
+Les hôtes RainViewer ont été retirés de la CSP (T8) : aucun code ne les utilise. La page Confidentialité et `build/csp.ts` sont comparées par `src/features/privacy/networkProviders.test.ts`.

@@ -1,6 +1,14 @@
-import { useEffect } from 'react'
-import { Camera, MapPinned, Route } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Camera, FolderTree, MapPinned, Route } from 'lucide-react'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
+import { ComparePanel } from '@/features/compare/components/ComparePanel'
+import { CompareSelectionBar } from '@/features/compare/components/CompareSelectionBar'
+import { MAX_WAYPOINTS } from '@/features/compare/criteria'
+import { useCompareStore } from '@/features/compare/state/compareStore'
+import { TerritoryFilterBar } from '@/features/territories/components/TerritoryFilterBar'
+import { TerritoryManager } from '@/features/territories/components/TerritoryManager'
+import { filterItems, hiddenByFilterMessage } from '@/features/territories/filter'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
 import { CATEGORY_ICON, CATEGORY_LABEL, DEFAULT_WAYPOINT_COLOR } from '../categories'
 import { WaypointEditPanel } from '../components/WaypointEditPanel'
 import { WindComparisonPanel } from '../components/WindComparisonPanel'
@@ -28,6 +36,30 @@ export function WaypointsPage() {
   const tracksLoaded = useTracksStore((state) => state.loaded)
   const loadTracks = useTracksStore((state) => state.load)
 
+  const territories = useTerritoriesStore((state) => state.territories)
+  const territoryFilter = useTerritoriesStore((state) => state.filter)
+  const [managing, setManaging] = useState(false)
+  const visibleWaypoints = useMemo(
+    () => filterItems(waypoints, territoryFilter, territories),
+    [waypoints, territoryFilter, territories],
+  )
+  const visibleTrackCount = useMemo(
+    () => filterItems(tracks, territoryFilter, territories).length,
+    [tracks, territoryFilter, territories],
+  )
+  const hiddenWaypoints = waypoints.length - visibleWaypoints.length
+
+  // Comparaison de caches : la sélection ne garde que les points visibles
+  // avec le filtre de territoire courant.
+  const selectedIds = useCompareStore((state) => state.selectedIds)
+  const toggleSelected = useCompareStore((state) => state.toggleSelected)
+  const pruneSelection = useCompareStore((state) => state.pruneSelection)
+  useEffect(() => {
+    pruneSelection(visibleWaypoints.map((w) => w.id))
+  }, [visibleWaypoints, pruneSelection])
+  const territoryName = (id: string | undefined) =>
+    id ? territories.find((t) => t.id === id)?.name : undefined
+
   useEffect(() => {
     if (!waypointsLoaded) void loadWaypoints()
     if (!tracksLoaded) void loadTracks()
@@ -43,31 +75,81 @@ export function WaypointsPage() {
         description="Tous les repères enregistrés et toutes les traces GPS. Créez-en de nouveaux depuis la page Carte."
       />
 
+      <div className="flex flex-col gap-3">
+        <div className="flex items-end gap-2">
+          <TerritoryFilterBar className="min-w-0 flex-1" />
+          <button
+            type="button"
+            onClick={() => setManaging((open) => !open)}
+            aria-expanded={managing}
+            className="border-surface-600 text-ink-100 hover:bg-surface-800 flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-sm"
+          >
+            <FolderTree size={16} aria-hidden="true" />
+            Gérer les territoires
+          </button>
+        </div>
+        {managing && <TerritoryManager />}
+      </div>
+
       <WindComparisonPanel />
+
+      <ComparePanel />
 
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <MapPinned size={16} aria-hidden="true" />
-          Points de repère ({waypoints.length})
+          Points de repère ({visibleWaypoints.length})
         </h2>
+        {hiddenWaypoints > 0 && (
+          <p className="text-ink-500 mb-2 text-xs">
+            {hiddenByFilterMessage(hiddenWaypoints)}
+          </p>
+        )}
+        {visibleWaypoints.length > 0 && (
+          <div className="mb-3">
+            <CompareSelectionBar />
+          </div>
+        )}
         {waypoints.length === 0 ? (
           <EmptyState
             icon={<MapPinned size={28} aria-hidden="true" />}
             title="Aucun point de repère pour le moment"
             description="Ouvrez la page Carte, touchez le bouton +, puis touchez la carte pour en placer un."
           />
+        ) : visibleWaypoints.length === 0 ? (
+          <EmptyState
+            icon={<MapPinned size={28} aria-hidden="true" />}
+            title="Aucun point de repère dans ce territoire"
+            description="Changez le filtre « Territoire » pour voir les autres points."
+          />
         ) : (
           <div className="flex flex-col gap-2">
-            {waypoints.map((waypoint) => {
+            {visibleWaypoints.map((waypoint) => {
               const Icon = CATEGORY_ICON[waypoint.category] ?? CATEGORY_ICON.general
               const color = waypoint.color ?? DEFAULT_WAYPOINT_COLOR
               const photoCount = waypoint.photoIds?.length ?? 0
               return (
-                <Card key={waypoint.id} className="p-0">
+                <Card key={waypoint.id} className="flex items-stretch p-0">
+                  <label
+                    className="flex min-h-11 w-12 shrink-0 cursor-pointer items-center justify-center"
+                    title="Sélectionner pour la comparaison"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(waypoint.id)}
+                      disabled={
+                        !selectedIds.includes(waypoint.id) &&
+                        selectedIds.length >= MAX_WAYPOINTS
+                      }
+                      onChange={() => toggleSelected(waypoint.id)}
+                      aria-label={`Comparer : ${waypoint.name}`}
+                      className="accent-brand-500 h-6 w-6"
+                    />
+                  </label>
                   <button
                     type="button"
                     onClick={() => selectWaypoint(waypoint.id)}
-                    className="hover:bg-surface-800 flex w-full items-center gap-3 rounded-[inherit] p-3 text-left transition-colors pointer-coarse:min-h-11"
+                    className="hover:bg-surface-800 flex min-w-0 flex-1 items-center gap-3 rounded-[inherit] p-3 pl-0 text-left transition-colors pointer-coarse:min-h-11"
                   >
                     <span
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white"
@@ -81,6 +163,9 @@ export function WaypointsPage() {
                       </span>
                       <span className="text-ink-500 flex items-center gap-1 truncate text-xs">
                         {CATEGORY_LABEL[waypoint.category]} ·{' '}
+                        {territoryName(waypoint.territoryId) && (
+                          <>{territoryName(waypoint.territoryId)} · </>
+                        )}
                         {formatCoordinate(
                           waypoint.coordinate.lat,
                           waypoint.coordinate.lng,
@@ -104,7 +189,7 @@ export function WaypointsPage() {
       <div>
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <Route size={16} aria-hidden="true" />
-          Traces ({tracks.length})
+          Traces ({visibleTrackCount})
         </h2>
         <TrackList />
       </div>

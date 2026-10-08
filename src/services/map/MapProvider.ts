@@ -5,6 +5,7 @@ import type {
   MapBaseLayerId,
   MapOverlayId,
   MapViewState,
+  OverlayStatus,
   WeatherMapLayer,
   WeatherTileFrame,
   Waypoint,
@@ -27,6 +28,13 @@ export interface DownloadAreaProgress {
 /** Handle to a mounted map instance. Returned by `MapProvider.createMap`;
  * callers only ever see this interface, never the underlying engine (e.g.
  * MapLibre's `Map` class), so the engine stays swappable. */
+/** What the distance/area measure tool wants drawn. `closed` = polygon
+ * (fill + outline back to the first point) rather than an open line. */
+export interface MeasureShape {
+  points: Coordinate[]
+  closed: boolean
+}
+
 export interface MapInstance {
   /** Programmatically move the camera (e.g. "recenter on GPS"). */
   setView(view: Partial<MapViewState>): void
@@ -109,6 +117,12 @@ export interface MapInstance {
    * source/layers, independent of `setTrackPreview`, so drawing a
    * measurement never interferes with an in-progress GPS track. */
   setMeasurePath(points: Coordinate[] | null): void
+  /** Draws the distance/area measure tool: a dot per point, a line through
+   * them and, when `closed` with 3+ points, a translucent polygon fill. Own
+   * source/layers (teal), independent of `setMeasurePath` (elevation profile,
+   * amber) and of the track preview. `null` clears. The drawing is purely
+   * visual and ephemeral — never persisted. */
+  setMeasureShape(shape: MeasureShape | null): void
   /**
    * Renders (Phase 6) or clears (`null`) the Windy-style weather map
    * layer: `'wind'` draws an animated particle flow field (each particle
@@ -155,7 +169,12 @@ export interface MapInstance {
    * `id` again with a different `tileUrlTemplate` replaces that one
    * overlay (a raster source's tile URLs can't be mutated in place).
    */
-  setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number): void
+  setRasterOverlay(
+    id: string,
+    tileUrlTemplate: string | null,
+    opacity: number,
+    attribution?: string,
+  ): void
   /**
    * Weather-app-style animated raster (radar loop / hourly forecast):
    * `frames` are real GeoMet WMS tile templates, `activeIndex` the one
@@ -175,6 +194,10 @@ export interface MapInstance {
 }
 
 export interface CreateMapOptions {
+  /** Load state of each named raster overlay (`setRasterOverlay`): loading,
+   * ready, or error (tile/service failure). Lets the UI show a failed
+   * government layer instead of an empty map. */
+  onRasterOverlayStatus?: (id: string, status: OverlayStatus) => void
   /** DOM element the map renders into. Must already be attached and sized. */
   container: HTMLElement
   initialView: MapViewState

@@ -65,6 +65,8 @@ export interface Waypoint {
    * (verified via competitive research, see NOTES_TECHNIQUES_FUTURES.md).
    * Undefined/empty means "no preference set," not "any wind is bad." */
   optimalWindDirections?: number[]
+  /** Logical folder (`Territory.id`). Absent means « Non classé ». */
+  territoryId?: string
   createdAt: string // ISO 8601
   updatedAt: string // ISO 8601
 }
@@ -77,4 +79,6 @@ export interface Track {
   endedAt?: string // ISO 8601
   distanceMeters?: number
   notes?: string
+  /** Logical folder (`Territory.id`). Absent means « Non classé ». */
+  territoryId?: string
 }

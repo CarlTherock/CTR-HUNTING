@@ -1,85 +1,10 @@
-import { useState } from 'react'
-import { Activity, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Activity, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
+import { FAMILY_ORDER } from '@/utils/analysisFamilies'
 import { useAnalysisStore } from '../state/analysisStore'
-import type { AnalyzerResult, DataConfidence } from '@/types'
-
-const ANALYZER_LABEL: Record<AnalyzerResult['analyzer'], string> = {
-  terrain: 'Terrain',
-  vegetation: 'Végétation',
-  weather: 'Météo',
-  wind: 'Vent',
-  time: 'Moment',
-  history: 'Historique',
-}
-
-const CONFIDENCE_LABEL: Record<DataConfidence, string> = {
-  measured: 'mesuré',
-  calculated: 'calculé',
-  estimated: 'estimé',
-  ai_interpretation: 'interprétation de l’IA',
-  user_observation: 'observation de l’utilisateur',
-}
-
-function scoreLabel(score: number): string {
-  if (score >= 75) return 'Favorable'
-  if (score >= 55) return 'Plutôt favorable'
-  if (score >= 45) return 'Neutre'
-  if (score >= 25) return 'Plutôt défavorable'
-  return 'Défavorable'
-}
-
-function AnalyzerCard({ result }: { result: AnalyzerResult }) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <div className="border-surface-700 rounded-md border p-2.5">
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between text-left pointer-coarse:min-h-11"
-        aria-expanded={expanded}
-      >
-        <span className="text-ink-100 text-sm font-medium">
-          {ANALYZER_LABEL[result.analyzer]}
-        </span>
-        <span className="flex items-center gap-2">
-          {result.score !== null ? (
-            <span className="text-ink-300 text-xs">{Math.round(result.score)}/100</span>
-          ) : (
-            <span className="text-ink-500 text-xs">Aucune donnée</span>
-          )}
-          {expanded ? (
-            <ChevronUp size={14} className="text-ink-500" aria-hidden="true" />
-          ) : (
-            <ChevronDown size={14} className="text-ink-500" aria-hidden="true" />
-          )}
-        </span>
-      </button>
-
-      {expanded && (
-        <div className="mt-2 flex flex-col gap-1.5">
-          {result.score === null ? (
-            <p className="text-ink-500 text-xs">{result.unavailableReason}</p>
-          ) : (
-            result.factors.map((factor, i) => (
-              <div key={i} className="text-xs">
-                <p className="text-ink-200 font-medium">
-                  {factor.label}
-                  <span className="text-ink-600 ml-1 font-normal">
-                    ({CONFIDENCE_LABEL[factor.confidence]})
-                  </span>
-                </p>
-                <p className="text-ink-500">{factor.explanation}</p>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+import { CoverageLine, FamilySection } from './AnalyzerBreakdown'
+import { scoreLabel } from './analyzerFormat'
 
 /**
  * Phase 8 — Analytics Engine. Arm, tap the map, and get an explainable
@@ -90,8 +15,9 @@ function AnalyzerCard({ result }: { result: AnalyzerResult }) {
  * weather/wind/vegetation fetches for that exact coordinate, and the
  * user's own local waypoints/tracks) — never a fabricated score, and a
  * missing analyzer is shown as "No data" rather than silently omitted.
- * The combined score is explicitly framed as a probabilistic read, not a
- * certainty, per the phase's own rule.
+ * The combined score is an indicative reference index (never a
+ * probability of presence/movement/harvest), shown with the three
+ * families (Habitat / Conditions / Observations) and its factor coverage.
  */
 export function AnalysisControl() {
   const mode = useAnalysisStore((state) => state.mode)
@@ -205,10 +131,15 @@ export function AnalysisControl() {
                         {scoreLabel(combined.overallScore)}
                       </p>
                       <p className="text-ink-500 text-xs">
-                        Estimation probabiliste fondée sur les facteurs ci-dessous, et non
-                        une garantie — déployez chaque analyseur pour voir exactement
-                        pourquoi.
+                        Indice de repère comparatif fondé sur les facteurs ci-dessous —
+                        pas une probabilité de présence, de déplacement ni de récolte.
+                        Analyse environnementale générale (aucun profil d’espèce).
                       </p>
+                      {combined.coverage && (
+                        <div className="mt-1">
+                          <CoverageLine coverage={combined.coverage} />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <p className="text-ink-500 text-sm">
@@ -217,9 +148,14 @@ export function AnalysisControl() {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  {combined.results.map((result) => (
-                    <AnalyzerCard key={result.analyzer} result={result} />
+                <div className="flex flex-col gap-3">
+                  {FAMILY_ORDER.map((family) => (
+                    <FamilySection
+                      key={family}
+                      family={family}
+                      summary={combined.families?.find((f) => f.family === family)}
+                      results={combined.results}
+                    />
                   ))}
                 </div>
               </>

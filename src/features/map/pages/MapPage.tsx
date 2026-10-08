@@ -1,4 +1,4 @@
-import type { MapBaseLayerId } from '@/types'
+import type { ForestLayerId, MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
@@ -16,6 +16,7 @@ import { cn } from '@/utils/cn'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
 import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
+import { projectHeatmapCells } from '@/features/analytics/heatmapProjection'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { CompassDisplay } from '@/features/field-mode/components/CompassDisplay'
 import { useFieldModeStore } from '@/features/field-mode/state/fieldModeStore'
@@ -35,12 +36,24 @@ import { GuidancePanel } from '@/features/guidance/components/GuidancePanel'
 import { SharedPointCard } from '@/features/share/components/SharedPointCard'
 import { useSharedPointStore } from '@/features/share/sharedPointStore'
 import { useGeolocation } from '@/features/gps/useGeolocation'
+import { HiddenByFilterNotice } from '@/features/territories/components/HiddenByFilterNotice'
+import { TerritoryMapControl } from '@/features/territories/components/TerritoryMapControl'
+import { filterItems } from '@/features/territories/filter'
+import { useTerritoriesStore } from '@/features/territories/state/territoriesStore'
+import { useEnsureTerritories } from '@/features/territories/useEnsureTerritories'
 import { OfflineAreaControl } from '@/features/offline/components/OfflineAreaControl'
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { canRetryArea } from '@/features/offline/areaStatus'
 import { ForestLayersControl } from '@/features/forest-layers/components/ForestLayersControl'
-import { useForestLayersStore } from '@/features/forest-layers/state/forestLayersStore'
+import {
+  effectiveOpacity,
+  useForestLayersStore,
+} from '@/features/forest-layers/state/forestLayersStore'
 import { FOREST_LAYER_OPTIONS, forestLayerTileUrl } from '@/services/map/forestLayerTiles'
+import { MeasurePanel } from '@/features/measure/components/MeasurePanel'
+import { MeasureTools } from '@/features/measure/components/MeasureTools'
+import { useMeasureStore } from '@/features/measure/state/measureStore'
+import { useMeasureExclusivity } from '@/features/measure/useMeasureExclusivity'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
@@ -102,12 +115,25 @@ export function MapPage() {
   const getMapInstance = useCallback(() => instanceRef.current, [])
   const isOnline = useOnlineStatus()
   const waypoints = useWaypointsStore((state) => state.waypoints)
+  useEnsureTerritories()
+  const territories = useTerritoriesStore((state) => state.territories)
+  const territoryFilter = useTerritoriesStore((state) => state.filter)
+  // The map shows only the waypoints the territory filter lets through. Saved
+  // tracks are not drawn on the map (only the recording in progress, which is
+  // never filtered), so only waypoints can be hidden here.
+  const visibleWaypoints = useMemo(
+    () => filterItems(waypoints, territoryFilter, territories),
+    [waypoints, territoryFilter, territories],
+  )
+  const hiddenWaypointCount = waypoints.length - visibleWaypoints.length
   const draftCoordinate = useWaypointsStore((state) => state.draft?.coordinate ?? null)
   const editingWaypointId = useWaypointsStore((state) => state.editingId)
   const sharedPoint = useSharedPointStore((state) => state.point)
   const trackStatus = useTracksStore((state) => state.status)
   const trackPoints = useTracksStore((state) => state.points)
   const profilePoints = useTerrainToolsStore((state) => state.profilePoints)
+  const measureKind = useMeasureStore((state) => state.kind)
+  const measurePoints = useMeasureStore((state) => state.points)
   const windEnabled = useWindStore((state) => state.enabled)
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
@@ -115,6 +141,7 @@ export function MapPage() {
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
+  const heatmapSelectedCell = useHeatmapStore((state) => state.selectedCellIndex)
   const fieldModeEnabled = useFieldModeStore((state) => state.enabled)
   const weatherMapEnabled = useWeatherMapStore((state) => state.enabled)
   const weatherMapLayer = useWeatherMapStore((state) => state.activeLayer)
@@ -123,6 +150,9 @@ export function MapPage() {
   const weatherMapOpacity = useWeatherMapStore((state) => state.opacity)
   const forestLayersEnabled = useForestLayersStore((state) => state.enabled)
   const forestLayersOpacity = useForestLayersStore((state) => state.opacity)
+  const forestLayerOpacities = useForestLayersStore((state) => state.layerOpacity)
+
+  useMeasureExclusivity(fieldModeEnabled)
 
   // Field Mode's "low power draw" requirement: turning it on also turns
   // off the two continuously-animated canvas layers (wind flow field,
@@ -193,18 +223,38 @@ export function MapPage() {
           })
         } else if (terrainMode === 'profiling') {
           useTerrainToolsStore.getState().addProfilePoint(coordinate)
+        } else if (useMeasureStore.getState().active) {
+          useMeasureStore.getState().addPoint(coordinate)
         } else if (useAnalysisStore.getState().mode === 'analyzing') {
           const map = instanceRef.current
           if (!map) return
+          // Même heure que la carte de potentiel quand elle est affichée.
+          const heat = useHeatmapStore.getState()
           void useAnalysisStore
             .getState()
-            .analyze(coordinate, (c) => map.queryElevation(c))
+            .analyze(
+              coordinate,
+              (c) => map.queryElevation(c),
+              undefined,
+              heat.enabled ? heat.selectedHourKey : null,
+            )
+        } else if (useHeatmapStore.getState().enabled) {
+          // Un toucher sur une cellule de la carte de potentiel ouvre sa
+          // fiche (hors de la zone analysée : ferme la fiche).
+          useHeatmapStore.getState().selectCellAt(coordinate)
         }
       },
       // A drag / zoom / rotate by the user pauses "follow my position".
       onUserInteraction: () => useFollowStore.getState().pauseForUserGesture(),
       onWaypointClick: (id) => useWaypointsStore.getState().selectWaypoint(id),
       onDraftMove: (coordinate) => useWaypointsStore.getState().moveDraft(coordinate),
+      // Government overlays: surface "loading / loaded / error" in the panel.
+      onRasterOverlayStatus: (overlayId, status) => {
+        if (!overlayId.startsWith('forest-')) return
+        useForestLayersStore
+          .getState()
+          .setStatus(overlayId.slice('forest-'.length) as ForestLayerId, status)
+      },
       onBaseLayerError: (failed) => {
         const state = useLayersStore.getState()
         failedBaseLayers.push(failed)
@@ -229,6 +279,9 @@ export function MapPage() {
     return () => {
       instanceRef.current = null
       useFollowStore.getState().stop()
+      // The measurement is ephemeral and dies with the map it was drawn on.
+      instance.setMeasureShape(null)
+      useMeasureStore.getState().close()
       instance.destroy()
     }
     // Mount once: the map manages its own camera after creation, and further
@@ -346,8 +399,8 @@ export function MapPage() {
   useFollowPosition(instanceRef, gpsReading)
 
   useEffect(() => {
-    instanceRef.current?.setWaypoints(waypoints)
-  }, [waypoints])
+    instanceRef.current?.setWaypoints(visibleWaypoints)
+  }, [visibleWaypoints])
 
   useEffect(() => {
     instanceRef.current?.setDraftWaypoint(draftCoordinate)
@@ -384,6 +437,14 @@ export function MapPage() {
     // so the chart's numbers stay visually tied to the path they describe.
     instanceRef.current?.setMeasurePath(profilePoints.length > 0 ? profilePoints : null)
   }, [profilePoints])
+
+  useEffect(() => {
+    instanceRef.current?.setMeasureShape(
+      measureKind && measurePoints.length > 0
+        ? { points: measurePoints, closed: measureKind === 'area' }
+        : null,
+    )
+  }, [measureKind, measurePoints])
 
   useEffect(() => {
     instanceRef.current?.setWindAnimationPaused?.(windPaused)
@@ -426,33 +487,30 @@ export function MapPage() {
       instanceRef.current?.setRasterOverlay(
         `forest-${option.id}`,
         forestLayersEnabled[option.id] ? forestLayerTileUrl(option.id) : null,
-        forestLayersOpacity,
+        effectiveOpacity(
+          { opacity: forestLayersOpacity, layerOpacity: forestLayerOpacities },
+          option.id,
+        ),
+        option.attribution,
       )
     }
-  }, [forestLayersEnabled, forestLayersOpacity])
+  }, [forestLayersEnabled, forestLayersOpacity, forestLayerOpacities])
 
   useEffect(() => {
     if (!heatmapEnabled) {
       instanceRef.current?.setAnalysisHeatmap(null)
       return
     }
-    // Re-projecting to a single analyzer's score is a pure client-side
+    // Re-projecting to a family / single analyzer is a pure client-side
     // transform of the already-computed cells — never a re-fetch, same
     // "instant, no re-fetch" principle as the Phase 6 layer switcher.
-    const projected =
-      heatmapSelectedView === 'combined'
-        ? heatmapCells
-        : heatmapCells.map((cell) => ({
-            ...cell,
-            combined: {
-              ...cell.combined,
-              overallScore:
-                cell.combined.results.find((r) => r.analyzer === heatmapSelectedView)
-                  ?.score ?? null,
-            },
-          }))
+    const projected = projectHeatmapCells(
+      heatmapCells,
+      heatmapSelectedView,
+      heatmapSelectedCell,
+    )
     instanceRef.current?.setAnalysisHeatmap(projected)
-  }, [heatmapEnabled, heatmapCells, heatmapSelectedView])
+  }, [heatmapEnabled, heatmapCells, heatmapSelectedView, heatmapSelectedCell])
 
   function locate() {
     if (gpsReading.status !== 'available') return
@@ -499,6 +557,7 @@ export function MapPage() {
     <>
       {!isOnline && <Badge variant="warning">Hors ligne — cartes en cache</Badge>}
       <GpsStatusBadge reading={gpsReading} />
+      <HiddenByFilterNotice hiddenCount={hiddenWaypointCount} />
     </>
   )
 
@@ -623,6 +682,13 @@ export function MapPage() {
             >
               <ResumeFollowButton />
               <GuidancePanel gpsReading={gpsReading} getMapInstance={getMapInstance} />
+              {!fieldModeEnabled && (
+                <MeasurePanel
+                  queryElevation={(coordinate) =>
+                    instanceRef.current?.queryElevation(coordinate) ?? null
+                  }
+                />
+              )}
             </div>
             <WaypointEditPanel gpsReading={gpsReading} />
             <SharedPointCard onCenter={centerOnSharedPoint} />
@@ -640,6 +706,7 @@ export function MapPage() {
                     instanceRef.current?.queryElevation(coordinate) ?? null
                   }
                 />
+                <MeasureTools />
                 <WeatherMapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}
                   isFrameReady={(key) =>
@@ -647,7 +714,8 @@ export function MapPage() {
                   }
                   viewCenter={view.center}
                 />
-                <ForestLayersControl />
+                <ForestLayersControl currentZoom={view.zoom} />
+                <TerritoryMapControl />
                 <AnalysisControl />
                 <HeatmapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}

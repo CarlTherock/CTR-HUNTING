@@ -1,10 +1,12 @@
 import { Outlet, useMatch } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { SharedPointHandler } from '@/features/share/components/SharedPointHandler'
+import { OnboardingDialog } from '@/features/onboarding/components/OnboardingDialog'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { TopBar } from './TopBar'
 import { useImmersiveStore } from './immersiveStore'
+import { useHashScroll } from './useHashScroll'
 
 /**
  * Root responsive layout: a persistent sidebar on md+ (tablet/desktop) and
@@ -27,6 +29,7 @@ import { useImmersiveStore } from './immersiveStore'
  * indicator.
  */
 export function AppShell() {
+  useHashScroll()
   const isMapRoute = useMatch('/map') !== null
   const immersive = useImmersiveStore((state) => state.immersive) && isMapRoute
 
@@ -41,6 +44,7 @@ export function AppShell() {
       }}
     >
       <SharedPointHandler />
+      <OnboardingDialog />
       {!immersive && <Sidebar />}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {!immersive && <TopBar />}

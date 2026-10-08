@@ -1,4 +1,5 @@
 import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { MAP_LOCALE_FR } from './mapLocale'
 import type {
   AnalysisHeatmapCell,
   Coordinate,
@@ -20,6 +21,7 @@ import type {
   DownloadAreaProgress,
   MapInstance,
   MapProvider,
+  MeasureShape,
 } from './MapProvider'
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
 import { createPathLayers } from './pathLayers'
@@ -65,6 +67,7 @@ export class MapLibreProvider implements MapProvider {
     onDraftMove,
     onUserInteraction,
     onBaseLayerError,
+    onRasterOverlayStatus,
   }: CreateMapOptions): MapInstance {
     // MapLibre resolves its worker script at runtime rather than via a
     // static `new URL(..., import.meta.url)` Rollup/Vite can detect and
@@ -94,6 +97,7 @@ export class MapLibreProvider implements MapProvider {
       // rendering issues, so 85 is the real, supported maximum, not an
       // arbitrary guess.
       maxPitch: 85,
+      locale: MAP_LOCALE_FR,
     })
 
     map.addControl(new NavigationControl(), 'top-right')
@@ -101,7 +105,7 @@ export class MapLibreProvider implements MapProvider {
     const analysisHeatmapLayer = createAnalysisHeatmapLayer(map, container)
     const markers = createMarkerController(map, { onWaypointClick, onDraftMove })
     const pathLayers = createPathLayers(map)
-    const rasterOverlays = createRasterOverlays(map)
+    const rasterOverlays = createRasterOverlays(map, onRasterOverlayStatus)
     const weatherFrames = createWeatherFrames(map)
 
     // Re-applied on every style load — including the first one, and every
@@ -210,6 +214,9 @@ export class MapLibreProvider implements MapProvider {
       setMeasurePath(points: Coordinate[] | null) {
         pathLayers.setMeasurePath(points)
       },
+      setMeasureShape(shape: MeasureShape | null) {
+        pathLayers.setMeasureShape(shape)
+      },
       setGuidanceLine(line: readonly [Coordinate, Coordinate] | null) {
         pathLayers.setGuidanceLine(line)
       },
@@ -235,8 +242,13 @@ export class MapLibreProvider implements MapProvider {
       isWeatherFrameReady(key: string): boolean {
         return weatherFrames.isReady(key)
       },
-      setRasterOverlay(id: string, tileUrlTemplate: string | null, opacity: number) {
-        rasterOverlays.set(id, tileUrlTemplate, opacity)
+      setRasterOverlay(
+        id: string,
+        tileUrlTemplate: string | null,
+        opacity: number,
+        attribution?: string,
+      ) {
+        rasterOverlays.set(id, tileUrlTemplate, opacity, attribution)
       },
       setTerrainEnabled(enabled: boolean, exaggeration: number) {
         // Terrain itself stays set either way — "2D" means "real scale,

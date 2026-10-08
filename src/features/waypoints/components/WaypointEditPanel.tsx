@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Lock, MapPin, Navigation, Save, Trash2, Wind, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
+import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
+import { getActiveTerritoryId } from '@/features/territories/state/territoriesStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
@@ -72,6 +74,11 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
   const [optimalWindDirections, setOptimalWindDirections] = useState<number[]>(
     waypoint?.optimalWindDirections ?? [],
   )
+  // A new waypoint is filed in the territory the user is working in (the one
+  // selected as filter), otherwise « Non classé ». Still changeable below.
+  const initialTerritory = () =>
+    waypoint ? waypoint.territoryId : draft ? getActiveTerritoryId() : undefined
+  const [territoryId, setTerritoryId] = useState<string | undefined>(initialTerritory)
   const [openedFor, setOpenedFor] = useState<string | null>(target)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -92,6 +99,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
     setColor(waypoint?.color ?? DEFAULT_COLOR)
     setNotes(waypoint?.notes ?? '')
     setOptimalWindDirections(waypoint?.optimalWindDirections ?? [])
+    setTerritoryId(initialTerritory())
     setDetailsOpen(false)
     setConfirmingDelete(false)
     setError(null)
@@ -111,7 +119,14 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
   async function handleSave() {
     setError(null)
     if (draft) {
-      await saveDraft({ name, category, color, notes, optimalWindDirections })
+      await saveDraft({
+        name,
+        category,
+        color,
+        notes,
+        optimalWindDirections,
+        territoryId,
+      })
       return
     }
     if (!editingId) return
@@ -123,6 +138,8 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
         color,
         notes,
         optimalWindDirections,
+        // Only the folder: the position stays locked.
+        territoryId,
       })
       closeEdit()
     } catch {
@@ -246,6 +263,8 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
               className={FIELD}
             />
           </label>
+
+          <TerritorySelect value={territoryId} onChange={setTerritoryId} />
 
           <div>
             <span className="text-ink-500 text-xs font-medium">Catégorie</span>
