@@ -458,6 +458,46 @@ describe('BloodCameraAssist', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('closing (the host unmounts the dialog) releases every video track', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const { unmount } = render(
+      <BloodCameraAssist gpsReading={goodFix()} onClose={onClose} />,
+    )
+    await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+    expect(trackStop).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
+    expect(onClose).toHaveBeenCalled()
+    unmount()
+    expect(trackStop).toHaveBeenCalled()
+  })
+
+  it('asks for a fresh stream when coming back from the background with a cut stream', async () => {
+    const liveTrack = {
+      stop: vi.fn(),
+      readyState: 'live' as string,
+      getSettings: () => ({}),
+    }
+    const stream = { getTracks: () => [liveTrack], getVideoTracks: () => [liveTrack] }
+    const getUserMedia = vi.fn().mockResolvedValue(stream)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia },
+    })
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+
+    // Still live: coming back changes nothing.
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+
+    // iOS cut the camera in the background.
+    liveTrack.readyState = 'ended'
+    document.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2))
+  })
+
   it('no camera support (insecure context / absent): says so and offers the photo import', async () => {
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,

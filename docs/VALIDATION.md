@@ -282,3 +282,12 @@ Réellement exécuté sur la branche `feat/refonte-visuelle-deertracker` (Node 2
 - Un défaut réel trouvé par ce test et corrigé : à 568×320 le réglage « Relief » dépassait de la colonne de droite ; en paysage court, 2D/3D et Relief passent en rangée.
 
 Limites : Chromium uniquement, carte, GPS et fournisseurs SIMULÉS. Ce n'est **pas** une validation iPhone et cela ne valide aucun fournisseur de cartes réel. Les couches WMS Québec (forêt / LiDAR) restent « non validées » (voir `docs/SOURCES_QUEBEC.md`) : l'erreur est désormais expliquée et bornée, pas corrigée à la source. Les captures « avant » sont celles de l'iPhone de l'utilisateur ; les captures « après » (`docs/validation/refonte-*.png`) sont simulées.
+
+## Audit terrain iOS (« + Repère », caméra sang, Après le tir)
+
+`e2e/terrain.spec.ts` (Chromium, 8 tailles dont 568×320 et 844×390 ; carte, GPS et caméra simulés — `getUserMedia` refusé) :
+bouton « + Repère » atteignable et non recouvert, panneau borné à l'écran, repère normal enregistré à la position GPS,
+indice sang sans recherche (porte explicite, un seul indice typé, même session que + Sang), cinq commandes de la recherche
+sans chevauchement, caméra ouverte sans recherche depuis Outils et + Repère puis fermée, page Après le tir (tir consigné
+avec ses champs et sans champ `deer`), appui long réel par CDP (touchStart/touchEnd) à 390×844. **Pas** d'iPhone, pas de
+WebKit, pas de flux vidéo réel.

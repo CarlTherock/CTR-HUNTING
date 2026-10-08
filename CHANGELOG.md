@@ -3,6 +3,27 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Audit fonctionnel terrain iOS : « + Repère », caméra sang, « Après le tir » (2026-10-08)
+
+Détail des défauts, chemins et limites : `docs/AUDIT_TERRAIN_IOS.md`.
+
+### Added
+
+- Bouton permanent libellé « + Repère » sur la carte et son panneau : repère normal, sang / indice, observation cerf, observation orignal, caméra sang ; position « Ma position GPS » (précision et ancienneté) ou « position choisie sur la carte » ; aucune position inventée ; rien de saisi n'est perdu en changeant de type.
+- Appui long (ou clic droit) sur la carte : même panneau pour le point touché.
+- Caméra sang accessible sans recherche ouverte : + Repère, Outils, panneau de recherche, page Recherches de sang, Après le tir. Porte explicite « Créer une recherche / Annuler » (aucune trace ne démarre en silence), repli « Importer une photo » distingué du direct, nouvel essai, reprise après arrière-plan.
+- « Après le tir » (`/after-shot`, cerf ou orignal) : consigner le tir, les indices, démarrer / reprendre la recherche, caméra sang, dernier indice, chronologie, carte, photos. Le guide expert reste à rédiger (sources vérifiables) : aucun conseil, diagnostic ni délai n'est donné.
+- Champs optionnels `Observation.species` (orignal) et `Observation.shot` : aucune migration Dexie, inclus dans la sauvegarde ZIP (validation et test de restauration).
+
+### Changed
+
+- Panneau d'une recherche active : + Sang, Pause / Reprendre, Terminer, Caméra sang et Dernier indice toujours visibles (ils étaient cachés dans « Indices et outils ») ; compacté en paysage court (568×320).
+- L'ancien bouton icône « Ajouter un point de repère » est remplacé par « + Repère » ; la pose d'un repère par un toucher sur la carte reste (« Position sur la carte »).
+
+### Notes
+
+- Chromium et jsdom, carte, GPS et caméra simulés. Aucune validation sur iPhone réel ni WebKit.
+
 ## Refonte visuelle, menus, cartes, vent et DeerTracker (2026-10-08)
 
 ### Added

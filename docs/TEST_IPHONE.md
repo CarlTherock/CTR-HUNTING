@@ -97,6 +97,19 @@ disparaît à l'arrêt du tunnel).
 Cela prouve que le code construit est celui de e65891e seulement si l'étape 1 était vraie : c'est
 une vérification par procédure, pas par empreinte dans l'application.
 
+## 4 bis. Checklist terrain de la branche « audit terrain » (données fictives seulement)
+
+À faire sur l'iPhone **réel** (rien de ceci n'a été validé sur un iPhone ; les E2E sont Chromium simulé) :
+
+1. Carte : le bouton vert **« + Repère »** est visible en haut à droite ; un toucher ouvre le choix des 5 types, avec le bouton d'action fixé en bas, en portrait **et** en paysage.
+2. Repère normal à « Ma position GPS » (précision et âge affichés), puis à « Position sur la carte ».
+3. **Appui long** sur la carte : le même panneau s'ouvre pour le point touché (ne se referme pas au relâchement).
+4. Sang / indice sans recherche ouverte : le choix « Créer une recherche et enregistrer / Annuler » apparaît ; rien ne démarre avant.
+5. Caméra sang (sans recherche) depuis **+ Repère** puis depuis **Outils** : autoriser la caméra, vérifier la caméra arrière, original / filtré, capture ; refuser la caméra une fois pour voir le repli « Importer une photo » ; fermer, puis vérifier dans Réglages Safari que l'indicateur caméra s'éteint.
+6. Recherche active : **+ Sang, Pause, Terminer, Caméra sang, Dernier indice** tous visibles, en portrait et paysage ; verrouiller l'écran, revenir : la caméra reprend.
+7. Mes données › **Après le tir** : Cerf / Orignal, consigner un tir fictif, retrouver le tir, la chronologie, la carte.
+8. Recharger l'application : les repères, indices et tirs sont toujours là.
+
 ## 5. Erreurs possibles
 
 | Symptôme                                      | Cause probable                                            | Correction                                                                                                                             |
