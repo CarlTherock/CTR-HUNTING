@@ -39,6 +39,12 @@ export const router = createBrowserRouter(
           }),
         },
         { path: 'settings', element: <SettingsPage /> },
+        {
+          path: 'project',
+          lazy: async () => ({
+            Component: (await import('@/features/project/pages/ProjectPage')).default,
+          }),
+        },
         // Secondary pages: reached from Réglages, the home page and the help
         // links (not from the navigation bars) and loaded on demand so they
         // stay out of the initial bundle.

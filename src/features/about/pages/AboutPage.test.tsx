@@ -44,7 +44,7 @@ describe('AboutPage', () => {
     )
   })
 
-  it('does not mark phases 14, 15, 16 or 17 as finished', () => {
+  it('does not mark phases 14, 15, 16 or 17 as finished and points to the progress page', () => {
     renderPage()
 
     for (const phase of [14, 15, 16, 17]) {
@@ -52,20 +52,10 @@ describe('AboutPage', () => {
       expect(entry?.status, `phase ${phase}`).not.toBe('done')
     }
     const phases = section('phases')
-    const item17 = within(phases)
-      .getByText(/17\. Version commerciale/)
-      .closest('li') as HTMLElement
-    expect(within(item17).queryByText('Livrée')).not.toBeInTheDocument()
-    expect(item17).toHaveTextContent('Reporté : comptes, abonnement, paiement')
-    expect(item17).toHaveTextContent('essais d’installation sur appareils réels')
-    const item14 = within(phases)
-      .getByText(/14\. IA et assistant/)
-      .closest('li') as HTMLElement
-    expect(item14).toHaveTextContent('Non commencée')
-    const item15 = within(phases)
-      .getByText(/15\. Synchronisation/)
-      .closest('li') as HTMLElement
-    expect(item15).toHaveTextContent(/synchronisation entre appareils n’existe pas/)
+    expect(
+      within(phases).getByRole('link', { name: /Projet et progression/ }),
+    ).toHaveAttribute('href', '/project')
+    expect(phases).toHaveTextContent(/ne sont pas terminées/)
   })
 
   it('credits exactly the services the code uses, matching the CSP allow-list', () => {

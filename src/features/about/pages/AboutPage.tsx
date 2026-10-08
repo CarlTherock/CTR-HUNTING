@@ -1,17 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Badge, InfoSection as Section, PageHeader } from '@/components/ui'
+import { InfoSection as Section, PageHeader } from '@/components/ui'
 import { APP_BUILD_DATE, APP_NAME, APP_VERSION } from '@/app/appInfo'
 import { formatDateFr } from '@/features/backup/restoreLabels'
 import { NETWORK_PROVIDERS } from '@/features/privacy/networkProviders'
 import { UpdateSection } from '../components/UpdateSection'
 import { DOC_LINKS, REPOSITORY_URL } from '../docLinks'
-import { PHASE_STATUS_LABEL, ROADMAP, type PhaseStatus } from '../roadmap'
-
-const STATUS_VARIANT: Record<PhaseStatus, 'success' | 'warning' | 'neutral'> = {
-  done: 'success',
-  partial: 'warning',
-  'not-started': 'neutral',
-}
 
 /** Version, honest phase status, updates, data credits and documentation. */
 export default function AboutPage() {
@@ -39,34 +32,14 @@ export default function AboutPage() {
         title="État du projet"
         description="Statut honnête de chaque phase de la feuille de route."
       >
-        <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-          {ROADMAP.map((item) => (
-            <li key={item.phase} className="flex flex-col gap-1">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="text-ink-100">
-                  {item.phase}. {item.label}
-                </span>
-                <Badge variant={STATUS_VARIANT[item.status]}>
-                  {PHASE_STATUS_LABEL[item.status]}
-                </Badge>
-              </span>
-              {item.note && <span className="text-ink-500 text-xs">{item.note}</span>}
-            </li>
-          ))}
-        </ul>
-        <p className="text-ink-500 text-xs">
-          Les phases livrées sont couvertes par des tests automatisés ; les essais sur
-          appareils réels (iPhone, Android) ne sont pas documentés comme faits. Détail
-          dans{' '}
-          <a
-            className="underline"
-            href={`${REPOSITORY_URL}/blob/main/docs/ROADMAP_STATUS.md`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            docs/ROADMAP_STATUS.md
-          </a>
-          .
+        <p>
+          Toutes les phases, leur état réel, les validations manquantes et les priorités
+          sont dans{' '}
+          <Link to="/project" className="underline">
+            Plus → Projet et progression
+          </Link>
+          . Les phases 14 (IA), 15 (synchronisation), 16 (tests sur appareils) et 17
+          (version commerciale) ne sont pas terminées.
         </p>
       </Section>
 

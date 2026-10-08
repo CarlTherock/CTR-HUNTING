@@ -13,6 +13,7 @@ import { DataCard } from '../components/DataCard'
 import { GuidanceCard } from '../components/GuidanceCard'
 import { OfflineCard } from '../components/OfflineCard'
 import { OutingCard } from '../components/OutingCard'
+import { ProjectProgressCard } from '../components/ProjectProgressCard'
 import { QuickAccessCard } from '../components/QuickAccessCard'
 import { TerritoryCard } from '../components/TerritoryCard'
 import { WeatherCard } from '../components/WeatherCard'
@@ -73,6 +74,7 @@ export function DashboardPage() {
         <OutingCard />
         <OfflineCard />
         <DataCard />
+        <ProjectProgressCard />
       </div>
 
       <nav aria-label="Aide et informations" className="flex flex-wrap gap-x-4 gap-y-1">
