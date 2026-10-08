@@ -1,65 +1,128 @@
-# Tester cette branche sur l'iPhone, sans fusion dans `main`
+# Essayer une branche sur l'iPhone, sans fusion et sans toucher à la production
 
-## Aperçu automatique : non disponible
+**Statut : procédure vérifiée dans le code, non exécutée.** Le tunnel
+(`cloudflared`) n'a jamais été lancé depuis l'environnement de travail. Seul le
+filtrage d'hôtes de `vite preview` a été testé (voir plus bas).
 
-Il n'y a **pas d'URL d'aperçu** pour cette branche. Le déploiement GitHub Pages
-du projet publie uniquement `main` (`.github/workflows/deploy.yml`), et un
-aperçu par branche exigerait soit de modifier le déploiement de production, soit
-d'ouvrir un compte sur un autre service (Netlify, Vercel, Cloudflare Pages) :
-je n'ai fait ni l'un ni l'autre. Aucune clé ni donnée n'a été publiée.
+## Pas d'URL d'aperçu automatique
 
-## Méthode : construire sur le PC et ouvrir par un tunnel HTTPS temporaire
+Le déploiement GitHub Pages ne publie que `main` (`.github/workflows/deploy.yml`).
+Un aperçu par branche demanderait de modifier ce déploiement ou d'ouvrir un compte
+externe (Netlify, Vercel, Cloudflare Pages) : rien de tel n'a été fait.
 
-L'iPhone exige HTTPS pour le GPS et le service worker : une adresse
-`http://192.168…` sur le Wi-Fi ne permet **pas** de les tester. Un tunnel
-« quick tunnel » Cloudflare donne une adresse HTTPS temporaire.
-(Cette méthode n'a pas pu être exécutée dans l'environnement de travail ; la
-partie `vite preview` et le filtrage d'hôte ont, eux, été vérifiés.)
+## Ce que le code impose (vérifié)
 
-À faire sur le PC Windows, dans PowerShell, avec Node 24 (voir `.nvmrc`) :
+| Sujet                             | Constat                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Chemin à ouvrir                   | **`/`** (la racine de l'adresse du tunnel). `vite.config.ts` n'utilise `/CTR-HUNTING/` que si `GITHUB_PAGES=true` : **ne pas définir cette variable**, sinon l'app est construite pour `/CTR-HUNTING/`.                                                                                                                  |
+| Hôtes acceptés par `vite preview` | `preview.allowedHosts: ['.trycloudflare.com']` : le domaine `trycloudflare.com` et ses sous-domaines seulement, pas tous les hôtes. Test local : `abc.trycloudflare.com` → 200 ; `evil.example.com` → 403 ; `trycloudflare.com.evil.com` → 403 ; `localhost` → 200.                                                      |
+| Clés nécessaires                  | Deux seulement : `VITE_MAP_TILES_API_KEY` (MapTiler) et `VITE_ESRI_API_KEY` (Esri). Sans elles : carte « indisponible » explicite. Météo/vent (Open-Meteo) n'ont pas de clé. `VITE_WEATHER_API_KEY` etc. de `.env.example` ne sont pas lues par le code.                                                                 |
+| Restrictions des clés             | **Non vérifiées.** Une clé limitée au domaine `github.io` sera refusée sur l'adresse du tunnel. Les clés sont **incluses dans le code construit** (visibles de quiconque ouvre l'adresse) : utiliser des clés de **test** dédiées, jamais celles de production. Esri : clé « Basemaps » seulement (voir `.env.example`). |
+| Sécurité du contenu (CSP)         | L'adresse du tunnel est `'self'` ; seuls MapTiler, Esri, Open-Meteo, etc. de `build/csp.ts` sont autorisés.                                                                                                                                                                                                              |
+| Confirmer la version              | L'application n'affiche pas le numéro de commit. Voir « Confirmer que c'est bien e65891e ».                                                                                                                                                                                                                              |
 
-1. `git fetch origin`
-2. `git switch fix/audit-mobile-offline-gps`
-3. `npm ci`
-4. Créer le fichier **`.env.local`** à la racine (ignoré par Git, ne jamais le
-   committer) :
-   ```
-   VITE_MAP_TILES_API_KEY=<clé MapTiler de TEST>
-   VITE_ESRI_API_KEY=<clé Esri de TEST>
-   ```
-5. `npm run build` puis `npm run preview -- --port 4173`
-   (sans `GITHUB_PAGES`, l'app est servie à la racine `/`).
-6. Dans un second terminal : `cloudflared tunnel --url http://localhost:4173`
-   (installer `cloudflared` au préalable). Il affiche une adresse
-   `https://….trycloudflare.com`.
-7. Ouvrir cette adresse dans Safari sur l'iPhone.
-8. À la fin : fermer le tunnel (Ctrl+C) et **supprimer ou révoquer les clés de
-   test**.
+## Données : fictives seulement
 
-### Points d'attention
+L'adresse du tunnel est une **autre origine** : son stockage local (repères, traces,
+sauvegardes, zones hors ligne) est séparé de celui de votre app habituelle et repart
+de zéro à chaque nouveau tunnel. **N'importez aucune vraie donnée de chasse** dans cet
+aperçu (ni restauration d'une vraie sauvegarde ZIP). Créez des repères et des traces
+fictifs. Avant tout : faites une sauvegarde ZIP de votre app habituelle et gardez-la
+ailleurs (Réglages › sauvegarde). L'aperçu est public pour quiconque connaît l'adresse :
+ne la partagez pas.
 
-- **Clés restreintes par domaine.** Si les clés MapTiler/Esri de production sont
-  limitées au domaine `github.io`, elles seront refusées sur l'adresse du
-  tunnel (carte vide ou repli affiché par l'app). Utiliser des **clés de test**
-  créées dans les consoles des fournisseurs, et ne pas élargir les restrictions
-  des clés de production. Je n'ai pas vérifié ces restrictions.
-- **L'adresse du tunnel est publique** pour quiconque la connaît : ne pas la
-  partager, fermer le tunnel après le test.
-- **Les données de test sont séparées** : l'adresse du tunnel est une autre
-  origine que `github.io`, donc elle a son propre stockage local (points de
-  repère, traces, zones hors ligne). Les données de la version déployée ne sont
-  ni lues ni modifiées. Chaque nouvelle adresse de tunnel repart de zéro.
-- **Hors ligne** : le tunnel doit rester ouvert pour la première visite ; le
-  test hors ligne se fait ensuite en coupant le **réseau de l'iPhone** (voir
-  `docs/VALIDATION.md`), pas le tunnel.
-- L'installation « Sur l'écran d'accueil » depuis une adresse de tunnel
-  temporaire n'est pas représentative de la version finale : elle disparaît
-  quand l'adresse change. Pour tester la PWA installée, il faut la version
-  déployée après fusion.
+## 1. Installer cloudflared (une fois)
+
+PowerShell :
+
+```powershell
+winget install --id Cloudflare.cloudflared
+```
+
+Fermer puis rouvrir PowerShell, puis `cloudflared --version`. (Alternative : téléchargement
+depuis https://github.com/cloudflare/cloudflared/releases.) Le tunnel « quick » ne demande
+aucun compte, mais il **expose temporairement le serveur local sur Internet** via un service
+externe de Cloudflare : à lancer seulement en le sachant.
+
+## 2. Commandes PowerShell (depuis le dossier du dépôt, Node 24, voir `.nvmrc`)
+
+```powershell
+git fetch origin
+git switch feat/refonte-visuelle-deertracker
+git pull --ff-only
+git status                      # doit dire : nothing to commit, working tree clean
+git rev-parse --short HEAD      # doit afficher : e65891e
+npm ci
+```
+
+Créer `.env.local` à la racine (ignoré par Git ; ne jamais le committer) avec des clés
+**de test** :
+
+```
+VITE_MAP_TILES_API_KEY=<clé MapTiler de TEST>
+VITE_ESRI_API_KEY=<clé Esri de TEST>
+```
+
+Puis construire et servir (ne pas définir `GITHUB_PAGES`) :
+
+```powershell
+Remove-Item Env:GITHUB_PAGES -ErrorAction SilentlyContinue
+npm run build
+npm run preview -- --port 4173 --strictPort
+```
+
+Dans une **seconde** fenêtre PowerShell, **seulement quand vous êtes prêt** :
+
+```powershell
+cloudflared tunnel --url http://localhost:4173
+```
+
+Il affiche une adresse `https://xxxx-xxxx.trycloudflare.com`.
+
+## 3. Sur l'iPhone
+
+Ouvrir dans Safari : **`https://xxxx-xxxx.trycloudflare.com/`** (la racine, pas
+`/CTR-HUNTING/`). Autoriser la position. Ne pas « Ajouter à l'écran d'accueil » (l'adresse
+disparaît à l'arrêt du tunnel).
+
+## 4. Confirmer que c'est bien e65891e
+
+1. Avant `npm run build` : `git rev-parse --short HEAD` = `e65891e` et `git status` propre.
+2. L'app : Plus › À propos affiche « compilée le … » (UTC) : doit correspondre à l'heure
+   de votre `npm run build` (ex. 15 h 30 à Montréal = 19 h 30 UTC en heure d'été).
+3. Signes visibles de cette version : barre du bas Accueil / Carte / Mes données / Météo /
+   Plus ; à droite de la carte, boutons « 2D » « 3D » et aucun zoom +/− ; page Plus ›
+   Projet et progression ; Mes données › DeerTracker.
+
+Cela prouve que le code construit vient de ce commit seulement si l'étape 1 était vraie : c'est
+une vérification par procédure, pas par empreinte dans l'application.
+
+## 5. Erreurs possibles
+
+| Symptôme                                      | Cause probable                                            | Correction                                                                                                                             |
+| --------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| « Blocked request. This host is not allowed » | Adresse hors `*.trycloudflare.com`                        | Utiliser l'adresse `trycloudflare.com` donnée par `cloudflared`.                                                                       |
+| Erreur 502 / 1033 du tunnel                   | `vite preview` arrêté, ou `localhost` résolu en IPv6      | Relancer `npm run preview -- --port 4173 --strictPort --host 127.0.0.1` et `cloudflared tunnel --url http://127.0.0.1:4173`.           |
+| `Port 4173 is already in use`                 | Ancien aperçu encore actif                                | `Get-NetTCPConnection -LocalPort 4173` puis `Stop-Process -Id <PID>`, ou autre port (le changer aussi dans `cloudflared`).             |
+| Page blanche, fichiers 404                    | Construit avec `GITHUB_PAGES=true` (base `/CTR-HUNTING/`) | `Remove-Item Env:GITHUB_PAGES`, puis `npm run build`.                                                                                  |
+| Carte vide ou « indisponible »                | Clés absentes ou refusées (restriction de domaine, quota) | Vérifier `.env.local`, **reconstruire** (les clés sont lues à la construction), utiliser des clés de test sans restriction de domaine. |
+| Position refusée                              | Permission iOS                                            | Réglages › Safari › Position, ou autoriser à la demande.                                                                               |
+| Ancienne version affichée                     | Cache / service worker d'une ancienne adresse             | Utiliser le nouveau tunnel (nouvelle origine) ; sinon Réglages › Safari › Avancé › Données de sites web.                               |
+| `npm ci` échoue                               | Mauvaise version de Node                                  | `node --version` (Node 24) ; installer la bonne version.                                                                               |
+
+## 6. Arrêter
+
+- Tunnel : dans sa fenêtre, `Ctrl+C`. Vérifier : `Get-Process cloudflared` ne doit rien renvoyer ; sinon `Stop-Process -Name cloudflared`.
+- Aperçu : dans sa fenêtre, `Ctrl+C`. Sinon : `Get-NetTCPConnection -LocalPort 4173` puis `Stop-Process -Id <PID>`.
+- Supprimer `.env.local` et **révoquer ou supprimer les clés de test**.
+- Revenir à votre branche : `git switch main`.
+
+## Hors ligne
+
+Le tunnel doit rester ouvert pour la première visite ; le test hors ligne se fait ensuite
+en coupant le **réseau de l'iPhone** (voir `docs/VALIDATION.md`), pas le tunnel.
 
 ## Autre méthode : tester après fusion
 
-Si tu préfères ne pas utiliser de tunnel : fusionner la PR (toi seul), laisser
-le workflow de déploiement publier, puis exécuter la liste de vérification
-iPhone du rapport sur le site réel. Le retour arrière se fait par
-`git revert` du commit de fusion.
+Fusion par vous seul, déploiement par le workflow, puis checklist sur le site réel.
+Retour arrière : `git revert` du commit de fusion.
