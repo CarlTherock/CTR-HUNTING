@@ -7,6 +7,7 @@ import {
 } from './support/layout'
 import { countPixelsNear } from './support/pixels'
 import { stubGps } from './support/browserStubs'
+import { expectReachable } from './support/reachable'
 import { VIEWPORTS } from './support/viewports'
 import { createWaypointViaUi, readWaypoints } from './support/waypointData'
 import type { StoredWaypoint } from './support/waypointData'
@@ -690,6 +691,122 @@ for (const viewport of VIEWPORTS) {
 
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
       await expectLayoutOk(page, 'retour')
+    })
+
+    test('fiche du repère repliable : poignée + titre, jamais au-dessus de « Arrêter le guidage », état gardé à la rotation', async ({
+      page,
+    }) => {
+      await createAndGuide(page, 'Mirador nord')
+      // The waypoint is tapped on the map: when the open guidance panel hides
+      // it (narrow screens), fold the guidance first, as a user would.
+      const marker = page.getByTestId('waypoint-marker').first()
+      const hidden = () =>
+        marker.evaluate((el) => {
+          const r = el.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+          return !hit || !el.contains(hit)
+        })
+      if (await hidden()) {
+        await page.getByRole('button', { name: 'Réduire' }).click()
+      }
+      await expect.poll(hidden).toBe(false)
+      await marker.click()
+      const card = page.getByTestId('waypoint-edit-panel')
+      await expect(card).toBeVisible()
+      await expect(card).toHaveAttribute('data-folded', 'false')
+      const fold = page.getByRole('button', { name: 'Replier la fiche' })
+      await expect(fold).toHaveAttribute('aria-expanded', 'true')
+
+      /** The card re-measures the dock one frame after a resize/rotation: poll
+       * until the layout settles, then the final state must hold. */
+      const settled = (check: () => Promise<void>) =>
+        expect(check).toPass({ timeout: 8_000 })
+
+      /** The card never sits over the guidance panel (nor over its stop button). */
+      async function expectAboveGuidance(label: string) {
+        const guidance = await page.getByTestId('guidance-panel').boundingBox()
+        const box = await card.boundingBox()
+        expect(guidance && box, `${label} : mesures`).toBeTruthy()
+        if (!guidance || !box) return
+        const overlapsHorizontally =
+          box.x < guidance.x + guidance.width && guidance.x < box.x + box.width
+        const overlapsVertically =
+          box.y < guidance.y + guidance.height - 0.5 &&
+          guidance.y < box.y + box.height - 0.5
+        expect(
+          overlapsHorizontally && overlapsVertically,
+          `${label} : la fiche recouvre le panneau « Aller à »`,
+        ).toBe(false)
+      }
+
+      // Open: the guidance stop button and the card's own controls are reachable.
+      await settled(() =>
+        expectReachable(page, [
+          'Arrêter le guidage',
+          'Replier la fiche',
+          'Fermer sans enregistrer',
+        ]),
+      )
+      await settled(() => expectAboveGuidance('ouverte'))
+
+      // The form is kept (hidden, not destroyed) while folded.
+      const name = page.getByLabel('Nom')
+      await name.fill('Nom modifié')
+      await page.getByRole('button', { name: 'Replier la fiche' }).click()
+      await expect(card).toHaveAttribute('data-folded', 'true')
+      const unfold = page.getByRole('button', { name: 'Déplier la fiche' })
+      await expect(unfold).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.getByLabel('Nom')).toBeHidden()
+      const folded = await card.boundingBox()
+      expect(
+        folded?.height ?? 999,
+        'fiche repliée : poignée + titre seulement',
+      ).toBeLessThan(96)
+      // Folded: nothing of the map is covered (rail, guidance, + Repère).
+      const mapControls = [
+        'Arrêter le guidage',
+        'Déplier la fiche',
+        'Fermer sans enregistrer',
+        '2D',
+        '3D',
+        'Couches',
+        'Outils',
+        'Ajouter un repère',
+      ]
+      await settled(() => expectReachable(page, mapControls))
+      await settled(() => expectAboveGuidance('repliée'))
+
+      // Rotation: the folded state is kept, going and coming back.
+      await page.setViewportSize({ width: viewport.height, height: viewport.width })
+      await expect(card).toHaveAttribute('data-folded', 'true')
+      await settled(() =>
+        expectReachable(page, [
+          'Arrêter le guidage',
+          'Déplier la fiche',
+          'Fermer sans enregistrer',
+        ]),
+      )
+      await settled(() => expectAboveGuidance('repliée après rotation'))
+      await page.setViewportSize({ width: viewport.width, height: viewport.height })
+      await expect(card).toHaveAttribute('data-folded', 'true')
+      await settled(() => expectReachable(page, mapControls))
+
+      // Unfold: the typed text is still there; the state survives a rotation.
+      await page.getByRole('button', { name: 'Déplier la fiche' }).click()
+      await expect(card).toHaveAttribute('data-folded', 'false')
+      await expect(page.getByLabel('Nom')).toHaveValue('Nom modifié')
+      await page.setViewportSize({ width: viewport.height, height: viewport.width })
+      await expect(card).toHaveAttribute('data-folded', 'false')
+      await settled(() =>
+        expectReachable(page, ['Arrêter le guidage', 'Replier la fiche']),
+      )
+      await settled(() => expectAboveGuidance('ouverte après rotation'))
+      await page.setViewportSize({ width: viewport.width, height: viewport.height })
+      await expect(card).toHaveAttribute('data-folded', 'false')
+      await settled(() =>
+        expectReachable(page, ['Arrêter le guidage', 'Replier la fiche']),
+      )
+      await settled(() => expectAboveGuidance('ouverte au retour'))
     })
   })
 }
