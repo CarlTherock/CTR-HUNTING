@@ -76,7 +76,7 @@ export function WaypointsPage() {
         description="Tous les repères enregistrés et toutes les traces GPS. Créez-en de nouveaux depuis la page Carte."
       />
 
-      <div className="flex flex-col gap-3">
+      <div id="territoires" className="flex scroll-mt-4 flex-col gap-3">
         <div className="flex items-end gap-2">
           <TerritoryFilterBar className="min-w-0 flex-1" />
           <button
@@ -96,7 +96,7 @@ export function WaypointsPage() {
 
       <ComparePanel />
 
-      <div>
+      <div id="points-de-repere" className="scroll-mt-4">
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <MapPinned size={16} aria-hidden="true" />
           Points de repère ({visibleWaypoints.length})
@@ -189,7 +189,7 @@ export function WaypointsPage() {
 
       <BloodSessionList />
 
-      <div>
+      <div id="traces" className="scroll-mt-4">
         <h2 className="text-ink-300 mb-3 flex items-center gap-2 text-sm font-semibold">
           <Route size={16} aria-hidden="true" />
           Traces ({visibleTrackCount})

@@ -6,8 +6,10 @@ import { AppShell } from '@/components/layout'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { MapPage } from '@/features/map/pages/MapPage'
 import { WaypointsPage } from '@/features/waypoints/pages/WaypointsPage'
-import { navItems } from './navigation'
-import { secondaryPages } from './secondaryPages'
+import { DataHubPage, MoreHubPage } from '@/features/hubs/pages/HubPages'
+import { hubItems, navItems, primaryNavItems } from './navigation'
+
+const secondaryPages = navItems.filter((item) => item.secondary)
 
 // This is a routing test, not a map test (see MapPage.test.tsx for that) —
 // mock the provider so it never depends on whether a real
@@ -24,6 +26,8 @@ function renderAt(initialPath: string) {
           { index: true, element: <DashboardPage /> },
           { path: 'map', element: <MapPage /> },
           { path: 'waypoints', element: <WaypointsPage /> },
+          { path: 'data', element: <DataHubPage /> },
+          { path: 'more', element: <MoreHubPage /> },
           // Same lazy loading as the production route table (routes.tsx).
           {
             path: 'help',
@@ -68,7 +72,7 @@ describe('navigation', () => {
     renderAt('/')
 
     const links = await screen.findAllByRole('link', {
-      name: /Points de repère et traces/i,
+      name: /^Points de repère$/i,
     })
     await user.click(links[0])
 
@@ -77,12 +81,48 @@ describe('navigation', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps help, privacy and about out of the sidebar and the bottom bar', () => {
-    for (const page of secondaryPages) {
-      expect(navItems.map((item) => item.path)).not.toContain(page.path)
+  it('keeps the bottom bar to the five main destinations, help/privacy/about in « Plus »', () => {
+    expect(primaryNavItems.map((item) => item.shortLabel ?? item.label)).toEqual([
+      'Accueil',
+      'Carte',
+      'Mes données',
+      'Météo',
+      'Plus',
+    ])
+    expect(secondaryPages.length).toBe(3)
+    const more = hubItems('more').map((item) => item.path)
+    for (const page of secondaryPages) expect(more).toContain(page.path)
+  })
+
+  it('« Mes données » lists every recorded-data section, DeerTracker included', async () => {
+    renderAt('/data')
+    const hub = await screen.findByRole('navigation', { name: 'Mes données' })
+    for (const label of [
+      'Territoires',
+      'Points de repère',
+      'Traces',
+      'Recherches de sang',
+      'Journal et observations',
+      'DeerTracker',
+    ]) {
+      expect(within(hub).getByRole('link', { name: new RegExp(label) })).toBeVisible()
     }
-    // The mobile bar stays a handful of large targets.
-    expect(navItems.filter((item) => item.primary).length).toBeLessThanOrEqual(5)
+  })
+
+  it('« Plus » lists assistant, project progress, backup, settings, help, about', async () => {
+    renderAt('/more')
+    const hub = await screen.findByRole('navigation', { name: 'Plus' })
+    for (const label of [
+      'Assistant',
+      'Projet et progression',
+      'Sauvegarde, import et export',
+      'Réglages',
+      'Aide',
+      'Confidentialité',
+      'À propos',
+    ]) {
+      expect(within(hub).getByRole('link', { name: new RegExp(label) })).toBeVisible()
+    }
   })
 
   it('reaches the help, privacy and about pages from the home page', async () => {

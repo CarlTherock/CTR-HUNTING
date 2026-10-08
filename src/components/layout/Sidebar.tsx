@@ -1,9 +1,14 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { Compass } from 'lucide-react'
-import { navItems } from '@/app/navigation'
+import { NAV_GROUP_LABEL, navItems, navTarget, type NavGroup } from '@/app/navigation'
 import { APP_TAGLINE } from '@/app/appInfo'
 import { ConnectionStatus } from './ConnectionStatus'
 import { cn } from '@/utils/cn'
+
+const GROUPS: readonly NavGroup[] = ['main', 'data', 'analysis', 'more']
+const LINK_CLASS =
+  'flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
+const IDLE_CLASS = 'text-ink-300 hover:bg-surface-800 hover:text-ink-100'
 
 /** Desktop/tablet navigation. Hidden below the `md` breakpoint, where the
  * BottomNav takes over. */
@@ -19,26 +24,45 @@ export function Sidebar() {
       </div>
 
       <nav
-        className="flex-1 space-y-1 overflow-y-auto p-3"
+        className="flex-1 space-y-4 overflow-y-auto p-3"
         aria-label="Sections de l’application"
       >
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-brand-500/15 text-brand-400'
-                  : 'text-ink-300 hover:bg-surface-800 hover:text-ink-100',
-              )
-            }
-          >
-            <item.icon size={18} aria-hidden="true" />
-            <span className="flex-1">{item.label}</span>
-          </NavLink>
+        {GROUPS.map((group) => (
+          <div key={group} className="space-y-1">
+            <p className="text-ink-500 px-3 text-[11px] font-semibold tracking-wider uppercase">
+              {NAV_GROUP_LABEL[group]}
+            </p>
+            {navItems
+              .filter((item) => item.group === group && !item.hideInSidebar)
+              .map((item) =>
+                item.hash ? (
+                  // An entry pointing inside a page is never "active" on its own.
+                  <Link
+                    key={`${item.path}#${item.hash}`}
+                    to={navTarget(item)}
+                    className={cn(LINK_CLASS, IDLE_CLASS)}
+                  >
+                    <item.icon size={18} aria-hidden="true" />
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                ) : (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.path === '/'}
+                    className={({ isActive }) =>
+                      cn(
+                        LINK_CLASS,
+                        isActive ? 'bg-brand-500/15 text-brand-400' : IDLE_CLASS,
+                      )
+                    }
+                  >
+                    <item.icon size={18} aria-hidden="true" />
+                    <span className="flex-1">{item.label}</span>
+                  </NavLink>
+                ),
+              )}
+          </div>
         ))}
       </nav>
 

@@ -10,6 +10,7 @@ import { TemporalPage } from '@/features/temporal/pages/TemporalPage'
 import { AnalysisPage } from '@/features/analytics/pages/AnalysisPage'
 import { JournalPage } from '@/features/journal/pages/JournalPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { DataHubPage, MoreHubPage } from '@/features/hubs/pages/HubPages'
 
 export const router = createBrowserRouter(
   [
@@ -23,6 +24,8 @@ export const router = createBrowserRouter(
         { index: true, element: <DashboardPage /> },
         { path: 'map', element: <MapPage /> },
         { path: 'waypoints', element: <WaypointsPage /> },
+        { path: 'data', element: <DataHubPage /> },
+        { path: 'more', element: <MoreHubPage /> },
         { path: 'weather', element: <WeatherPage /> },
         { path: 'temporal', element: <TemporalPage /> },
         { path: 'analysis', element: <AnalysisPage /> },

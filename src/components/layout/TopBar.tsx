@@ -1,20 +1,11 @@
 import { useLocation } from 'react-router-dom'
 import { APP_NAME } from '@/app/appInfo'
-import { navItems } from '@/app/navigation'
-import { secondaryPages } from '@/app/secondaryPages'
+import { titleForPath } from '@/app/navigation'
 import { ConnectionStatus } from './ConnectionStatus'
 
 export function TopBar() {
   const location = useLocation()
-  const current = navItems.find(
-    (item) =>
-      item.path === location.pathname ||
-      (item.path !== '/' && location.pathname.startsWith(item.path)),
-  )
-  const title =
-    current?.label ??
-    secondaryPages.find((page) => page.path === location.pathname)?.label ??
-    APP_NAME
+  const title = titleForPath(location.pathname) ?? APP_NAME
 
   return (
     <header
