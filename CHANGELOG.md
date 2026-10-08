@@ -3,6 +3,26 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Refonte visuelle, menus, cartes, vent et DeerTracker (2026-10-08)
+
+### Added
+
+- Navigation Accueil / Carte / Mes données / Météo / Plus (configuration unique `src/app/navigation.ts`), pages « Mes données » et « Plus ».
+- Page « Projet et progression » (toutes les phases, statuts, priorités P1/P2, historique tiré du CHANGELOG) et carte compacte sur l'accueil.
+- DeerTracker : suivi de mes observations et indices de cerfs (types, filtres, liste, carte, résumé déterministe avec avertissement), construit sur le journal ; aucune migration Dexie, inclus dans la sauvegarde ZIP.
+- Panneau Vent sur la page Météo : boussole « vent de », vitesse et rafales, statut favorable / défavorable / non renseigné selon les secteurs enregistrés par l'utilisateur, rangée horaire synchronisée avec la ligne du temps.
+- Erreurs de couche typées (clé absente, refus du fournisseur, couche introuvable, paramètres, tuiles, hors ligne) avec « Réessayer » borné à 3 essais.
+- Carte d'accueil « Sur le terrain » (recherche de sang en cours, DeerTracker, journal et photos).
+
+### Changed
+
+- Carte : boutons de zoom +/− retirés de l'écran ; 2D/3D et Relief (1×–10×, exagération verticale, pas un zoom) sur le rail de droite ; zoom dans Outils, par gestes et au clavier.
+- Panneau « Couches du Québec » : à l'intérieur de la carte, hauteur bornée, groupes repliables, attributions repliées.
+
+### Notes
+
+- Aucune validation iPhone réelle : voir `docs/VALIDATION.md`.
+
 ## Recherche de sang, types de traces et caméra expérimentale (2026-10-07)
 
 ### Added

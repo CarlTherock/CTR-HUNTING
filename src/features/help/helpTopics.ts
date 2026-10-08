@@ -2,6 +2,10 @@
 export const HELP_TOPICS: readonly (readonly [string, string])[] = [
   ['limites-gps', 'Limites du GPS, surtout sur iPhone'],
   ['installer', 'Installer l’application'],
+  ['navigation', 'S’orienter dans l’application'],
+  ['carte-3d', 'Carte : 2D/3D, relief et zoom'],
+  ['vent', 'Lire le vent'],
+  ['deertracker', 'DeerTracker'],
   ['waypoints', 'Points de repère'],
   ['traces', 'Traces'],
   ['recherche-de-sang', 'Recherche de sang'],

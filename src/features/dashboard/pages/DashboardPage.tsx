@@ -10,6 +10,7 @@ import { useTracksStore } from '@/features/waypoints/state/tracksStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { DataCard } from '../components/DataCard'
+import { FieldActionsCard } from '../components/FieldActionsCard'
 import { GuidanceCard } from '../components/GuidanceCard'
 import { OfflineCard } from '../components/OfflineCard'
 import { OutingCard } from '../components/OutingCard'
@@ -68,6 +69,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <QuickAccessCard />
+        <FieldActionsCard />
         <WeatherCard />
         <GuidanceCard />
         <TerritoryCard />
