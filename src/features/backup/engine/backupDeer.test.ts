@@ -94,4 +94,25 @@ describe('backup of DeerTracker entries', () => {
     expect(validateRecord('observations', DEER_ENTRY).ok).toBe(true)
     expect(validateRecord('observations', OLD_ENTRY).ok).toBe(true)
   })
+
+  it('keeps a moose observation made from « + Repère » (species marker, no deer record)', async () => {
+    const moose = {
+      id: 'o-moose',
+      coordinate: { lat: 46.82, lng: -71.22 },
+      timestamp: NOW,
+      notes: 'Orignal — Animal observé × 1',
+      positionOrigin: 'manual',
+      species: 'moose',
+    }
+    const source = newDb()
+    await source.table('observations').bulkAdd([moose])
+    const { blob } = await createBackup({ database: source })
+    const target = newDb()
+    const plan = await planRestore(await readBackup(blob), { database: target })
+    await applyRestore(plan, { database: target, mode: 'keep-local' })
+    const restored = await target.table('observations').get('o-moose')
+    expect(restored).toEqual(moose)
+    expect(restored).not.toHaveProperty('deer')
+    expect(validateRecord('observations', { ...moose, species: 'wolf' }).ok).toBe(false)
+  })
 })

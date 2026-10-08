@@ -19,6 +19,7 @@ export interface CreateObservationInput {
   observedAt?: string
   positionOrigin?: PositionOrigin
   deer?: DeerEntry
+  species?: 'moose'
   trackId?: string
 }
 
@@ -63,6 +64,7 @@ export async function createObservation(
   if (input.conditionsMeta) observation.conditionsMeta = input.conditionsMeta
   if (input.positionOrigin) observation.positionOrigin = input.positionOrigin
   if (input.deer) observation.deer = input.deer
+  if (input.species) observation.species = input.species
   if (input.trackId) observation.trackId = input.trackId
   await db.observations.add(observation)
   return observation

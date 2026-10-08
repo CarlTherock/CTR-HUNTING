@@ -67,6 +67,8 @@ import { BloodCameraHost } from '@/features/blood/components/BloodCameraHost'
 import { BloodStartControl } from '@/features/blood/components/BloodStartControl'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { clueLinkPaths, overviewView, sessionClues } from '@/features/blood/sessionLogic'
+import { useAddPointStore } from '@/features/addpoint/state/addPointStore'
+import { AddPointControl } from '@/features/addpoint/components/AddPointControl'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
 import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
@@ -213,11 +215,19 @@ export function MapPage() {
       initialBaseLayer,
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
+      // Long press (or right-click): the same type/position choice as « + Repère »,
+      // for the point that was pressed.
+      onMapLongPress: (coordinate) => useAddPointStore.getState().openSheetAt(coordinate),
       onMapClick: (coordinate) => {
         // Manual placement of a blood clue (no usable GPS): the tap chooses
         // the position, saved only after the user confirms in the panel.
         if (useBloodStore.getState().manual) {
           useBloodStore.getState().setManualCoordinate(coordinate)
+          return
+        }
+        // An animal observation waiting for its place (« + Repère »).
+        if (useAddPointStore.getState().picking) {
+          void useAddPointStore.getState().completePicking(coordinate)
           return
         }
         const waypoints = useWaypointsStore.getState()
@@ -695,7 +705,8 @@ export function MapPage() {
               large={fieldModeEnabled}
             />
             <MyPositionControl reading={gpsReading} />
-            <WaypointControl large={fieldModeEnabled} />
+            <WaypointControl />
+            <AddPointControl gpsReading={gpsReading} large={fieldModeEnabled} />
             <ToolTrigger
               placement="rail"
               label="Outils"

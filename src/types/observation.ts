@@ -37,6 +37,9 @@ export interface Observation {
    * of a deer sighting or sign). Entries without it are ordinary journal
    * entries and are never reclassified automatically. */
   deer?: DeerEntry
+  /** Set to `moose` for an orignal observation made from « + Repère ». Absent
+   * on every other entry; it never enters the DeerTracker statistics. */
+  species?: 'moose'
   /** Trace (`Track.id`) the entry was made during, if the user linked one. */
   trackId?: string
 }

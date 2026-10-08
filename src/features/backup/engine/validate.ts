@@ -183,6 +183,9 @@ function validateObservation(raw: Rec): Validation<Rec> {
       return fail('entrée DeerTracker invalide')
     }
   }
+  if (raw.species !== undefined && raw.species !== 'moose') {
+    return fail('espèce d’observation invalide')
+  }
   return {
     ok: true,
     value: { ...raw, notes: typeof raw.notes === 'string' ? raw.notes : '' },

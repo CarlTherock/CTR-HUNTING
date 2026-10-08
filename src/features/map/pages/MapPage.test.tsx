@@ -1,3 +1,4 @@
+import { useAddPointStore } from '@/features/addpoint/state/addPointStore'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -214,6 +215,16 @@ afterEach(async () => {
   }
   useSharedPointStore.setState({ point: null, notice: null })
   useFollowStore.setState({ mode: 'off' })
+  useAddPointStore.setState({
+    open: false,
+    type: 'normal',
+    mode: 'gps',
+    pressed: null,
+    picking: null,
+    needsSearch: false,
+    error: null,
+    notice: null,
+  })
   useGuidanceStore.setState({ destinationId: null, collapsed: false, notice: null })
   useLayersStore.setState({
     baseLayer: 'outdoor',
@@ -322,6 +333,13 @@ async function useTool(user: ReturnType<typeof userEvent.setup>, name: string) {
 /** Opens the (collapsed by default) "Couches" panel. */
 async function openLayers(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Couches' }))
+}
+
+/** « + Repère » → Repère normal → Position sur la carte → Choisir sur la carte. */
+async function armPlacing(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Ajouter un repère' }))
+  await user.click(screen.getByRole('radio', { name: 'Position sur la carte' }))
+  await user.click(screen.getByRole('button', { name: 'Choisir sur la carte' }))
 }
 
 describe('MapPage', () => {
@@ -522,6 +540,27 @@ describe('MapPage', () => {
     expect(screen.queryByTestId('blood-camera')).not.toBeInTheDocument()
   })
 
+  it('« + Repère » is a labelled permanent button; Caméra sang opens from it with no search open', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    expect(screen.getByRole('button', { name: 'Ajouter un repère' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Ajouter un repère' }))
+    await user.click(screen.getByRole('radio', { name: /Caméra sang/ }))
+    await user.click(screen.getByRole('button', { name: 'Ouvrir la caméra sang' }))
+    expect(
+      await screen.findByRole('dialog', { name: /Caméra de recherche de sang/ }),
+    ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
+  })
+
+  it('a long press on the map opens the « + Repère » panel for the pressed point', async () => {
+    render(<MapPage />)
+    expect(lastCreateMapOptions?.onMapLongPress).toBeTypeOf('function')
+    lastCreateMapOptions?.onMapLongPress?.({ lat: 46.85, lng: -71.25 })
+    expect(await screen.findByTestId('add-point-sheet')).toBeVisible()
+    expect(screen.getByTestId('add-point-gps-line')).toHaveTextContent('46.85000')
+  })
+
   it('has no always-visible zoom buttons: 2D/3D is on the rail and zoom lives in Outils', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
@@ -691,7 +730,7 @@ describe('MapPage', () => {
       await useTool(user, 'Mesurer une distance')
       lastCreateMapOptions?.onMapClick?.(BOX[0])
 
-      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      await armPlacing(user)
       await vi.waitFor(() => expect(useMeasureStore.getState().active).toBe(false))
       lastCreateMapOptions?.onMapClick?.(BOX[1])
 
@@ -703,7 +742,7 @@ describe('MapPage', () => {
     it('starting a measure cancels waypoint placement, terrain tools and spot analysis', async () => {
       const user = userEvent.setup()
       render(<MapPage />)
-      await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+      await armPlacing(user)
       expect(useWaypointsStore.getState().isPlacing).toBe(true)
 
       await useTool(user, 'Mesurer une surface')
@@ -757,7 +796,7 @@ describe('MapPage', () => {
     user: ReturnType<typeof userEvent.setup>,
     coordinate = { lat: 46.8, lng: -71.2 },
   ) {
-    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+    await armPlacing(user)
     lastCreateMapOptions?.onMapClick?.(coordinate)
     await user.click(await screen.findByRole('button', { name: 'Continuer' }))
   }
@@ -766,7 +805,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+    await armPlacing(user)
     expect(
       screen.getByText('Touchez la carte pour placer un point de repère'),
     ).toBeInTheDocument()
@@ -789,7 +828,7 @@ describe('MapPage', () => {
   it('the draft position can be adjusted by tapping the map or dragging its marker, then Save locks it', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter un point de repère' }))
+    await armPlacing(user)
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8, lng: -71.2 })
     await screen.findByText('Nouveau point de repère')
 
