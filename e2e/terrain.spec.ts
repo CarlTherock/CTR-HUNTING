@@ -14,7 +14,7 @@ const SIZES: readonly ViewportCase[] = [
   { name: '568x320 (paysage)', width: 568, height: 320, mobile: true },
   { name: '844x390 (paysage)', width: 844, height: 390, mobile: true },
 ]
-const SHOT_SIZES = new Set(['390x844', '568x320'])
+const SHOT_SIZES = new Set(['390x844', '568x320', '320x568'])
 
 async function shot(page: Page, size: ViewportCase, name: string) {
   const slug = size.name.split(' ')[0] ?? size.name
@@ -273,6 +273,118 @@ for (const size of SIZES) {
       expect(entry?.shot).toEqual({ species: 'moose', reaction: 'a sursauté' })
       expect(entry?.positionOrigin).toBe('gps')
       expect(entry?.deer).toBeUndefined()
+    })
+  })
+}
+
+/**
+ * Les cinq types de « + Repère » doivent être visibles ET touchables sans
+ * aucun défilement, en portrait étroit (320x568) comme en paysage court
+ * (568x320). Chromium simulé : ne valide pas un iPhone réel.
+ */
+for (const size of [
+  { name: '320x568', width: 320, height: 568 },
+  { name: '568x320', width: 568, height: 320 },
+]) {
+  test.describe(`types de repère sans défilement ${size.name}`, () => {
+    test.use({
+      viewport: { width: size.width, height: size.height },
+      hasTouch: true,
+      isMobile: true,
+      deviceScaleFactor: 2,
+      permissions: ['geolocation'],
+      geolocation: { latitude: 46.8, longitude: -71.2, accuracy: 6 },
+    })
+
+    test('les 5 types sont visibles et touchables sans défilement, et la sélection crée le repère', async ({
+      page,
+      backend,
+    }) => {
+      void backend
+      await openMap(page)
+      const sheet = await openSheet(page)
+      const names = [
+        /Repère normal/,
+        /Sang \/ indice/,
+        /Observation cerf/,
+        /Observation orignal/,
+        /Caméra sang/,
+      ]
+      const radios = []
+      for (const name of names) {
+        const radio = sheet.getByRole('radio', { name })
+        await expect(radio).toBeVisible()
+        radios.push(await radio.elementHandle())
+      }
+      const measured = await page.evaluate((els) => {
+        return els.map((el) => {
+          if (!el) return null
+          const r = el.getBoundingClientRect()
+          let scroller: HTMLElement | null = el.parentElement
+          while (scroller && getComputedStyle(scroller).overflowY !== 'auto') {
+            scroller = scroller.parentElement
+          }
+          const clip = scroller?.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+          return {
+            scrollTop: scroller?.scrollTop ?? 0,
+            w: r.width,
+            h: r.height,
+            inViewport:
+              r.left >= -0.5 &&
+              r.top >= -0.5 &&
+              r.right <= window.innerWidth + 0.5 &&
+              r.bottom <= window.innerHeight + 0.5,
+            inScroller: clip
+              ? r.top >= clip.top - 0.5 && r.bottom <= clip.bottom + 0.5
+              : true,
+            hit: !!hit && (el === hit || el.contains(hit)),
+          }
+        })
+      }, radios)
+      measured.forEach((m, i) => {
+        const label = String(names[i])
+        expect(m, `${label} introuvable`).not.toBeNull()
+        if (!m) return
+        expect(m.scrollTop, `${label} : liste déjà défilée`).toBe(0)
+        expect(m.inViewport, `${label} hors de l’écran`).toBe(true)
+        expect(m.inScroller, `${label} coupé par le défilement`).toBe(true)
+        expect(m.hit, `${label} recouvert`).toBe(true)
+        expect(m.h, `${label} cible tactile < 44 px`).toBeGreaterThanOrEqual(43.5)
+        expect(m.w, `${label} cible tactile < 44 px`).toBeGreaterThanOrEqual(43.5)
+      })
+      await shot(page, { ...size, mobile: true }, 'types-repere')
+
+      // La sélection crée bien le repère (observations cerf et orignal ici ;
+      // repère normal, sang et caméra : voir les parcours ci-dessus).
+      await expect(page.getByTestId('add-point-gps-line')).toContainText('±', {
+        timeout: 20_000,
+      })
+      for (const [name, count] of [
+        [/Observation cerf/, 1],
+        [/Observation orignal/, 2],
+      ] as const) {
+        await sheet.getByRole('radio', { name }).click()
+        await expect(sheet.getByRole('radio', { name })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        )
+        const action = sheet.getByRole('button', {
+          name: 'Enregistrer l’observation ici',
+        })
+        await expect(action).toBeVisible()
+        await action.click()
+        await expect
+          .poll(async () => (await readAll(page, 'observations')).length)
+          .toBe(count)
+        if (count === 1) await openSheet(page)
+      }
+      const saved = await readAll<{ species?: string; deer?: unknown }>(
+        page,
+        'observations',
+      )
+      expect(saved.filter((o) => o.species === 'moose')).toHaveLength(1)
+      expect(saved.filter((o) => o.deer !== undefined)).toHaveLength(1)
     })
   })
 }

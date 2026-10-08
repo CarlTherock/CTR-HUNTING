@@ -156,7 +156,7 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
         aria-label="Ajouter un repère"
         tabIndex={-1}
         data-testid="add-point-sheet"
-        className="border-surface-600 bg-surface-900 text-ink-100 absolute inset-x-0 bottom-0 z-40 flex max-h-[92%] flex-col overflow-hidden rounded-t-xl border-t shadow-2xl outline-none"
+        className="border-surface-600 bg-surface-900 text-ink-100 absolute inset-x-0 bottom-0 z-40 flex max-h-[92%] flex-col overflow-hidden rounded-t-xl border-t shadow-2xl outline-none [@media(max-height:480px)]:fixed [@media(max-height:480px)]:inset-0 [@media(max-height:480px)]:z-50 [@media(max-height:480px)]:max-h-none [@media(max-height:480px)]:rounded-none [@media(max-height:480px)]:border-t-0 [@media(max-height:480px)]:pr-[env(safe-area-inset-right)] [@media(max-height:480px)]:pl-[env(safe-area-inset-left)]"
       >
         <div className="flex shrink-0 items-center justify-between px-3 pt-2">
           <h2 className="text-sm font-semibold">Ajouter à la carte</h2>
@@ -174,7 +174,7 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
           <div
             role="radiogroup"
             aria-label="Type de repère"
-            className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-5 [@media(max-height:480px)]:grid-cols-3"
+            className="mt-2 grid grid-cols-2 gap-2 min-[700px]:grid-cols-5 [@media(max-height:480px)]:grid-cols-5"
           >
             {ADD_POINT_TYPES.map((entry) => (
               <button
@@ -185,6 +185,7 @@ function AddPointSheet({ gpsReading }: { gpsReading: GeolocationReading }) {
                 onClick={() => store().setType(entry.id)}
                 className={cn(
                   CHIP,
+                  '[@media(max-height:480px)]:px-1.5 [@media(max-height:480px)]:text-xs',
                   type === entry.id
                     ? 'border-brand-400 bg-brand-500/15 text-brand-400'
                     : 'border-surface-600 hover:bg-surface-800',
