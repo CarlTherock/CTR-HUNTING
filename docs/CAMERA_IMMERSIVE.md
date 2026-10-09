@@ -122,12 +122,18 @@ Le correctif ne dépend d'aucune de ces valeurs : `position: fixed; inset: 0`
 - **iPhone réel et Safari non testés.** WebKit n'est pas installable ici.
   Les tests Chromium ne prouvent ni la torche, ni le flux vidéo sous Safari, ni
   l'effet des barres du navigateur, ni la mise en pause d'une vidéo masquée.
-- La **torche** est généralement absente sous iOS Safari : l'écran affichera
-  « Lampe indisponible » (un écran blanc n'est pas une lampe).
+- **Lampe** — trois choses distinctes : (1) _capacité détectée_ : la piste vidéo
+  déclare une lampe, sinon le bouton reste « indisponible » (`data-torch="unavailable"`) ;
+  (2) _commande_ : l'icône n'est « allumée » que si l'appareil a accepté la
+  commande, un refus laisse l'état inchangé et le dit (`data-torch="refused"`) ;
+  (3) _iOS / Safari_ : **hypothèse non vérifiée**, on ne sait pas si Safari déclare
+  une lampe ; seul un essai sur iPhone le dira. L'écran n'affirme rien là-dessus.
 - Le GPS « ancien » est couvert par les tests unitaires (position de 3 min), pas
   par un test e2e.
-- Le placement d'un **repère normal** sur la carte utilise le formulaire de la
-  carte ; la note saisie dans la feuille caméra n'y est pas reprise (le
-  formulaire a ses propres notes), seule la photo jointe l'est.
+- Repère normal placé sur la carte : la note saisie dans la caméra est **ajoutée
+  après** les notes du formulaire de la carte (jamais à leur place), avec ou sans
+  photo. Annuler le placement n'enregistre rien et laisse la note telle quelle ;
+  changer de type garde la note et efface la porte de recherche / les messages du
+  type précédent.
 - Les images « avant » viennent de la caméra simulée sur `main`, pas d'un
   iPhone.

@@ -175,6 +175,11 @@ describe('BloodCameraAssist', () => {
     expect(help).toHaveTextContent(/surbrillance.*pas.*sang confirmé/i)
     expect(help).toHaveTextContent(/absence de surbrillance.*pas.*absence de sang/i)
     expect(screen.getByText(/Fonction expérimentale/)).toBeInTheDocument()
+    // The torch explanation separates detection, command and the iOS unknown.
+    const torch = screen.getByTestId('camera-help-torch')
+    expect(torch).toHaveTextContent(/Détectée/)
+    expect(torch).toHaveTextContent(/Commande/)
+    expect(torch).toHaveTextContent(/n’a pas été vérifiée/)
     // Closing the help leaves the camera running.
     await user.click(
       screen.getByRole('button', { name: /Fermer : Aide et informations/ }),
@@ -238,9 +243,10 @@ describe('BloodCameraAssist', () => {
     const unavailable = screen.getByRole('button', { name: /Lampe indisponible/ })
     expect(unavailable).toHaveAttribute('aria-disabled', 'true')
     expect(unavailable).not.toHaveAttribute('aria-pressed')
+    expect(unavailable).toHaveAttribute('data-torch', 'unavailable')
     await user.click(unavailable)
     expect(await screen.findByTestId('camera-notice')).toHaveTextContent(
-      /Lampe indisponible sur cet appareil/,
+      /Lampe non détectée/,
     )
     expect(applyConstraints).not.toHaveBeenCalled()
     view.unmount()
@@ -263,12 +269,17 @@ describe('BloodCameraAssist', () => {
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
     await user.click(await screen.findByRole('button', { name: 'Allumer la lampe' }))
     expect(await screen.findByTestId('camera-notice')).toHaveTextContent(
-      /n’a pas pu être allumée/,
+      /commande « allumer » a été refusée/,
     )
-    expect(screen.getByRole('button', { name: 'Allumer la lampe' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    const after = screen.getByRole('button', { name: 'Allumer la lampe' })
+    expect(after).toHaveAttribute('aria-pressed', 'false')
+    // Detected capability, refused command: told apart from « unavailable ».
+    expect(after).toHaveAttribute('data-torch', 'refused')
+    // The next command can still succeed and clears the refusal.
+    await user.click(after)
+    expect(
+      await screen.findByRole('button', { name: 'Éteindre la lampe' }),
+    ).toHaveAttribute('data-torch', 'on')
   })
 
   it('the torch stays reachable while the settings sheet is open', async () => {
@@ -770,6 +781,123 @@ describe('BloodCameraAssist', () => {
         expect(screen.queryByTestId('camera-placing')).not.toBeInTheDocument()
       },
     )
+
+    describe('ordinary repère placed on the map from the camera', () => {
+      const PLACE = { lat: 46.9, lng: -71.3 }
+
+      async function startPlacingNormal(
+        user: ReturnType<typeof userEvent.setup>,
+        note: string,
+        withKeptCapture: boolean,
+      ) {
+        render(<BloodCameraAssist gpsReading={NO_GPS} onClose={vi.fn()} />)
+        await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+        if (withKeptCapture) {
+          await user.click(screen.getByRole('button', { name: /Capturer/ }))
+          await user.click(
+            await screen.findByRole('button', { name: /Garder et revenir à la caméra/ }),
+          )
+        }
+        await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+        await user.click(screen.getByRole('button', { name: 'Repère normal' }))
+        if (note) await user.type(screen.getByLabelText(/Note/), note)
+        if (withKeptCapture)
+          await user.click(screen.getByRole('checkbox', { name: /Joindre la capture/ }))
+        await user.click(screen.getByRole('button', { name: /Placer sur la carte/ }))
+        await screen.findByTestId('camera-placing')
+      }
+
+      /** What the map does: a tap opens the form, « Enregistrer » saves it. */
+      async function saveFromMapForm(notes: string) {
+        act(() => useWaypointsStore.getState().startDraftAt(PLACE))
+        await act(async () => {
+          await useWaypointsStore.getState().saveDraft({
+            name: 'Mon repère',
+            category: 'general',
+            color: '#f59e0b',
+            notes,
+            optimalWindDirections: [],
+          })
+        })
+      }
+
+      it('keeps the typed note when the map form leaves its own notes empty (no photo)', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'note de la caméra', false)
+        await saveFromMapForm('')
+        await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe('note de la caméra'),
+        )
+        expect(await db.photos.count()).toBe(0)
+        expect(await screen.findByTestId('camera-notice')).toHaveTextContent(/enregistré/)
+      })
+
+      it('keeps the typed note AND the photo together', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'avec photo', true)
+        await saveFromMapForm('')
+        await waitFor(async () => expect(await db.photos.count()).toBe(1))
+        const [waypoint] = await db.waypoints.toArray()
+        expect(waypoint?.notes).toBe('avec photo')
+        const [photo] = await db.photos.toArray()
+        expect(photo?.waypointId).toBe(waypoint?.id)
+      })
+
+      it('adds the camera note AFTER what the map form wrote, never replacing it', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'note caméra', false)
+        await saveFromMapForm('note du formulaire')
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe(
+            'note du formulaire\nnote caméra',
+          ),
+        )
+      })
+
+      it('cancelling the placement saves nothing, returns to the camera and keeps the note', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'à garder', false)
+        // The user opens the map form, then abandons it.
+        act(() => useWaypointsStore.getState().startDraftAt(PLACE))
+        act(() => useWaypointsStore.getState().cancelDraft())
+        await waitFor(() =>
+          expect(screen.queryByTestId('camera-placing')).not.toBeInTheDocument(),
+        )
+        expect(await db.waypoints.count()).toBe(0)
+        expect(screen.getByLabelText(/Note/)).toHaveValue('à garder')
+        expect(screen.getByLabelText('Image originale de la caméra')).toBeInTheDocument()
+
+        // « Retour à la caméra » from the placing panel does the same.
+        await user.click(screen.getByRole('button', { name: /Placer sur la carte/ }))
+        await user.click(
+          await screen.findByRole('button', { name: 'Retour à la caméra' }),
+        )
+        expect(await db.waypoints.count()).toBe(0)
+        expect(screen.getByLabelText(/Note/)).toHaveValue('à garder')
+      })
+
+      it('changing type keeps the note, and drops the previous type’s search gate', async () => {
+        const user = userEvent.setup()
+        render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+        await openMark(user)
+        await user.type(screen.getByLabelText(/Note/), 'reste là')
+        await user.click(screen.getByTestId('mark-save'))
+        expect(await screen.findByTestId('clue-gate')).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Repère normal' }))
+        expect(screen.queryByTestId('clue-gate')).not.toBeInTheDocument()
+        expect(screen.getByLabelText(/Note/)).toHaveValue('reste là')
+        expect(await db.waypoints.count()).toBe(0)
+
+        await user.click(screen.getByTestId('mark-save'))
+        await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe('reste là'),
+        )
+        expect(await db.bloodSessions.count()).toBe(0)
+      })
+    })
 
     it('a kept capture is attached ONLY when asked, never automatically', async () => {
       const user = userEvent.setup()

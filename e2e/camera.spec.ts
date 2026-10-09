@@ -309,6 +309,28 @@ for (const size of SIZES) {
       await expectReachable(page, ['Capturer', /\+ Repère/])
     })
 
+    test('aide : le texte de prudence complet et l’état de la lampe tiennent dans le viewport', async ({
+      page,
+    }) => {
+      await openCamera(page)
+      await waitForFilteredFrame(page)
+      await page
+        .getByRole('button', { name: 'Aide et informations', exact: true })
+        .click()
+      const help = page.getByTestId('camera-help')
+      await expect(help).toBeVisible()
+      await expect(help).toContainText(/faux positifs/i)
+      await expect(help).toContainText(/absence de surbrillance/i)
+      const rect = await help.boundingBox()
+      if (!rect) throw new Error('aide introuvable')
+      expect(rect.y + rect.height).toBeLessThanOrEqual(size.height + 0.5)
+      expect(rect.x + rect.width).toBeLessThanOrEqual(size.width + 0.5)
+      await expectReachable(page, ['Fermer : Aide et informations'])
+      await shot(page, size, 'aide')
+      await help.getByTestId('camera-help-torch').scrollIntoViewIfNeeded()
+      await shot(page, size, 'aide-lampe')
+    })
+
     for (const color of ['yellow', 'cyan', 'blue', 'red'] as const) {
       const label = { yellow: 'Jaune', cyan: 'Cyan', blue: 'Bleu', red: 'Rouge' }[color]
       test(`couleur ${label} : la tache est surlignée de cette couleur, la scène reste lisible`, async ({

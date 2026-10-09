@@ -108,10 +108,13 @@ export function useCameraClue(
       done: ClueRequest,
       waypointId: string,
       coordinate: Coordinate | undefined,
-      withNote: boolean,
+      existingNotes = '',
     ): Promise<boolean> => {
-      const note = withNote ? done.note : ''
-      if (!done.photo && !note.trim()) return true
+      // The camera note is ADDED to what the waypoint already holds (the map's
+      // own form may have filled `notes`): it never replaces it.
+      const extra = done.note.trim()
+      const note = extra ? [existingNotes.trim(), extra].filter(Boolean).join('\n') : ''
+      if (!done.photo && !note) return true
       return useBloodStore.getState().attachClueMedia(waypointId, {
         note,
         photo: done.photo
@@ -139,7 +142,7 @@ export function useCameraClue(
             return
           }
           useBloodStore.setState({ manual: null })
-          const attached = await attach(done, result.waypoint.id, photoCoordinate, true)
+          const attached = await attach(done, result.waypoint.id, photoCoordinate)
           finish(
             done,
             attached
@@ -164,9 +167,7 @@ export function useCameraClue(
           return
         }
         const created = useWaypointsStore.getState().waypoints.at(-1)
-        const attached = created
-          ? await attach(done, created.id, photoCoordinate, true)
-          : false
+        const attached = created ? await attach(done, created.id, photoCoordinate) : false
         finish(
           done,
           attached
@@ -255,7 +256,9 @@ export function useCameraClue(
   }, [])
 
   // Ordinary repère placed on the map: the map's own form saves it; the camera
-  // only waits, then attaches the photo (if asked) and takes over again.
+  // only waits, then adds its note (after the form's own notes) and the photo
+  // (if asked) and takes over again. Cancelling the placement saves nothing and
+  // leaves the camera note as typed.
   useEffect(() => {
     if (!placing || request?.kind !== 'normal') return
     const pending = request
@@ -268,12 +271,12 @@ export function useCameraClue(
         const created = state.waypoints[state.waypoints.length - 1]
         stop()
         if (!created) return
-        void attach(pending, created.id, undefined, false).then((attached) =>
+        void attach(pending, created.id, undefined, created.notes).then((attached) =>
           finish(
             pending,
             attached
               ? `${created.name} enregistré${pending.photo ? ' avec la photo' : ''}.`
-              : `${created.name} enregistré, mais la photo n’a pas pu être ajoutée.`,
+              : `${created.name} enregistré, mais la photo ou la note n’a pas pu être ajoutée.`,
           ),
         )
         return

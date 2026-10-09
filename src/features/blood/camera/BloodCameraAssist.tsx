@@ -87,6 +87,7 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
   const [note, setNote] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [torchRefused, setTorchRefused] = useState(false)
 
   const onSaved = useCallback((_: unknown, message: string) => {
     setCapture(null)
@@ -256,17 +257,19 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
 
   async function toggleTorch() {
     if (!torchSupported) {
+      // Nothing was tried: the track does not declare a torch.
       setNotice(
-        'Lampe indisponible sur cet appareil ou ce navigateur (un écran blanc n’est pas une lampe et n’est pas proposé).',
+        'Lampe non détectée : la caméra de cet appareil ou de ce navigateur ne déclare pas de lampe. Rien n’est simulé (un écran blanc n’est pas une lampe).',
       )
       return
     }
     const wanted = !torchOn
     const ok = await setTorch(wanted)
+    setTorchRefused(!ok)
     // On failure the state is left as it was: never a lit icon without light.
     if (!ok) {
       setNotice(
-        `La lampe n’a pas pu être ${wanted ? 'allumée' : 'éteinte'} : l’appareil a refusé la commande.`,
+        `Lampe détectée, mais la commande « ${wanted ? 'allumer' : 'éteindre'} » a été refusée par l’appareil : elle reste ${torchOn ? 'allumée' : 'éteinte'}.`,
       )
     }
   }
@@ -387,7 +390,7 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
           status={status}
           errorReason={errorReason}
           onClose={onClose}
-          torch={{ supported: torchSupported, on: torchOn }}
+          torch={{ supported: torchSupported, on: torchOn, refused: torchRefused }}
           onTorch={() => void toggleTorch()}
           onSettings={() => openSheet('settings')}
           onHelp={() => openSheet('help')}

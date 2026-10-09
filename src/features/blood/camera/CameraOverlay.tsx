@@ -29,7 +29,9 @@ export interface CameraOverlayProps {
   status: 'idle' | 'starting' | 'streaming' | 'error'
   errorReason: string | null
   onClose: () => void
-  torch: { supported: boolean; on: boolean }
+  /** `supported`: the camera track DECLARES a torch (detected capability).
+   * `on`: the last command succeeded. `refused`: the last command failed. */
+  torch: { supported: boolean; on: boolean; refused: boolean }
   onTorch: () => void
   onSettings: () => void
   onHelp: () => void
@@ -58,8 +60,15 @@ export interface CameraOverlayProps {
  */
 export function CameraOverlay(props: CameraOverlayProps): ReactNode {
   const { torch } = props
+  const torchState = !torch.supported
+    ? 'unavailable'
+    : torch.on
+      ? 'on'
+      : torch.refused
+        ? 'refused'
+        : 'off'
   const torchLabel = !torch.supported
-    ? 'Lampe indisponible sur cet appareil'
+    ? 'Lampe indisponible (non détectée)'
     : torch.on
       ? 'Éteindre la lampe'
       : 'Allumer la lampe'
@@ -92,10 +101,12 @@ export function CameraOverlay(props: CameraOverlayProps): ReactNode {
               aria-pressed={torch.supported ? torch.on : undefined}
               aria-disabled={!torch.supported}
               data-testid="camera-torch"
+              data-torch={torchState}
               className={cn(
                 ROUND,
                 torch.on && torch.supported && 'bg-amber-400 text-black ring-amber-200',
                 !torch.supported && 'text-white/60',
+                torchState === 'refused' && 'ring-2 ring-amber-300',
               )}
             >
               {torch.supported ? (

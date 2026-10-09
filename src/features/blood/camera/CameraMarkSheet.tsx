@@ -38,6 +38,14 @@ export function CameraMarkSheet({
     state.sessions.find((session) => session.status !== 'finished'),
   )
 
+  /** Switching type keeps the note and the choice of capture, and drops what
+   * only concerned the previous type (search gate, map prompt, error). */
+  function changeKind(next: ClueRequest['kind']) {
+    if (next === kind) return
+    setKind(next)
+    flow.reset()
+  }
+
   function submit() {
     flow.submit({ kind, note, photo: attach && kept ? kept : null })
   }
@@ -78,7 +86,7 @@ export function CameraMarkSheet({
         <button
           type="button"
           aria-pressed={kind === 'blood'}
-          onClick={() => setKind('blood')}
+          onClick={() => changeKind('blood')}
           className={cn(
             TYPE_BUTTON,
             kind === 'blood' ? 'border-red-400 bg-red-500/15' : 'border-surface-600',
@@ -89,7 +97,7 @@ export function CameraMarkSheet({
         <button
           type="button"
           aria-pressed={kind === 'normal'}
-          onClick={() => setKind('normal')}
+          onClick={() => changeKind('normal')}
           className={cn(
             TYPE_BUTTON,
             kind === 'normal' ? 'border-brand-400 bg-brand-500/15' : 'border-surface-600',
