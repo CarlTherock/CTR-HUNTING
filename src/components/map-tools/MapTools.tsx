@@ -49,6 +49,9 @@ export interface ToolTriggerProps {
   order?: number
   /** Field Mode: oversized touch target for gloved use. */
   large?: boolean
+  /** Rail only: a secondary tool, hidden while a full-width bottom panel
+   * (« Analyse du vent ») is open so the rail keeps only essential buttons. */
+  secondary?: boolean
 }
 
 export function ToolTrigger({
@@ -62,6 +65,7 @@ export function ToolTrigger({
   title,
   order = 0,
   large = false,
+  secondary = false,
 }: ToolTriggerProps) {
   const ctx = useContext(MapToolsContext)
   const onRail = placement === 'rail'
@@ -79,6 +83,7 @@ export function ToolTrigger({
       aria-pressed={pressed}
       aria-label={onRail ? label : undefined}
       title={title ?? label}
+      data-rail-secondary={onRail && secondary ? 'true' : undefined}
       style={{ order }}
       className={cn(
         onRail ? RAIL_BUTTON : SHEET_ROW,
@@ -110,9 +115,12 @@ export function ToolSlot({
   order = 0,
   placement = 'sheet',
   className,
+  secondary = false,
 }: {
   children: ReactNode
   order?: number
+  /** Rail only: hidden while a full-width bottom panel is open. */
+  secondary?: boolean
   /** Classes of the slot's own wrapper (e.g. to drop it from the layout). */
   className?: string
   /** `rail`: always-visible column on the right edge; `sheet`: Outils. */
@@ -120,7 +128,11 @@ export function ToolSlot({
 }) {
   const ctx = useContext(MapToolsContext)
   const content = (
-    <div style={{ order }} className={className}>
+    <div
+      style={{ order }}
+      className={className}
+      data-rail-secondary={placement === 'rail' && secondary ? 'true' : undefined}
+    >
       {children}
     </div>
   )
@@ -145,7 +157,7 @@ export function MapToolRail({ setHost }: MapToolRailProps) {
     <div
       ref={setHost}
       data-testid="map-tool-rail"
-      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3rem)] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:4rem] pointer-coarse:[--rail-top:4rem]"
+      className="absolute top-[var(--rail-top)] right-2 z-10 flex max-h-[calc(100%-var(--rail-top)-3rem-var(--sheet-height,0px))] flex-col flex-wrap-reverse content-start items-end gap-2 [--rail-top:4rem] pointer-coarse:[--rail-top:4rem]"
     />
   )
 }

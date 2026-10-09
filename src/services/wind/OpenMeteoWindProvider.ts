@@ -5,6 +5,14 @@ import type { WindProvider } from './WindProvider'
 
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 
+/**
+ * Calendar days requested (`forecast_days`). Open-Meteo's forecast endpoint
+ * documents `forecast_days` from 1 to 16 (open-meteo.com/en/docs); 5 days of
+ * hourly data is 120 slots, which the panel shows as five real calendar
+ * days. The series starts at local midnight of today (index 0).
+ */
+export const WIND_FORECAST_DAYS = 5
+
 // Verified against Open-Meteo's live docs (open-meteo.com/en/docs):
 // wind_direction_10m returns degrees 0-360, meteorological "from"
 // convention. Requesting comma-separated latitude/longitude lists is a
@@ -58,7 +66,7 @@ export class OpenMeteoWindProvider implements WindProvider {
     url.searchParams.set('longitude', points.map((p) => p.lng.toFixed(4)).join(','))
     url.searchParams.set('hourly', WIND_PARAMS)
     url.searchParams.set('timezone', 'auto')
-    url.searchParams.set('forecast_days', '2')
+    url.searchParams.set('forecast_days', String(WIND_FORECAST_DAYS))
 
     const response = await (signal ? fetch(url, { signal }) : fetch(url))
     if (!response.ok) {

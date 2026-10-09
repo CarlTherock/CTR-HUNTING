@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { AppShell } from '@/components/layout'
@@ -7,6 +7,7 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { MapPage } from '@/features/map/pages/MapPage'
 import { WaypointsPage } from '@/features/waypoints/pages/WaypointsPage'
 import { DataHubPage, MoreHubPage } from '@/features/hubs/pages/HubPages'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { hubItems, navItems, primaryNavItems } from './navigation'
 
 const secondaryPages = navItems.filter((item) => item.secondary)
@@ -148,6 +149,42 @@ describe('navigation', () => {
     ).toBeInTheDocument()
     const bar = screen.getByRole('banner')
     expect(within(bar).getByText(title)).toBeInTheDocument()
+  })
+
+  describe('« Analyse du vent » takes the place of the bottom navigation', () => {
+    afterEach(() => {
+      useWindAnalysisStore.setState({ open: false, expanded: true, sheetHeight: 0 })
+    })
+
+    it('hides the bar while the panel is open on the map, and brings it back on close', async () => {
+      renderAt('/map')
+      const bar = () =>
+        screen.queryByRole('navigation', { name: 'Navigation principale' })
+      expect(
+        await screen.findByRole('navigation', { name: 'Navigation principale' }),
+      ).toBeInTheDocument()
+
+      act(() => useWindAnalysisStore.getState().openPanel())
+      // unmounted, not just invisible: no empty height, nothing focusable behind the sheet
+      expect(bar()).toBeNull()
+
+      act(() => useWindAnalysisStore.getState().closePanel())
+      expect(bar()).toBeInTheDocument()
+      // every destination is still there
+      for (const item of primaryNavItems)
+        expect(
+          within(bar() as HTMLElement).getByText(item.shortLabel ?? item.label),
+        ).toBeInTheDocument()
+    })
+
+    it('leaves the navigation alone on other pages', async () => {
+      renderAt('/help')
+      await screen.findByRole('heading', { level: 1, name: 'Aide' })
+      act(() => useWindAnalysisStore.getState().openPanel())
+      expect(
+        screen.getByRole('navigation', { name: 'Navigation principale' }),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('links to a section of a page', () => {

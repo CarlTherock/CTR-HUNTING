@@ -54,6 +54,7 @@ export function LayerManagerPanel() {
       pressed={isOpen}
       active={isOpen}
       order={40}
+      secondary
     />
   )
 

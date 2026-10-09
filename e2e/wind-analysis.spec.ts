@@ -39,7 +39,8 @@ const LABELS = [
   'NNO',
 ]
 const label = (deg: number) => LABELS[Math.round(deg / 22.5) % 16]
-const dirOf = (index: number) => (index * 15) % 360
+// Chaque jour a sa propre rotation de directions : jour 1, 2… 5 ne se confondent pas.
+const dirOf = (index: number) => (index * 15 + Math.floor(index / 24) * 40) % 360
 const speedOf = (index: number) => 5 + index
 
 function currentIndex(): number {
@@ -53,13 +54,16 @@ function currentIndex(): number {
   return hour // index 0 = minuit local d'aujourd'hui
 }
 
+const forecastDaysAsked: (string | null)[] = []
+
 async function installWind(page: Page) {
   await installAnalysisProviders(page)
-  const times = hourlyTimes()
+  const times = hourlyTimes(5)
   await page.route('https://api.open-meteo.com/**', async (route) => {
     const url = new URL(route.request().url())
     const latitudes = (url.searchParams.get('latitude') ?? '').split(',')
     if (latitudes.length < 2) return route.fallback()
+    forecastDaysAsked.push(url.searchParams.get('forecast_days'))
     const body = latitudes.map(() => ({
       timezone: TZ,
       hourly: {
@@ -106,12 +110,24 @@ async function expectReadout(page: Page, index: number) {
 }
 
 const SIZES = [
-  { w: 320, h: 568 },
-  { w: 390, h: 844 },
-  { w: 430, h: 932 },
-  { w: 568, h: 320 },
-  { w: 844, h: 390 },
+  { w: 320, h: 568, notch: false },
+  { w: 390, h: 844, notch: true },
+  { w: 430, h: 932, notch: true },
+  { w: 568, h: 320, notch: false },
+  { w: 844, h: 390, notch: true },
 ]
+
+const shot = (name: string) =>
+  process.env.E2E_SCREENSHOTS === '1' ? `docs/validation/vent-${name}.png` : null
+
+async function rect(page: Page, selector: string) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    return { x: r.x, y: r.y, width: r.width, height: r.height }
+  }, selector)
+}
 
 for (const size of SIZES) {
   const landscape = size.w > size.h
@@ -125,76 +141,144 @@ for (const size of SIZES) {
       geolocation: { latitude: 46.8, longitude: -71.2, accuracy: 6 },
     })
 
-    test('disposition, barre manipulable, jours, Maintenant et rotation', async ({
+    test('panneau pleine largeur ancré en bas, navigation masquée, 5 jours réels', async ({
       page,
       context,
       backend,
     }) => {
       void backend
-      test.setTimeout(120_000)
-      // 320×568 et 568×320 sont des iPhone SE (sans encoche) : pas de zones sûres.
-      if (Math.max(size.w, size.h) > 600)
-        await applySafeArea(
-          context,
-          page,
-          landscape ? IPHONE_LANDSCAPE_SAFE_AREA : IPHONE_PORTRAIT_SAFE_AREA,
-        )
+      test.setTimeout(150_000)
+      const inset = size.notch
+        ? landscape
+          ? IPHONE_LANDSCAPE_SAFE_AREA
+          : IPHONE_PORTRAIT_SAFE_AREA
+        : { top: 0, bottom: 0, left: 0, right: 0 }
+      if (size.notch) await applySafeArea(context, page, inset)
       await installWind(page)
-      await openAnalysis(page)
+      await page.goto('map')
+      await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
 
-      // Démarre à l'heure courante, avec les vraies valeurs du créneau.
+      // Avant : navigation du bas visible (mobile), carte au-dessus d'elle.
+      const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+      const navVisibleBefore = await nav.isVisible()
+      const canvasBefore = await rect(page, 'canvas.maplibregl-canvas')
+      const mapBefore = await rect(page, '[data-testid="map-container"]')
+      if (size.w < 768) expect(navVisibleBefore).toBe(true)
+
+      // Attributions : repliées au départ (pas de grand bloc de crédits).
+      expect(
+        await page.evaluate(
+          () =>
+            document.querySelector('.maplibregl-ctrl-attrib')?.hasAttribute('open') ??
+            false,
+        ),
+        'attributions ouvertes par défaut',
+      ).toBe(false)
+
+      await openAnalysis(page)
       const now = currentIndex()
       await expect.poll(() => selected(page)).toBe(now)
       await expectReadout(page, now)
 
-      // Jours : uniquement ceux que la prévision de 48 h couvre.
-      const days = page.getByRole('group', { name: 'Jour de la prévision' })
-      await expect(days.getByRole('button')).toHaveText(["Aujourd'hui", 'Demain'])
+      // Une seule requête de prévision, sur 5 jours calendaires.
+      expect(forecastDaysAsked.at(-1)).toBe('5')
 
-      if (process.env.E2E_SCREENSHOTS === '1')
-        await page.screenshot({
-          path: `docs/validation/vent-analyse-${size.w}x${size.h}.png`,
+      // Navigation masquée : absente (ni cliquable ni focalisable), sans hauteur vide.
+      await expect(nav).toHaveCount(0)
+      const sheet = await rect(page, '[data-testid="wind-analysis"]')
+      const canvasOpen = await rect(page, 'canvas.maplibregl-canvas')
+      if (!sheet || !canvasOpen || !canvasBefore || !mapBefore) throw new Error('mesure')
+      // La carte occupe toute la surface : en mobile (< 768 px) elle descend
+      // jusqu'au bas de l'écran (au-delà de l'ancienne barre) et la feuille
+      // s'ancre sur ce bord ; dès `md`, la carte est une carte à marge de
+      // page : la feuille s'ancre sur SON bord bas, sans bande vide dessous.
+      const fullBleed = size.w < 768
+      // (le canvas MapLibre suit le conteneur après un redimensionnement asynchrone)
+      await expect
+        .poll(async () => {
+          const c = await rect(page, 'canvas.maplibregl-canvas')
+          const want = fullBleed ? size.h : sheet.y + sheet.height
+          return c ? Math.abs(c.y + c.height - want) < 1.5 : false
         })
+        .toBe(true)
+      void canvasOpen
+      // (la carte à marge de page a une bordure de 1 px : tolérance de 2 px)
+      expect(Math.abs(sheet.x - (fullBleed ? 0 : canvasOpen.x))).toBeLessThanOrEqual(2)
+      expect(
+        Math.abs(
+          sheet.width -
+            (fullBleed ? size.w - inset.left - inset.right : canvasOpen.width),
+        ),
+      ).toBeLessThanOrEqual(2)
+      if (fullBleed) expect(sheet.y + sheet.height).toBeCloseTo(size.h, 0)
+      // Majorité de la carte visible : la feuille ouverte reste sous ~45 % de l'écran
+      // en portrait, et sous 60 % en paysage court.
+      expect(sheet.height / size.h).toBeLessThan(landscape ? 0.6 : 0.45)
 
-      // Disposition : rien n'est masqué, cibles ≥ 44 px. En paysage court le pied
-      // (source, figer) défile dans la feuille : seules les commandes essentielles
-      // doivent être visibles sans défiler.
+      // Cinq jours calendaires issus des données.
+      const days = page.getByRole('group', { name: 'Jour de la prévision' })
+      const dayButtons = days.getByRole('button')
+      await expect(dayButtons).toHaveCount(5)
+      await expect(dayButtons.nth(0)).toHaveText("Aujourd'hui")
+      await expect(dayButtons.nth(1)).toHaveText('Demain')
+
+      const shotOpen = shot(`analyse-${size.w}x${size.h}`)
+      if (shotOpen) await page.screenshot({ path: shotOpen })
+
+      // Commandes non coupées, cibles ≥ 44 px, dans les zones sûres. La rangée de
+      // jours défile : seule la pastille active doit être entièrement visible.
       const m = await measureLayout(page, '[data-testid="wind-analysis"]')
       expect(m.document.scrollWidth).toBeLessThanOrEqual(m.document.clientWidth)
-      const essential = (c: { label: string }) =>
-        /Maintenant|Fermer|Replier|Aujourd|Demain/.test(c.label)
-      const checked = size.h <= 480 ? m.controls.filter(essential) : m.controls
-      expect(checked.length).toBeGreaterThanOrEqual(4)
-      const problems = checked
-        .filter((c) => !c.rendered || !c.hit || !c.inViewport)
+      // La rangée de jours défile : une pastille hors écran n'est pas « coupée ».
+      const isDayChip = (label: string) =>
+        /^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim)\./.test(label) || /Demain|Aujourd/.test(label)
+      const problems = m.controls
+        .filter((c) => !c.rendered || (!isDayChip(c.label) && (!c.hit || !c.inViewport)))
         .map((c) => `${c.label} ${JSON.stringify(c.rect)} touchable=${c.hit}`)
       expect(problems, 'contrôles masqués ou coupés').toEqual([])
-      const small = checked
+      const small = m.controls
         .filter((c) => c.rendered && c.minSide < 44)
         .map((c) => `${c.label} ${Math.round(c.rect.width)}x${Math.round(c.rect.height)}`)
       expect(small, 'cibles tactiles < 44 px').toEqual([])
-      const panel = await page.getByTestId('wind-analysis').boundingBox()
-      const nav = await page.getByRole('navigation').first().boundingBox()
-      expect(panel).not.toBeNull()
-      if (panel && nav) {
-        expect(panel.x).toBeGreaterThanOrEqual(-0.5)
-        expect(panel.x + panel.width).toBeLessThanOrEqual(size.w + 0.5)
-        // jamais sur la navigation principale (barre du bas, ou colonne de gauche
-        // en paysage large), ni sur le rail d'outils (à droite)
-        if (nav.width > nav.height)
-          expect(panel.y + panel.height).toBeLessThanOrEqual(nav.y + 0.5)
-        else expect(panel.x).toBeGreaterThanOrEqual(nav.x + nav.width - 0.5)
-        const rail = await page.getByTestId('map-tool-rail').boundingBox()
-        if (rail) expect(panel.x + panel.width).toBeLessThanOrEqual(rail.x + 0.5)
-        expect(panel.height).toBeLessThanOrEqual(size.h * 0.8)
+      for (const c of m.controls.filter((x) => !isDayChip(x.label) || x.inViewport)) {
+        if (size.w >= 768) break
+        expect(
+          c.rect.y + c.rect.height,
+          `${c.label} sous la zone sûre du bas`,
+        ).toBeLessThanOrEqual(size.h - inset.bottom + 0.5)
       }
-      await expectReachable(page, ['Maintenant', "Fermer l'analyse du vent"])
+
+      // Rail : plus de colonne complète, aucun bouton sous la feuille, outils
+      // secondaires masqués, outils essentiels conservés.
+      await expect(page.getByRole('button', { name: 'Outils', exact: true })).toHaveCount(
+        0,
+      )
+      await expect(page.getByRole('button', { name: 'Mode immersif' })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Couches' })).toHaveCount(0)
+      const railButtons = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-testid="map-tool-rail"] button')].map(
+          (b) => {
+            const r = b.getBoundingClientRect()
+            return {
+              label: b.getAttribute('aria-label') ?? b.textContent ?? '',
+              bottom: r.bottom,
+              rendered: r.width > 0 && r.height > 0,
+            }
+          },
+        ),
+      )
+      for (const b of railButtons.filter((x) => x.rendered))
+        expect(b.bottom, `${b.label} sous la feuille`).toBeLessThanOrEqual(sheet.y + 0.5)
+      await expectReachable(page, [
+        'Ajouter un repère',
+        'Maintenant',
+        "Fermer l'analyse du vent",
+      ])
 
       // Glisser le curseur : l'heure partagée, les valeurs ET l'indice de rendu changent.
       const bar = page.getByTestId('wind-hour-bar')
       const box = await bar.boundingBox()
-      expect(box).not.toBeNull()
-      if (!box) return
+      if (!box) throw new Error('barre introuvable')
       const y = box.y + box.height / 2
       await page.mouse.move(box.x + box.width * 0.1, y)
       await page.mouse.down()
@@ -202,8 +286,7 @@ for (const size of SIZES) {
       await page.mouse.move(box.x + box.width * 0.9, y, { steps: 6 })
       await page.mouse.up()
       const dragged = await selected(page)
-      expect(dragged).toBeGreaterThan(now > 20 ? 0 : 0)
-      expect(dragged).toBe(Math.round(0.9 * 23)) // jour d'aujourd'hui : 24 créneaux
+      expect(dragged).toBe(Math.round(0.9 * 23))
       await expectReadout(page, dragged)
 
       // Clavier.
@@ -212,33 +295,69 @@ for (const size of SIZES) {
       expect(await selected(page)).toBe(dragged - 1)
       await expectReadout(page, dragged - 1)
 
-      // Demain : même heure, créneau +24.
+      // Jour 5 : même heure, créneau 96 + h, avec SES valeurs (pas celles de demain).
       const hour = (dragged - 1) % 24
-      await page.getByRole('button', { name: 'Demain' }).click()
-      expect(await selected(page)).toBe(24 + hour)
-      await expectReadout(page, 24 + hour)
+      await dayButtons.nth(4).click()
+      expect(await selected(page)).toBe(96 + hour)
+      await expectReadout(page, 96 + hour)
+      expect(dirOf(96 + hour)).not.toBe(dirOf(24 + hour))
+      const shotDay5 = shot(`analyse-jour5-${size.w}x${size.h}`)
+      if (shotDay5) await page.screenshot({ path: shotDay5 })
 
-      // Rotation : la sélection et l'état ouvert sont conservés.
+      // Détails : hauteur supplémentaire seulement à la demande.
+      const heightBeforeDetails = sheet.height
+      await page.getByRole('button', { name: 'Source et détails' }).click()
+      await expect(page.getByTestId('wind-details')).toBeVisible()
+      await expect(page.getByTestId('wind-details')).toContainText('Open-Meteo')
+      await expect(page.getByTestId('wind-details')).toContainText('Rendu indicatif')
+      const withDetails = await rect(page, '[data-testid="wind-analysis"]')
+      expect((withDetails?.height ?? 0) + 0.5).toBeGreaterThanOrEqual(heightBeforeDetails)
+      expect(withDetails ? withDetails.height / size.h : 1).toBeLessThan(0.82)
+      const shotDetails = shot(`analyse-details-${size.w}x${size.h}`)
+      if (shotDetails) await page.screenshot({ path: shotDetails })
+      await page.getByRole('button', { name: 'Source et détails' }).click()
+
+      // Rotation : sélection (jour 5) et état ouvert conservés.
       await page.setViewportSize({ width: size.h, height: size.w })
       await expect(page.getByTestId('wind-analysis')).toBeVisible()
-      expect(await selected(page)).toBe(24 + hour)
-
-      // Maintenant.
+      expect(await selected(page)).toBe(96 + hour)
       await page.setViewportSize({ width: size.w, height: size.h })
+
+      // Maintenant : revient à l'heure actuelle, pas à l'heure choisie.
       await page.getByRole('button', { name: 'Maintenant' }).click()
       expect(await selected(page)).toBe(now)
       await expectReadout(page, now)
 
-      // Replié : date/heure, direction d'origine et vitesse.
+      // Replié : une ligne, navigation toujours masquée, attributions au-dessus.
       await page.getByRole('button', { name: "Replier l'analyse du vent" }).click()
       const collapsed = page.getByTestId('wind-analysis')
       await expect(collapsed).toHaveAttribute('data-state', 'collapsed')
       await expect(collapsed).toContainText(`${speedOf(now)} km/h`)
       await expect(collapsed).toContainText(`du ${label(dirOf(now))}`)
-      if (process.env.E2E_SCREENSHOTS === '1')
-        await page.screenshot({
-          path: `docs/validation/vent-analyse-replie-${size.w}x${size.h}.png`,
-        })
+      await expect(nav).toHaveCount(0)
+      const slim = await rect(page, '[data-testid="wind-analysis"]')
+      expect(slim?.height ?? 999).toBeLessThan(landscape ? 80 : 100 + inset.bottom)
+      const attrib = await rect(page, '.maplibregl-ctrl-attrib')
+      if (attrib && slim)
+        expect(
+          attrib.y + attrib.height,
+          'attributions sous la feuille',
+        ).toBeLessThanOrEqual(slim.y + 0.5)
+      const shotCollapsed = shot(`analyse-replie-${size.w}x${size.h}`)
+      if (shotCollapsed) await page.screenshot({ path: shotCollapsed })
+
+      // Fermer : la navigation revient, la carte retrouve sa taille, l'heure reste.
+      await page.getByRole('button', { name: "Fermer l'analyse du vent" }).click()
+      await expect(page.getByTestId('wind-analysis')).toHaveCount(0)
+      if (size.w < 768) await expect(nav).toBeVisible()
+      const mapAfter = await rect(page, '[data-testid="map-container"]')
+      expect(Math.abs((mapAfter?.height ?? 0) - mapBefore.height)).toBeLessThanOrEqual(1)
+      expect(Math.abs((mapAfter?.width ?? 0) - mapBefore.width)).toBeLessThanOrEqual(1)
+      // Rouvrir (le panneau météo, rouvert à la fermeture, porte le bouton) :
+      // la même heure partagée est toujours là.
+      await page.getByRole('button', { name: 'Analyse du vent' }).click()
+      await expect(page.getByTestId('wind-analysis')).toBeVisible()
+      expect(await selected(page)).toBe(now)
     })
   })
 }

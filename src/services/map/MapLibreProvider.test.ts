@@ -16,6 +16,7 @@ const {
   FakeMap,
   FakeMarker,
   FakeNavigationControl,
+  FakeAttributionControl,
   fakeAddProtocol,
 } = vi.hoisted(() => {
   const calls: string[] = []
@@ -35,6 +36,16 @@ const {
   }
 
   class FakeNavigationControl {
+    onAdd() {
+      return document.createElement('div')
+    }
+  }
+
+  class FakeAttributionControl {
+    options: unknown
+    constructor(options?: unknown) {
+      this.options = options
+    }
     onAdd() {
       return document.createElement('div')
     }
@@ -240,6 +251,7 @@ const {
     FakeMap,
     FakeMarker,
     FakeNavigationControl,
+    FakeAttributionControl,
     fakeAddProtocol,
   }
 })
@@ -248,6 +260,7 @@ vi.mock('maplibre-gl', () => ({
   Map: FakeMap,
   Marker: FakeMarker,
   NavigationControl: FakeNavigationControl,
+  AttributionControl: FakeAttributionControl,
   setWorkerUrl: vi.fn(),
   addProtocol: fakeAddProtocol,
 }))

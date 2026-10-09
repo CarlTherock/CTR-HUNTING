@@ -50,6 +50,10 @@ describe('OpenMeteoWindProvider', () => {
     expect(requested.searchParams.get('hourly')).toContain('wind_direction_10m')
     expect(requested.searchParams.get('hourly')).toContain('temperature_2m')
     expect(requested.searchParams.get('hourly')).toContain('cloud_cover')
+    expect(requested.searchParams.get('hourly')).toContain('wind_gusts_10m')
+    // Five real calendar days, requested explicitly.
+    expect(requested.searchParams.get('forecast_days')).toBe('5')
+    expect(requested.searchParams.get('timezone')).toBe('auto')
   })
 
   it('maps each grid point to its own real sample with matching coordinates', async () => {

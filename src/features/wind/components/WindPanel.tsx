@@ -19,7 +19,16 @@ import {
   windFavorability,
   windHourlyRow,
 } from '../windSummary'
+import {
+  buildForecastDays,
+  dayLabel,
+  findDayOfIndex,
+  slotForDayChange,
+} from '../analysis/windTimeline'
 import { WindCompass } from './WindCompass'
+
+/** Upper bound of hourly rows read: the 5-day horizon plus a margin. */
+const MAX_ROWS = 24 * 7
 
 const BOX = 0.15 // degrees around the point: one small batched Open-Meteo request
 
@@ -48,7 +57,14 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
   const [spotId, setSpotId] = useState<string>('')
   const spot = spots.find((w) => w.id === spotId)
 
-  const rows = useMemo(() => windHourlyRow(field, coordinate, 0, 48), [field, coordinate])
+  const rows = useMemo(
+    () => windHourlyRow(field, coordinate, 0, MAX_ROWS),
+    [field, coordinate],
+  )
+  // Real calendar days of the loaded series (same builder as the map's
+  // « Analyse du vent » panel): the hour cards below show the selected day.
+  const days = useMemo(() => buildForecastDays(field, new Date()), [field])
+  const selectedDay = findDayOfIndex(days, selected) ?? days[0] ?? null
   const lat = coordinate.lat
   const lng = coordinate.lng
   useEffect(() => {
@@ -164,12 +180,49 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
               </p>
             )}
 
+            {days.length > 1 && (
+              <div
+                role="group"
+                aria-label="Jour de la prévision de vent"
+                className="flex gap-2 overflow-x-auto"
+              >
+                {days.map((day) => (
+                  <button
+                    key={day.dateKey}
+                    type="button"
+                    aria-pressed={day.dateKey === selectedDay?.dateKey}
+                    onClick={() => {
+                      const hour = selectedDay
+                        ? (selectedDay.slots.find((slot) => slot.index === selected)
+                            ?.hour ?? 0)
+                        : 0
+                      const change = slotForDayChange(day, hour)
+                      if (change) setSelected(change.index)
+                    }}
+                    className={cn(
+                      'min-h-11 shrink-0 rounded-lg border px-3 text-xs font-medium',
+                      day.dateKey === selectedDay?.dateKey
+                        ? 'border-brand-400 bg-brand-500/15 text-brand-400'
+                        : 'border-surface-600 text-ink-300',
+                    )}
+                  >
+                    {dayLabel(day)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div
               role="group"
               aria-label="Vent heure par heure"
               className="flex gap-2 overflow-x-auto pb-2"
             >
-              {rows.slice(0, 24).map((row) => (
+              {(selectedDay
+                ? rows.filter((row) =>
+                    selectedDay.slots.some((s) => s.index === row.offset),
+                  )
+                : rows.slice(0, 24)
+              ).map((row) => (
                 <button
                   key={row.offset}
                   type="button"

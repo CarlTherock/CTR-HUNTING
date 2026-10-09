@@ -3,6 +3,18 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Correctif : analyse du vent pleine largeur, 5 jours (2026-10-09)
+
+Choix, mesures, limites : `docs/WIND_ANALYSIS.md` (v2).
+
+### Changed
+
+- Feuille « Analyse du vent » : pleine largeur, ancrée au bord bas de la carte (plus dans le dock étroit), trois positions (repliée / ouverte ≈ 25 % en portrait / détails avec défilement interne), poignée glissante + boutons, disposition paysage court dédiée.
+- Navigation du bas démontée (sans hauteur résiduelle, non focalisable) tant que l'analyse est ouverte, restaurée à la fermeture avec carte et heure conservées.
+- Rail : outils secondaires masqués pendant l'analyse ; rail, dock (guidage, sang, mesure) et contrôles MapLibre remontés au-dessus de la feuille (`--sheet-height`).
+- Attributions MapLibre : contrôle compact créé fermé (accès par ⓘ), crédits conservés.
+- Prévisions de vent : `forecast_days=5` (jusqu'à 120 créneaux horaires réels), jours construits à partir des dates reçues (fuseau local, jours de 23/25 h gérés), puces de jour dans l'analyse et dans le panneau Vent de la page Météo.
+
 ## Analyse du vent avec barre de temps (2026-10-09)
 
 Choix, données, limites : `docs/WIND_ANALYSIS.md`.

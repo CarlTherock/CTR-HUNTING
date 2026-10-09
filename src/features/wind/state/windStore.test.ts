@@ -175,12 +175,28 @@ describe('windStore', () => {
     expect(useWindStore.getState().fromCache).toBe(false)
   })
 
-  it('setSelectedHourOffset clamps to [0, 47]', () => {
+  it('setSelectedHourOffset clamps to [0, 47] while no longer series is loaded', () => {
     useWindStore.getState().setSelectedHourOffset(99)
     expect(useWindStore.getState().selectedHourOffset).toBe(47)
 
     useWindStore.getState().setSelectedHourOffset(-5)
     expect(useWindStore.getState().selectedHourOffset).toBe(0)
+  })
+
+  it('setSelectedHourOffset follows the loaded series: up to hour 119 over five days', () => {
+    const sample = FIELD.samples[0]
+    const hourly = Array.from({ length: 120 }, (_, i) => ({
+      ...sample.hourly[0],
+      time: `2026-08-${String(17 + Math.floor(i / 24))}T${String(i % 24).padStart(2, '0')}:00`,
+    }))
+    useWindStore.setState({ field: { ...FIELD, samples: [{ ...sample, hourly }] } })
+
+    useWindStore.getState().setSelectedHourOffset(100)
+    expect(useWindStore.getState().selectedHourOffset).toBe(100)
+    useWindStore.getState().setSelectedHourOffset(500)
+    expect(useWindStore.getState().selectedHourOffset).toBe(119)
+    useWindStore.getState().setSelectedHourOffset(7.6)
+    expect(useWindStore.getState().selectedHourOffset).toBe(8)
   })
 
   it('windAt returns the real reading nearest a coordinate at the selected hour, or null with no field', async () => {
