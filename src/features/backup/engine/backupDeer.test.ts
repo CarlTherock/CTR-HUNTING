@@ -152,4 +152,60 @@ describe('backup of DeerTracker entries', () => {
       }).ok,
     ).toBe(false)
   })
+
+  it('keeps the presumed impact of a shot through backup and restore, and rejects bad ones', async () => {
+    const impact = {
+      species: 'moose',
+      view: 'lateral-left',
+      x: 0.6123,
+      y: 0.4567,
+      regionId: 'thorax',
+      presumed: true,
+      recordedAt: NOW,
+      illustrationVersion: 'orignal-profil-gauche-1',
+      note: 'à gauche de l’épaule',
+    }
+    const shot = {
+      id: 'o-shot-impact',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      timestamp: NOW,
+      notes: '',
+      shot: { species: 'moose', reaction: 'a bondi', impact },
+    }
+    // A shot saved before this feature existed has no `impact` and stays valid.
+    const before = {
+      id: 'o-shot-before',
+      coordinate: { lat: 46.8, lng: -71.2 },
+      timestamp: NOW,
+      notes: '',
+      shot: { species: 'deer' },
+    }
+    const source = newDb()
+    await source.table('observations').bulkAdd([shot, before])
+    const { blob } = await createBackup({ database: source })
+    const target = newDb()
+    const plan = await planRestore(await readBackup(blob), { database: target })
+    const report = await applyRestore(plan, { database: target, mode: 'keep-local' })
+    expect(report.invalid).toEqual([])
+    expect(await target.table('observations').get('o-shot-impact')).toEqual(shot)
+    const old = await target.table('observations').get('o-shot-before')
+    expect(old).toEqual(before)
+    expect(old.shot).not.toHaveProperty('impact')
+
+    const withImpact = (patch: Record<string, unknown>) =>
+      validateRecord('observations', {
+        ...shot,
+        shot: { ...shot.shot, impact: { ...impact, ...patch } },
+      }).ok
+    expect(withImpact({})).toBe(true)
+    expect(withImpact({ x: 1.2 })).toBe(false)
+    expect(withImpact({ y: -0.1 })).toBe(false)
+    expect(withImpact({ x: 'a' })).toBe(false)
+    expect(withImpact({ species: 'wolf' })).toBe(false)
+    expect(withImpact({ view: 'top' })).toBe(false)
+    expect(withImpact({ presumed: false })).toBe(false)
+    expect(withImpact({ recordedAt: 'hier' })).toBe(false)
+    expect(withImpact({ illustrationVersion: '' })).toBe(false)
+    expect(withImpact({ regionId: 3 })).toBe(false)
+  })
 })
