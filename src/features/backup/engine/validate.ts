@@ -164,6 +164,31 @@ function validateBloodSession(raw: Rec): Validation<Rec> {
   }
 }
 
+function validateImpact(impact: unknown): string | null {
+  const bad = 'point d’impact « Après le tir » invalide'
+  if (!isRecord(impact)) return bad
+  if (impact.species !== 'deer' && impact.species !== 'moose') return bad
+  if (impact.view !== 'lateral-left') return bad
+  for (const key of ['x', 'y']) {
+    const value = impact[key]
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+      return bad
+    }
+  }
+  if (impact.presumed !== true) return bad
+  if (!validIsoLike(impact.recordedAt)) return bad
+  if (
+    typeof impact.illustrationVersion !== 'string' ||
+    impact.illustrationVersion === ''
+  ) {
+    return bad
+  }
+  for (const key of ['regionId', 'note']) {
+    if (impact[key] !== undefined && typeof impact[key] !== 'string') return bad
+  }
+  return null
+}
+
 const DEER_KINDS: readonly string[] = ['sighting', 'track', 'rub', 'scrape', 'other_sign']
 
 function validateObservation(raw: Rec): Validation<Rec> {
@@ -192,6 +217,10 @@ function validateObservation(raw: Rec): Validation<Rec> {
       if (shot[key] !== undefined && !validCoordinate(shot[key])) {
         return fail('position « Après le tir » invalide')
       }
+    }
+    if (shot.impact !== undefined) {
+      const problem = validateImpact(shot.impact)
+      if (problem) return fail(problem)
     }
   }
   if (raw.species !== undefined && raw.species !== 'moose') {

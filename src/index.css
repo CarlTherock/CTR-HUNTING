@@ -128,3 +128,42 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* « Anatomie et point d'impact » : colonne unique (portrait), deux colonnes
+ * en paysage court. Le dessin prend la place restante : le panneau de
+ * résultats est dans le flux, il ne recouvre jamais le dessin. */
+.anatomy-grid {
+  display: grid;
+  min-height: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(9.5rem, 1fr) auto auto;
+  grid-template-areas: 'head' 'viewer' 'tools' 'panel';
+  gap: 0.5rem;
+}
+.anatomy-head {
+  grid-area: head;
+}
+.anatomy-viewer {
+  grid-area: viewer;
+}
+.anatomy-tools {
+  grid-area: tools;
+}
+.anatomy-panel {
+  grid-area: panel;
+  max-height: 44dvh;
+}
+@media (max-height: 480px) {
+  .anatomy-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: 'viewer head' 'viewer panel' 'tools panel';
+    align-items: start;
+  }
+  .anatomy-viewer {
+    height: max(9.5rem, calc(100dvh - 13rem));
+  }
+  .anatomy-panel {
+    max-height: none;
+  }
+}

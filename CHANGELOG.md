@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Module « Anatomie et point d'impact » (2026-10-08)
+
+Sources, assets, schéma et limites : `docs/ANATOMIE_APRES_LE_TIR.md`.
+
+### Added
+
+- Écran `/after-shot/anatomie` (depuis « Après le tir ») : choix Cerf / Orignal (deux dessins SVG originaux et distincts), profil gauche, annotations masquables, zoom (boutons, pincement, molette) et déplacement, réinitialisation, point d'impact présumé touché ou glissé (ou flèches du clavier), alternative par liste de régions, panneau de résultats repliable (bouton « Enregistrer » toujours visible).
+- Fiches sourcées embarquées (contenu-0.1.0, révision 2026-10-08) : sources, contexte, incertitudes, applicabilité à l'espèce, version et limites de validation. Aucun diagnostic, probabilité, distance de fuite, position de l'animal, délai chiffré ni compte à rebours.
+- `ShotRecord.impact` (champ optionnel : espèce, vue, x/y normalisés, région, présumé, date, version du dessin, note) : aucune nouvelle base, aucune migration Dexie, validation de sauvegarde et test de restauration.
+- « Après le tir » : lien vers l'écran, résumé du point enregistré par tir, « Marquer / Voir ou modifier le point d'impact ».
+
+### Limits
+
+- Seules la zone cœur-poumons et l'axe de la colonne sont dessinés : les sources lues ne localisent pas foie, panse ni intestins. Une seule vue (profil gauche). Dessins non relus par un anatomiste. Pas de modèle 3D. iPhone réel et WebKit non testés.
+
 ## Audit fonctionnel terrain iOS : « + Repère », caméra sang, « Après le tir » (2026-10-08)
 
 Détail des défauts, chemins et limites : `docs/AUDIT_TERRAIN_IOS.md`.

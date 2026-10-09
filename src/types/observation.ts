@@ -100,4 +100,35 @@ export interface ShotRecord {
   lastConfirmedPosition?: Coordinate
   /** Blood search (`BloodSession.id`) opened for this shot, if any. */
   searchSessionId?: string
+  /** The point the user marked by hand on the anatomical drawing. It is the
+   * user's presumed impact, not a finding. */
+  impact?: ImpactEstimate
+}
+
+/** Views of the anatomical drawing. Only the left profile exists for now. */
+export type AnatomyView = 'lateral-left'
+
+/** « Anatomie » — where the user marked the presumed impact on a schematic
+ * drawing. A 2D point says nothing about the path inside the animal, the
+ * organs reached or the outcome: it is stored only so the user can come back
+ * to it, edit it and share it with the shot record. */
+export interface ImpactEstimate {
+  /** Species of the drawing used (separate drawings for each species). */
+  species: ShotSpecies
+  view: AnatomyView
+  /** Position on the illustration, 0..1 of its width (left → right). */
+  x: number
+  /** Position on the illustration, 0..1 of its height (top → bottom). */
+  y: number
+  /** Region of the drawing the point falls in (or that the user picked from
+   * the list), when it falls in one. */
+  regionId?: string
+  /** Always true: the point is the user's presumption. */
+  presumed: true
+  /** When the point was saved. */
+  recordedAt: string // ISO 8601
+  /** Version of the drawing the coordinates refer to. */
+  illustrationVersion: string
+  /** The user's own note about the point. */
+  note?: string
 }

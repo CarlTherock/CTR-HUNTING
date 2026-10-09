@@ -1,0 +1,200 @@
+import type { Illustration } from '../types'
+
+const STRUCTURES_SOURCE = ['adfg-shot'] as const
+
+/** Cerf de Virginie — left profile, head to the viewer's left. Drawn on its
+ * own: it is NOT a scaled copy of the moose drawing. */
+export const DEER_ILLUSTRATION: Illustration = {
+  id: 'deer-lateral-left',
+  species: 'deer',
+  view: 'lateral-left',
+  viewLabel: 'Profil gauche (côté gauche de l’animal visible)',
+  version: 'cerf-profil-gauche-1',
+  width: 400,
+  height: 260,
+  silhouette: [
+    'M30 92 C38 86 52 76 66 70 C72 66 76 64 80 62 C100 62 122 76 146 88 C170 94 240 92 290 92 C326 92 342 94 350 104 C354 112 352 134 346 150 C342 160 338 162 336 172 L330 196 L326 238 L328 248 L312 248 L313 236 L314 204 L312 196 C306 180 296 168 288 160 C270 166 236 168 204 164 L186 160 L180 206 L178 240 L180 248 L164 248 L165 238 L166 206 L164 180 L158 164 C150 152 142 138 136 124 C126 116 110 108 96 104 C80 104 60 104 46 102 C38 100 30 98 30 92 Z',
+  ],
+  secondary: [
+    'M170 160 L168 206 L166 240 L168 248 L154 248 L155 238 L156 206 L158 164 Z',
+    'M300 164 L304 200 L298 240 L300 248 L286 248 L287 238 L290 200 L284 170 Z',
+    'M78 64 L70 38 L94 58 Z',
+    'M350 106 L364 92 L360 128 L352 130 Z',
+  ],
+  regions: [
+    {
+      id: 'head',
+      label: 'Tête',
+      polygon: [
+        { x: 24, y: 96 },
+        { x: 40, y: 84 },
+        { x: 70, y: 64 },
+        { x: 92, y: 56 },
+        { x: 104, y: 76 },
+        { x: 104, y: 116 },
+        { x: 70, y: 116 },
+        { x: 40, y: 110 },
+      ],
+      anchor: { x: 66, y: 94 },
+      drawn: [],
+      mentioned: [],
+    },
+    {
+      id: 'neck',
+      label: 'Cou',
+      polygon: [
+        { x: 92, y: 56 },
+        { x: 128, y: 74 },
+        { x: 152, y: 88 },
+        { x: 160, y: 112 },
+        { x: 160, y: 138 },
+        { x: 126, y: 130 },
+        { x: 104, y: 118 },
+        { x: 104, y: 76 },
+      ],
+      anchor: { x: 130, y: 104 },
+      drawn: [],
+      mentioned: [],
+    },
+    {
+      id: 'back',
+      label: 'Dos et colonne',
+      polygon: [
+        { x: 152, y: 86 },
+        { x: 200, y: 88 },
+        { x: 250, y: 88 },
+        { x: 300, y: 92 },
+        { x: 332, y: 98 },
+        { x: 346, y: 112 },
+        { x: 346, y: 126 },
+        { x: 300, y: 116 },
+        { x: 250, y: 114 },
+        { x: 200, y: 114 },
+        { x: 162, y: 112 },
+      ],
+      anchor: { x: 240, y: 100 },
+      drawn: ['spine'],
+      mentioned: [],
+    },
+    {
+      id: 'front-leg',
+      label: 'Patte avant',
+      polygon: [
+        { x: 146, y: 160 },
+        { x: 180, y: 160 },
+        { x: 174, y: 250 },
+        { x: 150, y: 250 },
+      ],
+      anchor: { x: 172, y: 205 },
+      drawn: [],
+      mentioned: [],
+    },
+    {
+      id: 'hind-leg',
+      label: 'Patte arrière',
+      polygon: [
+        { x: 286, y: 160 },
+        { x: 346, y: 160 },
+        { x: 338, y: 250 },
+        { x: 306, y: 250 },
+      ],
+      anchor: { x: 318, y: 205 },
+      drawn: [],
+      mentioned: [],
+    },
+    {
+      id: 'shoulder',
+      label: 'Épaule',
+      polygon: [
+        { x: 140, y: 112 },
+        { x: 182, y: 112 },
+        { x: 182, y: 162 },
+        { x: 140, y: 162 },
+      ],
+      anchor: { x: 162, y: 136 },
+      drawn: [],
+      mentioned: ['os de l’épaule'],
+    },
+    {
+      id: 'thorax',
+      label: 'Côtes avant (zone cœur-poumons)',
+      polygon: [
+        { x: 182, y: 112 },
+        { x: 240, y: 112 },
+        { x: 240, y: 162 },
+        { x: 182, y: 162 },
+      ],
+      anchor: { x: 208, y: 128 },
+      drawn: ['heart-lung'],
+      mentioned: [],
+    },
+    {
+      id: 'rear-ribs',
+      label: 'Arrière des côtes',
+      polygon: [
+        { x: 240, y: 112 },
+        { x: 272, y: 112 },
+        { x: 272, y: 162 },
+        { x: 240, y: 162 },
+      ],
+      anchor: { x: 256, y: 134 },
+      drawn: [],
+      mentioned: ['foie', 'panse (estomac)'],
+    },
+    {
+      id: 'flank',
+      label: 'Flanc et ventre',
+      polygon: [
+        { x: 272, y: 112 },
+        { x: 314, y: 112 },
+        { x: 314, y: 162 },
+        { x: 272, y: 162 },
+      ],
+      anchor: { x: 292, y: 138 },
+      drawn: [],
+      mentioned: ['intestins'],
+    },
+    {
+      id: 'hindquarter',
+      label: 'Arrière-train',
+      polygon: [
+        { x: 314, y: 112 },
+        { x: 348, y: 112 },
+        { x: 348, y: 162 },
+        { x: 314, y: 162 },
+      ],
+      anchor: { x: 330, y: 138 },
+      drawn: [],
+      mentioned: [],
+    },
+  ],
+  structures: [
+    {
+      id: 'heart-lung',
+      label: 'Zone cœur-poumons (schéma)',
+      shape: { kind: 'ellipse', cx: 208, cy: 130, rx: 26, ry: 28 },
+      note: 'Ellipse d’orientation placée derrière l’épaule ; sa taille n’est pas une mesure.',
+      labelAt: { x: 208, y: 184 },
+      sourceIds: STRUCTURES_SOURCE,
+    },
+    {
+      id: 'spine',
+      label: 'Colonne (axe schématique)',
+      shape: { kind: 'path', d: 'M156 102 C200 106 260 104 340 108' },
+      note: 'Simple axe le long du dos ; la forme réelle des vertèbres n’est pas représentée.',
+      labelAt: { x: 250, y: 82 },
+      sourceIds: [],
+    },
+  ],
+  provenance: {
+    origin:
+      'Dessin vectoriel original écrit à la main pour ce projet (8 octobre 2026), sans calque sur une image de tiers ni reprise d’un dessin d’éditeur.',
+    licence:
+      'Création originale du projet CTR-HUNTING ; aucun élément sous licence tierce n’est incorporé.',
+    anatomicalReferences: [
+      'Alaska Department of Fish and Game, « Big Game Shot Placement » (zone cœur-poumons derrière l’épaule, os d’épaule), consulté le 8 octobre 2026.',
+    ],
+    validationLimits:
+      'Silhouette schématique non relue par un anatomiste ou un biologiste de la faune : proportions approximatives. Seules la zone cœur-poumons et l’axe de la colonne sont dessinés ; les autres organes cités par les sources ne le sont pas, faute de position documentée. Une seule vue.',
+  },
+}

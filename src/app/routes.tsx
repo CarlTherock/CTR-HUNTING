@@ -53,6 +53,12 @@ export const router = createBrowserRouter(
           }),
         },
         {
+          path: 'after-shot/anatomie',
+          lazy: async () => ({
+            Component: (await import('@/features/anatomy/pages/AnatomyPage')).default,
+          }),
+        },
+        {
           path: 'project',
           lazy: async () => ({
             Component: (await import('@/features/project/pages/ProjectPage')).default,

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Camera,
   ClipboardList,
   Droplets,
+  Crosshair,
   Eye,
   Map as MapIcon,
   Play,
@@ -23,6 +24,8 @@ import { useMapStore } from '@/features/map/state/mapStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import type { Observation, ShotSpecies } from '@/types'
 import { cn } from '@/utils/cn'
+import { regionById } from '@/features/anatomy/anatomyLogic'
+import { ILLUSTRATIONS } from '@/features/anatomy/illustrations'
 import { ShotForm } from '../components/ShotForm'
 import { AfterShotGuide } from '../guide/AfterShotGuide'
 import {
@@ -51,6 +54,7 @@ function timeLabel(iso: string): string {
  * back to the blood search and the blood camera. */
 export default function AfterShotPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const gps = useGeolocation()
   const observations = useJournalStore((s) => s.observations)
   const journalLoaded = useJournalStore((s) => s.loaded)
@@ -62,7 +66,7 @@ export default function AfterShotPage() {
 
   const [species, setSpecies] = useState<ShotSpecies>('deer')
   const [adding, setAdding] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(params.get('shot'))
   const [showMap, setShowMap] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -177,6 +181,9 @@ export default function AfterShotPage() {
           )}
           {openSession ? 'Reprendre la recherche en cours' : 'Démarrer une recherche'}
         </button>
+        <Link to="/after-shot/anatomie" className={ACTION}>
+          <Crosshair size={20} aria-hidden="true" /> Anatomie et point d’impact
+        </Link>
         <button
           type="button"
           className={ACTION}
@@ -300,6 +307,15 @@ export default function AfterShotPage() {
                     {shot.lastConfirmedPosition && (
                       <li>Dernière position confirmée : renseignée</li>
                     )}
+                    {shot.impact && (
+                      <li data-testid="shot-impact-summary">
+                        Point d’impact présumé (estimation manuelle) :{' '}
+                        {regionById(
+                          ILLUSTRATIONS[shot.impact.species],
+                          shot.impact.regionId,
+                        )?.label ?? 'hors des régions dessinées'}
+                      </li>
+                    )}
                     {entry.notes && <li>Notes : {entry.notes}</li>}
                   </ul>
 
@@ -337,6 +353,14 @@ export default function AfterShotPage() {
                     >
                       Ouvrir sur la grande carte
                     </Button>
+                    <Link
+                      to={`/after-shot/anatomie?shot=${entry.id}`}
+                      className="border-surface-500 bg-surface-700 text-ink-100 inline-flex h-10 items-center rounded-lg border px-4 text-sm font-medium pointer-coarse:h-11"
+                    >
+                      {shot.impact
+                        ? 'Voir ou modifier le point d’impact'
+                        : 'Marquer un point d’impact'}
+                    </Link>
                     {!shot.searchSessionId && openSession && (
                       <Button
                         variant="secondary"
