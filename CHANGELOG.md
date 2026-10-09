@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Analyse du vent avec barre de temps (2026-10-09)
+
+Choix, données, limites : `docs/WIND_ANALYSIS.md`.
+
+### Added
+
+- Feuille basse repliable « Analyse du vent » sur la carte (ouverte depuis « Météo et radar ») : jours réellement couverts (Aujourd'hui / Demain), barre horaire manipulable (tactile, clavier, Maintenant), cartes horaires proches, valeurs du créneau (direction d'origine, vitesse, rafales) et « Source et détails » (source, âge, échantillon utilisé, rendu indicatif).
+- La barre pilote le curseur horaire partagé (`windStore.selectedHourOffset`) : traits de vent de la carte, panneau Vent de la page Météo, graphiques et Soleil & Lune suivent la même heure.
+- Copie hors ligne de la dernière prévision de vent (même zone seulement), avec sa date de récupération.
+
+### Changed
+
+- `windStore.fetch` : une réponse plus ancienne ne remplace plus la plus récente (numéro de requête + annulation) ; un échec d'actualisation garde le champ déjà affiché.
+- Avec l'analyse ouverte, une image radar arrivée en retard ne déplace plus l'heure choisie.
+
 ## Caméra de sang immersive (2026-10-09)
 
 Diagnostic, mesures et limites : `docs/CAMERA_IMMERSIVE.md`.

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { hourIndexAt } from '@/utils/windField'
 import type { Coordinate } from '@/types'
@@ -90,6 +91,9 @@ export function useWeatherMapEffects({
   // Open-Meteo hourly sample for that instant, never an approximation.
   useEffect(() => {
     if (!enabled || !windField) return
+    // With the wind analysis open, its time bar is the only master of the
+    // shared hour: a radar frame arriving late must not move it back.
+    if (useWindAnalysisStore.getState().open) return
     const frame = frames[frameIndex]
     if (!frame) return
     const index = hourIndexAt(windField, new Date(frame.time))

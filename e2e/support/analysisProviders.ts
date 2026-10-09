@@ -35,7 +35,7 @@ export function specialHour(): number {
   return Number(localParts(new Date()).hour) === 18 ? 9 : 18
 }
 
-function hourlyTimes(): string[] {
+export function hourlyTimes(): string[] {
   const today = localParts(new Date()).date
   const tomorrow = localParts(new Date(Date.now() + 24 * 3600_000)).date
   const times: string[] = []
