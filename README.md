@@ -70,4 +70,5 @@ adapters (none yet) in `src/services/`.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — implemented architecture, directory layout, decisions log
 - [`docs/VALIDATION.md`](./docs/VALIDATION.md) — périmètre réel des tests
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — CSP, dépendances, CI
+- [`docs/WIND_ANALYSIS.md`](./docs/WIND_ANALYSIS.md) — analyse du vent sur la carte : source, résolution horaire, synchronisation, limites
 - [`CHANGELOG.md`](./CHANGELOG.md) — what shipped in each phase

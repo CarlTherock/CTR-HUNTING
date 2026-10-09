@@ -55,6 +55,7 @@ import { MeasureTools } from '@/features/measure/components/MeasureTools'
 import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useMeasureExclusivity } from '@/features/measure/useMeasureExclusivity'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
+import { WindAnalysisPanel } from '@/features/wind/components/WindAnalysisPanel'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
 import { geoMetTileUrls, layerDef } from '@/services/weather-map'
@@ -856,6 +857,12 @@ export function MapPage() {
               className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-h-[75%] w-[calc(100%-0.5rem-var(--dock-reserve))] max-w-md flex-col items-start gap-2 [--dock-reserve:7rem]"
             >
               <ResumeFollowButton />
+              {!fieldModeEnabled && (
+                <WindAnalysisPanel
+                  viewCenter={view.center}
+                  getBounds={() => instanceRef.current?.getBounds() ?? null}
+                />
+              )}
               <BloodPanel
                 gpsReading={gpsReading}
                 onCenter={centerOnPosition}

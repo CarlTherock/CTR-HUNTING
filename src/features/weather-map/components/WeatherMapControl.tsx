@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   CloudSunRain,
   ListOrdered,
+  LineChart,
   Pause,
   Play,
   SkipBack,
@@ -12,6 +13,7 @@ import {
 import { ToolTrigger } from '@/components/map-tools'
 import { GEOMET_LAYERS, geoMetLegendUrl, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { WindCompass } from '@/features/wind/components/WindCompass'
 import { cn } from '@/utils/cn'
 import type { Coordinate } from '@/types'
@@ -64,6 +66,10 @@ export function WeatherMapControl({
   const setWindPaused = useWindStore((s) => s.setAnimationPaused)
   const windReading = useWindStore((s) => (s.field ? s.windAt(viewCenter) : null))
 
+  const analysisOpen = useWindAnalysisStore((s) => s.open)
+  const openAnalysis = useWindAnalysisStore((s) => s.openPanel)
+  const closeAnalysis = useWindAnalysisStore((s) => s.closePanel)
+
   const [legendOpen, setLegendOpen] = useState(false)
 
   useWeatherMapEffects({ isFrameReady, getBounds, viewCenter })
@@ -77,6 +83,25 @@ export function WeatherMapControl({
     if (bounds) toggleWind(bounds)
   }
 
+  /** The analysis panel replaces this one (a single bottom sheet at a time;
+   * the radar/forecast layers keep showing). It needs the wind particles
+   * and their forecast, so they are switched on if they were off. */
+  function handleOpenAnalysis() {
+    if (!windEnabled) handleToggleWind()
+    openAnalysis()
+  }
+
+  /** The rail button: with the analysis open it brings back the layers
+   * panel (closing the analysis); otherwise it opens/closes the panel. */
+  function handleRail() {
+    if (analysisOpen) {
+      closeAnalysis()
+      if (!enabled) toggle()
+      return
+    }
+    toggle()
+  }
+
   return (
     <>
       <ToolTrigger
@@ -84,13 +109,13 @@ export function WeatherMapControl({
         label="Météo et radar"
         title="Carte météo (radar, vent, pluie…)"
         icon={<CloudSunRain size={20} aria-hidden="true" />}
-        onClick={toggle}
+        onClick={handleRail}
         pressed={enabled}
         active={enabled}
         order={30}
       />
 
-      {enabled && (
+      {enabled && !analysisOpen && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <div className="border-surface-600 bg-surface-900/95 w-full max-w-md rounded-lg border p-3 shadow-2xl backdrop-blur">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -264,6 +289,14 @@ export function WeatherMapControl({
               >
                 <Wind size={14} aria-hidden="true" />
                 Particules de vent
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenAnalysis}
+                className="border-brand-400 bg-brand-500/20 text-brand-300 flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
+              >
+                <LineChart size={14} aria-hidden="true" />
+                Analyse du vent
               </button>
             </div>
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { db } from '@/database/db'
 import { useWindStore } from './windStore'
 import type { WindField } from '@/types'
 
@@ -38,13 +39,15 @@ const FIELD: WindField = {
   ],
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.clearAllMocks()
+  await db.settings.clear()
   useWindStore.setState({
     status: 'idle',
     field: null,
     fetchedAt: null,
     errorReason: null,
+    fromCache: false,
     enabled: false,
     selectedHourOffset: 0,
     activeLayer: 'wind',
@@ -67,7 +70,7 @@ describe('windStore', () => {
     useWindStore.getState().toggle(BOUNDS)
 
     expect(useWindStore.getState().enabled).toBe(true)
-    expect(fetchWindField).toHaveBeenCalledWith(BOUNDS, 5)
+    expect(fetchWindField).toHaveBeenCalledWith(BOUNDS, 5, expect.any(AbortSignal))
   })
 
   it('toggle() off does not discard an already-fetched field', async () => {
@@ -110,6 +113,66 @@ describe('windStore', () => {
 
     expect(useWindStore.getState().status).toBe('error')
     expect(useWindStore.getState().errorReason).toBe('network down')
+  })
+
+  it('ignores an older answer that arrives after a newer request (no stale overwrite)', async () => {
+    const older = { ...FIELD, timezone: 'America/Montreal' }
+    const release: { older?: (f: WindField) => void } = {}
+    fetchWindField
+      .mockImplementationOnce(
+        () => new Promise<WindField>((resolve) => (release.older = resolve)),
+      )
+      .mockResolvedValueOnce(FIELD)
+
+    const first = useWindStore.getState().fetch(BOUNDS)
+    await useWindStore.getState().fetch(BOUNDS)
+    release.older?.(older)
+    await first
+
+    expect(useWindStore.getState().field).toEqual(FIELD)
+    expect(useWindStore.getState().status).toBe('available')
+    // the older request was told to stop
+    expect((fetchWindField.mock.calls[0][2] as AbortSignal).aborted).toBe(true)
+  })
+
+  it('offline: falls back to the saved copy of the same area, flagged with its fetch date', async () => {
+    fetchWindField.mockResolvedValueOnce(FIELD)
+    await useWindStore.getState().fetch(BOUNDS)
+    const savedAt = useWindStore.getState().fetchedAt
+    useWindStore.setState({ field: null, fetchedAt: null, status: 'idle' })
+
+    fetchWindField.mockRejectedValueOnce(new Error('network down'))
+    await useWindStore.getState().fetch(BOUNDS)
+
+    const state = useWindStore.getState()
+    expect(state.field).toEqual(FIELD)
+    expect(state.fromCache).toBe(true)
+    expect(state.fetchedAt).toBe(savedAt)
+  })
+
+  it('offline: never applies the saved copy to another area', async () => {
+    fetchWindField.mockResolvedValueOnce(FIELD)
+    await useWindStore.getState().fetch(BOUNDS)
+    useWindStore.setState({ field: null, fetchedAt: null, status: 'idle' })
+
+    fetchWindField.mockRejectedValueOnce(new Error('network down'))
+    await useWindStore
+      .getState()
+      .fetch({ west: -80.3, south: 40.7, east: -80.1, north: 40.9 })
+
+    expect(useWindStore.getState().field).toBeNull()
+    expect(useWindStore.getState().status).toBe('error')
+  })
+
+  it('a failed refresh keeps the field already shown instead of dropping it', async () => {
+    fetchWindField.mockResolvedValueOnce(FIELD)
+    await useWindStore.getState().fetch(BOUNDS)
+    fetchWindField.mockRejectedValueOnce(new Error('network down'))
+    await useWindStore.getState().fetch(BOUNDS)
+
+    expect(useWindStore.getState().field).toEqual(FIELD)
+    expect(useWindStore.getState().status).toBe('error')
+    expect(useWindStore.getState().fromCache).toBe(false)
   })
 
   it('setSelectedHourOffset clamps to [0, 47]', () => {

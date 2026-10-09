@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { getSetting, setSetting } from '@/database/settingsRepository'
 import { windProvider } from '@/services/wind'
+import { boundsCover } from '@/features/wind/analysis/windTimeline'
 import { windAt as windAtSample } from '@/utils/windField'
 import type { LngLatBounds } from '@/utils/tiles'
 import type { Coordinate, WeatherMapLayer, WindField, WindHourlyReading } from '@/types'
@@ -12,6 +14,26 @@ export type WindLayerStatus = 'idle' | 'loading' | 'available' | 'error'
  * pushing toward the free-tier's per-minute call budget on frequent
  * re-fetches. */
 const GRID_SIZE = 5
+
+/** Settings key of the last successfully fetched field, so the forecast can
+ * still be consulted (flagged as a copy, with its fetch time) when the
+ * network is gone. */
+const CACHE_KEY = 'lastWindField'
+/** A copy is only accepted for the area it was fetched for (± this margin,
+ * in degrees) — never applied to a place it does not describe. */
+const CACHE_MARGIN_DEGREES = 0.05
+
+interface CachedWindField {
+  field: WindField
+  fetchedAt: string
+  bounds: LngLatBounds
+}
+
+/** Monotonic request number + controller: only the newest fetch may write
+ * its result; an older answer arriving late is dropped (and the older
+ * request aborted when possible). */
+let latestRequest = 0
+let latestController: AbortController | null = null
 
 /** True when the OS asks for reduced motion — the wind particle animation
  * then starts paused (a still frame) and the user must press Lecture. */
@@ -34,6 +56,10 @@ interface WindState {
    * reusing it instead of asking the provider again. */
   fetchedAt: string | null
   errorReason: string | null
+  /** `true` when `field` is the saved copy of an earlier fetch (the network
+   * request failed) rather than a fresh answer. `fetchedAt` is then the date
+   * the copy was fetched. */
+  fromCache: boolean
   /** Whether the flow-field layer is toggled on — kept separate from
    * `status` so turning it off doesn't discard the fetched field (no
    * need to re-fetch on toggling back on). */
@@ -74,6 +100,7 @@ export const useWindStore = create<WindState>((set, get) => ({
   field: null,
   fetchedAt: null,
   errorReason: null,
+  fromCache: false,
   enabled: false,
   selectedHourOffset: 0,
   activeLayer: 'wind',
@@ -90,20 +117,59 @@ export const useWindStore = create<WindState>((set, get) => ({
   },
 
   fetch: async (bounds) => {
+    latestController?.abort()
+    const controller = new AbortController()
+    latestController = controller
+    const request = ++latestRequest
     set({ status: 'loading' })
     try {
-      const field = await windProvider.fetchWindField(bounds, GRID_SIZE)
+      const field = await windProvider.fetchWindField(
+        bounds,
+        GRID_SIZE,
+        controller.signal,
+      )
+      if (request !== latestRequest) return
+      const fetchedAt = new Date().toISOString()
       set({
         status: 'available',
         field,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt,
         errorReason: null,
+        fromCache: false,
       })
+      try {
+        await setSetting<CachedWindField>(CACHE_KEY, { field, fetchedAt, bounds })
+      } catch {
+        // Best effort: no saved copy, the live field still works.
+      }
     } catch (err) {
-      set({
-        status: 'error',
-        errorReason: err instanceof Error ? err.message : 'Erreur inconnue',
-      })
+      if (request !== latestRequest) return
+      const reason = err instanceof Error ? err.message : 'Erreur inconnue'
+      // The fetch failed: keep whatever field is already shown (flagged by
+      // the error status), else offer the saved copy for this very area.
+      if (get().field) {
+        set({ status: 'error', errorReason: reason })
+        return
+      }
+      const cached = await getSetting<CachedWindField | null>(CACHE_KEY, null).catch(
+        () => null,
+      )
+      if (request !== latestRequest) return
+      const center = {
+        lat: (bounds.north + bounds.south) / 2,
+        lng: (bounds.east + bounds.west) / 2,
+      }
+      if (cached && boundsCover(cached.bounds, center, CACHE_MARGIN_DEGREES)) {
+        set({
+          status: 'available',
+          field: cached.field,
+          fetchedAt: cached.fetchedAt,
+          errorReason: reason,
+          fromCache: true,
+        })
+      } else {
+        set({ status: 'error', errorReason: reason })
+      }
     }
   },
 

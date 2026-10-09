@@ -1,5 +1,5 @@
 import { useAddPointStore } from '@/features/addpoint/state/addPointStore'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MapPage } from './MapPage'
@@ -14,6 +14,10 @@ import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useWindStore } from '@/features/wind/state/windStore'
+import { useBloodStore } from '@/features/blood/state/bloodStore'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
+import { localHourKey } from '@/utils/windField'
+import type { WindField } from '@/types'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { useHeatmapStore } from '@/features/analytics/state/heatmapStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
@@ -247,10 +251,13 @@ afterEach(async () => {
   useWindStore.setState({
     status: 'idle',
     field: null,
+    fetchedAt: null,
     errorReason: null,
+    fromCache: false,
     enabled: false,
     selectedHourOffset: 0,
   })
+  useWindAnalysisStore.setState({ open: false, expanded: true })
   useAnalysisStore.setState({
     mode: 'idle',
     status: 'idle',
@@ -315,6 +322,7 @@ afterEach(async () => {
   await db.settings.delete('territoryFilter')
   await db.offlineAreas.clear()
   await db.settings.delete('fieldModeEnabled')
+  await db.settings.delete('lastWindField')
   lastCreateMapOptions = undefined
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true })
 })
@@ -1242,6 +1250,7 @@ describe('MapPage', () => {
     expect(fetchWindField).toHaveBeenCalledWith(
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
       5,
+      expect.any(AbortSignal),
     )
     await vi.waitFor(() => {
       expect(setWindField).toHaveBeenLastCalledWith(
@@ -1718,5 +1727,408 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
         expect(last[0].points).toEqual([{ lat: 1, lng: 2, timestamp: 'x' }])
       })
     })
+  })
+})
+
+/**
+ * « Analyse du vent » : panneau du bas + barre de temps. Les créneaux de test
+ * ont une direction et une vitesse DIFFÉRENTES à chaque heure (direction =
+ * 7° × indice, vitesse = 3 + indice km/h) : lire la bonne valeur à l'écran et
+ * dans l'appel de rendu prouve que le bon créneau est transmis. Chromium/jsdom
+ * seulement — aucun iPhone réel.
+ */
+function dayKeys(): [string, string] {
+  const today = localHourKey(new Date(), 'America/Toronto').slice(0, 10)
+  const next = new Date(`${today}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  return [today, next.toISOString().slice(0, 10)]
+}
+
+function windFixture(hours = 48): WindField {
+  const [today, tomorrow] = dayKeys()
+  const hourly = Array.from({ length: hours }, (_, i) => ({
+    time: `${i < 24 ? today : tomorrow}T${String(i % 24).padStart(2, '0')}:00`,
+    directionDegrees: (i * 7) % 360,
+    speedKmh: 3 + i,
+    gustsKmh: 10 + i,
+    temperatureCelsius: 10,
+    precipitationMm: 0,
+    cloudCoverPercent: 0,
+  }))
+  return {
+    timezone: 'America/Toronto',
+    samples: [{ coordinate: { lat: 46.8139, lng: -71.208 }, hourly }],
+  }
+}
+
+function currentIndex(field: WindField): number {
+  const key = localHourKey(new Date(), field.timezone)
+  return field.samples[0].hourly.findIndex((h) => h.time === key)
+}
+
+function lastRendered() {
+  const [field, hourOffset] = setWindField.mock.calls[setWindField.mock.calls.length - 1]
+  return { field: field as WindField | null, hourOffset: hourOffset as number }
+}
+
+function seedWind(
+  field: WindField | null,
+  extra: Partial<ReturnType<typeof useWindStore.getState>> = {},
+) {
+  useWindStore.setState({
+    status: field ? 'available' : 'idle',
+    field,
+    fetchedAt: new Date().toISOString(),
+    enabled: true,
+    ...extra,
+  })
+  useWindAnalysisStore.setState({ open: true, expanded: true })
+}
+
+describe('Analyse du vent', () => {
+  beforeEach(async () => {
+    // Les autres tests du fichier peuvent laisser une recherche de sang, un
+    // guidage ou un repère en édition : ces états replient la feuille (voulu).
+    await db.bloodSessions.clear()
+    useBloodStore.setState({ sessions: [], loaded: false, manual: null })
+    useGuidanceStore.setState({ destinationId: null, collapsed: false, notice: null })
+    useWaypointsStore.setState({ editingId: null, draft: null })
+  })
+
+  it("s'ouvre depuis la commande météo, remplace son panneau et active les traits", async () => {
+    const user = userEvent.setup()
+    fetchWindField.mockResolvedValueOnce(windFixture())
+    render(<MapPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    expect(screen.getByRole('heading', { name: 'Carte météo' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Analyse du vent' }))
+
+    const panel = await screen.findByTestId('wind-analysis')
+    expect(panel).toHaveAttribute('data-state', 'expanded')
+    // une seule feuille du bas : le panneau des couches est remplacé
+    expect(screen.queryByRole('heading', { name: 'Carte météo' })).toBeNull()
+    expect(useWindStore.getState().enabled).toBe(true)
+    expect(fetchWindField).toHaveBeenCalled()
+
+    // le bouton du rail ramène le panneau des couches et ferme l'analyse
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    expect(screen.queryByTestId('wind-analysis')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Carte météo' })).toBeInTheDocument()
+  })
+
+  it("ne propose que les jours couverts : Aujourd'hui et Demain pour une prévision de 48 h", async () => {
+    seedWind(windFixture())
+    render(<MapPage />)
+    const group = await screen.findByRole('group', { name: 'Jour de la prévision' })
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(["Aujourd'hui", 'Demain'])
+  })
+
+  it('une prévision de 24 h ne propose pas Demain', async () => {
+    seedWind(windFixture(24))
+    render(<MapPage />)
+    const group = await screen.findByRole('group', { name: 'Jour de la prévision' })
+    expect(within(group).getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Demain' })).toBeNull()
+  })
+
+  it('changer de jour garde la même heure et envoie ce créneau précis au rendu', async () => {
+    const user = userEvent.setup()
+    const field = windFixture()
+    const now = currentIndex(field)
+    seedWind(field, { selectedHourOffset: now })
+    render(<MapPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Demain' }))
+
+    const target = now + 24
+    expect(useWindStore.getState().selectedHourOffset).toBe(target)
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(target))
+    const rendered = lastRendered()
+    const slot = rendered.field?.samples[0].hourly[rendered.hourOffset]
+    expect(slot).toMatchObject({
+      speedKmh: 3 + target,
+      directionDegrees: (target * 7) % 360,
+    })
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent(`${3 + target} km/h`)
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent(
+      `(${(target * 7) % 360}°)`,
+    )
+  })
+
+  it("le curseur au clavier change l'heure partagée, les valeurs ET le rendu", async () => {
+    const user = userEvent.setup()
+    const field = windFixture()
+    seedWind(field, { selectedHourOffset: 10 })
+    render(<MapPage />)
+
+    const bar = await screen.findByRole('slider', {
+      name: 'Heure de la prévision de vent',
+    })
+    bar.focus()
+    await user.keyboard('{ArrowRight}{ArrowRight}')
+    expect(useWindStore.getState().selectedHourOffset).toBe(12)
+    expect(bar).toHaveAttribute('aria-valuenow', '12')
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(12))
+    expect(lastRendered().field?.samples[0].hourly[12].speedKmh).toBe(15)
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent('15 km/h')
+
+    await user.keyboard('{PageUp}')
+    expect(useWindStore.getState().selectedHourOffset).toBe(18)
+    await user.keyboard('{Home}')
+    expect(useWindStore.getState().selectedHourOffset).toBe(0)
+    await user.keyboard('{End}')
+    expect(useWindStore.getState().selectedHourOffset).toBe(23)
+    // les flèches passent à la journée suivante, sans trou
+    await user.keyboard('{ArrowRight}')
+    expect(useWindStore.getState().selectedHourOffset).toBe(24)
+    expect(screen.getByRole('button', { name: 'Demain' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('toucher une carte horaire sélectionne ce créneau', async () => {
+    const user = userEvent.setup()
+    seedWind(windFixture(), { selectedHourOffset: 5 })
+    render(<MapPage />)
+    const cards = await screen.findByRole('list', { name: 'Heures proches' })
+    await user.click(within(cards).getByRole('button', { name: /^07:00/ }))
+    expect(useWindStore.getState().selectedHourOffset).toBe(7)
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(7))
+  })
+
+  it("« Maintenant » revient à l'heure réelle du champ chargé", async () => {
+    const user = userEvent.setup()
+    const field = windFixture()
+    const now = currentIndex(field)
+    seedWind(field, { selectedHourOffset: (now + 20) % 48 })
+    render(<MapPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Maintenant' }))
+    expect(useWindStore.getState().selectedHourOffset).toBe(now)
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(now))
+  })
+
+  it('un créneau absent est dit absent : pas de retour silencieux au vent actuel', async () => {
+    const field = windFixture(30)
+    seedWind(field, { selectedHourOffset: 12 })
+    render(<MapPage />)
+    // un autre écran (Météo, graphique) place le curseur hors des créneaux chargés
+    act(() => {
+      useWindStore.getState().setSelectedHourOffset(40)
+    })
+
+    expect(
+      await screen.findByText(/n’existe pas dans les prévisions chargées/),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('wind-readout')).not.toHaveTextContent('km/h')
+    expect(useWindStore.getState().selectedHourOffset).toBe(40)
+    // le rendu reçoit l'indice demandé (aucune particule sans donnée), jamais l'heure actuelle
+    expect(lastRendered().hourOffset).toBe(40)
+  })
+
+  it('hors ligne : copie enregistrée consultable avec sa date, sans valeur inventée', async () => {
+    const user = userEvent.setup()
+    const field = windFixture()
+    fetchWindField.mockResolvedValueOnce(field)
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    await vi.waitFor(async () =>
+      expect((await db.settings.get('lastWindField'))?.value).toBeTruthy(),
+    )
+    cleanup()
+    useWindStore.setState({
+      field: null,
+      status: 'idle',
+      fetchedAt: null,
+      enabled: false,
+    })
+
+    fetchWindField.mockRejectedValue(new Error('Failed to fetch'))
+    render(<MapPage />)
+    // le panneau des couches est déjà ouvert (état du store conservé)
+    await user.click(await screen.findByRole('button', { name: 'Analyse du vent' }))
+
+    expect(
+      await screen.findByText(/Hors ligne : copie enregistrée le/),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent('km/h')
+    fetchWindField.mockReset()
+    fetchWindField.mockResolvedValue(windFixture())
+  })
+
+  it('source indisponible et aucune copie : « indisponible », pas de valeur', async () => {
+    const user = userEvent.setup()
+    fetchWindField.mockRejectedValueOnce(new Error('Failed to fetch'))
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    await user.click(screen.getByRole('button', { name: 'Analyse du vent' }))
+
+    expect(
+      await screen.findByText(/Prévisions de vent indisponibles/),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('wind-readout')).toBeNull()
+    expect(screen.queryByRole('slider')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument()
+  })
+
+  it("pendant le chargement, ne laisse pas croire que la carte affiche l'heure choisie", async () => {
+    useWindStore.setState({ status: 'loading', field: null, enabled: true })
+    useWindAnalysisStore.setState({ open: true, expanded: true })
+    render(<MapPage />)
+    expect(
+      await screen.findByText(/n’affiche pas encore l’heure choisie/),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('wind-readout')).toBeNull()
+  })
+
+  it("à l'ouverture, démarre à l'heure courante ; une sélection déjà choisie ailleurs est conservée", async () => {
+    const field = windFixture()
+    const now = currentIndex(field)
+    seedWind(field, { selectedHourOffset: 0 })
+    const first = render(<MapPage />)
+    await vi.waitFor(() => expect(useWindStore.getState().selectedHourOffset).toBe(now))
+    first.unmount()
+
+    useWindAnalysisStore.setState({ open: false })
+    seedWind(field, { selectedHourOffset: 29 })
+    render(<MapPage />)
+    await screen.findByTestId('wind-analysis')
+    expect(useWindStore.getState().selectedHourOffset).toBe(29)
+  })
+
+  it("replié : date/heure, direction d'origine et vitesse ; l'état survit à un remontage (rotation)", async () => {
+    const user = userEvent.setup()
+    seedWind(windFixture(), { selectedHourOffset: 14 })
+    const first = render(<MapPage />)
+    await user.click(
+      await screen.findByRole('button', { name: "Replier l'analyse du vent" }),
+    )
+    const bar = screen.getByTestId('wind-analysis')
+    expect(bar).toHaveAttribute('data-state', 'collapsed')
+    expect(bar).toHaveTextContent('14:00')
+    expect(bar).toHaveTextContent('du ') // origine du vent
+    expect(bar).toHaveTextContent(`${3 + 14} km/h`)
+
+    first.unmount()
+    render(<MapPage />)
+    expect(screen.getByTestId('wind-analysis')).toHaveAttribute('data-state', 'collapsed')
+    expect(useWindStore.getState().selectedHourOffset).toBe(14)
+  })
+
+  it("plie la feuille quand l'éditeur de repère s'ouvre (une seule feuille à la fois)", async () => {
+    seedWind(windFixture())
+    render(<MapPage />)
+    expect(await screen.findByTestId('wind-analysis')).toHaveAttribute(
+      'data-state',
+      'expanded',
+    )
+    act(() => {
+      useWaypointsStore.setState({ editingId: 'inconnu' })
+    })
+    expect(screen.getByTestId('wind-analysis')).toHaveAttribute('data-state', 'collapsed')
+  })
+
+  it("recherche de sang en cours : reste en barre d'une ligne, l'heure reste réglable", async () => {
+    const user = userEvent.setup()
+    seedWind(windFixture(), { selectedHourOffset: 10 })
+    // la page charge les sessions depuis la base au montage
+    await db.bloodSessions.add({
+      id: 's1',
+      name: 'Recherche',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      status: 'waiting_gps',
+      counters: {},
+    })
+    try {
+      render(<MapPage />)
+      expect(await screen.findByTestId('wind-analysis')).toHaveAttribute(
+        'data-state',
+        'collapsed',
+      )
+      await user.click(screen.getByRole('button', { name: 'Heure suivante' }))
+      expect(useWindStore.getState().selectedHourOffset).toBe(11)
+    } finally {
+      cleanup()
+      await db.bloodSessions.clear()
+      useBloodStore.setState({ sessions: [], loaded: false })
+    }
+  })
+
+  it("guidage en portrait : la feuille s'ouvre et le guidage se replie sur sa ligne (jamais deux grandes feuilles)", async () => {
+    const saved = {
+      id: 'w1',
+      name: 'Mirador nord',
+      coordinate: { lat: 46.801, lng: -71.2 },
+      category: 'general' as const,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    await db.waypoints.add(saved)
+    useWaypointsStore.setState({ waypoints: [saved], loaded: true })
+    useGuidanceStore.getState().start('w1')
+    seedWind(windFixture(), { selectedHourOffset: 10 })
+    render(<MapPage />)
+    expect(await screen.findByTestId('wind-analysis')).toHaveAttribute(
+      'data-state',
+      'expanded',
+    )
+    await vi.waitFor(() => expect(useGuidanceStore.getState().collapsed).toBe(true))
+    expect(screen.getByRole('button', { name: 'Arrêter le guidage' })).toBeVisible()
+  })
+
+  it("paysage court avec guidage : reste en barre d'une ligne, heure toujours réglable", async () => {
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('max-height: 480px'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia
+    try {
+      const user = userEvent.setup()
+      seedWind(windFixture(), { selectedHourOffset: 10 })
+      const saved = {
+        id: 'w1',
+        name: 'Mirador nord',
+        coordinate: { lat: 46.801, lng: -71.2 },
+        category: 'general' as const,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }
+      await db.waypoints.add(saved)
+      useWaypointsStore.setState({ waypoints: [saved], loaded: true })
+      useGuidanceStore.getState().start('w1')
+      render(<MapPage />)
+      const bar = await screen.findByTestId('wind-analysis')
+      expect(bar).toHaveAttribute('data-state', 'collapsed')
+      await user.click(screen.getByRole('button', { name: 'Heure suivante' }))
+      expect(useWindStore.getState().selectedHourOffset).toBe(11)
+      await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(11))
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
+  it('partage la sélection avec les autres vues : changer ailleurs déplace la barre et le rendu', async () => {
+    seedWind(windFixture(), { selectedHourOffset: 3 })
+    render(<MapPage />)
+    const bar = await screen.findByRole('slider', {
+      name: 'Heure de la prévision de vent',
+    })
+    act(() => {
+      // ce que fait la page Météo / le graphique : même curseur partagé
+      useWindStore.getState().setSelectedHourOffset(17)
+    })
+    expect(bar).toHaveAttribute('aria-valuenow', '17')
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(17))
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent(`${3 + 17} km/h`)
   })
 })
