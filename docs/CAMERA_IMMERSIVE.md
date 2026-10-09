@@ -137,3 +137,12 @@ Le correctif ne dépend d'aucune de ces valeurs : `position: fixed; inset: 0`
   type précédent.
 - Les images « avant » viennent de la caméra simulée sur `main`, pas d'un
   iPhone.
+
+## 6. Raccourci « goutte de sang » sur la carte
+
+Bouton rouge du rail de la carte, entre « + Repère » et 2D/3D (`BloodCameraHost`,
+ordre 0). **Absent en paysage court (≤ 480 px de haut)** : un élément de plus y
+ajoutait une colonne au rail (mesuré à 568×320 : 246 → 298 px de large), ce qui
+réduisait le panneau « Aller à » à 254 px et recouvrait « Arrêter le guidage »
+(échec des tests `guidance.spec` en CI, reproduit en local puis corrigé). La caméra
+reste accessible par Outils et « + Repère » dans ce cas.

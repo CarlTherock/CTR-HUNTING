@@ -33,8 +33,11 @@ export function BloodCameraHost({ gpsReading }: { gpsReading: GeolocationReading
 
   return (
     <>
-      {/* Shortcut on the rail, between « + Repère » (order -10) and 2D/3D (5). */}
-      <ToolSlot placement="rail" order={0}>
+      {/* Shortcut on the rail, between « + Repère » (order -10) and 2D/3D (5).
+          Not in short landscape (≤ 480 px high): one more rail item widens the
+          rail by a column there and squeezes the « Aller à » dock; the camera
+          stays one tap away in Outils and in « + Repère ». */}
+      <ToolSlot placement="rail" order={0} className="[@media(max-height:480px)]:hidden">
         <button
           type="button"
           onClick={openCamera}

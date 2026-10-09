@@ -3,7 +3,12 @@ import { installFakeCamera } from './support/fakeCamera'
 import { expect, test } from './support/test'
 
 /** Raccourci goutte de sang sur le rail de la carte. Chromium, caméra simulée :
- * ne valide pas un iPhone réel. */
+ * ne valide pas un iPhone réel. En paysage court (≤ 480 px de haut) le
+ * raccourci est volontairement absent du rail : un bouton de plus y élargit le
+ * rail d'une colonne et écrase le panneau « Aller à » ; la caméra reste dans
+ * Outils. */
+const DROP = 'Raccourci : caméra de recherche'
+
 for (const size of [
   { w: 390, h: 844 },
   { w: 320, h: 568 },
@@ -18,43 +23,38 @@ for (const size of [
       permissions: ['geolocation'],
       geolocation: { latitude: 46.8, longitude: -71.2, accuracy: 6 },
     })
-    test('entre « + Repère » et 2D, atteignable, ouvre la caméra', async ({
-      page,
-      backend,
-    }) => {
-      void backend
-      await installFakeCamera(page)
-      await page.goto('map')
-      await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
-      await expectReachable(page, [
-        'Ajouter un repère',
-        'Raccourci : caméra de recherche',
-        '2D',
-        '3D',
-        'Outils',
-      ])
-      const y = async (name: string) =>
-        (await page.getByRole('button', { name, exact: true }).first().boundingBox())
-          ?.y ?? 0
-      const x = async (name: string) =>
-        (await page.getByRole('button', { name, exact: true }).first().boundingBox())
-          ?.x ?? 0
-      const repere = 'Ajouter un repère'
-      const drop = 'Raccourci : caméra de recherche'
-      if (size.h > 480) {
-        expect(await y(repere)).toBeLessThan(await y(drop))
-        expect(await y(drop)).toBeLessThan(await y('2D'))
-      } else {
-        expect(await x(repere)).toBeLessThan((await x(drop)) + 1)
-      }
-      if (process.env.E2E_SCREENSHOTS === '1')
-        await page.screenshot({
-          path: `docs/validation/camera-raccourci-${size.w}x${size.h}.png`,
-        })
-      await page.getByRole('button', { name: drop }).click()
-      await expect(page.getByTestId('blood-camera')).toBeVisible()
-      await page.getByRole('button', { name: 'Fermer la caméra' }).click()
-      await expect(page.getByTestId('blood-camera')).toHaveCount(0)
-    })
+    test(
+      size.h <= 480
+        ? 'paysage court : pas de raccourci sur le rail, la caméra reste dans Outils'
+        : 'entre « + Repère » et 2D, atteignable, ouvre la caméra',
+      async ({ page, backend }) => {
+        void backend
+        await installFakeCamera(page)
+        await page.goto('map')
+        await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
+        if (size.h <= 480) {
+          await expect(page.getByRole('button', { name: DROP })).toBeHidden()
+          await expectReachable(page, ['Ajouter un repère', '2D', '3D', 'Outils'])
+          await page.getByRole('button', { name: 'Outils' }).click()
+          await page.getByRole('button', { name: 'Caméra sang' }).click()
+          await expect(page.getByTestId('blood-camera')).toBeVisible()
+          return
+        }
+        await expectReachable(page, ['Ajouter un repère', DROP, '2D', '3D', 'Outils'])
+        const y = async (name: string) =>
+          (await page.getByRole('button', { name, exact: true }).first().boundingBox())
+            ?.y ?? 0
+        expect(await y('Ajouter un repère')).toBeLessThan(await y(DROP))
+        expect(await y(DROP)).toBeLessThan(await y('2D'))
+        if (process.env.E2E_SCREENSHOTS === '1')
+          await page.screenshot({
+            path: `docs/validation/camera-raccourci-${size.w}x${size.h}.png`,
+          })
+        await page.getByRole('button', { name: DROP }).click()
+        await expect(page.getByTestId('blood-camera')).toBeVisible()
+        await page.getByRole('button', { name: 'Fermer la caméra' }).click()
+        await expect(page.getByTestId('blood-camera')).toHaveCount(0)
+      },
+    )
   })
 }

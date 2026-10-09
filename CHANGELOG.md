@@ -20,7 +20,8 @@ Diagnostic, mesures et limites : `docs/CAMERA_IMMERSIVE.md`.
 - Lampe toujours accessible : état indisponible ou refusé dit honnêtement, jamais affichée allumée si la commande échoue.
 - « + Repère » depuis la caméra (Sang / indice ou Repère normal) avec le moteur existant : position GPS avec précision et ancienneté ou choix explicite sur la carte, capture jointe seulement sur demande, aucune trace démarrée en silence, pas de double indice.
 
-- Raccourci « goutte de sang » rouge sur le rail de la carte, entre « + Repère » et 2D/3D : ouvre la caméra de sang en un toucher, sans recherche ouverte.
+- Raccourci « goutte de sang » rouge sur le rail de la carte, entre « + Repère » et 2D/3D : ouvre la caméra de sang en un toucher, sans recherche ouverte. Absent du rail en paysage court (≤ 480 px de haut) : un bouton de plus y élargit le rail d'une colonne et écrase le panneau « Aller à » ; la caméra reste dans Outils et « + Repère ».
+- Repère normal placé sur la carte depuis la caméra : la note saisie est conservée (ajoutée après les notes du formulaire), avec ou sans photo ; l'état de la lampe distingue capacité détectée, commande refusée et indisponible.
 
 ### Fixed
 
