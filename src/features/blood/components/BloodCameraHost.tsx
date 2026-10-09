@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react'
-import { Camera } from 'lucide-react'
-import { ToolTrigger } from '@/components/map-tools'
+import { Camera, Droplets } from 'lucide-react'
+import { ToolSlot, ToolTrigger } from '@/components/map-tools'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
 import { useBloodStore } from '../state/bloodStore'
 
@@ -33,6 +33,22 @@ export function BloodCameraHost({ gpsReading }: { gpsReading: GeolocationReading
 
   return (
     <>
+      {/* Shortcut on the rail, between « + Repère » (order -10) and 2D/3D (5).
+          Not in short landscape (≤ 480 px high): one more rail item widens the
+          rail by a column there and squeezes the « Aller à » dock; the camera
+          stays one tap away in Outils and in « + Repère ». */}
+      <ToolSlot placement="rail" order={0} className="[@media(max-height:480px)]:hidden">
+        <button
+          type="button"
+          onClick={openCamera}
+          aria-label="Raccourci : caméra de recherche"
+          title="Caméra sang : aide visuelle expérimentale"
+          data-testid="blood-camera-shortcut"
+          className="border-surface-600 bg-surface-900/90 flex h-11 w-11 items-center justify-center rounded-lg border shadow-lg backdrop-blur-sm"
+        >
+          <Droplets size={22} className="text-red-500" aria-hidden="true" />
+        </button>
+      </ToolSlot>
       <ToolTrigger
         label="Caméra sang"
         title="Caméra sang : aide visuelle expérimentale"

@@ -540,6 +540,30 @@ describe('MapPage', () => {
     expect(screen.queryByTestId('blood-camera')).not.toBeInTheDocument()
   })
 
+  it('a blood-drop shortcut on the rail opens the camera in one tap, without any search', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    const rail = screen.getByTestId('map-tool-rail')
+    const shortcut = screen.getByRole('button', {
+      name: 'Raccourci : caméra de recherche',
+    })
+    expect(rail).toContainElement(shortcut)
+    // Rail order: « + Repère », then the shortcut, then 2D / 3D.
+    const orderOf = (el: HTMLElement) =>
+      Number(el.closest<HTMLElement>('[style*="order"]')?.style.order)
+    expect(
+      orderOf(screen.getByRole('button', { name: 'Ajouter un repère' })),
+    ).toBeLessThan(orderOf(shortcut))
+    expect(orderOf(shortcut)).toBeLessThan(
+      orderOf(screen.getByRole('button', { name: '2D' })),
+    )
+    await user.click(shortcut)
+    expect(
+      await screen.findByRole('dialog', { name: /Caméra de recherche de sang/ }),
+    ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Fermer la caméra' }))
+  })
+
   it('« + Repère » is a labelled permanent button; Caméra sang opens from it with no search open', async () => {
     const user = userEvent.setup()
     render(<MapPage />)

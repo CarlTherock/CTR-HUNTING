@@ -109,14 +109,21 @@ export function ToolSlot({
   children,
   order = 0,
   placement = 'sheet',
+  className,
 }: {
   children: ReactNode
   order?: number
+  /** Classes of the slot's own wrapper (e.g. to drop it from the layout). */
+  className?: string
   /** `rail`: always-visible column on the right edge; `sheet`: Outils. */
   placement?: ToolPlacement
 }) {
   const ctx = useContext(MapToolsContext)
-  const content = <div style={{ order }}>{children}</div>
+  const content = (
+    <div style={{ order }} className={className}>
+      {children}
+    </div>
+  )
   if (!ctx) return content
   const host = placement === 'rail' ? ctx.railHost : ctx.sheetHost
   return host ? createPortal(content, host) : null

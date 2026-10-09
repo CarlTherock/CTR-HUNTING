@@ -156,13 +156,35 @@ async function openSession() {
 }
 
 describe('BloodCameraAssist', () => {
-  it('always shows the mandatory warning and the experimental label', async () => {
+  it('always shows the compact caution; the full text and the label are one tap away', async () => {
+    const user = userEvent.setup()
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
     expect(screen.getByTestId('camera-warning')).toHaveTextContent(
+      'Aide visuelle — sang non confirmé',
+    )
+    expect(screen.getByRole('dialog', { name: /expérimental/ })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+
+    await user.click(screen.getByRole('button', { name: 'Aide et informations' }))
+    const help = screen.getByTestId('camera-help')
+    expect(screen.getByTestId('camera-help-warning')).toHaveTextContent(
       'Aide visuelle : les zones surlignées ne sont pas du sang confirmé. Des feuilles, baies, sols et objets peuvent être surlignés. L’absence de surbrillance ne prouve pas l’absence de sang.',
     )
-    expect(screen.getByText(/expérimental/)).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+    // The three points of caution are all there.
+    expect(help).toHaveTextContent(/faux positifs/i)
+    expect(help).toHaveTextContent(/surbrillance.*pas.*sang confirmé/i)
+    expect(help).toHaveTextContent(/absence de surbrillance.*pas.*absence de sang/i)
+    expect(screen.getByText(/Fonction expérimentale/)).toBeInTheDocument()
+    // The torch explanation separates detection, command and the iOS unknown.
+    const torch = screen.getByTestId('camera-help-torch')
+    expect(torch).toHaveTextContent(/Détectée/)
+    expect(torch).toHaveTextContent(/Commande/)
+    expect(torch).toHaveTextContent(/n’a pas été vérifiée/)
+    // Closing the help leaves the camera running.
+    await user.click(
+      screen.getByRole('button', { name: /Fermer : Aide et informations/ }),
+    )
+    expect(screen.queryByTestId('camera-help')).not.toBeInTheDocument()
   })
 
   it('reports a camera permission refusal and says tracking continues', async () => {
@@ -177,6 +199,7 @@ describe('BloodCameraAssist', () => {
       /continuent de fonctionner sans la caméra/,
     )
     expect(screen.getByTestId('camera-warning')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fermer la caméra' })).toBeVisible()
   })
 
   it('flags a red patch as a candidate zone (not blood) and creates NO point by itself', async () => {
@@ -213,18 +236,60 @@ describe('BloodCameraAssist', () => {
     )
   })
 
-  it('torch: offered only when the camera reports it', async () => {
+  it('torch: always reachable; unavailable is said honestly, never faked', async () => {
     const user = userEvent.setup()
     const view = render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
     await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
-    expect(screen.getByText(/Lampe de la caméra non disponible/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /lampe/i })).not.toBeInTheDocument()
+    const unavailable = screen.getByRole('button', { name: /Lampe indisponible/ })
+    expect(unavailable).toHaveAttribute('aria-disabled', 'true')
+    expect(unavailable).not.toHaveAttribute('aria-pressed')
+    expect(unavailable).toHaveAttribute('data-torch', 'unavailable')
+    await user.click(unavailable)
+    expect(await screen.findByTestId('camera-notice')).toHaveTextContent(
+      /Lampe non détectée/,
+    )
+    expect(applyConstraints).not.toHaveBeenCalled()
     view.unmount()
 
     capabilities = { torch: true }
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
-    const torch = await screen.findByRole('button', { name: /Allumer la lampe/ })
+    const torch = await screen.findByRole('button', { name: 'Allumer la lampe' })
+    expect(torch).toHaveAttribute('aria-pressed', 'false')
     await user.click(torch)
+    expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] })
+    expect(
+      await screen.findByRole('button', { name: 'Éteindre la lampe' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('torch: a refused command never shows the lamp as on', async () => {
+    const user = userEvent.setup()
+    capabilities = { torch: true }
+    applyConstraints.mockRejectedValueOnce(new Error('refused'))
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await user.click(await screen.findByRole('button', { name: 'Allumer la lampe' }))
+    expect(await screen.findByTestId('camera-notice')).toHaveTextContent(
+      /commande « allumer » a été refusée/,
+    )
+    const after = screen.getByRole('button', { name: 'Allumer la lampe' })
+    expect(after).toHaveAttribute('aria-pressed', 'false')
+    // Detected capability, refused command: told apart from « unavailable ».
+    expect(after).toHaveAttribute('data-torch', 'refused')
+    // The next command can still succeed and clears the refusal.
+    await user.click(after)
+    expect(
+      await screen.findByRole('button', { name: 'Éteindre la lampe' }),
+    ).toHaveAttribute('data-torch', 'on')
+  })
+
+  it('the torch stays reachable while the settings sheet is open', async () => {
+    const user = userEvent.setup()
+    capabilities = { torch: true }
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await screen.findByRole('button', { name: 'Allumer la lampe' })
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }))
+    expect(screen.getByTestId('camera-settings')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Allumer la lampe' }))
     expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] })
   })
 
@@ -233,6 +298,7 @@ describe('BloodCameraAssist', () => {
     redPatch = true
     const view = render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
     await screen.findByTestId('candidate-alert')
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }))
     expect(screen.getByRole('checkbox', { name: 'Vibration' })).toBeDisabled()
     expect(screen.getByText(/Vibration non prise en charge/)).toBeInTheDocument()
     view.unmount()
@@ -240,6 +306,7 @@ describe('BloodCameraAssist', () => {
     const vibrate = vi.fn()
     Object.defineProperty(navigator, 'vibrate', { configurable: true, value: vibrate })
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await user.click(await screen.findByRole('button', { name: 'Paramètres' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Vibration' }))
     await screen.findByTestId('candidate-alert')
     await waitFor(() => expect(vibrate).toHaveBeenCalled())
@@ -257,7 +324,9 @@ describe('BloodCameraAssist', () => {
     const user = userEvent.setup()
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
     await waitFor(() => expect(putImageData).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }))
     await user.click(screen.getByRole('button', { name: /Pause de l’analyse/ }))
+    expect(screen.getByTestId('camera-status')).toHaveTextContent('Analyse en pause')
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
     })
@@ -270,24 +339,87 @@ describe('BloodCameraAssist', () => {
     await waitFor(() => expect(putImageData.mock.calls.length).toBeGreaterThan(frozen))
   })
 
-  it('switches between original, filtered and side-by-side', async () => {
+  it('shows ONE large filtered view by default; original and comparison are one tap away', async () => {
     const user = userEvent.setup()
     render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Côte à côte' })).toHaveAttribute(
+    const canvas = screen.getByLabelText('Image avec surbrillance des zones candidates')
+    const video = screen.getByLabelText('Image originale de la caméra')
+    expect(screen.getByRole('button', { name: 'Filtrée' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
+    // Both layers fill the same surface with the same crop (object-cover).
+    expect(canvas).toHaveClass('object-cover', 'h-full', 'w-full')
+    expect(video).toHaveClass('object-cover', 'h-full', 'w-full')
+    expect(canvas).toHaveStyle({ visibility: 'visible' })
+    expect(screen.queryByTestId('camera-divider')).not.toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Originale' }))
     expect(screen.getByRole('button', { name: 'Originale' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await user.click(screen.getByRole('button', { name: 'Filtrée' }))
-    expect(screen.getByRole('button', { name: 'Filtrée' })).toHaveAttribute(
+    expect(canvas).toHaveStyle({ visibility: 'hidden' })
+
+    await user.click(screen.getByRole('button', { name: 'Comparaison' }))
+    const divider = screen.getByRole('slider', { name: 'Séparateur de comparaison' })
+    expect(divider).toHaveAttribute('aria-valuenow', '50')
+    expect(canvas).toHaveStyle({ clipPath: 'inset(0 50% 0 0)' })
+    // The divider also moves with the keyboard.
+    divider.focus()
+    await user.keyboard('{ArrowRight}{ArrowRight}')
+    expect(divider).toHaveAttribute('aria-valuenow', '54')
+    expect(canvas).toHaveStyle({ clipPath: 'inset(0 46% 0 0)' })
+  })
+
+  it('remembers the settings between two openings and can reset them', async () => {
+    const user = userEvent.setup()
+    window.localStorage.removeItem('ctr.bloodCamera.prefs.v1')
+    const first = render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }))
+    await user.click(screen.getByRole('button', { name: 'Bleu' }))
+    await user.click(screen.getByRole('button', { name: 'Comparaison' }))
+    first.unmount()
+
+    render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Comparaison' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }))
+    expect(screen.getByRole('button', { name: 'Bleu' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: /Réinitialiser les réglages/ }))
+    expect(screen.getByRole('button', { name: 'Jaune' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    window.localStorage.removeItem('ctr.bloodCamera.prefs.v1')
   })
+
+  it.each(['Jaune', 'Cyan', 'Bleu', 'Rouge'])(
+    'colour %s changes the display only, not which zones are flagged',
+    async (label) => {
+      const user = userEvent.setup()
+      redPatch = true
+      window.localStorage.removeItem('ctr.bloodCamera.prefs.v1')
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      const alert = await screen.findByTestId('candidate-alert')
+      const before = alert.textContent
+      await user.click(screen.getByRole('button', { name: 'Paramètres' }))
+      await user.click(screen.getByRole('button', { name: label }))
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      putImageData.mockClear()
+      await waitFor(() => expect(putImageData).toHaveBeenCalled())
+      expect(screen.getByTestId('candidate-alert').textContent).toBe(before)
+      window.localStorage.removeItem('ctr.bloodCamera.prefs.v1')
+    },
+  )
 
   it('capture then « Confirmer un indice » creates ONE Sang point with photo and note, via the normal flow', async () => {
     const user = userEvent.setup()
@@ -299,8 +431,9 @@ describe('BloodCameraAssist', () => {
     )
     await user.click(screen.getByRole('button', { name: /Capturer/ }))
 
-    expect(await screen.findByAltText('Photo originale')).toBeInTheDocument()
-    expect(screen.getByAltText('Photo avec surbrillance')).toBeInTheDocument()
+    expect(await screen.findByAltText('Photo avec surbrillance')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Originale \(intacte\)/ }))
+    expect(screen.getByAltText('Photo originale')).toBeInTheDocument()
     expect(screen.getByText(/pas à l’endroit exact de la tache/)).toBeInTheDocument()
     // Still nothing saved: the capture alone is not a clue.
     expect(await db.waypoints.count()).toBe(0)
@@ -351,6 +484,9 @@ describe('BloodCameraAssist', () => {
     expect(await db.waypoints.count()).toBe(0)
 
     await user.click(screen.getByRole('button', { name: 'Placer sur la carte' }))
+    // The camera steps aside (paused) but its video element is still the same one.
+    expect(screen.getByTestId('camera-placing')).toHaveTextContent(/Caméra en pause/)
+    expect(screen.getByLabelText('Image originale de la caméra')).toBeInTheDocument()
     const save = screen.getByRole('button', { name: 'Enregistrer avec la photo' })
     expect(save).toBeDisabled()
     act(() => useBloodStore.getState().setManualCoordinate({ lat: 46.81, lng: -71.21 }))
@@ -525,5 +661,289 @@ describe('BloodCameraAssist', () => {
     expect(await db.waypoints.count()).toBe(0)
     await user.click(screen.getByRole('button', { name: /Confirmer un indice/ }))
     await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+  })
+
+  describe('« + Repère » from the camera', () => {
+    const oldFix = (): GeolocationReading => ({
+      status: 'available',
+      confidence: 'measured',
+      source: 'browser-geolocation',
+      value: {
+        lat: 46.8,
+        lng: -71.2,
+        accuracyMeters: 5,
+        timestampMs: Date.now() - 3 * 60_000,
+      },
+    })
+
+    async function openMark(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+      return screen.getByTestId('camera-mark')
+    }
+
+    it('shows the phone position with accuracy and age, never the image centre', async () => {
+      const user = userEvent.setup()
+      await openSession()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      const sheet = await openMark(user)
+      expect(screen.getByTestId('mark-gps')).toHaveTextContent(
+        /Position du téléphone : ±5 m/,
+      )
+      expect(sheet).toHaveTextContent(/la caméra ne localise pas ce qu’elle montre/)
+      expect(screen.getByTestId('mark-target')).toHaveTextContent(/rattaché/)
+    })
+
+    it('Sang / indice: ONE point at the GPS position, attached to the open search, then back to the camera', async () => {
+      const user = userEvent.setup()
+      await openSession()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await openMark(user)
+      const save = screen.getByTestId('mark-save')
+      // A double tap must not create two points.
+      await user.dblClick(save)
+      await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+      const [clue] = await db.waypoints.toArray()
+      expect(clue).toMatchObject({
+        category: 'blood',
+        bloodKind: 'blood',
+        origin: 'gps',
+        coordinate: { lat: 46.8, lng: -71.2 },
+      })
+      expect(await db.photos.count()).toBe(0)
+      expect(await screen.findByTestId('camera-notice')).toHaveTextContent(/enregistré/)
+      expect(screen.queryByTestId('camera-mark')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Capturer/ })).toBeEnabled()
+      expect(await db.waypoints.count()).toBe(1)
+    })
+
+    it('Repère normal: an ordinary waypoint, not a blood clue, and no trace is started', async () => {
+      const user = userEvent.setup()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await openMark(user)
+      await user.click(screen.getByRole('button', { name: 'Repère normal' }))
+      await user.click(screen.getByTestId('mark-save'))
+      await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+      const [waypoint] = await db.waypoints.toArray()
+      expect(waypoint.category).toBe('general')
+      expect(waypoint.bloodKind).toBeUndefined()
+      expect(waypoint.coordinate).toMatchObject({ lat: 46.8, lng: -71.2 })
+      expect(useTracksStore.getState().status).toBe('idle')
+      expect(await db.bloodSessions.count()).toBe(0)
+    })
+
+    it('no search open: nothing is created or started until the user chooses', async () => {
+      const user = userEvent.setup()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await openMark(user)
+      await user.click(screen.getByTestId('mark-save'))
+      expect(await screen.findByTestId('clue-gate')).toBeInTheDocument()
+      expect(await db.waypoints.count()).toBe(0)
+      expect(await db.bloodSessions.count()).toBe(0)
+      expect(useTracksStore.getState().status).toBe('idle')
+
+      await user.click(
+        screen.getByRole('button', { name: /Créer une recherche et démarrer ma trace/ }),
+      )
+      await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+      expect(await db.bloodSessions.count()).toBe(1)
+    })
+
+    it.each([
+      ['absent', NO_GPS, /Position GPS indisponible/],
+      ['too old', oldFix(), /dernière position trop ancienne/],
+    ])(
+      'GPS %s: no save at the phone position; the user places it on the map',
+      async (_n, reading, text) => {
+        const user = userEvent.setup()
+        await openSession()
+        render(<BloodCameraAssist gpsReading={reading} onClose={vi.fn()} />)
+        await openMark(user)
+        expect(screen.getByTestId('mark-gps')).toHaveTextContent(text)
+        expect(screen.getByTestId('mark-save')).toBeDisabled()
+        expect(await db.waypoints.count()).toBe(0)
+
+        await user.click(screen.getByRole('button', { name: /Placer sur la carte/ }))
+        const placing = await screen.findByTestId('camera-placing')
+        expect(placing).toHaveTextContent(/pas à la position du téléphone/)
+        const save = screen.getByRole('button', { name: /Enregistrer l’indice ici/ })
+        expect(save).toBeDisabled()
+        act(() => useBloodStore.getState().setManualCoordinate({ lat: 46.9, lng: -71.3 }))
+        await waitFor(() => expect(save).toBeEnabled())
+        await user.click(save)
+        await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+        const [clue] = await db.waypoints.toArray()
+        expect(clue).toMatchObject({
+          origin: 'manual',
+          coordinate: { lat: 46.9, lng: -71.3 },
+        })
+        expect(await screen.findByTestId('camera-notice')).toBeInTheDocument()
+        expect(screen.queryByTestId('camera-placing')).not.toBeInTheDocument()
+      },
+    )
+
+    describe('ordinary repère placed on the map from the camera', () => {
+      const PLACE = { lat: 46.9, lng: -71.3 }
+
+      async function startPlacingNormal(
+        user: ReturnType<typeof userEvent.setup>,
+        note: string,
+        withKeptCapture: boolean,
+      ) {
+        render(<BloodCameraAssist gpsReading={NO_GPS} onClose={vi.fn()} />)
+        await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+        if (withKeptCapture) {
+          await user.click(screen.getByRole('button', { name: /Capturer/ }))
+          await user.click(
+            await screen.findByRole('button', { name: /Garder et revenir à la caméra/ }),
+          )
+        }
+        await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+        await user.click(screen.getByRole('button', { name: 'Repère normal' }))
+        if (note) await user.type(screen.getByLabelText(/Note/), note)
+        if (withKeptCapture)
+          await user.click(screen.getByRole('checkbox', { name: /Joindre la capture/ }))
+        await user.click(screen.getByRole('button', { name: /Placer sur la carte/ }))
+        await screen.findByTestId('camera-placing')
+      }
+
+      /** What the map does: a tap opens the form, « Enregistrer » saves it. */
+      async function saveFromMapForm(notes: string) {
+        act(() => useWaypointsStore.getState().startDraftAt(PLACE))
+        await act(async () => {
+          await useWaypointsStore.getState().saveDraft({
+            name: 'Mon repère',
+            category: 'general',
+            color: '#f59e0b',
+            notes,
+            optimalWindDirections: [],
+          })
+        })
+      }
+
+      it('keeps the typed note when the map form leaves its own notes empty (no photo)', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'note de la caméra', false)
+        await saveFromMapForm('')
+        await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe('note de la caméra'),
+        )
+        expect(await db.photos.count()).toBe(0)
+        expect(await screen.findByTestId('camera-notice')).toHaveTextContent(/enregistré/)
+      })
+
+      it('keeps the typed note AND the photo together', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'avec photo', true)
+        await saveFromMapForm('')
+        await waitFor(async () => expect(await db.photos.count()).toBe(1))
+        const [waypoint] = await db.waypoints.toArray()
+        expect(waypoint?.notes).toBe('avec photo')
+        const [photo] = await db.photos.toArray()
+        expect(photo?.waypointId).toBe(waypoint?.id)
+      })
+
+      it('adds the camera note AFTER what the map form wrote, never replacing it', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'note caméra', false)
+        await saveFromMapForm('note du formulaire')
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe(
+            'note du formulaire\nnote caméra',
+          ),
+        )
+      })
+
+      it('cancelling the placement saves nothing, returns to the camera and keeps the note', async () => {
+        const user = userEvent.setup()
+        await startPlacingNormal(user, 'à garder', false)
+        // The user opens the map form, then abandons it.
+        act(() => useWaypointsStore.getState().startDraftAt(PLACE))
+        act(() => useWaypointsStore.getState().cancelDraft())
+        await waitFor(() =>
+          expect(screen.queryByTestId('camera-placing')).not.toBeInTheDocument(),
+        )
+        expect(await db.waypoints.count()).toBe(0)
+        expect(screen.getByLabelText(/Note/)).toHaveValue('à garder')
+        expect(screen.getByLabelText('Image originale de la caméra')).toBeInTheDocument()
+
+        // « Retour à la caméra » from the placing panel does the same.
+        await user.click(screen.getByRole('button', { name: /Placer sur la carte/ }))
+        await user.click(
+          await screen.findByRole('button', { name: 'Retour à la caméra' }),
+        )
+        expect(await db.waypoints.count()).toBe(0)
+        expect(screen.getByLabelText(/Note/)).toHaveValue('à garder')
+      })
+
+      it('changing type keeps the note, and drops the previous type’s search gate', async () => {
+        const user = userEvent.setup()
+        render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+        await openMark(user)
+        await user.type(screen.getByLabelText(/Note/), 'reste là')
+        await user.click(screen.getByTestId('mark-save'))
+        expect(await screen.findByTestId('clue-gate')).toBeInTheDocument()
+
+        await user.click(screen.getByRole('button', { name: 'Repère normal' }))
+        expect(screen.queryByTestId('clue-gate')).not.toBeInTheDocument()
+        expect(screen.getByLabelText(/Note/)).toHaveValue('reste là')
+        expect(await db.waypoints.count()).toBe(0)
+
+        await user.click(screen.getByTestId('mark-save'))
+        await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+        await waitFor(async () =>
+          expect((await db.waypoints.toArray())[0]?.notes).toBe('reste là'),
+        )
+        expect(await db.bloodSessions.count()).toBe(0)
+      })
+    })
+
+    it('a kept capture is attached ONLY when asked, never automatically', async () => {
+      const user = userEvent.setup()
+      await openSession()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: /Capturer/ }))
+      await user.click(
+        await screen.findByRole('button', { name: /Garder et revenir à la caméra/ }),
+      )
+      expect(await db.waypoints.count()).toBe(0)
+      expect(screen.queryByTestId('capture-review')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+      const attach = screen.getByRole('checkbox', {
+        name: /Joindre la capture que je viens de prendre/,
+      })
+      expect(attach).not.toBeChecked()
+      await user.click(screen.getByTestId('mark-save'))
+      await waitFor(async () => expect(await db.waypoints.count()).toBe(1))
+      expect(await db.photos.count()).toBe(0)
+
+      // Once a point is saved, the kept capture is released: it is not offered again.
+      await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+      expect(
+        screen.queryByRole('checkbox', { name: /Joindre la capture/ }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('a kept capture joined on request is saved with the clue', async () => {
+      const user = userEvent.setup()
+      await openSession()
+      render(<BloodCameraAssist gpsReading={goodFix()} onClose={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText(/Capturer/)).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: /Capturer/ }))
+      await user.click(
+        await screen.findByRole('button', { name: /Garder et revenir à la caméra/ }),
+      )
+      await user.click(screen.getByRole('button', { name: /\+ Repère/ }))
+      await user.click(screen.getByRole('checkbox', { name: /Joindre la capture/ }))
+      await user.click(screen.getByTestId('mark-save'))
+      await waitFor(async () => expect(await db.photos.count()).toBe(1))
+      const [clue] = await db.waypoints.toArray()
+      const [photo] = await db.photos.toArray()
+      expect(photo.waypointId).toBe(clue.id)
+      expect(photo.originalBlob).toBeDefined()
+    })
   })
 })

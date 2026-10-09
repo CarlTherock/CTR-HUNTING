@@ -86,3 +86,31 @@ export async function countPixelsNear(
     { src: dataUrl, rgb: color, tol: tolerance },
   )
 }
+
+/** The colour of ONE screen pixel (CSS coordinates), read from a screenshot
+ * of the page: what the user actually sees, controls included. */
+export async function pixelAt(page: Page, x: number, y: number): Promise<Rgb> {
+  const png = await page.screenshot({
+    type: 'png',
+    clip: { x: Math.floor(x), y: Math.floor(y), width: 2, height: 2 },
+  })
+  const dataUrl = `data:image/png;base64,${png.toString('base64')}`
+  return page.evaluate(async (src) => {
+    const image = new Image()
+    image.src = src
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width
+    canvas.height = image.height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('2D canvas unavailable')
+    context.drawImage(image, 0, 0)
+    const { data } = context.getImageData(
+      Math.floor(image.width / 2),
+      Math.floor(image.height / 2),
+      1,
+      1,
+    )
+    return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0] as const
+  }, dataUrl)
+}

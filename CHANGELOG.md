@@ -3,6 +3,35 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Caméra de sang immersive (2026-10-09)
+
+Diagnostic, mesures et limites : `docs/CAMERA_IMMERSIVE.md`.
+
+### Changed
+
+- Caméra de sang : l'image couvre toute la surface (`object-fit: cover` identique pour la vidéo et le filtre, mêmes coordonnées), commandes flottantes (Fermer, Lampe, Paramètres, Aide/Infos, Filtrée / Originale / Comparaison, Capturer, + Repère), plus de défilement pour atteindre Capturer ; la comparaison est une image coupée par un séparateur réglable.
+- L'avertissement permanent devient une mention compacte « Aide visuelle — sang non confirmé » ; le texte complet (faux positifs, surbrillance ≠ sang confirmé, absence de surbrillance ≠ absence de sang) est dans Aide / Infos.
+- Réglages (sensibilité, atténuation du fond, couleur, rouille, son, vibration avec état de compatibilité, pause, import, réinitialisation) dans une feuille basse (latérale en paysage court), conservés entre deux ouvertures.
+- Capture : image entière gardée, boutons dans un pied de page fixe, « Garder et revenir à la caméra ».
+
+### Added
+
+- Couleurs de surbrillance Bleu et Rouge (affichage seulement : mêmes pixels candidats).
+- Lampe toujours accessible : état indisponible ou refusé dit honnêtement, jamais affichée allumée si la commande échoue.
+- « + Repère » depuis la caméra (Sang / indice ou Repère normal) avec le moteur existant : position GPS avec précision et ancienneté ou choix explicite sur la carte, capture jointe seulement sur demande, aucune trace démarrée en silence, pas de double indice.
+
+- Raccourci « goutte de sang » rouge sur le rail de la carte, entre « + Repère » et 2D/3D : ouvre la caméra de sang en un toucher, sans recherche ouverte. Absent du rail en paysage court (≤ 480 px de haut) : un bouton de plus y élargit le rail d'une colonne et écrase le panneau « Aller à » ; la caméra reste dans Outils et « + Repère ».
+- Repère normal placé sur la carte depuis la caméra : la note saisie est conservée (ajoutée après les notes du formulaire), avec ou sans photo ; l'état de la lampe distingue capacité détectée, commande refusée et indisponible.
+
+### Fixed
+
+- Sur `main`, aperçu de 79 à 155 px et boutons du bas (Capturer…) hors écran à 320×568, 390×844 et 568×320 : pile verticale + deux vignettes `object-contain` + panneau plafonné à 45 %.
+- Pendant le placement d'un point sur la carte, la vidéo était démontée et jamais ré-attachée : elle reste montée (même flux), analyse en pause.
+
+### Notes
+
+- Les deux captures de la mission ne sont pas arrivées. Chromium et jsdom, caméra et GPS simulés : aucune validation sur iPhone réel ni WebKit.
+
 ## Audit fonctionnel terrain iOS : « + Repère », caméra sang, « Après le tir » (2026-10-08)
 
 Détail des défauts, chemins et limites : `docs/AUDIT_TERRAIN_IOS.md`.
