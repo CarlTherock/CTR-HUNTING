@@ -183,7 +183,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
   const shell =
     'pointer-events-none fixed inset-x-0 bottom-[var(--panel-clearance,0px)] z-30 flex justify-center pr-[calc(0.75rem+var(--panel-right,0px))] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+var(--panel-left,0px))]'
   const card =
-    'pointer-events-auto border-surface-600 bg-surface-900 flex max-h-[max(6rem,min(80dvh,calc(100dvh-var(--panel-clearance,0px)-5rem)))] max-w-sm flex-col overflow-hidden rounded-lg border shadow-2xl'
+    'pointer-events-auto border-surface-600 bg-surface-900 max-h-[max(6rem,min(80dvh,calc(100dvh-var(--panel-clearance,0px)-5rem)))] max-w-sm overflow-y-auto rounded-lg border shadow-2xl'
   const draftError = draft?.error ?? null
   const shownError = error ?? draftError
   const busy = saving || (draft?.saving ?? false)
@@ -193,7 +193,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
     return (
       <div className={shell}>
         <div
-          className={cn(card, 'w-full overflow-y-auto p-4')}
+          className={cn(card, 'w-full p-4')}
           role="region"
           aria-label="Position du nouveau point de repère"
         >
@@ -233,7 +233,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
         data-testid="waypoint-edit-panel"
         data-folded={folded}
       >
-        <div className="shrink-0 px-4 pt-1.5">
+        <div className="bg-surface-900 sticky top-0 z-10 px-4 pt-1.5">
           <div
             aria-hidden="true"
             className="bg-surface-600 mx-auto h-1 w-10 rounded-full"
@@ -270,11 +270,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
           </div>
         </div>
 
-        <div
-          id="waypoint-edit-body"
-          hidden={folded}
-          className="min-h-0 flex-1 overflow-y-auto px-4 pt-1 pb-4"
-        >
+        <div id="waypoint-edit-body" hidden={folded} className="px-4 pt-1 pb-4">
           <div className="flex flex-col gap-3">
             {waypoint && !draft ? (
               <>

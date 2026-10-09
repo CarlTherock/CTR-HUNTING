@@ -696,6 +696,9 @@ for (const viewport of VIEWPORTS) {
     test('fiche du repère repliable : poignée + titre, jamais au-dessus de « Arrêter le guidage », état gardé à la rotation', async ({
       page,
     }) => {
+      // Many steps (two rotations, fold/unfold): give it the extra time a slow
+      // runner needs. Every assertion stays as is.
+      test.slow()
       await createAndGuide(page, 'Mirador nord')
       // The waypoint is tapped on the map: when the open guidance panel hides
       // it (narrow screens), fold the guidance first, as a user would.
