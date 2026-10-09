@@ -1,0 +1,94 @@
+{
+  "viewport": {
+    "w": 568,
+    "h": 320
+  },
+  "dialog": {
+    "x": 0,
+    "y": 0,
+    "w": 568,
+    "h": 320
+  },
+  "warning": {
+    "x": 8,
+    "y": 60,
+    "w": 552,
+    "h": 50
+  },
+  "video": {
+    "x": 4,
+    "y": 114,
+    "w": 278,
+    "h": 58
+  },
+  "canvas": {
+    "x": 286,
+    "y": 114,
+    "w": 278,
+    "h": 58
+  },
+  "panel": {
+    "x": 0,
+    "y": 176,
+    "w": 568,
+    "h": 144,
+    "scrollHeight": 392,
+    "clientHeight": 144
+  },
+  "buttons": [
+    {
+      "name": "Fermer la caméra",
+      "top": 8,
+      "bottom": 52,
+      "fullyInside": true
+    },
+    {
+      "name": "Côte à côte",
+      "top": 212,
+      "bottom": 256,
+      "fullyInside": true
+    },
+    {
+      "name": "Filtrée",
+      "top": 212,
+      "bottom": 256,
+      "fullyInside": true
+    },
+    {
+      "name": "Originale",
+      "top": 212,
+      "bottom": 256,
+      "fullyInside": true
+    },
+    {
+      "name": "Jaune",
+      "top": 312,
+      "bottom": 356,
+      "fullyInside": false
+    },
+    {
+      "name": "Cyan",
+      "top": 312,
+      "bottom": 356,
+      "fullyInside": false
+    },
+    {
+      "name": "Pause de l’analyse",
+      "top": 456,
+      "bottom": 504,
+      "fullyInside": false
+    },
+    {
+      "name": "Capturer",
+      "top": 456,
+      "bottom": 504,
+      "fullyInside": false
+    },
+    {
+      "name": "Importer une photo",
+      "top": 512,
+      "bottom": 560,
+      "fullyInside": false
+    }
+  ]
+}

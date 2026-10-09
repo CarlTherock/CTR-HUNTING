@@ -3,6 +3,7 @@ import {
   ALERT_MIN_INTERVAL_MS,
   CAMERA_WARNING,
   DEFAULT_HIGHLIGHT_SETTINGS,
+  HIGHLIGHT_COLOR_OPTIONS,
   HIGHLIGHT_RGB,
   analysisSize,
   analyzeCandidates,
@@ -10,6 +11,7 @@ import {
   computeCandidateMask,
   hasCandidateZone,
   isCandidateColor,
+  isHighlightColor,
   renderHighlight,
   rgbToHsv,
   shouldAlert,
@@ -182,5 +184,51 @@ describe('performance helpers', () => {
     expect(shouldAlert(1000, null)).toBe(true)
     expect(shouldAlert(1000 + ALERT_MIN_INTERVAL_MS - 1, 1000)).toBe(false)
     expect(shouldAlert(1000 + ALERT_MIN_INTERVAL_MS, 1000)).toBe(true)
+  })
+})
+
+describe('highlight colour is display-only', () => {
+  it('offers yellow, cyan, blue and red', () => {
+    expect(HIGHLIGHT_COLOR_OPTIONS.map((o) => o.value)).toEqual([
+      'yellow',
+      'cyan',
+      'blue',
+      'red',
+    ])
+    expect(new Set(Object.values(HIGHLIGHT_RGB).map((c) => c.join()))).toHaveProperty(
+      'size',
+      4,
+    )
+    expect(isHighlightColor('blue')).toBe(true)
+    expect(isHighlightColor('green')).toBe(false)
+  })
+
+  it('the candidate mask is identical whatever the colour; only the painted pixels change', () => {
+    const width = 8
+    const height = 8
+    const data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i++) {
+      const red = i % 3 === 0
+      data.set(red ? [190, 25, 25, 255] : [70, 90, 60, 255], i * 4)
+    }
+    const image = { width, height, data }
+    const settings = { sensitivity: 50, rustTones: false }
+    const mask = computeCandidateMask(image, settings)
+    const painted = (['yellow', 'cyan', 'blue', 'red'] as const).map((highlightColor) =>
+      renderHighlight(image, mask, { backgroundAttenuation: 0.5, highlightColor }),
+    )
+    // Same mask object, computed without any colour input.
+    expect(mask.candidatePixels).toBeGreaterThan(0)
+    const firstCandidate = mask.mask.indexOf(1) * 4
+    const firstBackground = mask.mask.indexOf(0) * 4
+    const reds = painted.map((p) =>
+      [p[firstCandidate], p[firstCandidate + 1], p[firstCandidate + 2]].join(),
+    )
+    expect(new Set(reds).size).toBe(4)
+    // Background pixels are painted the same way for every colour.
+    const backgrounds = painted.map((p) =>
+      [p[firstBackground], p[firstBackground + 1], p[firstBackground + 2]].join(),
+    )
+    expect(new Set(backgrounds).size).toBe(1)
   })
 })

@@ -17,6 +17,27 @@ export interface PixelBuffer {
   readonly data: Uint8ClampedArray
 }
 
+/** Display colour of the highlight. It only changes how candidate pixels are
+ * PAINTED: which pixels are candidates is decided by the colour rule alone
+ * (`isCandidateColor`) and never depends on this choice. */
+export type HighlightColor = 'yellow' | 'cyan' | 'blue' | 'red'
+
+export const HIGHLIGHT_COLOR_OPTIONS: readonly {
+  value: HighlightColor
+  label: string
+  /** CSS colour of the swatch in the settings. */
+  swatch: string
+}[] = [
+  { value: 'yellow', label: 'Jaune', swatch: '#ffeb00' },
+  { value: 'cyan', label: 'Cyan', swatch: '#00ebff' },
+  { value: 'blue', label: 'Bleu', swatch: '#2e6bff' },
+  { value: 'red', label: 'Rouge', swatch: '#ff2a2a' },
+]
+
+export function isHighlightColor(value: unknown): value is HighlightColor {
+  return HIGHLIGHT_COLOR_OPTIONS.some((option) => option.value === value)
+}
+
 export interface HighlightSettings {
   /** 0 (strict, few zones) … 100 (permissive, more zones and more false ones). */
   sensitivity: number
@@ -24,7 +45,7 @@ export interface HighlightSettings {
   rustTones: boolean
   /** 0 (background untouched) … 1 (background greyed and dimmed). */
   backgroundAttenuation: number
-  highlightColor: 'yellow' | 'cyan'
+  highlightColor: HighlightColor
 }
 
 export const DEFAULT_HIGHLIGHT_SETTINGS: HighlightSettings = {
@@ -40,11 +61,25 @@ export const HIGHLIGHT_RGB: Record<
 > = {
   yellow: [255, 235, 0],
   cyan: [0, 235, 255],
+  blue: [46, 107, 255],
+  red: [255, 42, 42],
 }
 
-/** Text that must stay visible whenever the camera aid is shown. */
+/** Compact mention that stays visible over the camera at all times. */
+export const CAMERA_WARNING_SHORT = 'Aide visuelle — sang non confirmé'
+
+/** Full text, shown by « Aide / Infos » (and in the capture review). */
 export const CAMERA_WARNING =
   'Aide visuelle : les zones surlignées ne sont pas du sang confirmé. Des feuilles, baies, sols et objets peuvent être surlignés. L’absence de surbrillance ne prouve pas l’absence de sang.'
+
+/** Detail list of the same caution, one point per line. */
+export const CAMERA_HELP_POINTS: readonly string[] = [
+  'Faux positifs possibles : feuilles, baies, sol, écorce, rouille, peinture ou tout objet rouge ou brun peuvent être surlignés.',
+  'Surbrillance ≠ sang confirmé : une zone surlignée est seulement « candidate », à vérifier sur place.',
+  'Absence de surbrillance ≠ absence de sang : sang ancien, sec, dilué, lumière faible ou surexposition peuvent ne rien surligner.',
+  'Aucune probabilité n’est calculée. Aucune zone n’est enregistrée toute seule : seul un indice que vous confirmez est enregistré.',
+  'Le traitement se fait sur l’appareil ; aucune image n’est envoyée.',
+]
 
 interface Thresholds {
   minSaturation: number
