@@ -105,3 +105,7 @@ s'affichent dans la ligne compacte seulement si la largeur le permet, sinon dans
 - Pas de « lecture » automatique dans le temps.
 - Zones sûres : appliquées par la coque de l'application, la feuille n'en ajoute
   pas ; vérifiées en émulation Chromium seulement.
+
+## Robustesse à la police
+
+La CI n'a pas la police Inter : le navigateur retombe sur une police système plus large. La mise en page a été vérifiée dans les deux cas (Inter, puis Inter masquée via fontconfig) à 320×568, où la feuille est la plus étroite (≈ 200 px à côté du rail d'outils). Sur une feuille étroite, la date longue est omise (le jour est déjà sur la pastille active) pour garder l'heure et « Maintenant » sur une seule ligne. Les vraies polices d'un iPhone (SF) n'ont pas été testées.

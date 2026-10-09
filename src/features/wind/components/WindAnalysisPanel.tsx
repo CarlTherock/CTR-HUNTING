@@ -29,7 +29,6 @@ import {
   forecastAge,
   formatSlotTime,
   longDateLabel,
-  shortDateLabel,
   nearestAvailableIndex,
   nowSlotIndex,
   readSlot,
@@ -384,7 +383,7 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
             type="button"
             onClick={() => setExpanded(false)}
             aria-label="Replier l'analyse du vent"
-            className="order-1 flex min-h-11 min-w-0 items-center gap-1 text-sm font-semibold whitespace-nowrap [@media(max-height:480px)]:min-w-11 [@media(max-height:480px)]:justify-center"
+            className="order-1 flex min-h-11 min-w-0 items-center gap-1 text-xs font-semibold whitespace-nowrap @[17rem]:text-sm [@media(max-height:480px)]:min-w-11 [@media(max-height:480px)]:justify-center"
           >
             <span className="[@media(max-height:480px)]:hidden">Analyse du vent</span>
             <ChevronDown
@@ -502,14 +501,10 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
             <p className="text-ink-300 order-1 min-w-0 text-xs tabular-nums">
               {slot && selectedDay ? (
                 <>
-                  <span className="[@media(max-height:480px)]:hidden">
-                    <span className="@[17rem]:hidden">
-                      {shortDateLabel(selectedDay.dateKey)}
-                    </span>
-                    <span className="hidden @[17rem]:inline">
-                      {longDateLabel(selectedDay.dateKey)}
-                    </span>{' '}
-                    ·{' '}
+                  {/* Sur une feuille étroite, le jour est déjà indiqué par la
+                      pastille active ci-dessus : on garde la place pour l'heure. */}
+                  <span className="hidden @[17rem]:inline [@media(max-height:480px)]:hidden!">
+                    {longDateLabel(selectedDay.dateKey)} ·{' '}
                   </span>
                   <span className="text-ink-100 text-base font-semibold">
                     {formatSlotTime(slot.time)}
@@ -545,19 +540,20 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
                       </span>
                     )}
                   </p>
-                  <div className="[@media(max-height:480px)]:hidden">
+                  <div className="min-w-0 [@media(max-height:480px)]:hidden">
                     <p className="text-base leading-tight font-semibold">
-                      Vent du {description.fromLabel}{' '}
-                      <span className="text-ink-300 text-sm font-normal">
-                        ({description.fromDegrees}°)
-                      </span>
+                      Vent du {description.fromLabel}
                     </p>
-                    <p className="text-ink-100 text-sm tabular-nums">
+                    <p className="text-ink-100 text-sm leading-snug tabular-nums">
+                      <span className="text-ink-300">({description.fromDegrees}°)</span>
+                      {' · '}
                       {description.speedKmh} km/h
-                      {description.gustsKmh !== null
-                        ? `, rafales ${description.gustsKmh} km/h`
-                        : ''}
                     </p>
+                    {description.gustsKmh !== null && (
+                      <p className="text-ink-100 text-sm leading-snug tabular-nums">
+                        rafales {description.gustsKmh} km/h
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
