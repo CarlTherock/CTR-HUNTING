@@ -183,6 +183,20 @@ function validateObservation(raw: Rec): Validation<Rec> {
       return fail('entrée DeerTracker invalide')
     }
   }
+  if (raw.shot !== undefined) {
+    const shot = raw.shot
+    if (!isRecord(shot) || (shot.species !== 'deer' && shot.species !== 'moose')) {
+      return fail('entrée « Après le tir » invalide')
+    }
+    for (const key of ['estimatedAnimalPosition', 'lastConfirmedPosition']) {
+      if (shot[key] !== undefined && !validCoordinate(shot[key])) {
+        return fail('position « Après le tir » invalide')
+      }
+    }
+  }
+  if (raw.species !== undefined && raw.species !== 'moose') {
+    return fail('espèce d’observation invalide')
+  }
   return {
     ok: true,
     value: { ...raw, notes: typeof raw.notes === 'string' ? raw.notes : '' },

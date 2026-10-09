@@ -3,6 +3,31 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Audit fonctionnel terrain iOS : « + Repère », caméra sang, « Après le tir » (2026-10-08)
+
+Détail des défauts, chemins et limites : `docs/AUDIT_TERRAIN_IOS.md`.
+
+### Added
+
+- Bouton permanent libellé « + Repère » sur la carte et son panneau : repère normal, sang / indice, observation cerf, observation orignal, caméra sang ; position « Ma position GPS » (précision et ancienneté) ou « position choisie sur la carte » ; aucune position inventée ; rien de saisi n'est perdu en changeant de type.
+- Appui long (ou clic droit) sur la carte : même panneau pour le point touché.
+- Caméra sang accessible sans recherche ouverte : + Repère, Outils, panneau de recherche, page Recherches de sang, Après le tir. Porte explicite « Créer une recherche / Annuler » (aucune trace ne démarre en silence), repli « Importer une photo » distingué du direct, nouvel essai, reprise après arrière-plan.
+- « Après le tir » (`/after-shot`, cerf ou orignal) : consigner le tir, les indices, démarrer / reprendre la recherche, caméra sang, dernier indice, chronologie, carte, photos. Le guide expert reste à rédiger (sources vérifiables) : aucun conseil, diagnostic ni délai n'est donné.
+- Champs optionnels `Observation.species` (orignal) et `Observation.shot` : aucune migration Dexie, inclus dans la sauvegarde ZIP (validation et test de restauration).
+- Fiche d'un repère repliable (poignée + titre, bouton `aria-expanded` de 44 px) : le formulaire reste monté, rien de saisi n'est perdu ; l'état est gardé à la rotation. Elle se place au-dessus du panneau « Aller à » (ou à côté en paysage court) au lieu de le recouvrir, et reste à gauche des outils de la carte tant qu'un panneau du bas est affiché.
+- Guide « Après le tir » : structure seulement (`apresTir.content.ts`, source obligatoire par section). Tant qu'une section n'a pas de source valide et de texte, l'écran affiche « Contenu à venir — sources en vérification ». Aucun contenu expert n'est écrit.
+- `docs/verification-iphone-pr17.md` : liste à cocher (Safari et app installée) pour le test sur iPhone réel, jamais exécutée.
+
+### Changed
+
+- « + Repère » en paysage court (≤ 480 px de haut) : la feuille passe en plein écran et les 5 types tiennent sur une rangée, sans défilement caché ; le bouton de la rangée d'outils passe à 44 px (il écrasait le panneau « Aller à » à 568×320).
+- Panneau d'une recherche active : + Sang, Pause / Reprendre, Terminer, Caméra sang et Dernier indice toujours visibles (ils étaient cachés dans « Indices et outils ») ; compacté en paysage court (568×320).
+- L'ancien bouton icône « Ajouter un point de repère » est remplacé par « + Repère » ; la pose d'un repère par un toucher sur la carte reste (« Position sur la carte »).
+
+### Notes
+
+- Chromium et jsdom, carte, GPS et caméra simulés. Aucune validation sur iPhone réel ni WebKit.
+
 ## Refonte visuelle, menus, cartes, vent et DeerTracker (2026-10-08)
 
 ### Added

@@ -27,6 +27,14 @@ export function readWaypoints(page: Page): Promise<StoredWaypoint[]> {
   )
 }
 
+/** « + Repère » → Repère normal → Position sur la carte → Choisir sur la carte
+ * (the next tap on the map places the waypoint draft). */
+export async function armWaypointPlacing(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Ajouter un repère' }).click()
+  await page.getByRole('radio', { name: 'Position sur la carte' }).click()
+  await page.getByRole('button', { name: 'Choisir sur la carte' }).click()
+}
+
 /** Creates and saves a waypoint through the real UI (tap the map, Continuer,
  * name, optional notes, Enregistrer) and returns what was persisted. */
 export async function createWaypointViaUi(
@@ -36,7 +44,7 @@ export async function createWaypointViaUi(
   notes?: string,
 ): Promise<StoredWaypoint> {
   const before = (await readWaypoints(page)).length
-  await page.getByRole('button', { name: 'Ajouter un point de repère' }).click()
+  await armWaypointPlacing(page)
   await page.locator('canvas.maplibregl-canvas').click({ position: at })
   await expect(
     page.getByRole('region', { name: 'Position du nouveau point de repère' }),

@@ -63,9 +63,12 @@ import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
 import { TraceFilterControl } from '@/features/waypoints/components/TraceFilterControl'
 import { BloodPanel } from '@/features/blood/components/BloodPanel'
+import { BloodCameraHost } from '@/features/blood/components/BloodCameraHost'
 import { BloodStartControl } from '@/features/blood/components/BloodStartControl'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { clueLinkPaths, overviewView, sessionClues } from '@/features/blood/sessionLogic'
+import { useAddPointStore } from '@/features/addpoint/state/addPointStore'
+import { AddPointControl } from '@/features/addpoint/components/AddPointControl'
 import { WaypointControl } from '@/features/waypoints/components/WaypointControl'
 import { WaypointEditPanel } from '@/features/waypoints/components/WaypointEditPanel'
 import { useTracksStore } from '@/features/waypoints/state/tracksStore'
@@ -91,6 +94,13 @@ import { ZoomTool } from '../components/ZoomTool'
 const GPS_LOCATE_ZOOM = 16
 /** Smallest width the bottom dock leaves on the right (7 rem). */
 const DOCK_MIN_RESERVE_PX = 112
+/** Narrowest waypoint card (folded: handle, title, two buttons) kept clear of
+ * the tool rail; below COMFORT the open form uses the full width instead. */
+const PANEL_MIN_WIDTH_PX = 160
+const PANEL_COMFORT_WIDTH_PX = 200
+const PANEL_COMFORT_HEIGHT_PX = 200
+const PANEL_SIDE_MIN_WIDTH_PX = 300
+const PANEL_TOP_MARGIN_PX = 64
 /** Zoom used to bring a shared point into view. */
 const SHARED_POINT_ZOOM = 15
 
@@ -111,6 +121,15 @@ export function MapPage() {
   // rail itself (it wraps into more columns on short screens). `null` until
   // measured: the CSS default of the dock applies meanwhile.
   const [dockReserve, setDockReserve] = useState<number | null>(null)
+  const [dockHost, setDockHost] = useState<HTMLDivElement | null>(null)
+  // Height the bottom dock takes from the bottom of the screen (0 when empty):
+  // the waypoint card sits above it instead of covering it.
+  const [panelLayout, setPanelLayout] = useState({
+    clearance: 0,
+    right: 0,
+    extend: 0,
+    left: 0,
+  })
   const [toolsOpen, setToolsOpen] = useState(false)
   const closeTools = useCallback(() => setToolsOpen(false), [])
   const toolsContext = useMemo(
@@ -212,11 +231,19 @@ export function MapPage() {
       initialBaseLayer,
       initialOverlays: useLayersStore.getState().overlays,
       onViewChange: setView,
+      // Long press (or right-click): the same type/position choice as « + Repère »,
+      // for the point that was pressed.
+      onMapLongPress: (coordinate) => useAddPointStore.getState().openSheetAt(coordinate),
       onMapClick: (coordinate) => {
         // Manual placement of a blood clue (no usable GPS): the tap chooses
         // the position, saved only after the user confirms in the panel.
         if (useBloodStore.getState().manual) {
           useBloodStore.getState().setManualCoordinate(coordinate)
+          return
+        }
+        // An animal observation waiting for its place (« + Repère »).
+        if (useAddPointStore.getState().picking) {
+          void useAddPointStore.getState().completePicking(coordinate)
           return
         }
         const waypoints = useWaypointsStore.getState()
@@ -353,6 +380,69 @@ export function MapPage() {
       }
     }
   }, [overlays])
+
+  useEffect(() => {
+    if (!dockHost) return
+    const reserve = dockReserve ?? DOCK_MIN_RESERVE_PX
+    const measure = () => {
+      const panels = Array.from(dockHost.children).filter((child) => {
+        const rect = child.getBoundingClientRect()
+        return rect.height > 0 && rect.width > 0
+      })
+      // With dock panels showing, the waypoint card keeps clear of the tool
+      // rail (right) when that still leaves it a usable width, and sits above
+      // the panels it would otherwise cover (« Arrêter le guidage »).
+      const room = window.innerWidth - 24 - reserve
+      const narrow = panels.length > 0 && room >= PANEL_MIN_WIDTH_PX
+      const cardWidth = Math.min(narrow ? room : window.innerWidth - 24, 384)
+      const cardLeft = narrow
+        ? 12 + (room - cardWidth) / 2
+        : (window.innerWidth - cardWidth) / 2
+      const cardRight = cardLeft + cardWidth
+      let clearance = 0
+      for (const panel of panels) {
+        const rect = panel.getBoundingClientRect()
+        if (rect.right <= cardLeft || rect.left >= cardRight) continue
+        clearance = Math.max(clearance, Math.ceil(window.innerHeight - rect.top + 8))
+      }
+      // Not enough height above the panels (short landscape): put the card
+      // beside them instead, if there is room to their right.
+      const dockRight = panels.reduce(
+        (max, panel) => Math.max(max, panel.getBoundingClientRect().right),
+        0,
+      )
+      const sideLeft = dockRight + 8
+      const sideRoom = window.innerWidth - 12 - sideLeft
+      const stackHeight = window.innerHeight - clearance - PANEL_TOP_MARGIN_PX
+      if (
+        panels.length > 0 &&
+        stackHeight < PANEL_COMFORT_HEIGHT_PX &&
+        sideRoom >= PANEL_SIDE_MIN_WIDTH_PX
+      ) {
+        setPanelLayout({ clearance: 0, right: 0, extend: 0, left: sideLeft - 12 })
+        return
+      }
+      setPanelLayout({
+        clearance,
+        right: narrow ? reserve : 0,
+        extend: narrow && room < PANEL_COMFORT_WIDTH_PX ? reserve : 0,
+        left: 0,
+      })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    if (typeof ResizeObserver === 'undefined') {
+      return () => window.removeEventListener('resize', measure)
+    }
+    const resizeObserver = new ResizeObserver(measure)
+    resizeObserver.observe(dockHost)
+    const parent = dockHost.parentElement
+    if (parent) resizeObserver.observe(parent)
+    return () => {
+      window.removeEventListener('resize', measure)
+      resizeObserver.disconnect()
+    }
+  }, [dockHost, dockReserve])
 
   useEffect(() => {
     const parent = railHost?.offsetParent
@@ -642,7 +732,17 @@ export function MapPage() {
         </div>
       )}
       {mapProvider ? (
-        <div className="relative min-h-0 flex-1">
+        <div
+          className="relative min-h-0 flex-1"
+          style={
+            {
+              '--panel-clearance': `${panelLayout.clearance}px`,
+              '--panel-right': `${panelLayout.right}px`,
+              '--panel-extend': `${panelLayout.extend}px`,
+              '--panel-left': `${panelLayout.left}px`,
+            } as CSSProperties
+          }
+        >
           {/* MapLibre's own stylesheet forces `position: relative` on the
               element it mounts into, which would cancel `absolute inset-0`
               there and collapse it to zero height — hence the wrapper. */}
@@ -694,7 +794,8 @@ export function MapPage() {
               large={fieldModeEnabled}
             />
             <MyPositionControl reading={gpsReading} />
-            <WaypointControl large={fieldModeEnabled} />
+            <WaypointControl />
+            <AddPointControl gpsReading={gpsReading} large={fieldModeEnabled} />
             <ToolTrigger
               placement="rail"
               label="Outils"
@@ -745,6 +846,7 @@ export function MapPage() {
             {/* Bottom-left dock: leaves the right-hand tool rail uncovered
                 (its measured width, at least 7 rem; 7 rem before it is measured). */}
             <div
+              ref={setDockHost}
               data-testid="map-bottom-dock"
               style={
                 dockReserve === null
@@ -772,6 +874,7 @@ export function MapPage() {
             <SharedPointCard onCenter={centerOnSharedPoint} />
             <TrackRecorderControl />
             <BloodStartControl gpsReading={gpsReading} />
+            <BloodCameraHost gpsReading={gpsReading} />
             <TraceFilterControl />
             {!fieldModeEnabled && (
               <>

@@ -37,6 +37,12 @@ export interface Observation {
    * of a deer sighting or sign). Entries without it are ordinary journal
    * entries and are never reclassified automatically. */
   deer?: DeerEntry
+  /** Set to `moose` for an orignal observation made from « + Repère ». Absent
+   * on every other entry; it never enters the DeerTracker statistics. */
+  species?: 'moose'
+  /** Present only on entries made in « Après le tir »: the user's own record of
+   * a shot. Everything in it was typed or captured by the user. */
+  shot?: ShotRecord
   /** Trace (`Track.id`) the entry was made during, if the user linked one. */
   trackId?: string
 }
@@ -73,4 +79,25 @@ export interface DeerEntry {
   /** The user's own annotation, e.g. « possiblement le même animal que… ».
    * It is a note, not a conclusion drawn by the app. */
   sameAnimalNote?: string
+}
+
+export type ShotSpecies = 'deer' | 'moose'
+
+/** « Après le tir » — what the user records about a shot. `Observation.timestamp`
+ * is the shot time and `Observation.coordinate` the shot position. Nothing here
+ * is computed, inferred or predicted by the app: a position is either a GPS fix
+ * or a point the user chose by hand, and is never presented as the animal's
+ * real location. */
+export interface ShotRecord {
+  species: ShotSpecies
+  /** What the user saw the animal do, in their own words. */
+  reaction?: string
+  /** Direction the animal was SEEN going (degrees clockwise from true north). */
+  fleeDirectionDegrees?: number
+  /** The user's own estimate of where the animal was, entered by hand. */
+  estimatedAnimalPosition?: Coordinate
+  /** The last place the user confirmed seeing the animal or a sure sign. */
+  lastConfirmedPosition?: Coordinate
+  /** Blood search (`BloodSession.id`) opened for this shot, if any. */
+  searchSessionId?: string
 }

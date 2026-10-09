@@ -230,6 +230,9 @@ export interface CreateMapOptions {
   /** Called when the user taps/clicks the base map itself (not a marker
    * or control) — e.g. to place a new waypoint there. */
   onMapClick?: (coordinate: Coordinate) => void
+  /** Called on a long press (touch) or a right-click on the base map. The
+   * click the browser may emit when the finger lifts is swallowed. */
+  onMapLongPress?: (coordinate: Coordinate) => void
   /** Called when the user taps/clicks an existing waypoint marker. */
   onWaypointClick?: (waypointId: string) => void
   /** Called when the user finishes dragging the *draft* marker (a waypoint

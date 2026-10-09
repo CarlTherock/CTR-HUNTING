@@ -3,6 +3,7 @@ import { measureLayout } from './support/layout'
 import { countPixelsNear } from './support/pixels'
 import { VIEWPORTS, type ViewportCase } from './support/viewports'
 import { expect, test } from './support/test'
+import { armWaypointPlacing } from './support/waypointData'
 
 /**
  * Distance / area measure tools. Chromium + simulated map provider: proves the
@@ -205,7 +206,7 @@ test.describe('outils de mesure', () => {
     await openMeasure(page, 'Mesurer une distance')
     await tapAt(canvas, 0.25, 0.25)
 
-    await page.getByRole('button', { name: 'Ajouter un point de repère' }).click()
+    await armWaypointPlacing(page)
     await expect(page.getByTestId('measure-status')).toContainText('En pause')
     await tapAt(canvas, 0.35, 0.35)
     await expect(

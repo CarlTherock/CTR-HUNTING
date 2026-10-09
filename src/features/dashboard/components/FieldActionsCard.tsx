@@ -32,6 +32,9 @@ export function FieldActionsCard() {
         </Hint>
       )}
       <div className="mt-auto flex flex-wrap gap-2">
+        <Link to="/after-shot" className={LINK_BUTTON_CLASS}>
+          Après le tir
+        </Link>
         <Link to="/waypoints#recherches-de-sang" className={LINK_BUTTON_CLASS}>
           Recherches de sang
         </Link>

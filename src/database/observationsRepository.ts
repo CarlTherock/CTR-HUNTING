@@ -6,6 +6,7 @@ import type {
   DeerEntry,
   Observation,
   PositionOrigin,
+  ShotRecord,
 } from '@/types'
 
 export interface CreateObservationInput {
@@ -19,6 +20,8 @@ export interface CreateObservationInput {
   observedAt?: string
   positionOrigin?: PositionOrigin
   deer?: DeerEntry
+  species?: 'moose'
+  shot?: ShotRecord
   trackId?: string
 }
 
@@ -33,6 +36,7 @@ export type UpdateObservationInput = Partial<
     | 'territoryId'
     | 'timestamp'
     | 'deer'
+    | 'shot'
     | 'trackId'
   >
 >
@@ -63,6 +67,8 @@ export async function createObservation(
   if (input.conditionsMeta) observation.conditionsMeta = input.conditionsMeta
   if (input.positionOrigin) observation.positionOrigin = input.positionOrigin
   if (input.deer) observation.deer = input.deer
+  if (input.species) observation.species = input.species
+  if (input.shot) observation.shot = input.shot
   if (input.trackId) observation.trackId = input.trackId
   await db.observations.add(observation)
   return observation

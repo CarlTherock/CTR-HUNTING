@@ -34,3 +34,10 @@ conducteur de chien de sang.
 ## Refonte visuelle, menus, cartes, vent et DeerTracker
 
 Implémenté et testé automatiquement (unitaires + E2E Chromium simulé) : navigation à 5 entrées, Projet et progression, DeerTracker, contrôles de carte (2D/3D, relief, zoom dans Outils), erreurs de couche typées avec réessai borné, panneau Vent, accueil « Sur le terrain ». Validation iPhone réelle : **non faite**. Priorités inchangées : voir la page Projet et progression (`src/features/about/roadmap.ts`).
+
+## Audit fonctionnel terrain iOS
+
+« + Repère », caméra sang sans session, panneau de recherche à cinq commandes visibles et « Après le tir » (consignation et
+reprise de recherche) sont implémentés et testés (unitaires, sauvegarde, E2E Chromium simulé à 8 tailles). **Non livré** : le
+guide expert « Après le tir » (aucune source vérifiable ni droit disponibles). **Non validé** : iPhone/Safari/PWA réels,
+appui long réel, flux caméra réel, clavier iOS. Détail : `docs/AUDIT_TERRAIN_IOS.md`.

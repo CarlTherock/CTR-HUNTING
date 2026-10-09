@@ -27,6 +27,7 @@ import type {
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
 import { createPathLayers } from './pathLayers'
 import { createRasterOverlays, createWeatherFrames } from './rasterLayers'
+import { createLongPressDetector } from './longPress'
 import { buildStyleUrl } from './styleUrls'
 import type { MapLibreProviderApiKeys } from './styleUrls'
 import { applyTerrain, setTerrainExaggeration } from './terrain'
@@ -64,6 +65,7 @@ export class MapLibreProvider implements MapProvider {
     initialOverlays,
     onViewChange,
     onMapClick,
+    onMapLongPress,
     onWaypointClick,
     onDraftMove,
     onUserInteraction,
@@ -175,9 +177,54 @@ export class MapLibreProvider implements MapProvider {
       }
     }
 
+    const longPress = onMapLongPress
+      ? createLongPressDetector({
+          onLongPress: ({ x, y }) => {
+            const at = map.unproject([x, y])
+            onMapLongPress({ lat: at.lat, lng: at.lng })
+          },
+        })
+      : null
+
     if (onMapClick) {
       map.on('click', (e) => {
+        // The click a browser may emit after a long press is not a tap.
+        if (longPress?.justFired(Date.now())) return
         onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      })
+    }
+
+    if (onMapLongPress && longPress) {
+      const canvas = map.getCanvasContainer()
+      const local = (touch: Touch) => {
+        const rect = canvas.getBoundingClientRect()
+        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }
+      }
+      canvas.addEventListener(
+        'touchstart',
+        (event) => {
+          const touch = event.touches[0]
+          // A press on a marker belongs to the marker, not to the map.
+          const onMarker =
+            event.target instanceof Element && event.target.closest('.maplibregl-marker')
+          if (touch && !onMarker) longPress.start(local(touch), event.touches.length)
+        },
+        { passive: true },
+      )
+      canvas.addEventListener(
+        'touchmove',
+        (event) => {
+          const touch = event.touches[0]
+          if (touch) longPress.move(local(touch))
+        },
+        { passive: true },
+      )
+      for (const end of ['touchend', 'touchcancel'] as const) {
+        canvas.addEventListener(end, () => longPress.cancel(), { passive: true })
+      }
+      // Pointer devices: right-click opens the same flow.
+      map.on('contextmenu', (e) => {
+        onMapLongPress({ lat: e.lngLat.lat, lng: e.lngLat.lng })
       })
     }
 

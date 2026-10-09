@@ -222,14 +222,23 @@ export const ROADMAP: readonly RoadmapPhase[] = [
     phase: 13,
     label: 'Journal',
     objective: 'Observations avec photos, position et conditions.',
-    status: 'done',
+    status: 'partial',
     delivered: [
       'Journal et observations',
       'DeerTracker (suivi de mes observations de cerfs)',
+      '« + Repère » : repère normal, sang / indice, observation cerf ou orignal, caméra sang, position GPS ou choisie sur la carte, appui long',
+      '« Après le tir » (cerf, orignal) : tir, indices, reprise de recherche, caméra sang, chronologie, carte et photos consignés par l’utilisateur',
     ],
-    remaining: [],
+    remaining: [
+      '« Après le tir » : guide expert (conseils de recherche) à rédiger avec des sources vérifiables ; aucun conseil, diagnostic de blessure ni délai n’est donné pour l’instant',
+    ],
     missingValidation: [NO_DEVICE],
-    validation: V_DONE,
+    validation: {
+      implemented: 'partial',
+      automated: 'yes',
+      browser: 'partial',
+      device: 'no',
+    },
   },
   {
     phase: 14,

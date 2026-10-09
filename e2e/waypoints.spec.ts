@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './support/test'
+import { armWaypointPlacing } from './support/waypointData'
 
 /**
  * Waypoint creation as an explicit draft, then a permanent location lock.
@@ -31,7 +32,7 @@ function readWaypoints(page: Page): Promise<StoredWaypoint[]> {
 }
 
 async function startDraft(page: Page, at: { x: number; y: number }) {
-  await page.getByRole('button', { name: 'Ajouter un point de repère' }).click()
+  await armWaypointPlacing(page)
   await page.locator('canvas.maplibregl-canvas').click({ position: at })
   await expect(
     page.getByRole('region', { name: 'Position du nouveau point de repère' }),

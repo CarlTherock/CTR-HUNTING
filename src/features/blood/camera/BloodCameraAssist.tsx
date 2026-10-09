@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, Flashlight, Pause, Play, X } from 'lucide-react'
+import { Camera, Flashlight, ImagePlus, Pause, Play, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useCameraStream } from '@/features/camera/useCameraStream'
 import type { GeolocationReading } from '@/features/gps/useGeolocation'
@@ -29,6 +29,9 @@ const CAPTURE_MAX_WIDTH = 1280
 const FRAME_INTERVAL_MS = 125
 
 interface PendingCapture {
+  /** `live`: frame of the camera stream. `import`: a photo picked from the
+   * device — NOT the live view, and its place is not the photo's place. */
+  source: 'live' | 'import'
   original: Blob
   processed: Blob
   originalUrl: string
@@ -73,6 +76,8 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
   const lastAlertRef = useRef<number | null>(null)
   const audioRef = useRef<AudioContext | null>(null)
   const alertOptionsRef = useRef({ vibrate: false, sound: false })
+  const startRef = useRef(start)
+  const streamEndedRef = useRef<() => boolean>(() => false)
 
   const [settings, setSettings] = useState<HighlightSettings>(DEFAULT_HIGHLIGHT_SETTINGS)
   const [mode, setMode] = useState<ViewMode>('split')
@@ -89,12 +94,25 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [needsManual, setNeedsManual] = useState(false)
+  // No open search: the user must choose explicitly before anything is created.
+  const [gate, setGate] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const openSession = useBloodStore((state) =>
+    state.sessions.find((session) => session.status !== 'finished'),
+  )
   // The dialog steps aside so the map can be tapped to place the point.
   const [placing, setPlacing] = useState(false)
 
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+  useEffect(() => {
+    startRef.current = start
+    streamEndedRef.current = () =>
+      status === 'streaming' &&
+      !!stream &&
+      stream.getVideoTracks().every((track) => track.readyState === 'ended')
+  }, [start, status, stream])
   useEffect(() => {
     alertOptionsRef.current = { vibrate, sound }
   }, [vibrate, sound])
@@ -113,7 +131,11 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
   // Do not process while the page is hidden.
   useEffect(() => {
     function onVisibility() {
-      setHidden(document.visibilityState === 'hidden')
+      const isHidden = document.visibilityState === 'hidden'
+      setHidden(isHidden)
+      // iOS may cut the camera while the app is in the background: ask for a
+      // fresh stream when coming back instead of leaving a frozen image.
+      if (!isHidden && streamEndedRef.current()) void startRef.current()
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
@@ -216,20 +238,23 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
     setSound(next)
   }
 
-  async function takeCapture() {
-    const video = videoRef.current
-    if (!video || video.videoWidth === 0) return
+  async function buildCapture(
+    drawable: CanvasImageSource,
+    sourceWidth: number,
+    sourceHeight: number,
+    origin: PendingCapture['source'],
+  ) {
     setMessage(null)
     setError(null)
-    const scale = Math.min(1, CAPTURE_MAX_WIDTH / video.videoWidth)
-    const width = Math.round(video.videoWidth * scale)
-    const height = Math.round(video.videoHeight * scale)
+    const scale = Math.min(1, CAPTURE_MAX_WIDTH / sourceWidth)
+    const width = Math.round(sourceWidth * scale)
+    const height = Math.round(sourceHeight * scale)
     const originalCanvas = document.createElement('canvas')
     originalCanvas.width = width
     originalCanvas.height = height
     const ctx = originalCanvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) return
-    ctx.drawImage(video, 0, 0, width, height)
+    ctx.drawImage(drawable, 0, 0, width, height)
     const source = ctx.getImageData(0, 0, width, height)
     // The processed copy is built from the same pixels; `source` (the
     // original) is never modified.
@@ -251,12 +276,32 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
     }
     setNote('')
     setNeedsManual(false)
+    setGate(false)
     setCapture({
+      source: origin,
       original,
       processed,
       originalUrl: URL.createObjectURL(original),
       processedUrl: URL.createObjectURL(processed),
     })
+  }
+
+  async function takeCapture() {
+    const video = videoRef.current
+    if (!video || video.videoWidth === 0) return
+    await buildCapture(video, video.videoWidth, video.videoHeight, 'live')
+  }
+
+  /** Fallback when the live camera is unavailable: a photo picked from the
+   * device, analysed once. It is clearly labelled as imported. */
+  async function importPhoto(file: File) {
+    try {
+      const bitmap = await createImageBitmap(file)
+      await buildCapture(bitmap, bitmap.width, bitmap.height, 'import')
+      bitmap.close?.()
+    } catch {
+      setError('Photo illisible : choisissez une image JPEG ou PNG.')
+    }
   }
 
   async function saveClue(
@@ -310,7 +355,29 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
     )
   }
 
+  async function createSearchThenConfirm() {
+    setBusy(true)
+    setError(null)
+    const position = resolveMarkerPosition(gpsReading, Date.now())
+    // Explicit choice made on screen: this also starts the red track (or
+    // waits for a usable GPS fix, which is announced below).
+    const started = await useBloodStore
+      .getState()
+      .startSession({ hasUsableFix: position.kind === 'ready' })
+    setBusy(false)
+    if (!started.ok) {
+      setError(started.message)
+      return
+    }
+    setGate(false)
+    confirmClue()
+  }
+
   function confirmClue() {
+    if (!useBloodStore.getState().openSession()) {
+      setGate(true)
+      return
+    }
     const position = resolveMarkerPosition(gpsReading, Date.now())
     if (position.kind === 'ready') {
       void saveClue(position.coordinate)
@@ -363,7 +430,7 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
       role="dialog"
       aria-modal="true"
       aria-label="Caméra de recherche de sang (expérimental)"
-      className="bg-surface-950 text-ink-100 fixed inset-0 z-50 flex flex-col"
+      className="bg-surface-950 text-ink-100 fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       data-testid="blood-camera"
     >
       <div className="flex items-center justify-between gap-2 p-2">
@@ -380,6 +447,18 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
         </button>
       </div>
 
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        aria-label="Choisir une photo à analyser"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (file) void importPhoto(file)
+        }}
+      />
       <p
         role="note"
         data-testid="camera-warning"
@@ -395,6 +474,14 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
             L’enregistrement de la trace et les points « + Sang » continuent de
             fonctionner sans la caméra.
           </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button variant="secondary" size="md" onClick={() => void start()}>
+              <RefreshCw size={16} aria-hidden="true" /> Réessayer la caméra
+            </Button>
+            <Button variant="primary" size="md" onClick={() => fileRef.current?.click()}>
+              <ImagePlus size={16} aria-hidden="true" /> Importer une photo
+            </Button>
+          </div>
         </div>
       )}
 
@@ -420,6 +507,48 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
               <figcaption className="text-ink-300 text-xs">Avec surbrillance</figcaption>
             </figure>
           </div>
+          {capture.source === 'import' && (
+            <p
+              role="note"
+              className="border-status-warning/60 rounded-lg border p-2 text-xs"
+            >
+              Photo importée : ce n’est pas le flux en direct. Le point sera placé à la
+              position du téléphone maintenant, pas à l’endroit où la photo a été prise.
+            </p>
+          )}
+          {openSession ? (
+            <p data-testid="clue-target" className="text-xs">
+              Sera rattaché à la recherche : <strong>{openSession.name}</strong>
+            </p>
+          ) : (
+            gate && (
+              <div
+                role="group"
+                aria-label="Aucune recherche ouverte"
+                data-testid="clue-gate"
+                className="border-surface-600 flex flex-col gap-2 rounded-lg border p-2 text-sm"
+              >
+                <p>
+                  Aucune recherche de sang n’est ouverte. Un indice doit être rattaché à
+                  une recherche. Créer une recherche démarre aussi l’enregistrement de
+                  votre trace GPS (ou l’attend si le GPS n’est pas prêt).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    disabled={busy}
+                    onClick={() => void createSearchThenConfirm()}
+                  >
+                    Créer une recherche et démarrer ma trace
+                  </Button>
+                  <Button variant="secondary" size="md" onClick={() => setGate(false)}>
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            )
+          )}
           <p className="text-ink-300 text-xs">
             Le point sera placé à la position du téléphone, pas à l’endroit exact de la
             tache. Sans position GPS récente, vous la placerez à la main avant
@@ -718,6 +847,15 @@ export function BloodCameraAssist({ gpsReading, onClose }: BloodCameraAssistProp
               >
                 <Camera size={18} aria-hidden="true" /> Capturer
               </Button>
+              {status !== 'error' && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <ImagePlus size={18} aria-hidden="true" /> Importer une photo
+                </Button>
+              )}
             </div>
           </div>
         </>

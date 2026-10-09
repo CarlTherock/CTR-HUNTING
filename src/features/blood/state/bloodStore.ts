@@ -34,12 +34,19 @@ interface BloodState {
   showLinks: boolean
   /** Manual placement in progress (no usable GPS): the point is only saved
    * once the user confirms. */
-  manual: { kind: BloodMarkerKind; coordinate: Coordinate | null } | null
-  startManual: (kind: BloodMarkerKind) => void
+  manual: { kind: BloodMarkerKind; coordinate: Coordinate | null; note?: string } | null
+  startManual: (kind: BloodMarkerKind, note?: string) => void
   setManualCoordinate: (coordinate: Coordinate) => void
   cancelManual: () => void
   /** Saves the manually placed point. */
   confirmManual: () => Promise<MarkerResult>
+
+  /** The blood camera is opened from several places (map « + Repère », Outils,
+   * the search panel, the searches page): one flag, one component. It never
+   * needs an open search. */
+  cameraOpen: boolean
+  openCamera: () => void
+  closeCamera: () => void
 
   load: () => Promise<void>
   /** The session that is not finished, if any (at most one at a time). */
@@ -118,7 +125,8 @@ export const useBloodStore = create<BloodState>((set, get) => {
     showLinks: false,
     manual: null,
 
-    startManual: (kind) => set({ manual: { kind, coordinate: null } }),
+    startManual: (kind, note) =>
+      set({ manual: { kind, coordinate: null, ...(note?.trim() ? { note } : {}) } }),
     setManualCoordinate: (coordinate) => {
       const { manual } = get()
       if (manual) set({ manual: { ...manual, coordinate } })
@@ -133,9 +141,18 @@ export const useBloodStore = create<BloodState>((set, get) => {
         coordinate: manual.coordinate,
         origin: 'manual',
       })
-      if (result.ok) set({ manual: null })
+      if (result.ok) {
+        set({ manual: null })
+        // A note typed in « + Repère » before the position was chosen.
+        if (manual.note)
+          await get().attachClueMedia(result.waypoint.id, { note: manual.note })
+      }
       return result
     },
+
+    cameraOpen: false,
+    openCamera: () => set({ cameraOpen: true }),
+    closeCamera: () => set({ cameraOpen: false }),
 
     load: async () => {
       const sessions = await listBloodSessions()

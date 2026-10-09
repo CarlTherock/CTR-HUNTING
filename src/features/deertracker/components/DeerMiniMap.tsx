@@ -4,24 +4,32 @@ import type { MapInstance } from '@/services/map'
 import { overviewView } from '@/features/blood/sessionLogic'
 import { resolveInitialBaseLayer } from '@/features/layers/startupBaseLayer'
 import { useLayersStore } from '@/features/layers/state/layersStore'
-import type { Observation } from '@/types'
+import type { Observation, Waypoint } from '@/types'
 import { toDisplayMarkers } from '../deerMarkers'
 
 /** Small map of the entries shown by the filters. One instance, markers
  * updated in place; with no provider configured it says so and the list stays
  * the way to read the entries. */
 export function DeerMiniMap({
-  entries,
+  entries = [],
+  markers: given,
+  label = 'Carte des observations',
+  caption = 'Chaque repère est une de vos observations, à l’endroit où vous l’avez saisie. Ce n’est pas la position de l’animal ni un trajet.',
   onSelect,
 }: {
-  entries: readonly Observation[]
+  entries?: readonly Observation[]
+  /** Display markers to show instead of the deer entries (« Après le tir »
+   * reuses this map for the shot, its manual estimates and the clues). */
+  markers?: Waypoint[]
+  label?: string
+  caption?: string
   onSelect: (id: string) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<MapInstance | null>(null)
   const onSelectRef = useRef(onSelect)
   const [ready, setReady] = useState(false)
-  const markers = useMemo(() => toDisplayMarkers(entries), [entries])
+  const markers = useMemo(() => given ?? toDisplayMarkers(entries), [given, entries])
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -72,13 +80,10 @@ export function DeerMiniMap({
       <div
         ref={containerRef}
         role="region"
-        aria-label="Carte des observations"
+        aria-label={label}
         className="border-surface-700 h-72 w-full overflow-hidden rounded-lg border"
       />
-      <p className="text-ink-500 text-xs">
-        Chaque repère est une de vos observations, à l’endroit où vous l’avez saisie. Ce
-        n’est pas la position de l’animal ni un trajet.
-      </p>
+      <p className="text-ink-500 text-xs">{caption}</p>
     </div>
   )
 }

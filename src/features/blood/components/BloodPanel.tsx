@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -33,12 +33,6 @@ import {
   sessionClues,
 } from '../sessionLogic'
 import { useBloodStore } from '../state/bloodStore'
-
-const BloodCameraAssist = lazy(() =>
-  import('../camera/BloodCameraAssist').then((module) => ({
-    default: module.BloodCameraAssist,
-  })),
-)
 
 interface BloodPanelProps {
   gpsReading: GeolocationReading
@@ -89,7 +83,8 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
   const [needsFallback, setNeedsFallback] = useState<BloodMarkerKind | null>(null)
   const [undoWarning, setUndoWarning] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [cameraOpen, setCameraOpen] = useState(false)
+  const cameraOpen = useBloodStore((state) => state.cameraOpen)
+  const openCamera = useBloodStore((state) => state.openCamera)
 
   const clues = useMemo(
     () => (session ? sessionClues(waypoints, session.id) : []),
@@ -207,7 +202,7 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
         >
           {SESSION_STATUS_LABEL[session.status]}
         </span>
-        <span className="text-ink-300 text-xs">
+        <span className="text-ink-300 text-xs [@media(max-height:480px)]:hidden">
           {recordingStartedAt && recordingId === session.trackId ? (
             <ElapsedSince iso={recordingStartedAt} />
           ) : null}{' '}
@@ -316,47 +311,68 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-stretch gap-2">
+      <div className="flex flex-wrap items-stretch gap-2 [@media(max-height:480px)]:flex-nowrap">
         <button
           type="button"
           onClick={() => void press('blood')}
           disabled={busy || session.status === 'finished'}
-          className="flex min-h-14 min-w-full flex-1 items-center justify-center gap-2 rounded-lg bg-[#dc2626] px-4 text-lg font-bold whitespace-nowrap text-white outline outline-2 outline-white/80 disabled:opacity-60 min-[480px]:min-w-[8rem]"
+          className="flex min-h-14 min-w-full flex-1 items-center justify-center gap-2 rounded-lg bg-[#dc2626] px-4 text-lg font-bold whitespace-nowrap text-white outline outline-2 outline-white/80 disabled:opacity-60 min-[480px]:min-w-[8rem] [@media(max-height:480px)]:min-h-11 [@media(max-height:480px)]:min-w-0 [@media(max-height:480px)]:text-base"
         >
-          <Droplets size={22} aria-hidden="true" />+ Sang
+          <Droplets size={22} aria-hidden="true" className="shrink-0" />+ Sang
         </button>
         {session.status === 'paused' ? (
           <Button
             variant="secondary"
-            size="lg"
+            size="md"
             aria-label="Reprendre la recherche"
             onClick={() => void useBloodStore.getState().resume()}
           >
-            <Play size={18} aria-hidden="true" /> Reprendre
+            <Play size={18} aria-hidden="true" />
+            <span className="[@media(max-height:480px)]:sr-only">Reprendre</span>
           </Button>
         ) : (
           <Button
             variant="secondary"
-            size="lg"
+            size="md"
             aria-label="Mettre la recherche en pause"
             disabled={session.status !== 'active' || interrupted}
             onClick={() => void useBloodStore.getState().pause()}
           >
-            <Pause size={18} aria-hidden="true" /> Pause
+            <Pause size={18} aria-hidden="true" />
+            <span className="[@media(max-height:480px)]:sr-only">Pause</span>
           </Button>
         )}
         <Button
           variant="secondary"
-          size="lg"
+          size="md"
           aria-label="Terminer la recherche"
           disabled={session.status === 'waiting_gps'}
           onClick={() => void useBloodStore.getState().finish()}
         >
-          <Square size={18} aria-hidden="true" /> Terminer
+          <Square size={18} aria-hidden="true" />
+          <span className="[@media(max-height:480px)]:sr-only">Terminer</span>
         </Button>
       </div>
 
-      <div aria-live="polite" className="min-h-4 text-xs">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={`${SECONDARY} justify-center px-2`}
+          onClick={openCamera}
+        >
+          <Camera size={16} aria-hidden="true" /> Caméra sang
+        </button>
+        <button
+          type="button"
+          className={`${SECONDARY} justify-center px-2`}
+          disabled={!latest}
+          onClick={() => latest && goTo(latest.id)}
+        >
+          <Navigation size={16} aria-hidden="true" /> Dernier indice
+        </button>
+      </div>
+
+      <div aria-live="polite" className="min-h-4 text-xs empty:hidden">
         {notice}
       </div>
       {error && (
@@ -399,14 +415,6 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
             <button
               type="button"
               className={SECONDARY}
-              disabled={!latest || latest.id === lastBlood?.id}
-              onClick={() => latest && goTo(latest.id)}
-            >
-              <Navigation size={16} aria-hidden="true" /> Aller au dernier indice
-            </button>
-            <button
-              type="button"
-              className={SECONDARY}
               disabled={gpsReading.status !== 'available'}
               onClick={() =>
                 gpsReading.status === 'available' && onCenter(gpsReading.value)
@@ -440,10 +448,6 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
               ))}
             </div>
           </div>
-
-          <button type="button" className={SECONDARY} onClick={() => setCameraOpen(true)}>
-            <Camera size={16} aria-hidden="true" /> Caméra (expérimental)
-          </button>
 
           <button
             type="button"
@@ -499,14 +503,6 @@ export function BloodPanel({ gpsReading, onCenter, onOverview }: BloodPanelProps
               : 'Gardez l’application ouverte et l’écran allumé : sur iPhone, le GPS s’arrête quand l’écran se verrouille.'}
           </p>
         </div>
-      )}
-      {cameraOpen && (
-        <Suspense fallback={null}>
-          <BloodCameraAssist
-            gpsReading={gpsReading}
-            onClose={() => setCameraOpen(false)}
-          />
-        </Suspense>
       )}
     </section>
   )

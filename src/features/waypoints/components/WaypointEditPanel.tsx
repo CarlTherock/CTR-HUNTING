@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Lock, MapPin, Navigation, Save, Trash2, Wind, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  MapPin,
+  Navigation,
+  Save,
+  Trash2,
+  Wind,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { TerritorySelect } from '@/features/territories/components/TerritorySelect'
@@ -81,6 +91,9 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
   const [territoryId, setTerritoryId] = useState<string | undefined>(initialTerritory)
   const [openedFor, setOpenedFor] = useState<string | null>(target)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  // Folded to its handle + title so the map stays usable; the form stays
+  // mounted (hidden), so nothing typed is lost and rotating never resets it.
+  const [folded, setFolded] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +114,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
     setOptimalWindDirections(waypoint?.optimalWindDirections ?? [])
     setTerritoryId(initialTerritory())
     setDetailsOpen(false)
+    setFolded(false)
     setConfirmingDelete(false)
     setError(null)
   }
@@ -163,10 +177,13 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
 
   // The full-width wrapper lets map taps/marker clicks through; only the
   // card itself captures pointer events.
+  // `--panel-clearance` is set by the map page: the height taken at the bottom
+  // of the screen by the dock (« Aller à », search, measure), so this card sits
+  // ABOVE it and never hides « Arrêter le guidage ». Absent elsewhere (0).
   const shell =
-    'pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
+    'pointer-events-none fixed inset-x-0 bottom-[var(--panel-clearance,0px)] z-30 flex justify-center pr-[calc(0.75rem+var(--panel-right,0px))] pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+var(--panel-left,0px))]'
   const card =
-    'pointer-events-auto border-surface-600 bg-surface-900 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-lg border p-4 shadow-2xl'
+    'pointer-events-auto border-surface-600 bg-surface-900 max-h-[max(6rem,min(80dvh,calc(100dvh-var(--panel-clearance,0px)-5rem)))] max-w-sm overflow-y-auto rounded-lg border shadow-2xl'
   const draftError = draft?.error ?? null
   const shownError = error ?? draftError
   const busy = saving || (draft?.saving ?? false)
@@ -176,7 +193,7 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
     return (
       <div className={shell}>
         <div
-          className={card}
+          className={cn(card, 'w-full p-4')}
           role="region"
           aria-label="Position du nouveau point de repère"
         >
@@ -206,260 +223,300 @@ export function WaypointEditPanel({ gpsReading }: { gpsReading?: GeolocationRead
 
   return (
     <div className={shell}>
-      <div className={card}>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-ink-100 text-sm font-semibold">
-            {draft ? 'Nouveau point de repère' : 'Point de repère'}
-          </h2>
-          <button
-            type="button"
-            onClick={draft ? () => setDetailsOpen(false) : closeEdit}
-            aria-label={
-              draft ? 'Retour à l’ajustement de la position' : 'Fermer sans enregistrer'
-            }
-            className="text-ink-500 hover:text-ink-100 flex h-11 w-11 items-center justify-center"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
+      <div
+        className={cn(
+          card,
+          folded
+            ? 'w-full'
+            : 'mr-[calc(-1*var(--panel-extend,0px))] w-[calc(100%+var(--panel-extend,0px))]',
+        )}
+        data-testid="waypoint-edit-panel"
+        data-folded={folded}
+      >
+        <div className="bg-surface-900 sticky top-0 z-10 px-4 pt-1.5">
+          <div
+            aria-hidden="true"
+            className="bg-surface-600 mx-auto h-1 w-10 rounded-full"
+          />
+          <div className="flex items-center justify-between gap-1">
+            <h2 className="text-ink-100 min-w-0 flex-1 truncate text-sm font-semibold">
+              {draft ? 'Nouveau point de repère' : 'Point de repère'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setFolded((value) => !value)}
+              aria-expanded={!folded}
+              aria-controls="waypoint-edit-body"
+              aria-label={folded ? 'Déplier la fiche' : 'Replier la fiche'}
+              title={folded ? 'Déplier la fiche' : 'Replier la fiche'}
+              className="text-ink-300 hover:text-ink-100 flex h-11 w-11 shrink-0 items-center justify-center"
+            >
+              {folded ? (
+                <ChevronUp size={18} aria-hidden="true" />
+              ) : (
+                <ChevronDown size={18} aria-hidden="true" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={draft ? () => setDetailsOpen(false) : closeEdit}
+              aria-label={
+                draft ? 'Retour à l’ajustement de la position' : 'Fermer sans enregistrer'
+              }
+              className="text-ink-500 hover:text-ink-100 flex h-11 w-11 shrink-0 items-center justify-center"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {waypoint && !draft ? (
-            <>
-              <WaypointPositionBlock key={waypoint.id} waypoint={waypoint} />
-              {/* Opens the bird's-eye guidance and closes this sheet so the
+        <div id="waypoint-edit-body" hidden={folded} className="px-4 pt-1 pb-4">
+          <div className="flex flex-col gap-3">
+            {waypoint && !draft ? (
+              <>
+                <WaypointPositionBlock key={waypoint.id} waypoint={waypoint} />
+                {/* Opens the bird's-eye guidance and closes this sheet so the
                   map is visible. Read-only: the waypoint is not modified. */}
-              <Button
-                variant="primary"
-                size="md"
-                className="h-11 w-full"
-                onClick={() => {
-                  if (startGuidance(waypoint.id)) closeEdit()
-                }}
-              >
-                <Navigation size={16} aria-hidden="true" />
-                Aller à
-              </Button>
-            </>
-          ) : (
-            <div className="bg-surface-800 text-ink-300 flex items-start gap-2 rounded-md p-2 text-xs">
-              <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
-              <div>
-                <p className="text-ink-100 tabular-nums">
-                  {formatCoordinate(position.lat, position.lng)}
-                </p>
-                <p>La position sera verrouillée à l’enregistrement.</p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  className="h-11 w-full"
+                  onClick={() => {
+                    if (startGuidance(waypoint.id)) closeEdit()
+                  }}
+                >
+                  <Navigation size={16} aria-hidden="true" />
+                  Aller à
+                </Button>
+              </>
+            ) : (
+              <div className="bg-surface-800 text-ink-300 flex items-start gap-2 rounded-md p-2 text-xs">
+                <Lock size={14} aria-hidden="true" className="mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-ink-100 tabular-nums">
+                    {formatCoordinate(position.lat, position.lng)}
+                  </p>
+                  <p>La position sera verrouillée à l’enregistrement.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <label className="flex flex-col gap-1">
-            <span className="text-ink-500 text-xs font-medium">Nom</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={80}
-              className={FIELD}
-            />
-          </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-ink-500 text-xs font-medium">Nom</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
+                className={FIELD}
+              />
+            </label>
 
-          <TerritorySelect value={territoryId} onChange={setTerritoryId} />
+            <TerritorySelect value={territoryId} onChange={setTerritoryId} />
 
-          <div>
-            <span className="text-ink-500 text-xs font-medium">Catégorie</span>
-            <div
-              role="radiogroup"
-              aria-label="Catégorie"
-              className="mt-1.5 grid grid-cols-3 gap-1.5"
-            >
-              {CATEGORY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={category === option.value}
-                  title={option.label}
-                  onClick={() => setCategory(option.value)}
-                  className={cn(
-                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center transition-colors',
-                    category === option.value
-                      ? 'bg-brand-500/15 text-brand-400'
-                      : 'text-ink-300 hover:bg-surface-800',
-                  )}
-                >
-                  <option.Icon size={16} aria-hidden="true" />
-                  <span className="text-[11px] leading-tight">{option.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="text-ink-500 text-xs font-medium">Couleur</span>
-            <div
-              role="radiogroup"
-              aria-label="Couleur"
-              className="mt-1.5 flex flex-wrap gap-1"
-            >
-              {COLOR_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={color === option.value}
-                  title={option.label}
-                  aria-label={option.label}
-                  onClick={() => setColor(option.value)}
-                  className="flex h-11 w-11 items-center justify-center"
-                >
-                  <span
-                    style={{ background: option.value }}
-                    className={cn(
-                      'h-7 w-7 rounded-full ring-offset-2 ring-offset-[var(--color-surface-900)] transition-shadow',
-                      color === option.value ? 'ring-2 ring-white' : '',
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-ink-500 text-xs font-medium">Notes</span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className={cn(FIELD, 'resize-none py-2')}
-            />
-          </label>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-ink-500 text-xs font-medium">
-                Vent favorable (provenance)
-              </span>
-              {currentWind && (
-                <span
-                  className={cn(
-                    'flex items-center gap-1 text-[11px] font-medium',
-                    isOptimalWind(currentWind.directionDegrees, optimalWindDirections)
-                      ? 'text-status-success'
-                      : optimalWindDirections.length > 0
-                        ? 'text-status-danger'
-                        : 'text-ink-500',
-                  )}
-                >
-                  <Wind size={11} aria-hidden="true" />
-                  {compassLabel(currentWind.directionDegrees)} maintenant
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex items-center gap-3">
-              {currentWind && (
-                <WindCompass
-                  directionDegrees={currentWind.directionDegrees}
-                  speedKmh={currentWind.speedKmh}
-                  optimalDirections={optimalWindDirections}
-                  size={100}
-                />
-              )}
+            <div>
+              <span className="text-ink-500 text-xs font-medium">Catégorie</span>
               <div
-                role="group"
-                aria-label="Directions de vent favorables"
-                className="grid flex-1 grid-cols-4 gap-1.5"
+                role="radiogroup"
+                aria-label="Catégorie"
+                className="mt-1.5 grid grid-cols-3 gap-1.5"
               >
-                {OCTANTS.map((octant) => (
+                {CATEGORY_OPTIONS.map((option) => (
                   <button
-                    key={octant}
+                    key={option.value}
                     type="button"
-                    aria-pressed={optimalWindDirections.includes(octant)}
-                    onClick={() => toggleOctant(octant)}
+                    role="radio"
+                    aria-checked={category === option.value}
+                    title={option.label}
+                    onClick={() => setCategory(option.value)}
                     className={cn(
-                      'min-h-11 rounded-md px-1 text-center text-sm font-medium transition-colors',
-                      optimalWindDirections.includes(octant)
+                      'flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-center transition-colors',
+                      category === option.value
                         ? 'bg-brand-500/15 text-brand-400'
                         : 'text-ink-300 hover:bg-surface-800',
                     )}
                   >
-                    {compassLabel(octant)}
+                    <option.Icon size={16} aria-hidden="true" />
+                    <span className="text-[11px] leading-tight">{option.label}</span>
                   </button>
                 ))}
               </div>
             </div>
+
+            <div>
+              <span className="text-ink-500 text-xs font-medium">Couleur</span>
+              <div
+                role="radiogroup"
+                aria-label="Couleur"
+                className="mt-1.5 flex flex-wrap gap-1"
+              >
+                {COLOR_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={color === option.value}
+                    title={option.label}
+                    aria-label={option.label}
+                    onClick={() => setColor(option.value)}
+                    className="flex h-11 w-11 items-center justify-center"
+                  >
+                    <span
+                      style={{ background: option.value }}
+                      className={cn(
+                        'h-7 w-7 rounded-full ring-offset-2 ring-offset-[var(--color-surface-900)] transition-shadow',
+                        color === option.value ? 'ring-2 ring-white' : '',
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-ink-500 text-xs font-medium">Notes</span>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className={cn(FIELD, 'resize-none py-2')}
+              />
+            </label>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink-500 text-xs font-medium">
+                  Vent favorable (provenance)
+                </span>
+                {currentWind && (
+                  <span
+                    className={cn(
+                      'flex items-center gap-1 text-[11px] font-medium',
+                      isOptimalWind(currentWind.directionDegrees, optimalWindDirections)
+                        ? 'text-status-success'
+                        : optimalWindDirections.length > 0
+                          ? 'text-status-danger'
+                          : 'text-ink-500',
+                    )}
+                  >
+                    <Wind size={11} aria-hidden="true" />
+                    {compassLabel(currentWind.directionDegrees)} maintenant
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                {currentWind && (
+                  <WindCompass
+                    directionDegrees={currentWind.directionDegrees}
+                    speedKmh={currentWind.speedKmh}
+                    optimalDirections={optimalWindDirections}
+                    size={100}
+                  />
+                )}
+                <div
+                  role="group"
+                  aria-label="Directions de vent favorables"
+                  className="grid flex-1 grid-cols-4 gap-1.5"
+                >
+                  {OCTANTS.map((octant) => (
+                    <button
+                      key={octant}
+                      type="button"
+                      aria-pressed={optimalWindDirections.includes(octant)}
+                      onClick={() => toggleOctant(octant)}
+                      className={cn(
+                        'min-h-11 rounded-md px-1 text-center text-sm font-medium transition-colors',
+                        optimalWindDirections.includes(octant)
+                          ? 'bg-brand-500/15 text-brand-400'
+                          : 'text-ink-300 hover:bg-surface-800',
+                      )}
+                    >
+                      {compassLabel(octant)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {waypoint && !draft ? (
+              <WaypointPhotos
+                waypointId={waypoint.id}
+                photoIds={waypoint.photoIds ?? []}
+              />
+            ) : (
+              <p className="text-ink-500 text-xs">
+                Les photos pourront être ajoutées une fois le point enregistré.
+              </p>
+            )}
+
+            {waypoint && !draft && gpsReading && <MyPositionBlock reading={gpsReading} />}
           </div>
 
-          {waypoint && !draft ? (
-            <WaypointPhotos waypointId={waypoint.id} photoIds={waypoint.photoIds ?? []} />
-          ) : (
-            <p className="text-ink-500 text-xs">
-              Les photos pourront être ajoutées une fois le point enregistré.
+          {shownError && (
+            <p role="alert" className="text-status-danger mt-3 text-sm">
+              {shownError}
             </p>
           )}
 
-          {waypoint && !draft && gpsReading && <MyPositionBlock reading={gpsReading} />}
-        </div>
-
-        {shownError && (
-          <p role="alert" className="text-status-danger mt-3 text-sm">
-            {shownError}
-          </p>
-        )}
-
-        {confirmingDelete && waypoint ? (
-          <div
-            ref={focusOnMount}
-            tabIndex={-1}
-            role="alertdialog"
-            aria-label={`Confirmer la suppression de ${waypoint.name}`}
-            className="border-status-danger/50 mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm outline-none"
-          >
-            <p className="text-ink-100">
-              Supprimer définitivement « {waypoint.name} » et ses photos ? Cette action
-              est irréversible.
-            </p>
-            <div className="flex justify-between gap-2">
+          {confirmingDelete && waypoint ? (
+            <div
+              ref={focusOnMount}
+              tabIndex={-1}
+              role="alertdialog"
+              aria-label={`Confirmer la suppression de ${waypoint.name}`}
+              className="border-status-danger/50 mt-4 flex flex-col gap-2 rounded-lg border p-3 text-sm outline-none"
+            >
+              <p className="text-ink-100">
+                Supprimer définitivement « {waypoint.name} » et ses photos ? Cette action
+                est irréversible.
+              </p>
+              <div className="flex justify-between gap-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setConfirmingDelete(false)}
+                >
+                  Annuler
+                </Button>
+                <Button variant="danger" size="md" onClick={() => void handleDelete()}>
+                  <Trash2 size={14} aria-hidden="true" />
+                  Supprimer
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-center justify-between gap-2">
+              {draft ? (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={cancelDraft}
+                  disabled={busy}
+                >
+                  Annuler
+                </Button>
+              ) : (
+                <Button
+                  variant="danger"
+                  size="md"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Supprimer
+                </Button>
+              )}
               <Button
-                variant="secondary"
+                variant="primary"
                 size="md"
-                onClick={() => setConfirmingDelete(false)}
+                onClick={() => void handleSave()}
+                disabled={busy}
               >
-                Annuler
-              </Button>
-              <Button variant="danger" size="md" onClick={() => void handleDelete()}>
-                <Trash2 size={14} aria-hidden="true" />
-                Supprimer
+                <Save size={14} aria-hidden="true" />
+                {busy ? 'Enregistrement…' : 'Enregistrer'}
               </Button>
             </div>
-          </div>
-        ) : (
-          <div className="mt-4 flex items-center justify-between gap-2">
-            {draft ? (
-              <Button variant="secondary" size="md" onClick={cancelDraft} disabled={busy}>
-                Annuler
-              </Button>
-            ) : (
-              <Button
-                variant="danger"
-                size="md"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                <Trash2 size={14} aria-hidden="true" />
-                Supprimer
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => void handleSave()}
-              disabled={busy}
-            >
-              <Save size={14} aria-hidden="true" />
-              {busy ? 'Enregistrement…' : 'Enregistrer'}
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
