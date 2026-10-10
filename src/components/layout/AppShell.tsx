@@ -28,9 +28,9 @@ import { useHashScroll } from './useHashScroll'
  * While « Analyse du vent » is open on the map, the bottom navigation is
  * hidden (not removed from the app) and the sheet owns the bottom safe area.
  *
- * Immersive mode (map only) hides all chrome; the shell then applies the
- * safe-area insets itself so the map never sits under a notch or the home
- * indicator.
+ * Immersive mode (map only) hides all chrome and the shell adds no padding:
+ * the map page lets the map cover every edge of the viewport and positions
+ * its controls, tool rail and sheets inside the safe areas (never twice).
  */
 export function AppShell() {
   useHashScroll()
@@ -45,10 +45,10 @@ export function AppShell() {
     <div
       className="bg-surface-950 text-ink-100 flex h-dvh overflow-hidden"
       style={{
-        paddingLeft: 'env(safe-area-inset-left)',
-        paddingRight: 'env(safe-area-inset-right)',
-        paddingTop: immersive ? 'env(safe-area-inset-top)' : undefined,
-        paddingBottom: immersive ? 'env(safe-area-inset-bottom)' : undefined,
+        // Immersive: no reserve here. The map page draws the map to every
+        // screen edge and keeps only its controls inside the safe areas.
+        paddingLeft: immersive ? undefined : 'env(safe-area-inset-left)',
+        paddingRight: immersive ? undefined : 'env(safe-area-inset-right)',
       }}
     >
       <SharedPointHandler />
