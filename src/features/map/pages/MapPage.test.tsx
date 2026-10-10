@@ -1737,17 +1737,16 @@ describe('MapPage — follow my position and "Aller à" (GPS simulated)', () => 
  * dans l'appel de rendu prouve que le bon créneau est transmis. Chromium/jsdom
  * seulement — aucun iPhone réel.
  */
-function dayKeys(): [string, string] {
+function dayKey(offset: number): string {
   const today = localHourKey(new Date(), 'America/Toronto').slice(0, 10)
-  const next = new Date(`${today}T00:00:00Z`)
-  next.setUTCDate(next.getUTCDate() + 1)
-  return [today, next.toISOString().slice(0, 10)]
+  const date = new Date(`${today}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + offset)
+  return date.toISOString().slice(0, 10)
 }
 
 function windFixture(hours = 48): WindField {
-  const [today, tomorrow] = dayKeys()
   const hourly = Array.from({ length: hours }, (_, i) => ({
-    time: `${i < 24 ? today : tomorrow}T${String(i % 24).padStart(2, '0')}:00`,
+    time: `${dayKey(Math.floor(i / 24))}T${String(i % 24).padStart(2, '0')}:00`,
     directionDegrees: (i * 7) % 360,
     speedKmh: 3 + i,
     gustsKmh: 10 + i,
@@ -1826,6 +1825,47 @@ describe('Analyse du vent', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(["Aujourd'hui", 'Demain'])
+  })
+
+  it('cinq jours de prévision : cinq jours, et le jour 5 envoie SON créneau au rendu', async () => {
+    const user = userEvent.setup()
+    const field = windFixture(120)
+    const now = currentIndex(field)
+    seedWind(field, { selectedHourOffset: now })
+    render(<MapPage />)
+
+    const group = await screen.findByRole('group', { name: 'Jour de la prévision' })
+    const buttons = within(group).getAllByRole('button')
+    expect(buttons).toHaveLength(5)
+    expect(buttons.slice(0, 2).map((b) => b.textContent)).toEqual([
+      "Aujourd'hui",
+      'Demain',
+    ])
+
+    await user.click(buttons[4])
+    const target = now + 96
+    expect(useWindStore.getState().selectedHourOffset).toBe(target)
+    await vi.waitFor(() => expect(lastRendered().hourOffset).toBe(target))
+    const rendered = lastRendered()
+    // le rendu reçoit le champ ET l'indice du jour 5, avec ses propres valeurs
+    expect(rendered.field?.samples[0].hourly[rendered.hourOffset]).toMatchObject({
+      speedKmh: 3 + target,
+      directionDegrees: (target * 7) % 360,
+    })
+    expect(rendered.field?.samples[0].hourly[rendered.hourOffset].time.slice(0, 10)).toBe(
+      dayKey(4),
+    )
+    expect(screen.getByTestId('wind-readout')).toHaveTextContent(`${3 + target} km/h`)
+    // « Maintenant » revient à l'heure actuelle, pas à l'heure choisie
+    await user.click(screen.getByRole('button', { name: 'Maintenant' }))
+    expect(useWindStore.getState().selectedHourOffset).toBe(now)
+  })
+
+  it('une prévision de 3 jours seulement ne propose pas de 4e ni de 5e jour', async () => {
+    seedWind(windFixture(72))
+    render(<MapPage />)
+    const group = await screen.findByRole('group', { name: 'Jour de la prévision' })
+    expect(within(group).getAllByRole('button')).toHaveLength(3)
   })
 
   it('une prévision de 24 h ne propose pas Demain', async () => {

@@ -128,3 +128,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * « Analyse du vent » is a full-width sheet anchored to the bottom of the map
+ * area (`--sheet-height` is set by the map page on the wrapper). While it is
+ * open, the rail keeps only its essential buttons and the MapLibre bottom
+ * controls (attributions) sit above the sheet instead of behind it.
+ */
+[data-wind-sheet] [data-rail-secondary] {
+  display: none;
+}
+
+[data-wind-sheet] .maplibregl-ctrl-bottom-left,
+[data-wind-sheet] .maplibregl-ctrl-bottom-right {
+  margin-bottom: var(--sheet-height, 0px);
+}

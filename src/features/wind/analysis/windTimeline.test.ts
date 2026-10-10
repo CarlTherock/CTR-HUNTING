@@ -218,3 +218,77 @@ describe('age, status, bounds', () => {
     expect(boundsCover(b, { lat: 48, lng: -71.2 }, 0.05)).toBe(false)
   })
 })
+
+describe('five calendar days', () => {
+  const FIVE = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13']
+
+  /** Each day has its own direction and speed: day d, hour h → 40°·d + 15°·h, 10·d + h km/h. */
+  function fiveDayField(): WindField {
+    const hourly = FIVE.flatMap((date, d) =>
+      Array.from({ length: 24 }, (_, h) =>
+        reading(
+          `${date}T${String(h).padStart(2, '0')}:00`,
+          (40 * d + 15 * h) % 360,
+          10 * d + h,
+        ),
+      ),
+    )
+    return { timezone: TZ, samples: [{ coordinate: { lat: 46.8, lng: -71.2 }, hourly }] }
+  }
+
+  it('offers five real days, each with its own 24 slots', () => {
+    const days = buildForecastDays(fiveDayField(), NOW)
+    expect(days.map((d) => d.dateKey)).toEqual(FIVE)
+    expect(days.map((d) => d.slots.length)).toEqual([24, 24, 24, 24, 24])
+    expect(days.map((d) => dayLabel(d))).toEqual([
+      "Aujourd'hui",
+      'Demain',
+      'Dim. 11 oct.',
+      'Lun. 12 oct.',
+      'Mar. 13 oct.',
+    ])
+    expect(days[4].slots[0]).toMatchObject({ index: 96, hour: 0 })
+  })
+
+  it('reads day-5 values from day 5, not a copy of tomorrow or today', () => {
+    const f = fiveDayField()
+    const days = buildForecastDays(f, NOW)
+    const change = slotForDayChange(days[4], 10)
+    expect(change).toMatchObject({ index: 106, sameHour: true })
+    const day5 = readSlot(f, { lat: 46.8, lng: -71.2 }, 106)
+    const day2 = readSlot(f, { lat: 46.8, lng: -71.2 }, 34)
+    expect(day5.kind).toBe('ok')
+    expect(day2.kind).toBe('ok')
+    if (day5.kind !== 'ok' || day2.kind !== 'ok') return
+    // 40°·4 + 15°·10 = 310° and 10·4 + 10 = 50 km/h on day 5
+    expect(day5.reading).toMatchObject({ directionDegrees: 310, speedKmh: 50 })
+    expect(day2.reading).toMatchObject({ directionDegrees: 190, speedKmh: 20 })
+    expect(describeWind(day5.reading)).toMatchObject({ fromDegrees: 310, speedKmh: 50 })
+  })
+
+  it('does not assume 24 hours a day (a 23 h spring-forward day, a 25 h fall-back day)', () => {
+    const base = fiveDayField()
+    const hourly = base.samples[0].hourly.filter((r) => r.time !== '2026-10-10T02:00')
+    const f: WindField = { timezone: TZ, samples: [{ ...base.samples[0], hourly }] }
+    const days = buildForecastDays(f, NOW)
+    expect(days[1].slots).toHaveLength(23)
+    expect(days[1].slots.some((s) => s.hour === 2)).toBe(false)
+    // asking for 02:00 on that day picks a nearby real hour and says so
+    const change = slotForDayChange(days[1], 2)
+    expect(change?.sameHour).toBe(false)
+    expect([1, 3]).toContain(change?.hour)
+    // indices stay those of the source series (one fewer after the gap)
+    expect(days[2].slots[0].index).toBe(47)
+  })
+
+  it('shows the days a failed or short source still covers, and no more', () => {
+    const base = fiveDayField()
+    const short: WindField = {
+      timezone: TZ,
+      samples: [{ ...base.samples[0], hourly: base.samples[0].hourly.slice(0, 80) }],
+    }
+    const days = buildForecastDays(short, NOW)
+    expect(days.map((d) => d.dateKey)).toEqual(FIVE.slice(0, 4))
+    expect(days[3].slots).toHaveLength(8)
+  })
+})

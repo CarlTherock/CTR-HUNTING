@@ -43,7 +43,7 @@ export function ViewModeToggle({
   return (
     // Always-visible controls on the right rail (replacing the zoom +/−):
     // a vertical 2D/3D switch, and — in 3D only — the relief stepper under it.
-    <ToolSlot order={5} placement="rail">
+    <ToolSlot order={5} placement="rail" secondary>
       <div className="flex flex-col items-end gap-2">
         <div
           role="group"

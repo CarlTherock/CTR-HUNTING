@@ -56,6 +56,7 @@ import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useMeasureExclusivity } from '@/features/measure/useMeasureExclusivity'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
 import { WindAnalysisPanel } from '@/features/wind/components/WindAnalysisPanel'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
 import { geoMetTileUrls, layerDef } from '@/services/weather-map'
@@ -131,6 +132,11 @@ export function MapPage() {
     extend: 0,
     left: 0,
   })
+  // « Analyse du vent » is a full-width sheet anchored to the bottom of this
+  // area: the rail, the dock and the attributions are lifted above it.
+  const windSheetOpen = useWindAnalysisStore((state) => state.open)
+  const windSheetHeight = useWindAnalysisStore((state) => state.sheetHeight)
+  const sheetClearance = windSheetOpen ? windSheetHeight : 0
   const [toolsOpen, setToolsOpen] = useState(false)
   const closeTools = useCallback(() => setToolsOpen(false), [])
   const toolsContext = useMemo(
@@ -423,6 +429,8 @@ export function MapPage() {
         setPanelLayout({ clearance: 0, right: 0, extend: 0, left: sideLeft - 12 })
         return
       }
+      // The wind sheet is not a dock panel but the cards must clear it too.
+      clearance = Math.max(clearance, sheetClearance > 0 ? sheetClearance + 8 : 0)
       setPanelLayout({
         clearance,
         right: narrow ? reserve : 0,
@@ -443,7 +451,7 @@ export function MapPage() {
       window.removeEventListener('resize', measure)
       resizeObserver.disconnect()
     }
-  }, [dockHost, dockReserve])
+  }, [dockHost, dockReserve, sheetClearance])
 
   useEffect(() => {
     const parent = railHost?.offsetParent
@@ -735,8 +743,10 @@ export function MapPage() {
       {mapProvider ? (
         <div
           className="relative min-h-0 flex-1"
+          data-wind-sheet={windSheetOpen ? 'open' : undefined}
           style={
             {
+              '--sheet-height': `${sheetClearance}px`,
               '--panel-clearance': `${panelLayout.clearance}px`,
               '--panel-right': `${panelLayout.right}px`,
               '--panel-extend': `${panelLayout.extend}px`,
@@ -807,6 +817,7 @@ export function MapPage() {
               active={toolsOpen}
               large={fieldModeEnabled}
               order={50}
+              secondary
             />
             <ToolTrigger
               placement="rail"
@@ -823,6 +834,7 @@ export function MapPage() {
               active={immersive}
               large={fieldModeEnabled}
               order={60}
+              secondary
             />
             {nativeSupported && (
               <ToolTrigger
@@ -844,6 +856,12 @@ export function MapPage() {
               />
             )}
             <ToolsSheet open={toolsOpen} onClose={closeTools} setHost={setSheetHost} />
+            {!fieldModeEnabled && (
+              <WindAnalysisPanel
+                viewCenter={view.center}
+                getBounds={() => instanceRef.current?.getBounds() ?? null}
+              />
+            )}
             {/* Bottom-left dock: leaves the right-hand tool rail uncovered
                 (its measured width, at least 7 rem; 7 rem before it is measured). */}
             <div
@@ -854,15 +872,9 @@ export function MapPage() {
                   ? undefined
                   : ({ '--dock-reserve': `${dockReserve}px` } as CSSProperties)
               }
-              className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-h-[75%] w-[calc(100%-0.5rem-var(--dock-reserve))] max-w-md flex-col items-start gap-2 [--dock-reserve:7rem]"
+              className="pointer-events-none absolute bottom-[calc(0.5rem+var(--sheet-height,0px))] left-2 z-20 flex max-h-[calc(75%-var(--sheet-height,0px))] w-[calc(100%-0.5rem-var(--dock-reserve))] max-w-md flex-col items-start gap-2 [--dock-reserve:7rem]"
             >
               <ResumeFollowButton />
-              {!fieldModeEnabled && (
-                <WindAnalysisPanel
-                  viewCenter={view.center}
-                  getBounds={() => instanceRef.current?.getBounds() ?? null}
-                />
-              )}
               <BloodPanel
                 gpsReading={gpsReading}
                 onCenter={centerOnPosition}

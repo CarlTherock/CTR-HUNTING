@@ -1,5 +1,6 @@
 import { Outlet, useMatch } from 'react-router-dom'
 import { cn } from '@/utils/cn'
+import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { SharedPointHandler } from '@/features/share/components/SharedPointHandler'
 import { OnboardingDialog } from '@/features/onboarding/components/OnboardingDialog'
 import { Sidebar } from './Sidebar'
@@ -24,6 +25,9 @@ import { useHashScroll } from './useHashScroll'
  * layout and nothing may scroll behind it. Every other route scrolls
  * inside `main`.
  *
+ * While « Analyse du vent » is open on the map, the bottom navigation is
+ * hidden (not removed from the app) and the sheet owns the bottom safe area.
+ *
  * Immersive mode (map only) hides all chrome; the shell then applies the
  * safe-area insets itself so the map never sits under a notch or the home
  * indicator.
@@ -32,6 +36,10 @@ export function AppShell() {
   useHashScroll()
   const isMapRoute = useMatch('/map') !== null
   const immersive = useImmersiveStore((state) => state.immersive) && isMapRoute
+  // « Analyse du vent » (map only) takes the place of the bottom navigation:
+  // the bar is unmounted — no empty height, not focusable behind the sheet —
+  // and comes back as soon as the panel is closed. Only the layout hides it.
+  const windSheetOpen = useWindAnalysisStore((state) => state.open) && isMapRoute
 
   return (
     <div
@@ -56,7 +64,7 @@ export function AppShell() {
         >
           <Outlet />
         </main>
-        {!immersive && <BottomNav />}
+        {!immersive && !windSheetOpen && <BottomNav />}
       </div>
     </div>
   )

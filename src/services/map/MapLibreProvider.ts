@@ -1,4 +1,9 @@
-import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import {
+  AttributionControl,
+  Map as MapLibreMap,
+  NavigationControl,
+  setWorkerUrl,
+} from 'maplibre-gl'
 import { MAP_LOCALE_FR } from './mapLocale'
 import type {
   AnalysisHeatmapCell,
@@ -101,7 +106,18 @@ export class MapLibreProvider implements MapProvider {
       // arbitrary guess.
       maxPitch: 85,
       locale: MAP_LOCALE_FR,
+      // Attributions are added below in their compact, collapsed form.
+      attributionControl: false,
     })
+
+    // Every provider's attribution stays available behind the ⓘ button, but
+    // collapsed: MapLibre's compact control opens by default, which put a
+    // large white block of credits over the map (and behind bottom sheets).
+    map.addControl(new AttributionControl({ compact: true }), 'bottom-right')
+    // In its compact form MapLibre starts with the `open` attribute set
+    // (that is what showed the large block); dropping it leaves the ⓘ button,
+    // and a tap on it reveals every provider's credits.
+    container.querySelector('.maplibregl-ctrl-attrib')?.removeAttribute('open')
 
     // Compass only: the always-visible zoom +/− buttons are replaced by the
     // 2D/3D + relief controls (zoom stays available by gesture, keyboard and

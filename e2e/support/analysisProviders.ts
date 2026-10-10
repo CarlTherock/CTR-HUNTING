@@ -35,11 +35,13 @@ export function specialHour(): number {
   return Number(localParts(new Date()).hour) === 18 ? 9 : 18
 }
 
-export function hourlyTimes(): string[] {
-  const today = localParts(new Date()).date
-  const tomorrow = localParts(new Date(Date.now() + 24 * 3600_000)).date
+/** `days` calendar days of local hourly slots starting at today's midnight
+ * (2 by default, the horizon most specs were written for). */
+export function hourlyTimes(days = 2): string[] {
   const times: string[] = []
-  for (const day of [today, tomorrow]) {
+  for (let d = 0; d < days; d++) {
+    // Noon-anchored so a DST change never skips or repeats the date.
+    const day = localParts(new Date(Date.now() + d * 24 * 3600_000)).date
     for (let h = 0; h < 24; h++) times.push(`${day}T${String(h).padStart(2, '0')}:00`)
   }
   return times

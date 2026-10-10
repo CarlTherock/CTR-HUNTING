@@ -157,6 +157,12 @@ export function AdvancedChart() {
           Comparer le jour 1 et le jour 2
         </label>
       </div>
+      {!dayComparison && selectedHourOffset >= hourly.length && (
+        <p role="status" className="text-status-warning mb-2 text-xs">
+          L’heure choisie sur la carte (+{selectedHourOffset} h) dépasse les{' '}
+          {hourly.length} h de ce graphique : aucun curseur n’est affiché.
+        </p>
+      )}
 
       <div className="overflow-x-auto">
         <svg

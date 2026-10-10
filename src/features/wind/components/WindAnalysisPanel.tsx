@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from 'react'
 import {
   ArrowUp,
   ChevronDown,
@@ -6,11 +13,13 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  Info,
   Pause,
   Play,
   RefreshCw,
   X,
 } from 'lucide-react'
+import { useImmersiveStore } from '@/components/layout/immersiveStore'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
@@ -121,15 +130,23 @@ function cardWindow(day: ForecastDay | null, selectedIndex: number): ForecastSlo
 }
 
 /**
- * « Analyse du vent » — collapsible bottom panel of the map: pick a day and
- * an hour of the forecast, and the wind particles on the map follow it.
+ * « Analyse du vent » — full-width bottom sheet of the map: pick a day and an
+ * hour of the forecast, and the wind particles on the map follow it.
+ *
+ * Layout: anchored to the bottom edge of the map area (safe area included),
+ * across its whole width — it is NOT a column of the bottom-left dock. While
+ * it is open the app shell hides the bottom navigation (the sheet takes its
+ * place) and the tool rail keeps only its essential buttons above it. Three
+ * positions: collapsed (one line), open (days, hour, wind, time bar — about a
+ * third of a portrait screen) and details (source, age, explanation) on
+ * demand. The handle can be dragged; the title and the ‹ › buttons do the
+ * same without a gesture.
  *
  * It owns no time state: the selection is `windStore.selectedHourOffset`
  * (also read by the Météo page, the charts and the particle layer), so
  * every view shows the same hour. The values come from the real hourly
  * series of the loaded wind field; an hour without data is shown as such,
- * never replaced by the current wind. Sits in the map's bottom-left dock,
- * above the guidance / blood-search panels, so it never covers them.
+ * never replaced by the current wind.
  */
 export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelProps) {
   const open = useWindAnalysisStore((s) => s.open)
@@ -214,6 +231,38 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
     if (open && expanded && guidanceActive) useGuidanceStore.getState().setCollapsed(true)
   }, [open, expanded, guidanceActive])
 
+  // Report the sheet's height so the map page can keep its rail, the
+  // attributions and the other bottom panels clear of it.
+  const immersive = useImmersiveStore((s) => s.immersive)
+  const setSheetHeight = useWindAnalysisStore((s) => s.setSheetHeight)
+  const [rootEl, setRootEl] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!open || !rootEl) return
+    const measure = () => setSheetHeight(Math.ceil(rootEl.getBoundingClientRect().height))
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(rootEl)
+    return () => observer.disconnect()
+  }, [open, rootEl, setSheetHeight])
+  // Most height changes come from a re-render (field arrived, details opened,
+  // text wrapped differently): measure right after each one instead of waiting
+  // for the observer, which is delivered with the next frame and can lag on a
+  // busy map. The observer above still covers changes with no re-render.
+  useLayoutEffect(() => {
+    if (open && rootEl) setSheetHeight(Math.ceil(rootEl.getBoundingClientRect().height))
+  })
+
+  const dragStartY = useRef<number | null>(null)
+  const dayRefs = useRef(new Map<string, HTMLButtonElement>())
+  const displayDateKey = displayDay?.dateKey ?? null
+  useEffect(() => {
+    if (!open || !displayDateKey) return
+    dayRefs.current.get(displayDateKey)?.scrollIntoView?.({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  }, [open, expanded, displayDateKey])
+
   if (!open) return null
 
   function pauseFramePlayback() {
@@ -267,15 +316,51 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
         ? 'Indisponible'
         : 'Pas de donnée'
 
-  const panelClass =
-    '@container border-surface-600 bg-surface-900/95 text-ink-100 pointer-events-auto relative flex min-h-0 w-full shrink flex-col overflow-hidden rounded-lg border shadow-xl backdrop-blur-sm'
+  function moveHandle(direction: 'up' | 'down') {
+    if (direction === 'up') {
+      if (!expanded) {
+        if (!forceCollapsed) setExpanded(true)
+      } else setShowDetails(true)
+    } else if (showDetails) setShowDetails(false)
+    else setExpanded(false)
+  }
+
+  function onHandleDown(event: PointerEvent<HTMLDivElement>) {
+    dragStartY.current = event.clientY
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function onHandleUp(event: PointerEvent<HTMLDivElement>) {
+    const start = dragStartY.current
+    dragStartY.current = null
+    if (start === null) return
+    const delta = event.clientY - start
+    if (delta <= -24) moveHandle('up')
+    else if (delta >= 24) moveHandle('down')
+    else if (expanded) setExpanded(false)
+    else if (!forceCollapsed) setExpanded(true)
+  }
+
+  const loadingOrOff = state === 'loading' || state === 'unavailable'
+  const ready = !loadingOrOff
+  const compact = shortLandscape
+
+  const rootClass = cn(
+    '@container border-surface-600 bg-surface-900 text-ink-100 pointer-events-auto absolute inset-x-0 bottom-0 z-[25] flex flex-col border-t shadow-2xl',
+    compact ? 'max-h-[80dvh] rounded-t-lg' : 'max-h-[min(58dvh,34rem)] rounded-t-2xl',
+    // With the bottom navigation hidden, the sheet owns the home-indicator
+    // inset — except in immersive mode (the app shell already pads the
+    // screen edge) and from `md` up, where the map card sits inside a 1.5 rem
+    // page margin that already clears it.
+    !immersive && 'pb-[env(safe-area-inset-bottom)] md:pb-0',
+  )
 
   const stepButtons = (
     <>
       <button
         type="button"
         onClick={() => step(-1)}
-        disabled={state === 'loading' || state === 'unavailable'}
+        disabled={loadingOrOff}
         aria-label="Heure précédente"
         className="text-ink-300 hover:text-ink-100 flex size-11 shrink-0 items-center justify-center disabled:opacity-40"
       >
@@ -284,7 +369,7 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
       <button
         type="button"
         onClick={() => step(1)}
-        disabled={state === 'loading' || state === 'unavailable'}
+        disabled={loadingOrOff}
         aria-label="Heure suivante"
         className="text-ink-300 hover:text-ink-100 flex size-11 shrink-0 items-center justify-center disabled:opacity-40"
       >
@@ -293,15 +378,41 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
     </>
   )
 
+  const closeButton = (
+    <button
+      type="button"
+      onClick={closePanel}
+      aria-label="Fermer l'analyse du vent"
+      className="text-ink-500 hover:text-ink-100 flex size-11 shrink-0 items-center justify-center"
+    >
+      <X size={18} aria-hidden="true" />
+    </button>
+  )
+
+  const handle = (
+    <div
+      aria-hidden="true"
+      onPointerDown={onHandleDown}
+      onPointerUp={onHandleUp}
+      onPointerCancel={() => (dragStartY.current = null)}
+      data-testid="wind-handle"
+      className="flex h-4 shrink-0 cursor-grab touch-none items-center justify-center"
+    >
+      <span className="bg-ink-500 h-1 w-10 rounded-full" />
+    </div>
+  )
+
   if (!expanded) {
     return (
       <section
+        ref={setRootEl}
         aria-label="Analyse du vent (repliée)"
         data-testid="wind-analysis"
         data-state="collapsed"
-        className={panelClass}
+        className={rootClass}
       >
-        <div className="flex items-center">
+        {!compact && handle}
+        <div className="flex items-center px-1">
           <button
             type="button"
             onClick={() => setExpanded(true)}
@@ -312,7 +423,7 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
                 ? 'Dépliable quand le repère, le guidage ou la recherche de sang laissent la place'
                 : 'Déplier l’analyse du vent'
             }
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-2 py-1 text-left"
           >
             {description && <WindArrow toDegrees={description.toDegrees} />}
             <span className="min-w-0">
@@ -341,12 +452,12 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
             )}
           </button>
           {stepButtons}
+          {closeButton}
         </div>
       </section>
     )
   }
 
-  const ready = state !== 'loading' && state !== 'unavailable'
   const valueText = slot
     ? `${selectedDay ? longDateLabel(selectedDay.dateKey) : ''}, ${formatSlotTime(slot.time)}${
         description
@@ -356,370 +467,372 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
     : 'Créneau absent des prévisions'
   const cards = cardWindow(displayDay, selectedIndex)
 
+  const detailsButton = (
+    <button
+      type="button"
+      onClick={() => setShowDetails(!showDetails)}
+      aria-expanded={showDetails}
+      aria-label="Source et détails"
+      className="text-ink-300 hover:text-ink-100 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-2 text-xs"
+    >
+      <Info size={16} aria-hidden="true" />
+      <span className="hidden @[26rem]:inline">Détails</span>
+    </button>
+  )
+  const freezeButton = (
+    <button
+      type="button"
+      onClick={() => setPaused(!paused)}
+      aria-pressed={!paused}
+      aria-label={paused ? 'Animer les traits' : 'Figer les traits'}
+      disabled={!windEnabled}
+      className="border-surface-600 text-ink-300 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs disabled:opacity-40"
+    >
+      {paused ? (
+        <Play size={14} aria-hidden="true" />
+      ) : (
+        <Pause size={14} aria-hidden="true" />
+      )}
+      <span className="hidden @[26rem]:inline">{paused ? 'Animer' : 'Figer'}</span>
+    </button>
+  )
+  const nowButton = (
+    <button
+      type="button"
+      onClick={goNow}
+      aria-label="Maintenant"
+      className="border-surface-600 text-ink-100 hover:bg-surface-800 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-medium"
+    >
+      <Clock size={14} aria-hidden="true" />
+      <span className={compact ? 'hidden' : 'hidden @[22rem]:inline'}>Maintenant</span>
+    </button>
+  )
+  const collapseButton = (
+    <button
+      type="button"
+      onClick={() => setExpanded(false)}
+      aria-label="Replier l'analyse du vent"
+      className={cn(
+        'flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold whitespace-nowrap',
+        compact ? 'min-w-11 justify-center' : 'pr-1',
+      )}
+    >
+      {!compact && <span>Analyse du vent</span>}
+      <ChevronDown size={16} className="text-ink-500" aria-hidden="true" />
+    </button>
+  )
+  const dayChips =
+    days.length > 0 ? (
+      <div
+        role="group"
+        aria-label="Jour de la prévision"
+        data-testid="wind-days"
+        className={cn(
+          'flex min-w-0 [scrollbar-width:none] gap-1.5 overflow-x-auto py-0.5',
+          'flex-1',
+        )}
+      >
+        {days.map((day) => {
+          const active = displayDay?.dateKey === day.dateKey
+          return (
+            <button
+              key={day.dateKey}
+              ref={(node) => {
+                if (node) dayRefs.current.set(day.dateKey, node)
+                else dayRefs.current.delete(day.dateKey)
+              }}
+              type="button"
+              onClick={() => changeDay(day)}
+              aria-pressed={active}
+              className={cn(
+                'min-h-11 min-w-fit flex-1 shrink-0 rounded-md border px-2 text-xs font-medium whitespace-nowrap transition-colors @[26rem]:text-sm',
+                active
+                  ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+                  : 'border-surface-600 text-ink-300 hover:bg-surface-800',
+              )}
+            >
+              {dayLabel(day, true)}
+            </button>
+          )
+        })}
+      </div>
+    ) : null
+
+  const notices = (
+    <>
+      {state === 'loading' && (
+        <p role="status" className="text-ink-300 py-2 text-sm">
+          Chargement des prévisions de vent… La carte n’affiche pas encore l’heure
+          choisie.
+        </p>
+      )}
+      {state === 'unavailable' && (
+        <div role="status" className="py-1 text-sm">
+          <p className="text-status-danger">
+            Prévisions de vent indisponibles
+            {errorReason ? ` (${errorReason})` : ''}. Aucune valeur n’est affichée.
+          </p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="border-surface-600 mt-1 flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-xs"
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            Réessayer
+          </button>
+        </div>
+      )}
+      {state === 'cached' && (
+        <p role="status" className="text-status-warning py-1 text-xs">
+          Hors ligne : copie enregistrée le {fetchedClock(fetchedAt)}
+          {age ? ` (${age.label})` : ''}. Elle peut ne plus refléter la prévision
+          actuelle.
+        </p>
+      )}
+      {state === 'refresh-failed' && (
+        <p role="status" className="text-status-warning py-1 text-xs">
+          Actualisation impossible : valeurs récupérées le {fetchedClock(fetchedAt)}
+          {age ? ` (${age.label})` : ''}.
+        </p>
+      )}
+      {state === 'refreshing' && (
+        <p role="status" className="text-ink-300 py-1 text-xs">
+          Mise à jour des prévisions… Les valeurs affichées datent du{' '}
+          {fetchedClock(fetchedAt)}.
+        </p>
+      )}
+      {state === 'ready' && age?.stale && (
+        <p role="status" className="text-status-warning py-1 text-xs">
+          Prévisions anciennes ({age.label}).
+        </p>
+      )}
+      {ready && !windEnabled && (
+        <p className="text-ink-300 py-1 text-xs">
+          Les traits de vent sont désactivés sur la carte.{' '}
+          <button
+            type="button"
+            className="text-brand-300 min-h-11 underline"
+            onClick={() => {
+              const bounds = getBounds()
+              if (bounds) toggleWind(bounds)
+            }}
+          >
+            Les afficher
+          </button>
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="text-status-warning pb-1 text-xs">
+          {notice}
+        </p>
+      )}
+    </>
+  )
+
+  // One line: hour · origin direction · speed · gusts. Origin direction in
+  // words (« Vent du SSO »); the arrow shows where the wind blows TO.
+  const readout = ready && (
+    <div
+      aria-live="polite"
+      data-testid="wind-readout"
+      className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5 tabular-nums"
+    >
+      {slot && selectedDay ? (
+        <>
+          <span className="text-base font-semibold">{formatSlotTime(slot.time)}</span>
+          {description ? (
+            <>
+              <WindArrow toDegrees={description.toDegrees} size={20} />
+              <span className="text-sm font-semibold">
+                Vent du {description.fromLabel}{' '}
+                <span className="text-ink-300 font-normal">
+                  ({description.fromDegrees}°)
+                </span>
+              </span>
+              <span className="text-sm">{description.speedKmh} km/h</span>
+              {description.gustsKmh !== null && (
+                <span className="text-ink-300 text-sm">
+                  rafales {description.gustsKmh} km/h
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-status-warning text-sm">
+              Aucune donnée de vent pour ce créneau.
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="text-status-warning text-sm">
+          Ce créneau n’existe pas dans les prévisions chargées.{' '}
+          <button
+            type="button"
+            className="text-brand-300 min-h-11 underline"
+            onClick={() => {
+              const index = nearestAvailableIndex(days, selectedIndex)
+              if (index !== null) select(index)
+            }}
+          >
+            Aller au créneau le plus proche
+          </button>
+        </span>
+      )}
+    </div>
+  )
+
+  const timeBar = displayDay && (
+    <HourTimeBar
+      slots={displayDay.slots}
+      selectedIndex={selectedIndex}
+      nowIndex={
+        nowIndex !== null && displayDay.slots.some((s) => s.index === nowIndex)
+          ? nowIndex
+          : null
+      }
+      disabled={!ready}
+      valueText={valueText}
+      onSelect={select}
+      onStep={step}
+      onEdge={(edge) => {
+        const slots = displayDay.slots
+        select(edge === 'start' ? slots[0].index : slots[slots.length - 1].index)
+      }}
+    />
+  )
+
+  const hourCards = ready && cards.length > 0 && (
+    <ul className="hidden gap-1.5 pb-1 @[40rem]:flex" aria-label="Heures proches">
+      {cards.map((card) => {
+        const cardReading = readSlot(field, viewCenter, card.index)
+        const d = cardReading.kind === 'ok' ? describeWind(cardReading.reading) : null
+        const active = card.index === selectedIndex
+        return (
+          <li key={card.index} className="min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => select(card.index)}
+              aria-pressed={active}
+              aria-label={`${formatSlotTime(card.time)} : ${
+                d ? `vent du ${d.fromLabel}, ${d.speedKmh} km/h` : 'aucune donnée'
+              }`}
+              className={cn(
+                'flex min-h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-md border px-1 py-1 text-[11px] tabular-nums',
+                active
+                  ? 'border-brand-400 bg-brand-500/15 text-ink-100'
+                  : 'border-surface-700 bg-surface-800/60 text-ink-300',
+              )}
+            >
+              {d ? <WindArrow toDegrees={d.toDegrees} size={16} /> : <span>—</span>}
+              <span className="font-medium">{d ? d.fromLabel : '—'}</span>
+              <span>{d ? `${d.speedKmh} km/h` : ''}</span>
+              <span className="text-ink-500">{formatSlotTime(card.time)}</span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+
+  const details = showDetails && (
+    <div
+      data-testid="wind-details"
+      className="border-surface-700 text-ink-300 space-y-1 border-t pt-2 text-xs"
+    >
+      <p>
+        <span className="text-ink-100">Source :</span> Open-Meteo (modèle météo), une
+        valeur par heure sur {days.length > 1 ? `${days.length} jours` : 'la période'}{' '}
+        calendaires, heure locale.
+      </p>
+      <p>
+        <span className="text-ink-100">Récupérées :</span>{' '}
+        {fetchedAt
+          ? `${fetchedClock(fetchedAt)}${age ? ` (${age.label})` : ''}${fromCache ? ', copie enregistrée' : ''}`
+          : 'jamais'}
+        .
+      </p>
+      {reading.kind === 'ok' && (
+        <p>
+          <span className="text-ink-100">Point utilisé :</span> l’échantillon de la grille
+          5 × 5 le plus proche du centre de la carte, à{' '}
+          {formatKm(haversineMeters(viewCenter, reading.sampleCoordinate))} (aucune
+          interpolation).
+        </p>
+      )}
+      <p>
+        <span className="text-ink-100">Rendu indicatif :</span> les traits suivent la
+        direction et la vitesse de cet échantillon, avec une vitesse exagérée pour rester
+        lisible. Ils ne montrent ni le vent local entre les arbres ni l’effet du relief.
+      </p>
+      <p>
+        <span className="text-ink-100">Texte et traits :</span> le texte dit d’où vient le
+        vent ; les traits et la flèche vont vers où il souffle. Les points cardinaux sont
+        géographiques, même si la carte est tournée.
+      </p>
+      <p>
+        <span className="text-ink-100">Heure et animation :</span> figer ou animer les
+        traits ne change pas l’heure ; seule la barre choisit l’heure de prévision.
+      </p>
+      <button
+        type="button"
+        onClick={refresh}
+        className="border-surface-600 text-ink-100 flex min-h-11 items-center gap-1.5 rounded-full border px-3"
+      >
+        <RefreshCw size={14} aria-hidden="true" />
+        Actualiser les prévisions
+      </button>
+    </div>
+  )
+
   return (
     <section
+      ref={setRootEl}
       aria-label="Analyse du vent"
       data-testid="wind-analysis"
       data-state="expanded"
-      className={cn(
-        panelClass,
-        'max-h-[min(27rem,62dvh)] [@media(max-height:480px)]:max-h-[78dvh]',
-      )}
+      className={rootClass}
     >
-      {/* Poignée : repère visuel posé sur le bord haut (toucher la replie
-          aussi) ; le vrai bouton, de 44 px, est le titre ci-dessous. */}
-      <div
-        onClick={() => setExpanded(false)}
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 z-10 flex h-3 cursor-pointer items-center justify-center [@media(max-height:480px)]:hidden"
-      >
-        <span className="bg-ink-500 h-1 w-10 rounded-full" />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pt-1.5 pb-1 [@media(max-height:480px)]:pt-0">
-        {/* Titre + fermer ; les jours passent sur la même ligne en paysage court. */}
-        <div className="flex flex-wrap items-center gap-x-2">
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            aria-label="Replier l'analyse du vent"
-            className="order-1 flex min-h-11 min-w-0 items-center gap-1 text-xs font-semibold whitespace-nowrap @[17rem]:text-sm [@media(max-height:480px)]:min-w-11 [@media(max-height:480px)]:justify-center"
-          >
-            <span className="[@media(max-height:480px)]:hidden">Analyse du vent</span>
-            <ChevronDown
-              size={16}
-              className="text-ink-500 hidden @[17rem]:block [@media(max-height:480px)]:block"
-              aria-hidden="true"
-            />
-          </button>
-          <button
-            type="button"
-            onClick={closePanel}
-            aria-label="Fermer l'analyse du vent"
-            className="text-ink-500 hover:text-ink-100 order-2 ml-auto flex size-11 items-center justify-center [@media(max-height:480px)]:order-3"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-          {days.length > 0 && (
-            <div
-              className="order-3 flex basis-full gap-1.5 py-0.5 [@media(max-height:480px)]:order-2 [@media(max-height:480px)]:basis-auto"
-              role="group"
-              aria-label="Jour de la prévision"
-            >
-              {days.map((day) => {
-                const active = displayDay?.dateKey === day.dateKey
-                return (
-                  <button
-                    key={day.dateKey}
-                    type="button"
-                    onClick={() => changeDay(day)}
-                    aria-pressed={active}
-                    className={cn(
-                      'min-h-11 min-w-0 flex-1 rounded-md border px-2 text-xs font-medium transition-colors @[17rem]:flex-none @[17rem]:px-3 @[17rem]:text-sm [@media(max-height:480px)]:flex-none [@media(max-height:480px)]:px-2! [@media(max-height:480px)]:text-xs!',
-                      active
-                        ? 'border-brand-400 bg-brand-500/20 text-brand-300'
-                        : 'border-surface-600 text-ink-300 hover:bg-surface-800',
-                    )}
-                  >
-                    {dayLabel(day)}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+      {!compact && handle}
+      {compact ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-2">
+          <div className="flex items-center gap-1">
+            {collapseButton}
+            {dayChips}
+            {nowButton}
+            {detailsButton}
+            {freezeButton}
+            {closeButton}
+          </div>
+          {notices}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">{readout}</div>
+          </div>
+          {timeBar}
+          {details}
         </div>
-
-        {state === 'loading' && (
-          <p role="status" className="text-ink-300 py-2 text-sm">
-            Chargement des prévisions de vent… La carte n’affiche pas encore l’heure
-            choisie.
-          </p>
-        )}
-        {state === 'unavailable' && (
-          <div role="status" className="py-2 text-sm">
-            <p className="text-status-danger">
-              Prévisions de vent indisponibles
-              {errorReason ? ` (${errorReason})` : ''}. Aucune valeur n’est affichée.
-            </p>
-            <button
-              type="button"
-              onClick={refresh}
-              className="border-surface-600 mt-2 flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-xs"
-            >
-              <RefreshCw size={14} aria-hidden="true" />
-              Réessayer
-            </button>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto px-3">
+          <div className="flex items-center gap-1">
+            {collapseButton}
+            <span className="flex-1" />
+            {nowButton}
+            {closeButton}
           </div>
-        )}
-        {state === 'cached' && (
-          <p role="status" className="text-status-warning py-1 text-xs">
-            Hors ligne : copie enregistrée le {fetchedClock(fetchedAt)}
-            {age ? ` (${age.label})` : ''}. Elle peut ne plus refléter la prévision
-            actuelle.
-          </p>
-        )}
-        {state === 'refresh-failed' && (
-          <p role="status" className="text-status-warning py-1 text-xs">
-            Actualisation impossible : valeurs récupérées le {fetchedClock(fetchedAt)}
-            {age ? ` (${age.label})` : ''}.
-          </p>
-        )}
-        {state === 'refreshing' && (
-          <p role="status" className="text-ink-300 py-1 text-xs">
-            Mise à jour des prévisions… Les valeurs affichées datent du{' '}
-            {fetchedClock(fetchedAt)}.
-          </p>
-        )}
-        {state === 'ready' && age?.stale && (
-          <p role="status" className="text-status-warning py-1 text-xs">
-            Prévisions anciennes ({age.label}).
-          </p>
-        )}
-
-        {ready && !windEnabled && (
-          <p className="text-ink-300 py-1 text-xs">
-            Les traits de vent sont désactivés sur la carte.{' '}
-            <button
-              type="button"
-              className="text-brand-300 min-h-11 underline"
-              onClick={() => {
-                const bounds = getBounds()
-                if (bounds) toggleWind(bounds)
-              }}
-            >
-              Les afficher
-            </button>
-          </p>
-        )}
-
-        {ready && (
-          <div
-            aria-live="polite"
-            data-testid="wind-readout"
-            className="flex flex-wrap items-center gap-x-2 py-0.5"
-          >
-            <p className="text-ink-300 order-1 min-w-0 text-xs tabular-nums">
-              {slot && selectedDay ? (
-                <>
-                  {/* Sur une feuille étroite, le jour est déjà indiqué par la
-                      pastille active ci-dessus : on garde la place pour l'heure. */}
-                  <span className="hidden @[17rem]:inline [@media(max-height:480px)]:hidden!">
-                    {longDateLabel(selectedDay.dateKey)} ·{' '}
-                  </span>
-                  <span className="text-ink-100 text-base font-semibold">
-                    {formatSlotTime(slot.time)}
-                  </span>
-                </>
-              ) : (
-                'Créneau absent'
-              )}
-            </p>
-            <button
-              type="button"
-              onClick={goNow}
-              aria-label="Maintenant"
-              className="border-surface-600 text-ink-100 hover:bg-surface-800 order-2 ml-auto flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium [@media(max-height:480px)]:order-3 [@media(max-height:480px)]:min-w-11 [@media(max-height:480px)]:justify-center"
-            >
-              <Clock
-                size={14}
-                aria-hidden="true"
-                className="hidden @[17rem]:block [@media(max-height:480px)]:block"
-              />
-              <span className="[@media(max-height:480px)]:hidden">Maintenant</span>
-            </button>
-            {slot && selectedDay ? (
-              description ? (
-                <div className="order-3 flex basis-full items-center gap-2 [@media(max-height:480px)]:order-2 [@media(max-height:480px)]:basis-auto">
-                  <WindArrow toDegrees={description.toDegrees} size={26} />
-                  <p className="hidden text-xs font-semibold tabular-nums [@media(max-height:480px)]:block">
-                    {description.fromLabel} · {description.speedKmh} km/h
-                    {description.gustsKmh !== null && (
-                      <span className="hidden @[24rem]:inline">
-                        {' '}
-                        (raf. {description.gustsKmh})
-                      </span>
-                    )}
-                  </p>
-                  <div className="min-w-0 [@media(max-height:480px)]:hidden">
-                    <p className="text-base leading-tight font-semibold">
-                      Vent du {description.fromLabel}
-                    </p>
-                    <p className="text-ink-100 text-sm leading-snug tabular-nums">
-                      <span className="text-ink-300">({description.fromDegrees}°)</span>
-                      {' · '}
-                      {description.speedKmh} km/h
-                    </p>
-                    {description.gustsKmh !== null && (
-                      <p className="text-ink-100 text-sm leading-snug tabular-nums">
-                        rafales {description.gustsKmh} km/h
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-status-warning order-3 basis-full text-sm">
-                  Aucune donnée de vent pour ce créneau.
-                </p>
-              )
-            ) : (
-              <p className="text-status-warning order-3 basis-full text-sm">
-                Ce créneau n’existe pas dans les prévisions chargées.{' '}
-                <button
-                  type="button"
-                  className="text-brand-300 min-h-11 underline"
-                  onClick={() => {
-                    const index = nearestAvailableIndex(days, selectedIndex)
-                    if (index !== null) select(index)
-                  }}
-                >
-                  Aller au créneau le plus proche
-                </button>
-              </p>
+          {dayChips}
+          {notices}
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1">{readout}</div>
+            {ready && (
+              <>
+                {detailsButton}
+                {freezeButton}
+              </>
             )}
           </div>
-        )}
-
-        {notice && (
-          <p role="status" className="text-status-warning pb-1 text-xs">
-            {notice}
-          </p>
-        )}
-
-        {displayDay && (
-          <HourTimeBar
-            slots={displayDay.slots}
-            selectedIndex={selectedIndex}
-            nowIndex={
-              nowIndex !== null && displayDay.slots.some((s) => s.index === nowIndex)
-                ? nowIndex
-                : null
-            }
-            disabled={!ready}
-            valueText={valueText}
-            onSelect={select}
-            onStep={step}
-            onEdge={(edge) => {
-              const slots = displayDay.slots
-              select(edge === 'start' ? slots[0].index : slots[slots.length - 1].index)
-            }}
-          />
-        )}
-
-        {ready && cards.length > 0 && (
-          <ul
-            className="mt-1 flex gap-1.5 pb-1 [@media(max-height:640px)]:hidden"
-            aria-label="Heures proches"
-          >
-            {cards.map((card) => {
-              const cardReading = readSlot(field, viewCenter, card.index)
-              const d =
-                cardReading.kind === 'ok' ? describeWind(cardReading.reading) : null
-              const active = card.index === selectedIndex
-              return (
-                <li key={card.index} className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => select(card.index)}
-                    aria-pressed={active}
-                    aria-label={`${formatSlotTime(card.time)} : ${
-                      d ? `vent du ${d.fromLabel}, ${d.speedKmh} km/h` : 'aucune donnée'
-                    }`}
-                    className={cn(
-                      'flex min-h-[4.25rem] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1 text-[11px] tabular-nums',
-                      active
-                        ? 'border-brand-400 bg-brand-500/15 text-ink-100'
-                        : 'border-surface-700 bg-surface-800/60 text-ink-300',
-                    )}
-                  >
-                    {d ? <WindArrow toDegrees={d.toDegrees} size={16} /> : <span>—</span>}
-                    <span className="font-medium">{d ? d.fromLabel : '—'}</span>
-                    <span>{d ? `${d.speedKmh} km/h` : ''}</span>
-                    <span className="text-ink-500">{formatSlotTime(card.time)}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-
-        <div className="border-surface-700 flex items-center justify-between gap-2 border-t">
-          <button
-            type="button"
-            onClick={() => setShowDetails(!showDetails)}
-            aria-expanded={showDetails}
-            aria-label="Source et détails"
-            className="text-ink-300 min-h-11 min-w-11 px-1 text-xs underline"
-          >
-            <span className="@[17rem]:hidden">Détails</span>
-            <span className="hidden @[17rem]:inline">Source et détails</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPaused(!paused)}
-            aria-pressed={!paused}
-            disabled={!windEnabled}
-            className="border-surface-600 text-ink-300 flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-xs disabled:opacity-40"
-          >
-            {paused ? (
-              <Play size={14} aria-hidden="true" />
-            ) : (
-              <Pause size={14} aria-hidden="true" />
-            )}
-            <span className="@[17rem]:hidden">{paused ? 'Animer' : 'Figer'}</span>
-            <span className="hidden @[17rem]:inline">
-              {paused ? 'Animer les traits' : 'Figer les traits'}
-            </span>
-          </button>
+          {timeBar}
+          {hourCards}
+          {details}
         </div>
-
-        {showDetails && (
-          <div data-testid="wind-details" className="text-ink-300 space-y-1 pt-1 text-xs">
-            <p>
-              <span className="text-ink-100">Source :</span> Open-Meteo (modèle météo),
-              une valeur par heure, heure locale.
-            </p>
-            <p>
-              <span className="text-ink-100">Récupérées :</span>{' '}
-              {fetchedAt
-                ? `${fetchedClock(fetchedAt)}${age ? ` (${age.label})` : ''}${fromCache ? ', copie enregistrée' : ''}`
-                : 'jamais'}
-              .
-            </p>
-            {reading.kind === 'ok' && (
-              <p>
-                <span className="text-ink-100">Point utilisé :</span> l’échantillon de la
-                grille 5 × 5 le plus proche du centre de la carte, à{' '}
-                {formatKm(haversineMeters(viewCenter, reading.sampleCoordinate))} (aucune
-                interpolation).
-              </p>
-            )}
-            <p>
-              <span className="text-ink-100">Rendu indicatif :</span> les traits suivent
-              la direction et la vitesse de cet échantillon, avec une vitesse exagérée
-              pour rester lisible. Ils ne montrent ni le vent local entre les arbres ni
-              l’effet du relief.
-            </p>
-            <p>
-              <span className="text-ink-100">Texte et traits :</span> le texte dit d’où
-              vient le vent ; les traits et la flèche vont vers où il souffle. Les points
-              cardinaux sont géographiques, même si la carte est tournée.
-            </p>
-            <p>
-              <span className="text-ink-100">Heure et animation :</span> figer ou animer
-              les traits ne change pas l’heure ; seule la barre ci-dessus choisit l’heure
-              de prévision.
-            </p>
-            <button
-              type="button"
-              onClick={refresh}
-              className="border-surface-600 text-ink-100 flex min-h-11 items-center gap-1.5 rounded-full border px-3"
-            >
-              <RefreshCw size={14} aria-hidden="true" />
-              Actualiser les prévisions
-            </button>
-          </div>
-        )}
-      </div>
+      )}
     </section>
   )
 }

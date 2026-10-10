@@ -64,9 +64,10 @@ interface WindState {
    * `status` so turning it off doesn't discard the fetched field (no
    * need to re-fetch on toggling back on). */
   enabled: boolean
-  /** Hourly index the timeline scrubber is on, 0 = soonest, up to 47
-   * (both Open-Meteo fetches here and `weatherStore`'s cover a real 48h
-   * window — `forecast_days=2`). Doubles as this app's shared timeline
+  /** Hourly index the timeline scrubber is on, 0 = local midnight today, up
+   * to the last hour the loaded field really contains (119 for the 5 days
+   * requested here; `weatherStore`'s own forecast still covers 48 h).
+   * Doubles as this app's shared timeline
    * cursor (Phase 10): `features/charts/components/AdvancedChart.tsx`,
    * `WeatherPage.tsx`, and `DayTimelineBar.tsx` all read/write this same
    * value rather than each owning a separate one, so dragging any one of
@@ -173,8 +174,13 @@ export const useWindStore = create<WindState>((set, get) => ({
     }
   },
 
-  setSelectedHourOffset: (offset) =>
-    set({ selectedHourOffset: Math.max(0, Math.min(47, offset)) }),
+  setSelectedHourOffset: (offset) => {
+    // Clamped to what the loaded field covers (a 48 h copy cached before the
+    // 5-day horizon keeps working); 47 is the floor with no field yet.
+    const length = get().field?.samples[0]?.hourly.length ?? 0
+    const last = Math.max(47, length - 1)
+    set({ selectedHourOffset: Math.max(0, Math.min(last, Math.round(offset))) })
+  },
 
   setActiveLayer: (layer) => set({ activeLayer: layer }),
 
