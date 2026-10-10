@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Correctif : bords de l'écran en mode immersif et diagnostic d'affichage (2026-10-10)
+
+Mesures, historique et limites : `docs/AFFICHAGE_BORDS_ECRAN.md`.
+
+### Changed
+
+- Mode immersif : la carte couvre tout le viewport (encoche, indicateur d'accueil, côtés) ; les zones sûres protègent les commandes, plus le fond. Fin des bandes noires de 47 px / 34 px de la coque. Boussole et attributions MapLibre repositionnées dans les zones sûres.
+- Feuille « Analyse du vent » en immersif : fond prolongé jusqu'au bord bas, commandes au-dessus de l'indicateur d'accueil, une seule réserve.
+- Test e2e immersif corrigé : il vérifie que les **commandes** sont dans les zones sûres (et non que toute la carte y reste) ; 4 états (normal, vent, immersif, immersif + vent) en portrait et paysage.
+
+### Added
+
+- À propos → « Diagnostic d'affichage » : mesures d'écran activables et copiables (version, compilation avec fuseau, `innerHeight`, `screen.height`, `visualViewport`, zones sûres, rectangles coque/carte/navigation, mode standalone ou navigateur). Aucune donnée personnelle, aucun envoi.
+- La date de compilation affiche l'heure complète et le fuseau.
+
 ## Correctif : analyse du vent pleine largeur, 5 jours (2026-10-09)
 
 Choix, mesures, limites : `docs/WIND_ANALYSIS.md` (v2).

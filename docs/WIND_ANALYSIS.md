@@ -36,7 +36,7 @@ Trois positions :
 La poignée se **glisse** (haut = plus de contenu, bas = moins) ; le titre ▾, ✕
 et les boutons ‹ › font la même chose sans geste. La zone sûre du bas est
 intégrée à la feuille (`env(safe-area-inset-bottom)`), sauf en mode immersif
-(la coque l'applique déjà) et dès `md` (la carte a alors sa marge de page).
+(où ses commandes s'arrêtent à la ligne sûre et son fond est prolongé jusqu'au bord, voir `docs/AFFICHAGE_BORDS_ECRAN.md`) et dès `md` (la carte a alors sa marge de page).
 Paysage court (≤ 480 px de haut) : disposition dédiée sur deux rangées — jours,
 heure, boutons à icônes ; barre — au lieu d'une grande fenêtre.
 

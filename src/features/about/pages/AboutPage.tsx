@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom'
 import { InfoSection as Section, PageHeader } from '@/components/ui'
 import { APP_BUILD_DATE, APP_NAME, APP_VERSION } from '@/app/appInfo'
-import { formatDateFr } from '@/features/backup/restoreLabels'
+import { formatBuildMoment } from '../displayDiagnostic'
 import { NETWORK_PROVIDERS } from '@/features/privacy/networkProviders'
+import { DisplayDiagnosticSection } from '../components/DisplayDiagnosticSection'
 import { UpdateSection } from '../components/UpdateSection'
 import { DOC_LINKS, REPOSITORY_URL } from '../docLinks'
+
+function buildLabel(iso: string): string {
+  const { local, zone, offset } = formatBuildMoment(iso)
+  return `${local} (fuseau ${zone}${offset ? `, ${offset}` : ''})`
+}
 
 /** Version, honest phase status, updates, data credits and documentation. */
 export default function AboutPage() {
@@ -19,7 +25,7 @@ export default function AboutPage() {
         <p>
           <strong className="text-ink-100">{APP_NAME}</strong> · version{' '}
           <strong className="text-ink-100">{APP_VERSION}</strong>
-          {APP_BUILD_DATE && <> · compilée le {formatDateFr(APP_BUILD_DATE)}</>}
+          {APP_BUILD_DATE && <> · compilée le {buildLabel(APP_BUILD_DATE)}</>}
         </p>
         <p>
           Comptes, abonnements et paiement : non disponibles / reportés. Aucune fonction
@@ -41,6 +47,14 @@ export default function AboutPage() {
           . Les phases 14 (IA), 15 (synchronisation), 16 (tests sur appareils) et 17
           (version commerciale) ne sont pas terminées.
         </p>
+      </Section>
+
+      <Section
+        id="diagnostic-affichage"
+        title="Diagnostic d’affichage"
+        description="Pour vérifier les bords de l’écran sur votre appareil, sans console."
+      >
+        <DisplayDiagnosticSection />
       </Section>
 
       <Section id="mise-a-jour" title="Mises à jour">
