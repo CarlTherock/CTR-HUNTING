@@ -349,10 +349,14 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
     '@container border-surface-600 bg-surface-900 text-ink-100 pointer-events-auto absolute inset-x-0 bottom-0 z-[25] flex flex-col border-t shadow-2xl',
     compact ? 'max-h-[80dvh] rounded-t-lg' : 'max-h-[min(58dvh,34rem)] rounded-t-2xl',
     // With the bottom navigation hidden, the sheet owns the home-indicator
-    // inset — except in immersive mode (the app shell already pads the
-    // screen edge) and from `md` up, where the map card sits inside a 1.5 rem
-    // page margin that already clears it.
-    !immersive && 'pb-[env(safe-area-inset-bottom)] md:pb-0',
+    // inset — except from `md` up, where the map card sits inside a 1.5 rem
+    // page margin that already clears it. In immersive mode the controls
+    // already end at the safe line (the map page insets this box), so there is
+    // no padding: the sheet's background is simply carried down to the screen
+    // edge by `after:` — one reserve, no double.
+    immersive
+      ? 'after:bg-surface-900 after:absolute after:inset-x-0 after:top-full after:h-[env(safe-area-inset-bottom)] after:content-[""]'
+      : 'pb-[env(safe-area-inset-bottom)] md:pb-0',
   )
 
   const stepButtons = (

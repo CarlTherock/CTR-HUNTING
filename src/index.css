@@ -139,6 +139,28 @@
   display: none;
 }
 
+/*
+ * Immersive: the map bleeds under the notch / home indicator, so MapLibre's
+ * own corner controls (compass, attribution) are pushed back inside the safe
+ * area by the amounts the map page publishes on `[data-map-bleed]`.
+ */
+[data-map-bleed] .maplibregl-ctrl-top-left,
+[data-map-bleed] .maplibregl-ctrl-top-right {
+  padding-top: var(--bleed-top, 0px);
+}
+[data-map-bleed] .maplibregl-ctrl-bottom-left,
+[data-map-bleed] .maplibregl-ctrl-bottom-right {
+  padding-bottom: var(--bleed-bottom, 0px);
+}
+[data-map-bleed] .maplibregl-ctrl-top-left,
+[data-map-bleed] .maplibregl-ctrl-bottom-left {
+  padding-left: var(--bleed-left, 0px);
+}
+[data-map-bleed] .maplibregl-ctrl-top-right,
+[data-map-bleed] .maplibregl-ctrl-bottom-right {
+  padding-right: var(--bleed-right, 0px);
+}
+
 [data-wind-sheet] .maplibregl-ctrl-bottom-left,
 [data-wind-sheet] .maplibregl-ctrl-bottom-right {
   margin-bottom: var(--sheet-height, 0px);

@@ -36,6 +36,30 @@ describe('AboutPage', () => {
     expect(section('version')).toHaveTextContent(/compilée le/)
   })
 
+  it('shows the build moment with its time zone, not a bare date', () => {
+    renderPage()
+
+    expect(section('version')).toHaveTextContent(/fuseau .+UTC[+-]\d{2}:\d{2}/)
+  })
+
+  it('offers an opt-in, copyable display diagnostic that measures nothing until asked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const block = section('diagnostic-affichage')
+
+    expect(screen.queryByTestId('display-diagnostic')).toBeNull()
+    await user.click(
+      within(block).getByRole('button', { name: 'Afficher le diagnostic' }),
+    )
+
+    const report = screen.getByTestId('display-diagnostic')
+    expect(report).toHaveTextContent('Zones sûres')
+    expect(report).toHaveTextContent('Aucune position, aucune clé')
+    expect(
+      within(block).getByRole('button', { name: 'Copier le diagnostic' }),
+    ).toBeVisible()
+  })
+
   it('states that accounts, subscriptions and payment are not available', () => {
     renderPage()
 

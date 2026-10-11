@@ -52,16 +52,28 @@ for (const c of CASES) {
       const beforeContainer = before.rects.mapContainer
       expect(container && canvas && beforeContainer).toBeTruthy()
       if (container && canvas && beforeContainer) {
-        // Bigger than before, and not under the notch / home indicator / sides.
+        // The map now covers the WHOLE viewport (notch, home indicator and
+        // landscape sides included): the safe areas protect the controls,
+        // not the picture.
         expect(container.height).toBeGreaterThan(beforeContainer.height)
-        expect(container.y).toBeGreaterThanOrEqual(c.safe.top - 0.5)
-        expect(container.y + container.height).toBeLessThanOrEqual(
-          c.height - c.safe.bottom + 0.5,
+        expect(Math.abs(container.x)).toBeLessThanOrEqual(1)
+        expect(Math.abs(container.y)).toBeLessThanOrEqual(1)
+        expect(Math.abs(container.width - c.width)).toBeLessThanOrEqual(1)
+        expect(Math.abs(container.height - c.height)).toBeLessThanOrEqual(1)
+      }
+      // Every control is inside the safe areas (not under the notch, the home
+      // indicator or the rounded sides).
+      const outsideSafe = immersive.controls
+        .filter(
+          (x) =>
+            x.rect.y < c.safe.top - 0.5 ||
+            x.rect.y + x.rect.height > c.height - c.safe.bottom + 0.5 ||
+            x.rect.x < c.safe.left - 0.5 ||
+            x.rect.x + x.rect.width > c.width - c.safe.right + 0.5,
         )
-        expect(container.x).toBeGreaterThanOrEqual(c.safe.left - 0.5)
-        expect(container.x + container.width).toBeLessThanOrEqual(
-          c.width - c.safe.right + 0.5,
-        )
+        .map((x) => x.label)
+      expect(outsideSafe, 'commandes hors des zones sûres').toEqual([])
+      if (container && canvas) {
         // The engine was told to resize: canvas follows its container.
         await expect
           .poll(async () => {

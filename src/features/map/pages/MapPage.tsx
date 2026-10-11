@@ -1,6 +1,7 @@
 import type { Coordinate, ForestLayerId, MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { recordMapDisplay } from '@/features/about/displayDiagnostic'
 import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { availableBaseLayers, mapProvider } from '@/services/map'
@@ -105,6 +106,30 @@ const PANEL_SIDE_MIN_WIDTH_PX = 300
 const PANEL_TOP_MARGIN_PX = 64
 /** Zoom used to bring a shared point into view. */
 const SHARED_POINT_ZOOM = 15
+
+/**
+ * Immersive mode. The wrapper that holds the controls is inset by the device
+ * safe areas (notch, home indicator, landscape sides); the map's own box is
+ * pushed back out by the same amounts so the picture covers the whole
+ * viewport. MapLibre's corner controls get the same inset as padding
+ * (`[data-map-bleed]` in index.css) — each reserve is applied exactly once.
+ */
+const IMMERSIVE_SAFE_MARGIN: CSSProperties = {
+  marginTop: 'env(safe-area-inset-top)',
+  marginRight: 'env(safe-area-inset-right)',
+  marginBottom: 'env(safe-area-inset-bottom)',
+  marginLeft: 'env(safe-area-inset-left)',
+}
+const IMMERSIVE_MAP_BLEED = {
+  top: 'calc(-1 * env(safe-area-inset-top))',
+  right: 'calc(-1 * env(safe-area-inset-right))',
+  bottom: 'calc(-1 * env(safe-area-inset-bottom))',
+  left: 'calc(-1 * env(safe-area-inset-left))',
+  '--bleed-top': 'env(safe-area-inset-top)',
+  '--bleed-right': 'env(safe-area-inset-right)',
+  '--bleed-bottom': 'env(safe-area-inset-bottom)',
+  '--bleed-left': 'env(safe-area-inset-left)',
+} as CSSProperties
 
 export function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -487,8 +512,27 @@ export function MapPage() {
   // rotates or the on-screen keyboard opens. MapLibre only watches the
   // window, so tell the engine through the adapter whenever that happens.
   useEffect(() => {
-    const frame = requestAnimationFrame(() => instanceRef.current?.resize())
+    const frame = requestAnimationFrame(() => {
+      instanceRef.current?.resize()
+      // Remembered for « À propos → Diagnostic d'affichage » (display sizes only).
+      recordMapDisplay(
+        containerRef.current,
+        containerRef.current?.querySelector('canvas') ?? null,
+        immersive,
+      )
+    })
     return () => cancelAnimationFrame(frame)
+  }, [immersive])
+
+  // Keep the last measured map box fresh for the display diagnostic (sizes only).
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() =>
+      recordMapDisplay(element, element.querySelector('canvas'), immersive),
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
   }, [immersive])
 
   useEffect(() => {
@@ -746,6 +790,9 @@ export function MapPage() {
           data-wind-sheet={windSheetOpen ? 'open' : undefined}
           style={
             {
+              // Immersive: this box is the *safe* area. Controls are laid out
+              // inside it; the map itself bleeds past it (see below).
+              ...(immersive ? IMMERSIVE_SAFE_MARGIN : null),
               '--sheet-height': `${sheetClearance}px`,
               '--panel-clearance': `${panelLayout.clearance}px`,
               '--panel-right': `${panelLayout.right}px`,
@@ -762,6 +809,8 @@ export function MapPage() {
               'absolute inset-0 overflow-hidden',
               !immersive && 'md:rounded-card md:border-surface-600 md:border',
             )}
+            data-map-bleed={immersive ? 'true' : undefined}
+            style={immersive ? IMMERSIVE_MAP_BLEED : undefined}
           >
             <div
               ref={containerRef}
@@ -834,7 +883,9 @@ export function MapPage() {
               active={immersive}
               large={fieldModeEnabled}
               order={60}
-              secondary
+              // Entering immersive is secondary while the wind sheet is open;
+              // the exit button is never hidden (it is the way out).
+              secondary={!immersive}
             />
             {nativeSupported && (
               <ToolTrigger
