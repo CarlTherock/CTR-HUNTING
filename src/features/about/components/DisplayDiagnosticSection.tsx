@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EdgePaintTest } from './EdgePaintTest'
 import { collectDisplayDiagnostic, formatDisplayDiagnostic } from '../displayDiagnostic'
 
 /**
@@ -57,6 +58,7 @@ export function DisplayDiagnosticSection() {
           Copie impossible ici : sélectionnez le texte ci-dessous et copiez-le.
         </p>
       )}
+      <EdgePaintTest />
       {text && (
         <pre
           data-testid="display-diagnostic"
