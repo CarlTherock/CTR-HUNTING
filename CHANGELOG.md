@@ -18,6 +18,15 @@ Mesures, historique et limites : `docs/AFFICHAGE_BORDS_ECRAN.md`.
 - À propos → « Diagnostic d'affichage » : mesures d'écran activables et copiables (version, compilation avec fuseau, `innerHeight`, `screen.height`, `visualViewport`, zones sûres, rectangles coque/carte/navigation, mode standalone ou navigateur). Aucune donnée personnelle, aucun envoi.
 - La date de compilation affiche l'heure complète et le fuseau.
 
+## Diagnostic d'affichage : hauteurs CSS et repères de bord (2026-10-11)
+
+Mesure réelle iPhone et sources : `docs/AFFICHAGE_BORDS_ECRAN.md`.
+
+### Added
+
+- Rapport de diagnostic : `outerHeight`, `screen.availHeight`, hauteurs résolues de `100vh/svh/lvh/dvh`, `-webkit-fill-available`, `fixed` haut + bas, `html`, `body`, viewport et barre d'état déclarés.
+- « Afficher les repères de bord » (À propos) : cinq repères lettrés au ras du bas de l'écran pour voir quelle règle de hauteur peint jusqu'au bord. Aucun changement de mise en page.
+
 ## Correctif : analyse du vent pleine largeur, 5 jours (2026-10-09)
 
 Choix, mesures, limites : `docs/WIND_ANALYSIS.md` (v2).
