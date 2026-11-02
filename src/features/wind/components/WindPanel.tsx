@@ -12,6 +12,7 @@ import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { cn } from '@/utils/cn'
 import { compassLabel } from '@/utils/terrain'
 import type { Coordinate } from '@/types'
+import { NO_SAVED_FORECAST_MESSAGE } from '@/features/weather/offline/savedForecastLogic'
 import { useWindStore } from '../state/windStore'
 import {
   FAVORABILITY_LABEL,
@@ -44,6 +45,7 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
   const field = useWindStore((s) => s.field)
   const status = useWindStore((s) => s.status)
   const errorReason = useWindStore((s) => s.errorReason)
+  const savedMiss = useWindStore((s) => s.savedMiss)
   const fetchedAt = useWindStore((s) => s.fetchedAt)
   const selected = useWindStore((s) => s.selectedHourOffset)
   const setSelected = useWindStore((s) => s.setSelectedHourOffset)
@@ -104,6 +106,11 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
         {status === 'error' && rows.length === 0 && (
           <p role="alert" className="text-status-danger text-sm">
             Vent indisponible : {errorReason ?? 'fournisseur injoignable'}.{' '}
+            {savedMiss === 'ended'
+              ? 'La période de la prévision téléchargée est terminée. '
+              : savedMiss === 'none'
+                ? `${NO_SAVED_FORECAST_MESSAGE}. `
+                : ''}
             <button
               type="button"
               className="text-brand-400 min-h-11 underline"

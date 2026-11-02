@@ -48,6 +48,11 @@ async function seedEverything() {
     createdAt: NOW,
   })
   await db.offlineAreas.add({ id: 'a1', name: 'Zone', status: 'complete' } as never)
+  await db.savedForecasts.add({
+    id: 'f1',
+    fetchedAt: NOW,
+    place: { kind: 'gps', name: 'Ma position', coordinate: { lat: 46, lng: -71 } },
+  } as never)
   await db.settings.bulkPut([
     { key: 'fieldModeEnabled', value: true },
     { key: 'lastBackupAt', value: NOW },
@@ -104,6 +109,7 @@ describe('deleteAllLocalData', () => {
       'observations',
       'offlineAreas',
       'photos',
+      'savedForecasts',
       'settings',
       'syncQueue',
       'territories',

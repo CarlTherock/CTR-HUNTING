@@ -23,6 +23,12 @@ import { useImmersiveStore } from '@/components/layout/immersiveStore'
 import { useGuidanceStore } from '@/features/guidance/state/guidanceStore'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
+import { useNow } from '@/hooks/useNow'
+import {
+  NO_SAVED_FORECAST_MESSAGE,
+  formatFetchedAt,
+  formatLocalMoment,
+} from '@/features/weather/offline/savedForecastLogic'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { cn } from '@/utils/cn'
 import { haversineMeters } from '@/utils/geo'
@@ -80,15 +86,6 @@ function useMediaQuery(query: string): boolean {
     return () => list.removeEventListener?.('change', onChange)
   }, [query])
   return matches
-}
-
-function useNow(periodMs: number): Date {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), periodMs)
-    return () => clearInterval(timer)
-  }, [periodMs])
-  return now
 }
 
 function fetchedClock(iso: string | null): string {
@@ -159,6 +156,8 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
   const fetchedAt = useWindStore((s) => s.fetchedAt)
   const fromCache = useWindStore((s) => s.fromCache)
   const errorReason = useWindStore((s) => s.errorReason)
+  const download = useWindStore((s) => s.download)
+  const savedMiss = useWindStore((s) => s.savedMiss)
   const windEnabled = useWindStore((s) => s.enabled)
   const toggleWind = useWindStore((s) => s.toggle)
   const fetchWind = useWindStore((s) => s.fetch)
@@ -573,8 +572,14 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
       {state === 'unavailable' && (
         <div role="status" className="py-1 text-sm">
           <p className="text-status-danger">
-            Prévisions de vent indisponibles
-            {errorReason ? ` (${errorReason})` : ''}. Aucune valeur n’est affichée.
+            Prévisions de vent indisponibles.{' '}
+            {savedMiss === 'ended'
+              ? 'La période de la prévision téléchargée pour ce lieu est terminée. '
+              : savedMiss === 'none'
+                ? `${NO_SAVED_FORECAST_MESSAGE}. `
+                : ''}
+            {errorReason ? `Prévisions en direct indisponibles (${errorReason}). ` : ''}
+            Aucune valeur n’est affichée.
           </p>
           <button
             type="button"
@@ -586,7 +591,28 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
           </button>
         </div>
       )}
-      {state === 'cached' && (
+      {state === 'cached' && download && (
+        <div
+          role="status"
+          data-testid="wind-saved-notice"
+          className="text-status-warning py-1 text-xs"
+        >
+          <p className="font-medium">
+            Prévision enregistrée — pas une mesure en direct. Hors ligne : prévisions
+            téléchargées le {formatFetchedAt(download.fetchedAt)}.
+          </p>
+          <p>
+            Lieu de référence : {download.placeName}. Couverture
+            {download.validTo
+              ? ` jusqu’au ${formatLocalMoment(download.validTo)}`
+              : ' inconnue'}
+            {download.complete ? '' : ' (téléchargement partiel)'}. Le vent vient d’une
+            grille de 5 × 5 points autour de ce lieu, pas d’un champ couvrant tout un
+            territoire.
+          </p>
+        </div>
+      )}
+      {state === 'cached' && !download && (
         <p role="status" className="text-status-warning py-1 text-xs">
           Hors ligne : copie enregistrée le {fetchedClock(fetchedAt)}
           {age ? ` (${age.label})` : ''}. Elle peut ne plus refléter la prévision
@@ -750,7 +776,7 @@ export function WindAnalysisPanel({ viewCenter, getBounds }: WindAnalysisPanelPr
       <p>
         <span className="text-ink-100">Récupérées :</span>{' '}
         {fetchedAt
-          ? `${fetchedClock(fetchedAt)}${age ? ` (${age.label})` : ''}${fromCache ? ', copie enregistrée' : ''}`
+          ? `${fetchedClock(fetchedAt)}${age ? ` (${age.label})` : ''}${download ? ', prévision enregistrée (téléchargée)' : fromCache ? ', copie enregistrée' : ''}`
           : 'jamais'}
         .
       </p>

@@ -25,6 +25,7 @@ import {
 import { AdvancedChart } from '@/features/charts/components/AdvancedChart'
 import { useGeolocation } from '@/features/gps/useGeolocation'
 import { useMapStore } from '@/features/map/state/mapStore'
+import { OutingDownloadCard } from '../components/OutingDownloadCard'
 import { WindPanel } from '@/features/wind/components/WindPanel'
 import { useWeatherStore } from '../state/weatherStore'
 import type { HourlyForecastEntry, WeatherForecast } from '@/types'
@@ -149,6 +150,11 @@ export function WeatherPage() {
             />
           </button>
         }
+      />
+
+      <OutingDownloadCard
+        gps={usingGps ? gpsReading.value : null}
+        mapCenter={mapCenter}
       />
 
       {!usingGps && (

@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { getSetting, setSetting } from '@/database/settingsRepository'
+import { listSavedForecasts } from '@/database/savedForecastsRepository'
 import { windProvider } from '@/services/wind'
 import { boundsCover } from '@/features/wind/analysis/windTimeline'
-import { windAt as windAtSample } from '@/utils/windField'
+import { findSavedWind } from '@/features/weather/offline/savedForecastLogic'
+import { hourIndexAt, windAt as windAtSample } from '@/utils/windField'
 import type { LngLatBounds } from '@/utils/tiles'
 import type { Coordinate, WeatherMapLayer, WindField, WindHourlyReading } from '@/types'
 
@@ -22,6 +24,24 @@ const CACHE_KEY = 'lastWindField'
 /** A copy is only accepted for the area it was fetched for (± this margin,
  * in degrees) — never applied to a place it does not describe. */
 const CACHE_MARGIN_DEGREES = 0.05
+
+/** What the analysis may say about a field that comes from « Télécharger pour
+ * ma sortie »: where it was made for, when, and how far it goes. */
+export interface WindDownloadInfo {
+  id: string
+  placeName: string
+  /** Reference place of the download (the grid is centred on it). */
+  placeCoordinate: Coordinate
+  fetchedAt: string
+  /** Local `YYYY-MM-DDTHH:mm` of the last hour covered. */
+  validTo: string | null
+  complete: boolean
+}
+
+/** Why no downloaded forecast could be offered after a failed request:
+ * `none` = nothing saved for this place, `ended` = saved for this place but
+ * its period is over. Never a silent substitution. */
+export type SavedWindMiss = 'none' | 'ended'
 
 interface CachedWindField {
   field: WindField
@@ -60,6 +80,11 @@ interface WindState {
    * request failed) rather than a fresh answer. `fetchedAt` is then the date
    * the copy was fetched. */
   fromCache: boolean
+  /** Set when `field` is a forecast the user downloaded for an outing (also
+   * `fromCache`): the panel then names the place, date and coverage. */
+  download: WindDownloadInfo | null
+  /** After a failed request with nothing usable saved: why. */
+  savedMiss: SavedWindMiss | null
   /** Whether the flow-field layer is toggled on — kept separate from
    * `status` so turning it off doesn't discard the fetched field (no
    * need to re-fetch on toggling back on). */
@@ -102,6 +127,8 @@ export const useWindStore = create<WindState>((set, get) => ({
   fetchedAt: null,
   errorReason: null,
   fromCache: false,
+  download: null,
+  savedMiss: null,
   enabled: false,
   selectedHourOffset: 0,
   activeLayer: 'wind',
@@ -137,6 +164,8 @@ export const useWindStore = create<WindState>((set, get) => ({
         fetchedAt,
         errorReason: null,
         fromCache: false,
+        download: null,
+        savedMiss: null,
       })
       try {
         await setSetting<CachedWindField>(CACHE_KEY, { field, fetchedAt, bounds })
@@ -152,24 +181,63 @@ export const useWindStore = create<WindState>((set, get) => ({
         set({ status: 'error', errorReason: reason })
         return
       }
-      const cached = await getSetting<CachedWindField | null>(CACHE_KEY, null).catch(
-        () => null,
-      )
+      const [cached, saved] = await Promise.all([
+        getSetting<CachedWindField | null>(CACHE_KEY, null).catch(() => null),
+        listSavedForecasts().catch(() => []),
+      ])
       if (request !== latestRequest) return
       const center = {
         lat: (bounds.north + bounds.south) / 2,
         lng: (bounds.east + bounds.west) / 2,
       }
-      if (cached && boundsCover(cached.bounds, center, CACHE_MARGIN_DEGREES)) {
+      const lookup = findSavedWind(saved, center, new Date())
+      const liveCopy =
+        cached && boundsCover(cached.bounds, center, CACHE_MARGIN_DEGREES) ? cached : null
+      // A download made for this place whose period covers now, unless the
+      // last live copy of the area is more recent. Never another place, never
+      // an ended period.
+      if (
+        lookup.kind === 'found' &&
+        lookup.saved.windField !== null &&
+        (!liveCopy || lookup.saved.fetchedAt >= liveCopy.fetchedAt)
+      ) {
+        const s = lookup.saved
+        const savedField = lookup.saved.windField
+        const index = savedField ? hourIndexAt(savedField, new Date()) : null
         set({
           status: 'available',
-          field: cached.field,
-          fetchedAt: cached.fetchedAt,
+          field: s.windField,
+          fetchedAt: s.fetchedAt,
           errorReason: reason,
           fromCache: true,
+          download: {
+            id: s.id,
+            placeName: s.place.name,
+            placeCoordinate: s.place.coordinate,
+            fetchedAt: s.fetchedAt,
+            validTo: s.validTo,
+            complete: s.status === 'complete',
+          },
+          savedMiss: null,
+          ...(index !== null ? { selectedHourOffset: index } : null),
+        })
+      } else if (liveCopy) {
+        set({
+          status: 'available',
+          field: liveCopy.field,
+          fetchedAt: liveCopy.fetchedAt,
+          errorReason: reason,
+          fromCache: true,
+          download: null,
+          savedMiss: null,
         })
       } else {
-        set({ status: 'error', errorReason: reason })
+        set({
+          status: 'error',
+          errorReason: reason,
+          download: null,
+          savedMiss: lookup.kind === 'ended' ? 'ended' : 'none',
+        })
       }
     }
   },

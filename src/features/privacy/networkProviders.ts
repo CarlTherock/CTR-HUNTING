@@ -48,9 +48,10 @@ export const NETWORK_PROVIDERS: readonly NetworkProvider[] = [
     id: 'open-meteo',
     name: 'Open-Meteo',
     hosts: ['https://api.open-meteo.com'],
-    purpose: 'Météo (page Météo, accueil) et vent (couche vent, comparaison de vent).',
-    sent: 'Météo : la latitude et la longitude du lieu, sans arrondi (votre position GPS si elle est connue, sinon le centre de la carte). Vent et couches météo : une grille de points sur la zone visible, à 4 décimales.',
-    when: 'À l’ouverture de la page Météo, à l’activation de la couche vent, ou sur demande (bouton « Charger la météo »).',
+    purpose:
+      'Météo (page Météo, accueil), vent (couche vent, comparaison de vent) et prévisions téléchargées pour une sortie (« Télécharger pour ma sortie »).',
+    sent: 'Météo : la latitude et la longitude du lieu, sans arrondi (votre position GPS si elle est connue, sinon le centre de la carte). Vent et couches météo : une grille de points sur la zone visible, à 4 décimales. Téléchargement pour une sortie : les coordonnées du lieu choisi (position, centre de la carte ou repère) et une grille de 5 × 5 points d’environ 33 km autour.',
+    when: 'À l’ouverture de la page Météo, à l’activation de la couche vent, sur demande (bouton « Charger la météo ») ou quand vous touchez « Télécharger pour ma sortie ». Les prévisions téléchargées restent sur l’appareil.',
     credit: 'Données météo Open-Meteo.com (licence CC BY 4.0).',
   },
   {

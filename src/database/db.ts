@@ -7,6 +7,7 @@ import type {
   Photo,
   OfflineArea,
   Territory,
+  SavedForecast,
 } from '@/types'
 
 /**
@@ -53,6 +54,8 @@ export class FieldTerrainDatabase extends Dexie {
   territories!: EntityTable<Territory, 'id'>
   /** Blood-search sessions (v6). */
   bloodSessions!: EntityTable<BloodSession, 'id'>
+  /** « Télécharger pour ma sortie »: forecasts saved for offline use (v7). */
+  savedForecasts!: EntityTable<SavedForecast, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -102,6 +105,13 @@ export class FieldTerrainDatabase extends Dexie {
       bloodSessions: 'id, status, createdAt, territoryId',
       waypoints: 'id, category, createdAt, territoryId, sessionId',
       tracks: 'id, startedAt, territoryId, sessionId',
+    })
+
+    // Saved forecasts (weather + wind for an outing). ADDITIVE: one new table,
+    // no existing store listed, nothing rewritten or deleted, hence no
+    // `.upgrade()`. A re-downloadable cache, not user-authored data.
+    this.version(7).stores({
+      savedForecasts: 'id, fetchedAt',
     })
   }
 }
