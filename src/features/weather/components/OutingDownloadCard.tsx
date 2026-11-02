@@ -81,7 +81,12 @@ export function OutingDownloadCard({
   const zone = place ? windZoneSizeKm(windZoneBounds(place.coordinate)) : null
 
   return (
-    <Card data-testid="outing-download">
+    <Card
+      id="outing-download"
+      tabIndex={-1}
+      data-testid="outing-download"
+      className="scroll-mt-4 outline-none"
+    >
       <CardHeader>
         <CardTitle>Télécharger pour ma sortie</CardTitle>
         <CardDescription>
