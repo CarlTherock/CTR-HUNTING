@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WeatherPage } from './WeatherPage'
 import { db } from '@/database/db'
@@ -224,8 +224,10 @@ describe('Météo page — hors ligne', () => {
     await saveDownload('2026-11-02T14:00:00.000Z') // > 12 h before NOW
     setOnline(false)
     render(<WeatherPage />)
-    expect(await screen.findByTestId('weather-updated')).toHaveTextContent(
-      /Prévisions anciennes/,
+    await waitFor(() =>
+      expect(screen.getByTestId('weather-updated')).toHaveTextContent(
+        /Prévisions anciennes/,
+      ),
     )
   })
 })
