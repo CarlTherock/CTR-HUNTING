@@ -68,3 +68,26 @@ rien ne dépasse sous la barre.
   feuille de vent (le fond n'est prolongé que vers le bas).
 - Les fenêtres `fixed` (profil d'élévation, hors ligne…) gardent leur propre calcul de
   zone sûre, inchangé.
+
+## Mesure réelle iPhone 16 / iOS 26.6.2 (application installée, 11 oct.)
+
+Relevé du diagnostic (après fermeture forcée, sans saisie de texte) :
+`innerHeight` = `clientHeight` = `visualViewport.height` = **793** pour `screen.height` = **852** ; zones sûres 59 / 34 ;
+coque 0 → 793, navigation 702 → 793 (91 px = 56 + 34 + bordure). La capture d'écran confirme : le fond de page
+(5,7,10) apparaît sur **59 px** sous la navigation, et 59 = zone sûre haute = 852 − 793.
+
+- La coque remplit exactement le viewport que lui donne iOS : ce n'est ni `h-dvh`, ni la zone sûre basse (34 px, dans la barre).
+- La réduction existe **dès le lancement** (pas besoin du clavier).
+- Des rapports tiers (iOS 18.7 et 26.6.x) décrivent le même écart « écran − hauteur de la barre d'état » avec
+  `black-translucent` + `viewport-fit=cover`, mais **se contredisent** sur ce qui atteint le bas (`100lvh`, `screen.height`,
+  barre d'état non translucide) : aucun contournement n'est retenu sans mesure sur cet appareil.
+
+### Complément de diagnostic (cette PR, aucun changement de mise en page)
+
+- Le rapport ajoute `outerHeight`, `screen.availHeight`, ce que résolvent `100vh`, `100svh`, `100lvh`, `100dvh`,
+  `-webkit-fill-available`, un élément `fixed` haut + bas à 0, `html` et `body`, et les valeurs déclarées par la page
+  (viewport, barre d'état).
+- « Afficher les repères de bord » : 5 repères lettrés dessinés tout en bas par cinq règles de hauteur différentes
+  (A bas ancré, B `100vh`, C `100lvh`, D `100dvh`, E `screen.height` en px). Les lettres visibles au ras du bord de
+  l'écran disent quelle règle peut réellement **peindre** jusqu'au bord (une règle peut atteindre la bonne hauteur mais être
+  rognée à l'affichage).

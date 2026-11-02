@@ -45,6 +45,9 @@ describe('collectDisplayDiagnostic / formatDisplayDiagnostic', () => {
     expect(text).toContain('Diagnostic d’affichage')
     expect(text).toContain('Zones sûres')
     expect(text).toContain('Navigation :')
+    expect(text).toContain('Hauteurs CSS résolues : 100vh')
+    expect(text).toContain('Déclaré par la page')
+    expect(d.cssHeights).toHaveProperty('lvh')
     expect(text).toContain('Carte : pas encore ouverte')
     // No personal data leaks into the report.
     expect(text).not.toMatch(/\b(lat|lng|latitude|longitude|token|apikey)\b|key=/i)

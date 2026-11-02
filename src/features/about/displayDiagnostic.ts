@@ -22,6 +22,18 @@ export interface MapDisplaySnapshot {
   canvas: RectInfo | null
 }
 
+/** Heights (CSS px) that the browser resolves for the same « full height » intent. */
+export interface CssHeights {
+  vh: number | null
+  svh: number | null
+  lvh: number | null
+  dvh: number | null
+  fillAvailable: number | null
+  fixedInset: number | null
+  html: number | null
+  body: number | null
+}
+
 export interface DisplayDiagnostic {
   appVersion: string
   buildIso: string
@@ -43,6 +55,10 @@ export interface DisplayDiagnostic {
   } | null
   safeArea: { top: number; right: number; bottom: number; left: number }
   orientation: string
+  outerHeight: number
+  availHeight: number
+  cssHeights: CssHeights
+  declared: { viewport: string; statusBar: string }
   displayMode: 'standalone (installée)' | 'navigateur (Safari ou autre)'
   navigatorStandalone: boolean | null
   rects: {
@@ -145,6 +161,43 @@ export function measureSafeArea(doc: Document): DisplayDiagnostic['safeArea'] {
   return result
 }
 
+/**
+ * Measures what each « full height » unit really resolves to, with an invisible
+ * fixed probe. `null` = the browser does not support the value. Used to tell a
+ * short viewport (all units short) from a single unit that misbehaves.
+ */
+export function measureCssHeights(doc: Document): CssHeights {
+  const probe = doc.createElement('div')
+  probe.setAttribute('aria-hidden', 'true')
+  const base =
+    'position:fixed;visibility:hidden;pointer-events:none;left:0;width:0;margin:0;padding:0;border:0;'
+  doc.body.appendChild(probe)
+  const read = (css: string): number | null => {
+    probe.style.cssText = base + css
+    // An unsupported value is dropped by the parser: the probe then has no
+    // height declaration at all.
+    if (css.includes('height:') && !probe.style.height) return null
+    const h = probe.getBoundingClientRect().height
+    return Number.isFinite(h) ? Math.round(h * 10) / 10 : null
+  }
+  const result: CssHeights = {
+    vh: read('top:0;height:100vh;'),
+    svh: read('top:0;height:100svh;'),
+    lvh: read('top:0;height:100lvh;'),
+    dvh: read('top:0;height:100dvh;'),
+    fillAvailable: read('top:0;height:-webkit-fill-available;'),
+    fixedInset: read('top:0;bottom:0;'),
+    html: null,
+    body: null,
+  }
+  probe.remove()
+  const rectHeight = (e: Element | null) =>
+    e ? Math.round(e.getBoundingClientRect().height * 10) / 10 : null
+  result.html = rectHeight(doc.documentElement)
+  result.body = rectHeight(doc.body)
+  return result
+}
+
 export function collectDisplayDiagnostic(win: Window = window): DisplayDiagnostic {
   const doc = win.document
   const nav = win.navigator as Navigator & { standalone?: boolean }
@@ -182,6 +235,17 @@ export function collectDisplayDiagnostic(win: Window = window): DisplayDiagnosti
       : null,
     safeArea: measureSafeArea(doc),
     orientation: win.innerWidth > win.innerHeight ? 'paysage' : 'portrait',
+    outerHeight: win.outerHeight,
+    availHeight: win.screen.availHeight,
+    cssHeights: measureCssHeights(doc),
+    declared: {
+      viewport:
+        doc.querySelector('meta[name="viewport"]')?.getAttribute('content') ?? 'absent',
+      statusBar:
+        doc
+          .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+          ?.getAttribute('content') ?? 'absent',
+    },
     displayMode: standalone ? 'standalone (installée)' : 'navigateur (Safari ou autre)',
     navigatorStandalone: iosStandalone,
     rects: {
@@ -192,6 +256,8 @@ export function collectDisplayDiagnostic(win: Window = window): DisplayDiagnosti
     map: lastMap,
   }
 }
+
+const fmtH = (h: number | null) => (h === null ? 'non géré' : String(h))
 
 const fmtRect = (r: RectInfo | null) =>
   r ? `x ${r.x}, y ${r.y}, ${r.width} × ${r.height}, bas ${r.bottom}` : 'absent'
@@ -213,6 +279,9 @@ export function formatDisplayDiagnostic(d: DisplayDiagnostic, now = Date.now()):
     vv
       ? `visualViewport : ${vv.width} × ${vv.height}, offsetTop ${vv.offsetTop}, offsetLeft ${vv.offsetLeft}, échelle ${vv.scale}`
       : 'visualViewport : indisponible',
+    `window.outerHeight : ${d.outerHeight} · screen.availHeight : ${d.availHeight}`,
+    `Hauteurs CSS résolues : 100vh ${fmtH(d.cssHeights.vh)} · 100svh ${fmtH(d.cssHeights.svh)} · 100lvh ${fmtH(d.cssHeights.lvh)} · 100dvh ${fmtH(d.cssHeights.dvh)} · fill-available ${fmtH(d.cssHeights.fillAvailable)} · fixed top+bottom 0 ${fmtH(d.cssHeights.fixedInset)} · html ${fmtH(d.cssHeights.html)} · body ${fmtH(d.cssHeights.body)}`,
+    `Déclaré par la page : viewport « ${d.declared.viewport} » · barre d’état « ${d.declared.statusBar} »`,
     `Zones sûres (px) : haut ${d.safeArea.top}, bas ${d.safeArea.bottom}, gauche ${d.safeArea.left}, droite ${d.safeArea.right}`,
     `Coque : ${fmtRect(d.rects.shell)}`,
     `Zone principale : ${fmtRect(d.rects.main)}`,
