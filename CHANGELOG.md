@@ -3,6 +3,14 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Météo : visuel plus lisible et plage visible dès la localisation (2026-11-02)
+
+### Changed
+
+- Carte principale : date, grande température, ↑ max ↓ min, conditions, vent avec direction.
+- Carte soleil : pictogrammes soleil et lune, lever/coucher avec « Début/Fin de la plage » juste dessous.
+- Localisé par GPS dans le Québec : la plage horaire calculée s'affiche sans appuyer sur le bouton (règle retirable, choix mémorisé). Sans GPS ou hors Québec : inchangé.
+
 ## Page Météo, soleil et heures de chasse (2026-11-02)
 
 Détails, sources et limites : `docs/SOLEIL_HEURES_CHASSE.md`. PR B, dépend de la PR A (météo et vent hors ligne).

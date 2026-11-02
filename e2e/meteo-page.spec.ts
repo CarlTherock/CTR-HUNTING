@@ -36,7 +36,8 @@ for (const viewport of [
       })
 
       await card.getByRole('button', { name: /Je chasse au Québec/ }).click()
-      await expect(card.getByTestId('window')).toHaveText(/^\d\d:\d\d – \d\d:\d\d$/)
+      await expect(card.getByTestId('window-start')).toHaveText(/\d\d:\d\d/)
+      await expect(card.getByTestId('window-end')).toHaveText(/\d\d:\d\d/)
       await expect(card).not.toContainText(/chasse autorisée/i)
       await page.screenshot({ path: test.info().outputPath('meteo-plage-calculee.png') })
 

@@ -20,13 +20,18 @@ vi.mock('@/services/weather', () => ({
     fetchPointForecast: (...a: unknown[]) => fetchPointForecast(...a),
   },
 }))
+const gpsState: { value: unknown } = {
+  value: { status: 'unavailable', kind: 'unavailable', reason: 'test' },
+}
 vi.mock('@/features/gps/useGeolocation', () => ({
-  useGeolocation: () => ({
-    status: 'unavailable',
-    kind: 'unavailable',
-    reason: 'test',
-  }),
+  useGeolocation: () => gpsState.value,
 }))
+function locateAt(lat: number, lng: number) {
+  gpsState.value = {
+    status: 'available',
+    value: { lat, lng, accuracyMeters: 10, timestamp: NOW.getTime() },
+  }
+}
 
 const C = QUEBEC.coordinate
 const NOW = new Date('2026-11-03T15:00:00Z') // 10:00 on 3 Nov in Toronto
@@ -45,6 +50,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.useRealTimers()
+  gpsState.value = { status: 'unavailable', kind: 'unavailable', reason: 'test' }
   vi.clearAllMocks()
   setOnline(true)
   await db.settings.clear()
@@ -234,13 +240,17 @@ describe('Soleil et heures de chasse', () => {
     expect(within(card).getByTestId('no-window')).toHaveTextContent(
       /Aucune règle de chasse choisie/,
     )
-    expect(within(card).queryByTestId('window')).toBeNull()
+    expect(within(card).queryByTestId('window-start')).toBeNull()
 
     await user.click(
       await within(card).findByRole('button', { name: /Je chasse au Québec/ }),
     )
-    const windowEl = await within(card).findByTestId('window')
-    expect(windowEl).toHaveTextContent(/^\d\d:\d\d – \d\d:\d\d$/)
+    expect(await within(card).findByTestId('window-start')).toHaveTextContent(
+      /^Début de la plage : \d\d:\d\d$/,
+    )
+    expect(within(card).getByTestId('window-end')).toHaveTextContent(
+      /^Fin de la plage : \d\d:\d\d$/,
+    )
     expect(card).toHaveTextContent('Plage horaire calculée (pas une autorisation)')
     expect(card).toHaveTextContent('Règle appliquée : Québec — règle générale')
     expect(card).toHaveTextContent(
@@ -261,8 +271,45 @@ describe('Soleil et heures de chasse', () => {
     render(<WeatherPage />)
     const card = await screen.findByTestId('sun-hunting')
     expect(card).toHaveTextContent(/hors du Québec/)
-    expect(within(card).queryByTestId('window')).toBeNull()
+    expect(within(card).queryByTestId('window-start')).toBeNull()
     expect(within(card).getByTestId('sunrise')).toHaveTextContent(/^\d\d:\d\d$/)
+  })
+
+  it('located inside Québec: the window shows without pressing anything', async () => {
+    locateAt(C.lat, C.lng)
+    fetchPointForecast.mockResolvedValue(makePoint('2026-11-03', 5))
+    render(<WeatherPage />)
+    const card = await screen.findByTestId('sun-hunting')
+    expect(await within(card).findByTestId('window-start')).toHaveTextContent(/\d\d:\d\d/)
+    expect(within(card).getByTestId('window-end')).toHaveTextContent(/\d\d:\d\d/)
+    expect(card).toHaveTextContent(/d’après votre position dans le Québec/)
+    expect(card).toHaveTextContent('Plage horaire calculée (pas une autorisation)')
+    expect(card).not.toHaveTextContent(/chasse autorisée/i)
+  })
+
+  it('located outside Québec: no automatic window', async () => {
+    locateAt(53.5, -113.5)
+    fetchPointForecast.mockResolvedValue(
+      makePoint('2026-11-03', 5, { timezone: 'America/Edmonton' }),
+    )
+    render(<WeatherPage />)
+    const card = await screen.findByTestId('sun-hunting')
+    expect(within(card).getByTestId('sunrise')).toHaveTextContent(/^\d\d:\d\d$/)
+    expect(within(card).queryByTestId('window-start')).toBeNull()
+  })
+
+  it('removing the rule is remembered and stops the automatic window', async () => {
+    locateAt(C.lat, C.lng)
+    fetchPointForecast.mockResolvedValue(makePoint('2026-11-03', 5))
+    const user = userEvent.setup({ advanceTimers: () => undefined })
+    render(<WeatherPage />)
+    const card = await screen.findByTestId('sun-hunting')
+    await within(card).findByTestId('window-start')
+    await user.click(within(card).getByRole('button', { name: /Retirer la règle/ }))
+    expect(await within(card).findByTestId('no-window')).toBeInTheDocument()
+    expect(within(card).queryByTestId('window-start')).toBeNull()
+    const row = await db.settings.get('huntingRule')
+    expect(row?.value).toBe('off')
   })
 
   it('keeps the source, the verification date and the exceptions reachable', async () => {
