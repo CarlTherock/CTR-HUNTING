@@ -3,6 +3,20 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Page Météo, soleil et heures de chasse (2026-11-02)
+
+Détails, sources et limites : `docs/SOLEIL_HEURES_CHASSE.md`. PR B, dépend de la PR A (météo et vent hors ligne).
+
+### Added
+
+- Page Météo : en-tête (lieu, date, en ligne/hors ligne, dernière mise à jour, « Télécharger pour ma sortie »), sélecteur de jours (pictogramme, minimum/maximum), carte principale (conditions, température, ressenti, vent, rafales, direction), prévisions horaires avec heure sélectionnable qui place l'analyse du vent sur cette heure, détails (humidité, pression, UV, visibilité, nuages). Origine des données toujours indiquée (en ligne, copie gardée, prévision téléchargée) ; lecture hors ligne des téléchargements ; messages explicites sans substitution de lieu ou de date.
+- Carte « Soleil et heures de chasse » : lever et coucher calculés hors ligne dans le fuseau du lieu (SunCalc) ; plage horaire calculée selon la règle générale du Québec (30 min avant le lever à 30 min après le coucher), appliquée seulement si la personne la choisit et refusée hors Québec ; exceptions, rappels, source, date de vérification. Jamais « chasse autorisée » : « dans la plage horaire calculée ».
+
+### Changed
+
+- `weatherStore` : prévision détaillée (7 jours) et copie gardée, à côté du cache existant.
+- Les blocs existants (conditions actuelles, vent, graphique avancé) sont conservés.
+
 ## Météo et vent hors ligne : « Télécharger pour ma sortie » (2026-11-02)
 
 Choix, règles d'honnêteté, limites : `docs/METEO_HORS_LIGNE.md`. PR A ; la PR B (page Météo, soleil et heures de chasse) en dépend.

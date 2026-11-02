@@ -2,16 +2,12 @@ import { useState } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { Badge, Button } from '@/components/ui'
 import type { PointDaily, PointHourly, SavedForecast } from '@/types'
+import { num } from '../forecast/format'
 import {
   describeSavedStatus,
   formatDateKey,
   formatFetchedAt,
 } from '../offline/savedForecastLogic'
-
-/** « indisponible » is never shown as 0. */
-function num(value: number | null, unit: string, digits = 0): string {
-  return value === null ? 'indisponible' : `${value.toFixed(digits)} ${unit}`.trim()
-}
 
 function DailyRow({ day }: { day: PointDaily }) {
   return (

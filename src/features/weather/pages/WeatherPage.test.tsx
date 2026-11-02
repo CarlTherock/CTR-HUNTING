@@ -79,6 +79,9 @@ afterEach(async () => {
     fetchedAt: null,
     isCached: false,
     errorReason: null,
+    pointStatus: 'idle',
+    point: null,
+    pointError: null,
   })
 })
 
