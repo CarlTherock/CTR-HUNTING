@@ -248,10 +248,10 @@ describe('Soleil et heures de chasse', () => {
       await within(card).findByRole('button', { name: /Je chasse au Québec/ }),
     )
     expect(await within(card).findByTestId('window-start')).toHaveTextContent(
-      /^Début de la plage : \d\d:\d\d$/,
+      /^Début de chasse : \d\d:\d\d$/,
     )
     expect(within(card).getByTestId('window-end')).toHaveTextContent(
-      /^Fin de la plage : \d\d:\d\d$/,
+      /^Fin de chasse : \d\d:\d\d$/,
     )
     expect(card).toHaveTextContent('Plage horaire calculée (pas une autorisation)')
     expect(card).toHaveTextContent('Règle appliquée : Québec — règle générale')

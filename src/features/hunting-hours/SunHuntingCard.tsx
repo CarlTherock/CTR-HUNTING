@@ -105,7 +105,7 @@ export function SunHuntingCard({
             </p>
             {computed && (
               <p className="text-xs text-amber-300" data-testid="window-start">
-                Début de la plage : {window.startClock}
+                Début de chasse : {window.startClock}
               </p>
             )}
           </div>
@@ -119,7 +119,7 @@ export function SunHuntingCard({
             </p>
             {computed && (
               <p className="text-xs text-indigo-300" data-testid="window-end">
-                Fin de la plage : {window.endClock}
+                Fin de chasse : {window.endClock}
               </p>
             )}
           </div>

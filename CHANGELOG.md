@@ -8,7 +8,7 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 ### Changed
 
 - Carte principale : date, grande température, ↑ max ↓ min, conditions, vent avec direction.
-- Carte soleil : pictogrammes soleil et lune, lever/coucher avec « Début/Fin de la plage » juste dessous.
+- Carte soleil : pictogrammes soleil et lune, lever/coucher avec « Début de chasse » / « Fin de chasse » juste dessous.
 - Localisé par GPS dans le Québec : la plage horaire calculée s'affiche sans appuyer sur le bouton (règle retirable, choix mémorisé). Sans GPS ou hors Québec : inchangé.
 
 ## Page Météo, soleil et heures de chasse (2026-11-02)
