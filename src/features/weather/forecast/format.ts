@@ -41,3 +41,13 @@ export function weekdayShort(dateKey: string): string {
     timeZone: 'UTC',
   }).format(new Date(`${dateKey}T00:00:00Z`))
 }
+
+/** « lundi 2 novembre » from a `YYYY-MM-DD` key (no time-zone shift). */
+export function longDate(dateKey: string): string {
+  return new Intl.DateTimeFormat('fr-CA', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${dateKey}T00:00:00Z`))
+}

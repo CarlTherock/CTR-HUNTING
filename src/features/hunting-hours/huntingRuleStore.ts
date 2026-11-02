@@ -5,11 +5,13 @@ import { HUNTING_RULES, type HuntingRuleId } from './huntingRules'
 const KEY = 'huntingRule'
 
 interface HuntingRuleState {
-  /** The rule the person chose; `null` = none (the sun is shown, no window). */
-  ruleId: HuntingRuleId | null
+  /** The person's explicit choice: a rule, `'off'` (removed on purpose) or
+   * `null` = never chosen (the card then applies the Québec rule by itself only
+   * when the person is located inside Québec). */
+  ruleId: HuntingRuleId | 'off' | null
   loaded: boolean
   load: () => Promise<void>
-  choose: (ruleId: HuntingRuleId | null) => Promise<void>
+  choose: (ruleId: HuntingRuleId | 'off' | null) => Promise<void>
 }
 
 export const useHuntingRuleStore = create<HuntingRuleState>((set) => ({
@@ -18,7 +20,12 @@ export const useHuntingRuleStore = create<HuntingRuleState>((set) => ({
   load: async () => {
     try {
       const stored = await getSetting<string | null>(KEY, null)
-      const ruleId = stored && stored in HUNTING_RULES ? (stored as HuntingRuleId) : null
+      const ruleId =
+        stored === 'off'
+          ? 'off'
+          : stored && stored in HUNTING_RULES
+            ? (stored as HuntingRuleId)
+            : null
       set({ ruleId, loaded: true })
     } catch {
       set({ ruleId: null, loaded: true })

@@ -76,8 +76,8 @@ export const HUNTING_RULES: Record<HuntingRuleId, HuntingRule> = {
  * Generous rectangle around Québec, used ONLY to refuse the Québec rule for a
  * place that is plainly elsewhere (Europe, Alberta…). It cannot prove a place
  * is in Québec — border areas (Ontario, New Brunswick, Vermont, Labrador…)
- * fall inside it — which is why the rule is never applied until the person
- * confirms it.
+ * fall inside it — which is why the rule is applied by itself only for a GPS
+ * fix (and stays removable); otherwise the person must confirm it.
  */
 export const QUEBEC_ENVELOPE = {
   south: 44.9,

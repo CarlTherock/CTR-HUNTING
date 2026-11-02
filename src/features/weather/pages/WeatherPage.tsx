@@ -303,6 +303,7 @@ export function WeatherPage() {
             dateKey={dateKey}
             timezone={point.timezone}
             now={now}
+            located={usingGps && !(source.kind === 'ready' && source.saved)}
           />
           <section aria-labelledby="hourly-title">
             <h2 id="hourly-title" className="text-ink-300 mb-1 text-sm font-semibold">

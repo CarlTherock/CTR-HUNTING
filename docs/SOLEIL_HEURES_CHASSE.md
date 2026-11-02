@@ -59,11 +59,14 @@ autorisée ».
   (tables en heure normale de l'Est, GPS ou calculateur fédéral) : les valeurs de
   l'application peuvent différer de quelques minutes des tables officielles, qui
   prévalent.
-- **Jamais appliquée automatiquement** : la règle n'est utilisée que si la personne
-  la choisit (« Je chasse au Québec »), mémorisée dans les réglages locaux, et est
-  refusée pour un lieu manifestement hors du Québec (rectangle englobant large ;
-  il ne prouve pas qu'un lieu frontalier est au Québec, d'où le choix explicite).
-  Sans règle ou hors juridiction : le soleil seul est affiché.
+- **Application automatique limitée** : la règle générale du Québec s'applique d'elle-même
+  seulement si la personne est **localisée par GPS** et que sa position tombe dans le
+  rectangle englobant du Québec (la carte l'indique et propose « Retirer la règle »).
+  Ce rectangle ne prouve pas qu'un lieu frontalier est au Québec : la personne peut
+  retirer la règle, et ce choix est mémorisé (réglage `off`). Un lieu choisi sur la
+  carte (sans GPS) ou un téléchargement exige toujours « Je chasse au Québec ». Hors
+  Québec ou sans règle : le soleil seul est affiché. La règle n'est jamais appliquée à un
+  autre territoire.
 - **Oiseaux migrateurs** : règles fédérales non vérifiées (aucune source officielle
   canadienne exploitable trouvée) — aucun profil créé.
 - Source, date de vérification, résumé et exceptions restent accessibles dans la

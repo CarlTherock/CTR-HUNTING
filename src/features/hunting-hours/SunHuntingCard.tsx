@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Sunrise, Sunset } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -12,7 +12,11 @@ import {
 import type { Coordinate } from '@/types'
 import { formatDateKey } from '@/features/weather/offline/savedForecastLogic'
 import { computeHuntingWindow, computeSunDay, windowPosition } from './huntingWindow'
-import { QUEBEC_GENERAL_RULE } from './huntingRules'
+import {
+  QUEBEC_GENERAL_RULE,
+  insideQuebecEnvelope,
+  type HuntingRuleId,
+} from './huntingRules'
 import { useHuntingRuleStore } from './huntingRuleStore'
 import { zonedDateKey } from './zonedTime'
 
@@ -33,14 +37,17 @@ export function SunHuntingCard({
   dateKey,
   timezone,
   now,
+  located = false,
 }: {
   coordinate: Coordinate
   placeName: string
   dateKey: string
   timezone: string
   now: Date
+  /** `true` when `coordinate` is a real GPS fix of the person. */
+  located?: boolean
 }) {
-  const ruleId = useHuntingRuleStore((s) => s.ruleId)
+  const choice = useHuntingRuleStore((s) => s.ruleId)
   const loaded = useHuntingRuleStore((s) => s.loaded)
   const load = useHuntingRuleStore((s) => s.load)
   const choose = useHuntingRuleStore((s) => s.choose)
@@ -48,6 +55,12 @@ export function SunHuntingCard({
   useEffect(() => {
     void load()
   }, [load])
+
+  // Never chosen: the Québec rule applies by itself only for a person located
+  // inside Québec (GPS fix in the Québec envelope). Removing it is remembered.
+  const auto = choice === null && located && insideQuebecEnvelope(coordinate)
+  const ruleId: HuntingRuleId | null =
+    choice === 'off' ? null : (choice ?? (auto ? 'quebec-general' : null))
 
   const sun = useMemo(
     () => computeSunDay({ coordinate, dateKey, timezone }),
@@ -66,9 +79,13 @@ export function SunHuntingCard({
   })()
   const position = isToday ? windowPosition(window, now) : null
   const rule = QUEBEC_GENERAL_RULE
+  const computed = window.state === 'computed' && window.rule !== null
 
   return (
-    <Card data-testid="sun-hunting">
+    <Card
+      data-testid="sun-hunting"
+      className="from-surface-900 to-brand-500/10 bg-gradient-to-br"
+    >
       <CardHeader>
         <CardTitle>Soleil et heures de chasse</CardTitle>
         <CardDescription>
@@ -77,26 +94,36 @@ export function SunHuntingCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <section aria-label="Soleil" className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-2">
-            <Sunrise size={20} className="text-brand-400 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-ink-100 text-lg font-semibold" data-testid="sunrise">
-                {sun.sunriseClock ?? 'indisponible'}
+        <section aria-label="Soleil et plage" className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400/20 shadow-[0_0_24px_rgba(251,191,36,0.25)]">
+              <Sun size={28} className="text-amber-300" aria-hidden="true" />
+            </span>
+            <p className="text-ink-500 text-xs">Lever du soleil</p>
+            <p className="text-ink-100 text-2xl font-semibold" data-testid="sunrise">
+              {sun.sunriseClock ?? 'indisponible'}
+            </p>
+            {computed && (
+              <p className="text-xs text-amber-300" data-testid="window-start">
+                Début de la plage : {window.startClock}
               </p>
-              <p className="text-ink-500 text-xs">Lever du soleil</p>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Sunset size={20} className="text-brand-400 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-ink-100 text-lg font-semibold" data-testid="sunset">
-                {sun.sunsetClock ?? 'indisponible'}
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-400/20 shadow-[0_0_24px_rgba(129,140,248,0.25)]">
+              <Moon size={26} className="text-indigo-300" aria-hidden="true" />
+            </span>
+            <p className="text-ink-500 text-xs">Coucher du soleil</p>
+            <p className="text-ink-100 text-2xl font-semibold" data-testid="sunset">
+              {sun.sunsetClock ?? 'indisponible'}
+            </p>
+            {computed && (
+              <p className="text-xs text-indigo-300" data-testid="window-end">
+                Fin de la plage : {window.endClock}
               </p>
-              <p className="text-ink-500 text-xs">Coucher du soleil</p>
-            </div>
+            )}
           </div>
-          <p className="text-ink-500 col-span-2 text-xs">
+          <p className="text-ink-500 col-span-2 text-center text-xs">
             Heures astronomiques calculées par l’application, sans réseau.
           </p>
         </section>
@@ -105,16 +132,16 @@ export function SunHuntingCard({
           aria-label="Plage horaire calculée"
           className="border-surface-700 border-t pt-3"
         >
-          {window.state === 'computed' && window.rule ? (
+          {computed && window.rule ? (
             <>
               <p className="text-ink-300 text-xs font-semibold">
                 Règle appliquée : {window.rule.title}
               </p>
-              <p className="text-ink-100 mt-1 text-lg font-semibold" data-testid="window">
-                {window.startClock} – {window.endClock}
-              </p>
               <p className="text-ink-500 text-xs">
                 Plage horaire calculée (pas une autorisation)
+                {auto
+                  ? ' · appliquée d’après votre position dans le Québec ; retirez-la si vous chassez ailleurs (près d’une frontière, par exemple).'
+                  : ''}
               </p>
               {position && (
                 <Badge
@@ -129,7 +156,7 @@ export function SunHuntingCard({
                 size="sm"
                 variant="ghost"
                 className="mt-2"
-                onClick={() => void choose(null)}
+                onClick={() => void choose('off')}
               >
                 Retirer la règle
               </Button>
@@ -159,7 +186,7 @@ export function SunHuntingCard({
                   size="sm"
                   variant="ghost"
                   className="mt-2"
-                  onClick={() => void choose(null)}
+                  onClick={() => void choose('off')}
                 >
                   Retirer la règle
                 </Button>
