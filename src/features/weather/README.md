@@ -37,3 +37,8 @@ Verified live in-browser (Open-Meteo needing no key made this possible,
 unlike Phases 3/4's map-dependent features): real current conditions and
 a scrollable 24h hourly forecast render correctly, and the Dexie cache
 write was confirmed directly.
+
+## Téléchargement pour une sortie (hors ligne)
+
+`offline/` (logique pure, store) et `components/OutingDownloadCard.tsx`.
+Voir `docs/METEO_HORS_LIGNE.md`.

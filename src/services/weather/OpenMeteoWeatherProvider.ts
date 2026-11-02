@@ -1,6 +1,9 @@
 import type {
   Coordinate,
   HourlyForecastEntry,
+  PointDaily,
+  PointForecast,
+  PointHourly,
   WeatherConditions,
   WeatherForecast,
 } from '@/types'
@@ -33,6 +36,105 @@ const HOURLY_PARAMS = [
   'wind_speed_10m',
   'wind_gusts_10m',
 ].join(',')
+
+/** Hourly variables of the « Télécharger pour ma sortie » request. Names
+ * checked against Open-Meteo's forecast API reference (hourly list). */
+export const POINT_HOURLY_PARAMS = [
+  'temperature_2m',
+  'apparent_temperature',
+  'weather_code',
+  'precipitation',
+  'precipitation_probability',
+  'relative_humidity_2m',
+  'surface_pressure',
+  'cloud_cover',
+  'visibility',
+  'uv_index',
+  'wind_speed_10m',
+  'wind_gusts_10m',
+  'wind_direction_10m',
+  'is_day',
+] as const
+
+/** Daily variables of the same request (min/max, sun, precipitation total). */
+export const POINT_DAILY_PARAMS = [
+  'weather_code',
+  'temperature_2m_max',
+  'temperature_2m_min',
+  'apparent_temperature_max',
+  'apparent_temperature_min',
+  'sunrise',
+  'sunset',
+  'precipitation_sum',
+  'uv_index_max',
+  'wind_speed_10m_max',
+  'wind_gusts_10m_max',
+  'wind_direction_10m_dominant',
+] as const
+
+/** Provider range of `forecast_days` for this endpoint (documented 1–16). */
+export const POINT_FORECAST_MAX_DAYS = 16
+
+type Series = (number | string | null)[] | undefined
+
+interface OpenMeteoPointResponse {
+  timezone: string
+  hourly?: { time?: string[] } & Record<string, Series>
+  daily?: { time?: string[] } & Record<string, Series>
+}
+
+/** A finite number, else `null` — a missing/null/NaN value is « indisponible »,
+ * never 0. */
+function numberOrNull(series: Series, i: number): number | null {
+  const v = series?.[i]
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+function textOrNull(series: Series, i: number): string | null {
+  const v = series?.[i]
+  return typeof v === 'string' && v.length > 0 ? v : null
+}
+
+export function mapPointResponse(data: OpenMeteoPointResponse): PointForecast {
+  const h = data.hourly ?? {}
+  const d = data.daily ?? {}
+  const hourly: PointHourly[] = (h.time ?? []).map((time, i) => {
+    const day = numberOrNull(h.is_day, i)
+    return {
+      time,
+      temperatureCelsius: numberOrNull(h.temperature_2m, i),
+      apparentTemperatureCelsius: numberOrNull(h.apparent_temperature, i),
+      weatherCode: numberOrNull(h.weather_code, i),
+      precipitationMm: numberOrNull(h.precipitation, i),
+      precipitationProbabilityPercent: numberOrNull(h.precipitation_probability, i),
+      relativeHumidityPercent: numberOrNull(h.relative_humidity_2m, i),
+      surfacePressureHpa: numberOrNull(h.surface_pressure, i),
+      cloudCoverPercent: numberOrNull(h.cloud_cover, i),
+      visibilityMeters: numberOrNull(h.visibility, i),
+      uvIndex: numberOrNull(h.uv_index, i),
+      windSpeedKmh: numberOrNull(h.wind_speed_10m, i),
+      windGustsKmh: numberOrNull(h.wind_gusts_10m, i),
+      windDirectionDegrees: numberOrNull(h.wind_direction_10m, i),
+      isDay: day === null ? null : day === 1,
+    }
+  })
+  const daily: PointDaily[] = (d.time ?? []).map((date, i) => ({
+    date,
+    weatherCode: numberOrNull(d.weather_code, i),
+    temperatureMaxCelsius: numberOrNull(d.temperature_2m_max, i),
+    temperatureMinCelsius: numberOrNull(d.temperature_2m_min, i),
+    apparentTemperatureMaxCelsius: numberOrNull(d.apparent_temperature_max, i),
+    apparentTemperatureMinCelsius: numberOrNull(d.apparent_temperature_min, i),
+    sunrise: textOrNull(d.sunrise, i),
+    sunset: textOrNull(d.sunset, i),
+    precipitationSumMm: numberOrNull(d.precipitation_sum, i),
+    uvIndexMax: numberOrNull(d.uv_index_max, i),
+    windSpeedMaxKmh: numberOrNull(d.wind_speed_10m_max, i),
+    windGustsMaxKmh: numberOrNull(d.wind_gusts_10m_max, i),
+    windDirectionDominantDegrees: numberOrNull(d.wind_direction_10m_dominant, i),
+  }))
+  return { timezone: data.timezone, hourly, daily }
+}
 
 interface OpenMeteoCurrent {
   time: string
@@ -115,5 +217,38 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     }
     const data = (await response.json()) as OpenMeteoResponse
     return mapResponse(data)
+  }
+
+  async fetchPointForecast(
+    coordinate: Coordinate,
+    days: number,
+    signal?: AbortSignal,
+  ): Promise<PointForecast> {
+    const forecastDays = Math.min(
+      POINT_FORECAST_MAX_DAYS,
+      Math.max(1, Math.round(Number.isFinite(days) ? days : 1)),
+    )
+    const url = new URL(OPEN_METEO_URL)
+    url.searchParams.set('latitude', String(coordinate.lat))
+    url.searchParams.set('longitude', String(coordinate.lng))
+    url.searchParams.set('hourly', POINT_HOURLY_PARAMS.join(','))
+    url.searchParams.set('daily', POINT_DAILY_PARAMS.join(','))
+    url.searchParams.set('timezone', 'auto')
+    url.searchParams.set('forecast_days', String(forecastDays))
+    // Units are asked for explicitly so the saved record's units are a fact,
+    // not an assumption about the provider's defaults.
+    url.searchParams.set('temperature_unit', 'celsius')
+    url.searchParams.set('wind_speed_unit', 'kmh')
+    url.searchParams.set('precipitation_unit', 'mm')
+
+    const response = await (signal ? fetch(url, { signal }) : fetch(url))
+    if (!response.ok) {
+      throw new Error(`Requête météo échouée (${response.status})`)
+    }
+    const data = (await response.json()) as OpenMeteoPointResponse
+    if (!data || typeof data.timezone !== 'string' || !data.hourly) {
+      throw new Error('Réponse météo inattendue')
+    }
+    return mapPointResponse(data)
   }
 }

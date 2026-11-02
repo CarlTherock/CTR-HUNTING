@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Météo et vent hors ligne : « Télécharger pour ma sortie » (2026-11-02)
+
+Choix, règles d'honnêteté, limites : `docs/METEO_HORS_LIGNE.md`. PR A ; la PR B (page Météo, soleil et heures de chasse) en dépend.
+
+### Added
+
+- Bouton « Télécharger pour ma sortie » (page Météo) : position, centre de la carte ou repère ; 1 à 7 jours (3 par défaut) ; dates couvertes affichées avant ; liste, consultation, mise à jour et suppression des téléchargements.
+- Table Dexie `savedForecasts` (base v7, ajout pur) : prévision du lieu + grille de vent 5 × 5, valeurs absentes `null`, fournisseur, date de récupération, période, fuseau, unités, version du format.
+- L'analyse du vent lit le téléchargement du lieu et de l'heure courante quand le réseau échoue, avec le statut « Prévision enregistrée » ; message explicite sinon, aucune substitution de lieu ou de date.
+
+### Changed
+
+- `OpenMeteoWeatherProvider.fetchPointForecast` et paramètre `days` du fournisseur de vent (réutilisés, pas de second fournisseur).
+- Hook `useNow` partagé (extrait du panneau d'analyse du vent).
+
 ## Correctif : bords de l'écran en mode immersif et diagnostic d'affichage (2026-10-10)
 
 Mesures, historique et limites : `docs/AFFICHAGE_BORDS_ECRAN.md`.

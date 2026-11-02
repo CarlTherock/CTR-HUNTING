@@ -17,5 +17,7 @@ export interface WindProvider {
     /** Optional: aborts the request (obsolete selection) — the call then
      * rejects with an `AbortError`. */
     signal?: AbortSignal,
+    /** Calendar days of hourly data (default: the app's 5-day horizon). */
+    days?: number,
   ): Promise<WindField>
 }

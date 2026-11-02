@@ -108,3 +108,84 @@ describe('OpenMeteoWeatherProvider', () => {
     await expect(provider.fetchForecast({ lat: 46.8, lng: -71.2 })).rejects.toThrow(/503/)
   })
 })
+
+describe('OpenMeteoWeatherProvider.fetchPointForecast', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const POINT_RESPONSE = {
+    timezone: 'America/Toronto',
+    hourly: {
+      time: ['2026-11-02T00:00', '2026-11-02T01:00'],
+      temperature_2m: [4.1, null],
+      apparent_temperature: [1.2, 0.8],
+      weather_code: [3, 61],
+      precipitation: [0, 0.4],
+      precipitation_probability: [10, null],
+      relative_humidity_2m: [80, 82],
+      surface_pressure: [1010, 1009],
+      cloud_cover: [90, 100],
+      visibility: [null, null],
+      uv_index: [0, 0],
+      wind_speed_10m: [14, 16],
+      wind_gusts_10m: [28, null],
+      wind_direction_10m: [225, null],
+      is_day: [0, 0],
+    },
+    daily: {
+      time: ['2026-11-02'],
+      weather_code: [61],
+      temperature_2m_max: [7],
+      temperature_2m_min: [1],
+      apparent_temperature_max: [4],
+      apparent_temperature_min: [-2],
+      sunrise: ['2026-11-02T06:45'],
+      sunset: [null],
+      precipitation_sum: [2.2],
+      uv_index_max: [1],
+      wind_speed_10m_max: [25],
+      wind_gusts_10m_max: [45],
+      wind_direction_10m_dominant: [225],
+    },
+  }
+
+  it('asks explicit units, the place time zone and a clamped number of days', async () => {
+    stubFetch(POINT_RESPONSE)
+    await new OpenMeteoWeatherProvider().fetchPointForecast({ lat: 46.8, lng: -71.2 }, 40)
+    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    const q = new URL(String(url)).searchParams
+    expect(q.get('forecast_days')).toBe('16')
+    expect(q.get('timezone')).toBe('auto')
+    expect(q.get('wind_speed_unit')).toBe('kmh')
+    expect(q.get('temperature_unit')).toBe('celsius')
+    expect(q.get('precipitation_unit')).toBe('mm')
+    expect(q.get('hourly')).toContain('wind_direction_10m')
+    expect(q.get('daily')).toContain('sunset')
+  })
+
+  it('keeps absent values as null, never 0', async () => {
+    stubFetch(POINT_RESPONSE)
+    const point = await new OpenMeteoWeatherProvider().fetchPointForecast(
+      { lat: 46.8, lng: -71.2 },
+      2,
+    )
+    expect(point.timezone).toBe('America/Toronto')
+    expect(point.hourly[1].temperatureCelsius).toBeNull()
+    expect(point.hourly[1].windDirectionDegrees).toBeNull()
+    expect(point.hourly[1].windGustsKmh).toBeNull()
+    expect(point.hourly[1].precipitationProbabilityPercent).toBeNull()
+    expect(point.hourly[0].visibilityMeters).toBeNull()
+    expect(point.hourly[0].windDirectionDegrees).toBe(225)
+    expect(point.hourly[0].isDay).toBe(false)
+    expect(point.daily[0].sunset).toBeNull()
+    expect(point.daily[0].sunrise).toBe('2026-11-02T06:45')
+  })
+
+  it('reports an HTTP failure instead of returning empty data', async () => {
+    stubFetch({}, false, 503)
+    await expect(
+      new OpenMeteoWeatherProvider().fetchPointForecast({ lat: 46.8, lng: -71.2 }, 3),
+    ).rejects.toThrow()
+  })
+})

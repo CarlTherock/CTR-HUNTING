@@ -58,6 +58,7 @@ export class OpenMeteoWindProvider implements WindProvider {
     bounds: LngLatBounds,
     gridSize: number,
     signal?: AbortSignal,
+    days: number = WIND_FORECAST_DAYS,
   ): Promise<WindField> {
     const points = buildGrid(bounds, gridSize)
 
@@ -66,7 +67,10 @@ export class OpenMeteoWindProvider implements WindProvider {
     url.searchParams.set('longitude', points.map((p) => p.lng.toFixed(4)).join(','))
     url.searchParams.set('hourly', WIND_PARAMS)
     url.searchParams.set('timezone', 'auto')
-    url.searchParams.set('forecast_days', String(WIND_FORECAST_DAYS))
+    url.searchParams.set(
+      'forecast_days',
+      String(Math.min(16, Math.max(1, Math.round(days)))),
+    )
 
     const response = await (signal ? fetch(url, { signal }) : fetch(url))
     if (!response.ok) {

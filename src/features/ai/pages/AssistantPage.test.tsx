@@ -55,6 +55,7 @@ afterEach(() => {
   // Démonter d'abord : remettre les magasins à zéro ne doit pas relancer le
   // chargement d'une page encore affichée.
   cleanup()
+  vi.useRealTimers()
   useWaypointsStore.setState({ waypoints: [], loaded: false, editingId: null })
   useTracksStore.setState({ tracks: [], loaded: false })
   useJournalStore.setState({ observations: [], loaded: false, editingId: null })
@@ -207,6 +208,10 @@ describe('AssistantPage — recherche dans l’historique', () => {
 
 describe('AssistantPage — comparaison de périodes', () => {
   it('refuse de conclure quand les périodes n’ont pas assez de données', async () => {
+    // Les périodes par défaut se calculent depuis « maintenant » : on fige la
+    // date sur celle des données de test (le test dépendait du jour réel).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
     const user = userEvent.setup()
     useAssistantStore.getState().setTool('compare-periods')
     renderPage()

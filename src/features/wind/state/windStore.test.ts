@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { db } from '@/database/db'
+import { describeWind } from '@/features/wind/analysis/windTimeline'
 import { useWindStore } from './windStore'
+import { putSavedForecast } from '@/database/savedForecastsRepository'
+import {
+  buildSavedForecast,
+  windZoneBounds,
+} from '@/features/weather/offline/savedForecastLogic'
+import {
+  QUEBEC,
+  makePoint,
+  makeWindField,
+} from '@/features/weather/offline/savedForecastFixtures'
 import type { WindField } from '@/types'
 
 const fetchWindField = vi.fn()
@@ -41,13 +52,17 @@ const FIELD: WindField = {
 
 afterEach(async () => {
   vi.clearAllMocks()
+  vi.useRealTimers()
   await db.settings.clear()
+  await db.savedForecasts.clear()
   useWindStore.setState({
     status: 'idle',
     field: null,
     fetchedAt: null,
     errorReason: null,
     fromCache: false,
+    download: null,
+    savedMiss: null,
     enabled: false,
     selectedHourOffset: 0,
     activeLayer: 'wind',
@@ -223,5 +238,97 @@ describe('windStore', () => {
     useWindStore.getState().setActiveLayer('temperature')
 
     expect(useWindStore.getState().activeLayer).toBe('temperature')
+  })
+})
+
+describe('windStore — prévisions téléchargées (hors ligne)', () => {
+  const C = QUEBEC.coordinate
+  const AREA = {
+    west: C.lng - 0.1,
+    east: C.lng + 0.1,
+    south: C.lat - 0.1,
+    north: C.lat + 0.1,
+  }
+
+  async function seed(start = '2026-11-02', directionDegrees = 270) {
+    await putSavedForecast(
+      buildSavedForecast({
+        id: 'dl-1',
+        place: QUEBEC,
+        point: makePoint(start, 3),
+        windField: makeWindField(C, start, 3, { directionDegrees }),
+        windBounds: windZoneBounds(C),
+        requestedDays: 3,
+        fetchedAt: '2026-11-02T14:00:00.000Z',
+      }),
+    )
+  }
+
+  function at(iso: string) {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(iso))
+  }
+
+  it('network down: serves the downloaded forecast of this place, flagged as a download', async () => {
+    await seed()
+    at('2026-11-03T15:00:00Z') // 10:00 in Toronto, day 2 of the download
+    fetchWindField.mockRejectedValue(new Error('Failed to fetch'))
+    await useWindStore.getState().fetch(AREA)
+    const s = useWindStore.getState()
+    expect(s.status).toBe('available')
+    expect(s.fromCache).toBe(true)
+    expect(s.download?.placeName).toBe('Centre de la carte')
+    expect(s.download?.fetchedAt).toBe('2026-11-02T14:00:00.000Z')
+    expect(s.download?.complete).toBe(true)
+    expect(s.savedMiss).toBeNull()
+    // The shared cursor lands on the current hour of the place: day 2, 10:00.
+    expect(s.selectedHourOffset).toBe(24 + 10)
+    expect(s.field?.samples[0].hourly[s.selectedHourOffset].time).toBe('2026-11-03T10:00')
+  })
+
+  it('keeps the meteorological « from » direction in the saved field', async () => {
+    await seed('2026-11-02', 315)
+    at('2026-11-03T15:00:00Z')
+    fetchWindField.mockRejectedValue(new Error('offline'))
+    await useWindStore.getState().fetch(AREA)
+    const reading = useWindStore.getState().windAt(C)
+    expect(reading?.directionDegrees).toBe(315)
+    // Arrows and particles travel the other way: from the north-west → toward 135°.
+    expect(describeWind(reading as never).toDegrees).toBe(135)
+    expect(describeWind(reading as never).fromDegrees).toBe(315)
+  })
+
+  it('does not substitute another place', async () => {
+    await seed()
+    at('2026-11-03T15:00:00Z')
+    fetchWindField.mockRejectedValue(new Error('offline'))
+    const elsewhere = { west: -73.7, east: -73.5, south: 45.4, north: 45.6 }
+    await useWindStore.getState().fetch(elsewhere)
+    const s = useWindStore.getState()
+    expect(s.status).toBe('error')
+    expect(s.field).toBeNull()
+    expect(s.download).toBeNull()
+    expect(s.savedMiss).toBe('none')
+  })
+
+  it('does not substitute another date: an ended period is reported', async () => {
+    await seed()
+    at('2026-11-12T15:00:00Z')
+    fetchWindField.mockRejectedValue(new Error('offline'))
+    await useWindStore.getState().fetch(AREA)
+    const s = useWindStore.getState()
+    expect(s.status).toBe('error')
+    expect(s.field).toBeNull()
+    expect(s.savedMiss).toBe('ended')
+  })
+
+  it('a live answer wins while the network works (a download is not shown as live)', async () => {
+    await seed()
+    at('2026-11-03T15:00:00Z')
+    fetchWindField.mockResolvedValue(FIELD)
+    await useWindStore.getState().fetch(AREA)
+    const s = useWindStore.getState()
+    expect(s.fromCache).toBe(false)
+    expect(s.download).toBeNull()
   })
 })
