@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import {
+  ChevronDown,
+  ChevronUp,
   CloudSunRain,
-  ListOrdered,
+  Layers,
   LineChart,
+  ListOrdered,
   Pause,
   Play,
-  SkipBack,
-  SkipForward,
+  SlidersHorizontal,
   Wind,
   X,
 } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
-import { GEOMET_LAYERS, geoMetLegendUrl, layerDef } from '@/services/weather-map'
+import { geoMetLegendUrl, layerDef } from '@/services/weather-map'
+import { useIsWide } from '@/features/compare/useIsWide'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { WindCompass } from '@/features/wind/components/WindCompass'
@@ -19,8 +22,14 @@ import { cn } from '@/utils/cn'
 import type { Coordinate } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 import { useWeatherMapStore } from '../state/weatherMapStore'
-import { formatFrameClock, formatFrameRelative } from '../formatFrameTime'
+import { useWindStyleStore } from '../state/windStyleStore'
+import { formatFrameClock } from '../formatFrameTime'
+import { LAYER_PRESENTATION } from '../layerPresentation'
 import { useWeatherMapEffects } from '../useWeatherMapEffects'
+import { windSync } from '../windSync'
+import { LayerList } from './LayerList'
+import { TimelineBar } from './TimelineBar'
+import { WindStyleSettings } from './WindStyleSettings'
 
 export interface WeatherMapControlProps {
   getBounds: () => LngLatBounds | null
@@ -28,13 +37,20 @@ export interface WeatherMapControlProps {
   viewCenter: Coordinate
 }
 
+type Tab = 'layers' | 'settings'
+
 /**
- * Carte météo façon application météo : radar animé (3 dernières
- * heures, Environnement Canada, 1 km) et prévisions HRDPS 2,5 km heure
- * par heure (précipitations, température, vent, rafales, nuages,
- * pression), avec lecture/pause, ligne du temps, légende officielle et
- * valeur réelle au centre de la carte. Remplace les anciens contrôles
- * « vent » et « radar » séparés.
+ * Carte météo façon application météo : radar animé (dernières heures,
+ * Environnement Canada, 1 km) et prévisions HRDPS 2,5 km heure par heure
+ * (précipitations, température, vent, rafales, nuages, pression), avec
+ * lecture/pause, ligne du temps, légende officielle et valeur réelle au
+ * centre de la carte.
+ *
+ * Disposition : sur iPhone, un panneau inférieur repliable (état compact :
+ * couche, heure, lecture/pause) ; sur grand écran, un panneau latéral pour
+ * les couches et réglages et une ligne du temps large au bas de la carte.
+ * Deux onglets : « Couches » (le phénomène, le vent superposé) et
+ * « Réglages » (opacité, présentation du vent).
  */
 export function WeatherMapControl({
   getBounds,
@@ -64,19 +80,31 @@ export function WeatherMapControl({
   const toggleWind = useWindStore((s) => s.toggle)
   const windPaused = useWindStore((s) => s.animationPaused)
   const setWindPaused = useWindStore((s) => s.setAnimationPaused)
+  const windField = useWindStore((s) => s.field)
+  const windHourOffset = useWindStore((s) => s.selectedHourOffset)
   const windReading = useWindStore((s) => (s.field ? s.windAt(viewCenter) : null))
+
+  const windStyle = useWindStyleStore((s) => s.style)
+  const updateWindStyle = useWindStyleStore((s) => s.update)
 
   const analysisOpen = useWindAnalysisStore((s) => s.open)
   const openAnalysis = useWindAnalysisStore((s) => s.openPanel)
   const closeAnalysis = useWindAnalysisStore((s) => s.closePanel)
 
   const [legendOpen, setLegendOpen] = useState(false)
+  const [expanded, setExpanded] = useState(true)
+  const [tab, setTab] = useState<Tab>('layers')
+  const wide = useIsWide()
 
   useWeatherMapEffects({ isFrameReady, getBounds, viewCenter })
 
   const def = layerDef(activeLayer)
   const frame = frames[frameIndex]
   const now = new Date()
+  const ActiveIcon = LAYER_PRESENTATION[activeLayer].icon
+  const sync = windEnabled
+    ? windSync(windField, frame?.time ?? null, windHourOffset)
+    : null
 
   function handleToggleWind() {
     const bounds = getBounds()
@@ -102,6 +130,266 @@ export function WeatherMapControl({
     toggle()
   }
 
+  const timeline =
+    status === 'available' && frame ? (
+      <>
+        <TimelineBar
+          frames={frames}
+          frameIndex={frameIndex}
+          playing={playing}
+          now={now}
+          maxTicks={wide ? 9 : 5}
+          onPlayingChange={setPlaying}
+          onStep={step}
+          onSeek={setFrameIndex}
+        />
+        <p className="text-ink-300 mt-1 text-xs" aria-live="polite">
+          {def.formatValue === null
+            ? 'Isobares (hPa)'
+            : centerValueStatus === 'loading'
+              ? 'Centre : …'
+              : centerValue
+                ? `Centre : ${centerValue}`
+                : def.kind === 'observed'
+                  ? 'Centre : aucun écho'
+                  : 'Centre : —'}
+        </p>
+      </>
+    ) : null
+
+  const statusLines = (
+    <>
+      {status === 'loading' && (
+        <p className="text-ink-500 text-sm">Chargement des images…</p>
+      )}
+      {status === 'error' && (
+        <p className="text-status-danger text-sm">
+          Couche indisponible — {errorReason}.{' '}
+          <button
+            type="button"
+            onClick={() => void loadFrames(true)}
+            className="underline"
+          >
+            Réessayer
+          </button>
+        </p>
+      )}
+    </>
+  )
+
+  const legend = (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => setLegendOpen(!legendOpen)}
+        aria-pressed={legendOpen}
+        className={cn(
+          'flex items-center gap-1 self-start rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
+          legendOpen
+            ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+            : 'border-surface-600 text-ink-300',
+        )}
+      >
+        <ListOrdered size={14} aria-hidden="true" />
+        Légende
+      </button>
+      {legendOpen && (
+        <div
+          className="mx-auto flex w-fit justify-center gap-2 rounded-md bg-white p-1"
+          aria-label="Légende"
+        >
+          {def.wmsLayers.map((layer, i) => (
+            <img
+              key={layer}
+              src={geoMetLegendUrl(def, i)}
+              alt={`Légende ${def.label}`}
+              className="h-32 w-auto"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  const windSection = (
+    <section className="border-surface-700 flex flex-col gap-2 border-t pt-2">
+      <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
+        Vent superposé
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleToggleWind}
+          aria-pressed={windEnabled}
+          className={cn(
+            'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
+            windEnabled
+              ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+              : 'border-surface-600 text-ink-300',
+          )}
+        >
+          <Wind size={14} aria-hidden="true" />
+          Particules de vent
+        </button>
+        <button
+          type="button"
+          onClick={handleOpenAnalysis}
+          className="border-brand-400 bg-brand-500/20 text-brand-300 flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
+        >
+          <LineChart size={14} aria-hidden="true" />
+          Analyse du vent
+        </button>
+      </div>
+      {windEnabled && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setWindPaused(!windPaused)}
+            className="border-surface-600 text-ink-300 flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
+          >
+            {windPaused ? (
+              <Play size={14} aria-hidden="true" />
+            ) : (
+              <Pause size={14} aria-hidden="true" />
+            )}
+            {windPaused ? 'Lecture du vent' : 'Pause du vent'}
+          </button>
+          {windStatus === 'loading' && (
+            <p className="text-ink-500 text-xs">Chargement du vent…</p>
+          )}
+          {windStatus === 'error' && (
+            <p className="text-status-danger text-xs">Vent indisponible.</p>
+          )}
+          {windReading && (
+            <>
+              <WindCompass
+                directionDegrees={windReading.directionDegrees}
+                speedKmh={windReading.speedKmh}
+              />
+              <p className="text-ink-300 text-xs">
+                {Math.round(windReading.speedKmh)} km/h, rafales{' '}
+                {Math.round(windReading.gustsKmh)} km/h
+                <span className="text-ink-500 block">
+                  Open-Meteo, point de grille le plus proche
+                </span>
+              </p>
+            </>
+          )}
+        </div>
+      )}
+      {sync?.state === 'synced' && (
+        <p className="text-ink-500 text-xs" data-testid="wind-sync">
+          Vent animé : prévision Open-Meteo de {sync.windHourLabel}, suit la ligne du
+          temps.
+        </p>
+      )}
+      {sync?.state === 'out-of-range' && (
+        <p className="text-status-warning text-xs" data-testid="wind-sync">
+          Le vent animé reste à {sync.windHourLabel} : l’heure de la couche affichée est
+          hors de sa période de prévision. Les deux lectures ne correspondent pas.
+        </p>
+      )}
+    </section>
+  )
+
+  const tabs = (
+    <div role="tablist" aria-label="Carte météo" className="mb-2 grid grid-cols-2 gap-1">
+      {(
+        [
+          ['layers', 'Couches', Layers],
+          ['settings', 'Réglages', SlidersHorizontal],
+        ] as const
+      ).map(([id, label, Icon]) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          id={`wm-tab-${id}`}
+          aria-selected={tab === id}
+          aria-controls={`wm-panel-${id}`}
+          onClick={() => setTab(id)}
+          className={cn(
+            'flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-semibold pointer-coarse:min-h-11',
+            tab === id
+              ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+              : 'border-surface-600 text-ink-300',
+          )}
+        >
+          <Icon size={14} aria-hidden="true" />
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  const tabBody =
+    tab === 'layers' ? (
+      <div
+        role="tabpanel"
+        id="wm-panel-layers"
+        aria-labelledby="wm-tab-layers"
+        className="flex flex-col gap-3"
+      >
+        <LayerList active={activeLayer} onSelect={(id) => void setLayer(id)} />
+        {legend}
+        {windSection}
+      </div>
+    ) : (
+      <div
+        role="tabpanel"
+        id="wm-panel-settings"
+        aria-labelledby="wm-tab-settings"
+        className="flex flex-col gap-3"
+      >
+        <label className="text-ink-300 flex items-center justify-between gap-3 text-xs">
+          Opacité de la couche
+          <input
+            type="range"
+            min={10}
+            max={100}
+            value={Math.round(opacity * 100)}
+            onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+            aria-label="Opacité de la couche météo"
+            className="accent-brand-500 w-40 pointer-coarse:h-11"
+          />
+        </label>
+        <section className="border-surface-700 flex flex-col gap-2 border-t pt-3">
+          <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
+            Présentation du vent
+          </p>
+          {!windEnabled && (
+            <p className="text-ink-500 text-xs">
+              Le vent animé est désactivé (onglet « Couches »). Les réglages sont gardés
+              et s’appliqueront à l’activation.
+            </p>
+          )}
+          <WindStyleSettings
+            style={windStyle}
+            onChange={(patch) => void updateWindStyle(patch)}
+          />
+        </section>
+      </div>
+    )
+
+  const sourceLine = (
+    <span className="text-ink-500 text-[10px]">
+      {def.kind === 'observed'
+        ? 'Radar observé · ECCC 1 km'
+        : 'Prévision HRDPS 2,5 km · ECCC'}
+    </span>
+  )
+
+  const closeButton = (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label="Fermer la carte météo"
+      className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
+    >
+      <X size={16} aria-hidden="true" />
+    </button>
+  )
+
   return (
     <>
       <ToolTrigger
@@ -115,243 +403,106 @@ export function WeatherMapControl({
         order={30}
       />
 
-      {enabled && !analysisOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <div className="border-surface-600 bg-surface-900/95 w-full max-w-md rounded-lg border p-3 shadow-2xl backdrop-blur">
+      {enabled && !analysisOpen && wide && (
+        <>
+          <aside
+            data-testid="weather-side-panel"
+            aria-label="Carte météo : couches et réglages"
+            className="border-surface-600 bg-surface-900/95 fixed top-24 bottom-44 left-[17rem] z-30 flex w-80 flex-col rounded-lg border p-3 shadow-2xl backdrop-blur"
+          >
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-ink-100 text-sm font-semibold">Carte météo</h2>
               <div className="flex items-center gap-2">
-                <span className="text-ink-500 text-[10px]">
-                  {def.kind === 'observed'
-                    ? 'Radar observé · ECCC 1 km'
-                    : 'Prévision HRDPS 2,5 km · ECCC'}
-                </span>
-                <button
-                  type="button"
-                  onClick={toggle}
-                  aria-label="Fermer la carte météo"
-                  className="text-ink-500 hover:text-ink-100 flex items-center justify-center pointer-coarse:size-11"
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
+                {sourceLine}
+                {closeButton}
               </div>
             </div>
-
+            {statusLines}
+            {tabs}
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">{tabBody}</div>
+          </aside>
+          {timeline && (
             <div
-              className="-mx-1 mb-2 flex gap-1 overflow-x-auto px-1 pb-1"
-              role="radiogroup"
-              aria-label="Couche météo"
+              data-testid="weather-bottom-timeline"
+              className="border-surface-600 bg-surface-900/95 fixed right-20 bottom-3 left-[17rem] z-30 rounded-lg border p-3 shadow-2xl backdrop-blur"
             >
-              {GEOMET_LAYERS.map((layer) => (
-                <button
-                  key={layer.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={layer.id === activeLayer}
-                  onClick={() => void setLayer(layer.id)}
-                  className={cn(
-                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-11',
-                    layer.id === activeLayer
-                      ? 'border-brand-400 bg-brand-500/20 text-brand-300'
-                      : 'border-surface-600 text-ink-300 hover:bg-surface-800',
-                  )}
-                >
-                  {layer.label}
-                </button>
-              ))}
+              {timeline}
             </div>
+          )}
+        </>
+      )}
 
-            {status === 'loading' && (
-              <p className="text-ink-500 text-sm">Chargement des images…</p>
-            )}
-            {status === 'error' && (
-              <p className="text-status-danger text-sm">
-                Couche indisponible — {errorReason}.{' '}
-                <button
-                  type="button"
-                  onClick={() => void loadFrames(true)}
-                  className="underline"
+      {enabled && !analysisOpen && !wide && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div
+            data-testid="weather-bottom-panel"
+            className="border-surface-600 bg-surface-900/95 w-full max-w-md rounded-lg border p-3 shadow-2xl backdrop-blur"
+          >
+            <div className="flex items-center justify-between gap-2">
+              {expanded ? (
+                <h2 className="text-ink-100 text-sm font-semibold">Carte météo</h2>
+              ) : (
+                <p
+                  className="text-ink-100 flex min-w-0 items-center gap-2 text-sm font-semibold"
+                  data-testid="weather-compact"
                 >
-                  Réessayer
-                </button>
-              </p>
-            )}
-
-            {status === 'available' && frame && (
-              <>
-                <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <p className="text-ink-100 text-sm font-semibold tabular-nums">
-                    {formatFrameClock(frame, now)}{' '}
-                    <span className="text-ink-500 text-xs font-normal">
-                      · {frame.kind === 'observed' ? 'observé' : 'prévu'},{' '}
-                      {formatFrameRelative(frame, now)}
-                    </span>
-                  </p>
-                  <p className="text-ink-300 text-xs" aria-live="polite">
-                    {def.formatValue === null
-                      ? 'Isobares (hPa)'
-                      : centerValueStatus === 'loading'
-                        ? '…'
-                        : centerValue
-                          ? `Centre : ${centerValue}`
-                          : def.kind === 'observed'
-                            ? 'Centre : aucun écho'
-                            : 'Centre : —'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => step(-1)}
-                    aria-label="Image précédente"
-                    className="text-ink-300 hover:text-ink-100 flex items-center justify-center p-1 pointer-coarse:size-11"
-                  >
-                    <SkipBack size={16} aria-hidden="true" />
-                  </button>
+                  <ActiveIcon
+                    size={18}
+                    aria-hidden="true"
+                    className="text-brand-300 shrink-0"
+                  />
+                  <span className="truncate">
+                    {def.label}
+                    {frame && status === 'available' && (
+                      <span className="text-ink-300 font-normal tabular-nums">
+                        {' · '}
+                        {formatFrameClock(frame, now)} ·{' '}
+                        {frame.kind === 'observed' ? 'observé' : 'prévu'}
+                      </span>
+                    )}
+                  </span>
+                </p>
+              )}
+              <div className="flex shrink-0 items-center gap-1">
+                {expanded && sourceLine}
+                {!expanded && status === 'available' && frame && (
                   <button
                     type="button"
                     onClick={() => setPlaying(!playing)}
-                    className="bg-brand-500 text-surface-950 hover:bg-brand-400 flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold pointer-coarse:min-h-11"
+                    aria-label={playing ? 'Pause' : 'Lecture'}
+                    className="bg-brand-500 text-surface-950 flex size-9 items-center justify-center rounded-full pointer-coarse:size-11"
                   >
                     {playing ? (
-                      <Pause size={16} aria-hidden="true" />
+                      <Pause size={18} aria-hidden="true" />
                     ) : (
-                      <Play size={16} aria-hidden="true" />
+                      <Play size={18} aria-hidden="true" />
                     )}
-                    {playing ? 'Pause' : 'Lecture'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => step(1)}
-                    aria-label="Image suivante"
-                    className="text-ink-300 hover:text-ink-100 flex items-center justify-center p-1 pointer-coarse:size-11"
-                  >
-                    <SkipForward size={16} aria-hidden="true" />
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(0, frames.length - 1)}
-                    value={frameIndex}
-                    onChange={(e) => {
-                      setPlaying(false)
-                      setFrameIndex(Number(e.target.value))
-                    }}
-                    aria-label="Ligne du temps"
-                    className="accent-brand-500 flex-1"
-                  />
-                </div>
-                <div className="text-ink-500 mt-0.5 flex justify-between px-1 text-[10px]">
-                  <span>{formatFrameClock(frames[0], now)}</span>
-                  <span>{formatFrameClock(frames[frames.length - 1], now)}</span>
-                </div>
-              </>
-            )}
-
-            <div className="border-surface-700 mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2">
-              <label className="text-ink-500 flex items-center gap-2 text-xs">
-                Opacité
-                <input
-                  type="range"
-                  min={10}
-                  max={100}
-                  value={Math.round(opacity * 100)}
-                  onChange={(e) => setOpacity(Number(e.target.value) / 100)}
-                  aria-label="Opacité de la couche météo"
-                  className="accent-brand-500 w-24"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => setLegendOpen(!legendOpen)}
-                aria-pressed={legendOpen}
-                className={cn(
-                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
-                  legendOpen
-                    ? 'border-brand-400 bg-brand-500/20 text-brand-300'
-                    : 'border-surface-600 text-ink-300',
                 )}
-              >
-                <ListOrdered size={14} aria-hidden="true" />
-                Légende
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleWind}
-                aria-pressed={windEnabled}
-                className={cn(
-                  'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
-                  windEnabled
-                    ? 'border-brand-400 bg-brand-500/20 text-brand-300'
-                    : 'border-surface-600 text-ink-300',
-                )}
-              >
-                <Wind size={14} aria-hidden="true" />
-                Particules de vent
-              </button>
-              <button
-                type="button"
-                onClick={handleOpenAnalysis}
-                className="border-brand-400 bg-brand-500/20 text-brand-300 flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
-              >
-                <LineChart size={14} aria-hidden="true" />
-                Analyse du vent
-              </button>
-            </div>
-
-            {legendOpen && (
-              <div
-                className="mx-auto mt-2 flex w-fit justify-center gap-2 rounded-md bg-white p-1"
-                aria-label="Légende"
-              >
-                {def.wmsLayers.map((layer, i) => (
-                  <img
-                    key={layer}
-                    src={geoMetLegendUrl(def, i)}
-                    alt={`Légende ${def.label}`}
-                    className="h-32 w-auto"
-                  />
-                ))}
-              </div>
-            )}
-
-            {windEnabled && (
-              <div className="mt-2 flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setWindPaused(!windPaused)}
-                  className="border-surface-600 text-ink-300 flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
+                  onClick={() => setExpanded(!expanded)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? 'Réduire le panneau' : 'Déplier le panneau'}
+                  className="text-ink-300 hover:text-ink-100 flex size-9 items-center justify-center pointer-coarse:size-11"
                 >
-                  {windPaused ? (
-                    <Play size={14} aria-hidden="true" />
+                  {expanded ? (
+                    <ChevronDown size={18} aria-hidden="true" />
                   ) : (
-                    <Pause size={14} aria-hidden="true" />
+                    <ChevronUp size={18} aria-hidden="true" />
                   )}
-                  {windPaused ? 'Lecture du vent' : 'Pause du vent'}
                 </button>
-                {windStatus === 'loading' && (
-                  <p className="text-ink-500 text-xs">Chargement du vent…</p>
-                )}
-                {windStatus === 'error' && (
-                  <p className="text-status-danger text-xs">Vent indisponible.</p>
-                )}
-                {windReading && (
-                  <>
-                    <WindCompass
-                      directionDegrees={windReading.directionDegrees}
-                      speedKmh={windReading.speedKmh}
-                    />
-                    <p className="text-ink-300 text-xs">
-                      {Math.round(windReading.speedKmh)} km/h, rafales{' '}
-                      {Math.round(windReading.gustsKmh)} km/h
-                      <span className="text-ink-500 block">
-                        Open-Meteo, point de grille le plus proche
-                      </span>
-                    </p>
-                  </>
-                )}
+                {closeButton}
               </div>
+            </div>
+
+            {expanded && (
+              <>
+                <div className="mt-2">{statusLines}</div>
+                {timeline && <div className="mb-2">{timeline}</div>}
+                {tabs}
+                <div className="max-h-[30vh] overflow-y-auto pr-1">{tabBody}</div>
+              </>
             )}
           </div>
         </div>
