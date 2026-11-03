@@ -3,6 +3,10 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Coque plein écran en application installée (2026-11-03)
+
+La coque passe de `h-dvh` à `100lvh` en standalone (`100dvh` en navigateur). Détails et limites : `docs/AFFICHAGE_BORDS_ECRAN.md`.
+
 ## Météo : visuel plus lisible et plage visible dès la localisation (2026-11-02)
 
 ### Changed

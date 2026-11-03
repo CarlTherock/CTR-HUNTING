@@ -102,6 +102,26 @@
 }
 
 /*
+ * Height of the root shell. Browser tab: 100dvh (follows Safari's toolbars).
+ * Installed app (standalone): 100lvh. On iPhone 16 / iOS 26.6.2 the dynamic
+ * unit can drop to the « small » height (793 instead of 852 px, minus the
+ * 59 px status bar) at launch, leaving a band under the navigation, while
+ * 100lvh stays at the full screen height. Declarations are ordered so that a
+ * browser without dvh/lvh keeps the previous valid one.
+ */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+@media (display-mode: standalone) {
+  .app-shell {
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
+/*
  * Touch targets: MapLibre's own zoom/compass/attribution buttons are 29 px.
  * On touch devices they must reach the 44 px minimum like every other
  * control (WCAG 2.5.5 / Apple HIG).
