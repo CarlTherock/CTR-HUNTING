@@ -53,7 +53,10 @@ describe('ProjectPage', () => {
       expect(screen.getByText(priority.why)).toBeInTheDocument()
     }
     const version = document.getElementById('version') as HTMLElement
-    expect(version).toHaveTextContent('Recherche de sang')
+    // Les dernières entrées du changelog défilent à chaque livraison : on ne
+    // vérifie donc pas un titre précis, seulement la forme de l'historique.
+    expect(version).toHaveTextContent(/\d{4}-\d{2}-\d{2} · \S/)
+    expect(version).toHaveTextContent('Historique complet')
   })
 
   it('distinguishes the four validation levels in each phase', async () => {

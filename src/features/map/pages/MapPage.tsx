@@ -59,6 +59,7 @@ import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapC
 import { WindAnalysisPanel } from '@/features/wind/components/WindAnalysisPanel'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
+import { useWindStyleStore } from '@/features/weather-map/state/windStyleStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
 import { geoMetTileUrls, layerDef } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
@@ -201,6 +202,7 @@ export function MapPage() {
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
   const windPaused = useWindStore((state) => state.animationPaused)
+  const windStyle = useWindStyleStore((state) => state.style)
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
   const heatmapSelectedView = useHeatmapStore((state) => state.selectedView)
@@ -642,6 +644,14 @@ export function MapPage() {
   useEffect(() => {
     instanceRef.current?.setWindAnimationPaused?.(windPaused)
   }, [windPaused, windEnabled, windField])
+
+  useEffect(() => {
+    void useWindStyleStore.getState().load()
+  }, [])
+
+  useEffect(() => {
+    instanceRef.current?.setWindStyle?.(windStyle)
+  }, [windStyle, windEnabled, windField])
 
   useEffect(() => {
     // Particles only — the colored weather surfaces are now real GeoMet

@@ -36,8 +36,36 @@ Gotchas found while testing:
   per-layer cache (5 min observed, 30 min forecast).
 - `useWeatherMapEffects.ts` — playback (waits for tiles), radar refresh,
   center value, syncs the Open-Meteo particle hour with the timeline.
-- `components/WeatherMapControl.tsx` — bottom panel: chips, timeline,
-  legend (official GeoMet legend images), opacity, wind particles.
+- `components/WeatherMapControl.tsx` — iPhone: bottom panel that folds to a
+  compact row (layer, time, play/pause); wide screens (≥ 1024 px): side
+  panel + wide timeline at the bottom of the map. Tabs « Couches » (layer
+  list, legend, superimposed wind) and « Réglages » (opacity, wind
+  presentation). Pieces: `LayerList`, `TimelineBar`, `WindStyleSettings`.
+- `layerPresentation.ts` — icon + one-line description per real layer, and
+  the groups « Observé » / « Précipitations prévues » / « Autres prévisions ».
+- `timelineTicks.ts` — hour marks that fit the width; `TimelineBar` moves its
+  readout while dragging but commits the map frame only when the finger
+  rests (150 ms) or on release, so scrubbing does not request every frame.
+- `windSync.ts` — says when the layer's instant is outside the wind
+  forecast's period (the particles then keep their last hour; the panel says so).
+
+## Wind presentation (visual only)
+
+The wind is an animated particle field, not arrows. `utils/windStyle.ts` +
+`state/windStyleStore.ts` (saved on the device, key `windStyle`, no network):
+
+| Setting            | Values                      | What it changes                                             |
+| ------------------ | --------------------------- | ----------------------------------------------------------- |
+| Taille             | normal / grand / très grand | how long a trail stays on screen (fade 0.9 / 0.945 / 0.965) |
+| Épaisseur          | fine / normale / épaisse    | stroke width 1.2 / 1.8 / 3.2 px                             |
+| Densité            | faible / normale / élevée   | particle count 220 / 400 / 700                              |
+| Contraste renforcé | on / off                    | dark halo under each stroke, opaque colours                 |
+
+Size, thickness and density are independent. Nothing here changes a wind
+value, the animation speed (`advancePosition`) or the dispersion maths; the
+still image shown when paused is painted for as many frames as the trail needs.
+A « Flèches » mode (direction visible at rest) is **not** implemented yet.
+
 - The map engine (`MapLibreProvider.setWeatherFrames`) keeps a small
   window of frames loaded (1 behind, 3 ahead) and only flips opacity, so
   the animation doesn't flicker.

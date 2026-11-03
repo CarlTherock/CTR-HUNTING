@@ -3,6 +3,20 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Carte météo : panneau, ligne du temps et visibilité du vent (2026-11-03)
+
+### Added
+
+- Vent : taille (longueur des traînées), épaisseur, densité et contraste renforcé (halo), aperçu immédiat, enregistrés sur l'appareil, sans requête réseau ni changement de vitesse ou de calcul.
+- Panneau : onglets « Couches » / « Réglages », liste des couches (icône, nom, description, état sélectionné), groupes observé / précipitations prévues / autres prévisions.
+- Ligne du temps : jour, date, heure, observé/prévu, période disponible, repères adaptés à la largeur, curseur sans téléchargements redondants.
+- Indication quand la couche et les particules de vent n'ont pas la même période.
+
+### Changed
+
+- iPhone : panneau inférieur repliable (état compact : couche, heure, lecture/pause). Grand écran : panneau latéral et ligne du temps large.
+- Détails : `src/features/weather-map/README.md`. Mode « Flèches » : non fait.
+
 ## Coque plein écran en application installée (2026-11-03)
 
 La coque passe de `h-dvh` à `100lvh` en standalone (`100dvh` en navigateur). Détails et limites : `docs/AFFICHAGE_BORDS_ECRAN.md`.

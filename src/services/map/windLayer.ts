@@ -2,13 +2,22 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { Coordinate, WeatherMapLayer, WindField } from '@/types'
 import { weatherLayerColor, valueForLayer } from '@/utils/weatherMapColors'
 import { advancePosition, windAt } from '@/utils/windField'
+import {
+  DEFAULT_WIND_STYLE,
+  HALO_COLOR,
+  HALO_EXTRA_WIDTH,
+  LINE_WIDTH,
+  PARTICLE_COUNT,
+  TRAIL_KEEP,
+  staticFrameCount,
+  type WindStyle,
+} from '@/utils/windStyle'
 
 interface WindParticle {
   pos: Coordinate
   age: number
 }
 
-const WIND_PARTICLE_COUNT = 400
 /** Frames before a particle respawns elsewhere — keeps trails short and
  * the field feeling continuously "alive" rather than a few long streaks. */
 const WIND_PARTICLE_MAX_AGE = 100
@@ -92,13 +101,14 @@ export function createWindLayer(map: MapLibreMap, container: HTMLElement) {
   let animationFrame: number | null = null
   let trailsNeedClear = true
   let paused = false
+  let style: WindStyle = DEFAULT_WIND_STYLE
   const onMove = () => {
     trailsNeedClear = true
   }
   map.on('move', onMove)
 
   function reset() {
-    particles = Array.from({ length: WIND_PARTICLE_COUNT }, () => ({
+    particles = Array.from({ length: PARTICLE_COUNT[style.density] }, () => ({
       pos: randomPointInBounds(map),
       age: Math.floor(Math.random() * WIND_PARTICLE_MAX_AGE),
     }))
@@ -136,11 +146,11 @@ export function createWindLayer(map: MapLibreMap, container: HTMLElement) {
       trailsNeedClear = false
     } else {
       ctx.globalCompositeOperation = 'destination-in'
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
+      ctx.fillStyle = `rgba(0, 0, 0, ${TRAIL_KEEP[style.size]})`
       ctx.fillRect(0, 0, width, height)
       ctx.globalCompositeOperation = 'source-over'
     }
-    ctx.lineWidth = 1.8
+    const lineWidth = LINE_WIDTH[style.thickness]
     ctx.lineCap = 'round'
     // Constant on-screen speed whatever the zoom: a fixed geographic step
     // is invisible zoomed out (~1 km/px at z7) and too fast zoomed in.
@@ -155,10 +165,26 @@ export function createWindLayer(map: MapLibreMap, container: HTMLElement) {
         // Colored by local speed — Windy's own convention (blue calm →
         // red gale) — so the flow field reads at a glance, not just from
         // trail motion alone.
-        ctx.strokeStyle = weatherLayerColor('wind', wind.speedKmh, 0.85)
         ctx.beginPath()
         ctx.moveTo(screenStart.x, screenStart.y)
         ctx.lineTo(screenEnd.x, screenEnd.y)
+        if (style.contrast) {
+          // Dark halo under the coloured stroke so the flow stays readable
+          // on satellite, dark basemaps and coloured weather rasters.
+          // Drawn BEHIND what is already on the canvas so it never dims the
+          // coloured tail of the previous frames (that made a beaded trail).
+          ctx.globalCompositeOperation = 'destination-over'
+          ctx.strokeStyle = HALO_COLOR
+          ctx.lineWidth = lineWidth + HALO_EXTRA_WIDTH
+          ctx.stroke()
+          ctx.globalCompositeOperation = 'source-over'
+        }
+        ctx.strokeStyle = weatherLayerColor(
+          'wind',
+          wind.speedKmh,
+          style.contrast ? 1 : 0.85,
+        )
+        ctx.lineWidth = lineWidth
         ctx.stroke()
         particle.pos = nextPos
         particle.age += 1
@@ -183,7 +209,7 @@ export function createWindLayer(map: MapLibreMap, container: HTMLElement) {
    * streamlines are visible as a still image, with no animation loop. */
   function renderStatic() {
     trailsNeedClear = true
-    for (let i = 0; i < 24; i += 1) step()
+    for (let i = 0; i < staticFrameCount(style.size); i += 1) step()
     animationFrame = null
   }
 
@@ -206,6 +232,19 @@ export function createWindLayer(map: MapLibreMap, container: HTMLElement) {
         animationFrame = null
         const ctx = canvas.getContext('2d')
         ctx?.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    },
+    /** Presentation only: applied at once, no data is fetched. A density
+     * change regenerates the particles; the other settings redraw. */
+    setStyle(newStyle: WindStyle) {
+      const densityChanged = newStyle.density !== style.density
+      style = newStyle
+      if (!field) return
+      if (densityChanged) reset()
+      if (paused) renderStatic()
+      else {
+        trailsNeedClear = true
+        if (animationFrame === null) animationFrame = requestAnimationFrame(step)
       }
     },
     setPaused(newPaused: boolean) {

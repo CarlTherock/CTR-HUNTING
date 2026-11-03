@@ -38,6 +38,7 @@ import type { MapLibreProviderApiKeys } from './styleUrls'
 import { applyTerrain, setTerrainExaggeration } from './terrain'
 import { applyOverlay } from './vectorOverlays'
 import { createWindLayer } from './windLayer'
+import type { WindStyle } from '@/utils/windStyle'
 
 export type { MapLibreProviderApiKeys } from './styleUrls'
 
@@ -304,6 +305,9 @@ export class MapLibreProvider implements MapProvider {
       },
       setWindAnimationPaused(paused: boolean) {
         windLayer.setPaused(paused)
+      },
+      setWindStyle(style: WindStyle) {
+        windLayer.setStyle(style)
       },
       setAnalysisHeatmap(cells: AnalysisHeatmapCell[] | null) {
         analysisHeatmapLayer.setCells(cells)

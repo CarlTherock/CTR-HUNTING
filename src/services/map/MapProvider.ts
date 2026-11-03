@@ -12,6 +12,7 @@ import type {
   WindField,
 } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
+import type { WindStyle } from '@/utils/windStyle'
 
 export interface DownloadAreaProgress {
   /** Tiles available for the area after this run: fetched now + already
@@ -167,6 +168,12 @@ export interface MapInstance {
    * without an animated layer need not implement it.
    */
   setWindAnimationPaused?(paused: boolean): void
+  /**
+   * Presentation of the wind particles (trail length, thickness, halo,
+   * density). Applied immediately, never fetches anything and never changes
+   * a wind value or the animation speed. Optional like the layer itself.
+   */
+  setWindStyle?(style: WindStyle): void
   /**
    * Renders (Phase 9) or clears (`null`) the analysis heatmap: a soft
    * color-graded overlay, one blob per real `AnalysisHeatmapCell`,
