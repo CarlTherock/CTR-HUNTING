@@ -28,4 +28,7 @@ export interface WeatherMapFrame {
 export interface WeatherTileFrame {
   key: string
   tileUrlTemplates: string[]
+  /** Highest zoom tiles are requested at; above it the map enlarges them
+   * smoothly (bilinear) instead of showing the source grid as blocks. */
+  maxZoom?: number
 }

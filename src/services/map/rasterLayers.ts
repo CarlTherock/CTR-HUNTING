@@ -195,6 +195,7 @@ export function createWeatherFrames(map: MapLibreMap) {
           type: 'raster',
           tiles: [template],
           tileSize: 256,
+          ...(frame.maxZoom !== undefined ? { maxzoom: frame.maxZoom } : null),
           attribution: 'Environnement et Changement climatique Canada (MSC GeoMet)',
         })
         map.addLayer(

@@ -61,7 +61,7 @@ import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { useWindStyleStore } from '@/features/weather-map/state/windStyleStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
-import { geoMetTileUrls, layerDef } from '@/services/weather-map'
+import { geoMetTileUrls, layerDef, weatherTileMaxZoom } from '@/services/weather-map'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { TrackRecorderControl } from '@/features/waypoints/components/TrackRecorderControl'
@@ -673,6 +673,7 @@ export function MapPage() {
       weatherMapFrames.map((frame) => ({
         key: frameKey(weatherMapLayer, frame.time),
         tileUrlTemplates: geoMetTileUrls(def, frame.time),
+        maxZoom: weatherTileMaxZoom(def),
       })),
       weatherMapFrameIndex,
       weatherMapOpacity,
