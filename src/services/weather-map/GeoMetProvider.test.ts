@@ -4,6 +4,7 @@ import {
   buildFrames,
   extractTimeDimension,
   geoMetTileUrls,
+  weatherTileMaxZoom,
   layerDef,
   parseIsoDurationMs,
   parseTimeDimension,
@@ -113,5 +114,20 @@ describe('GeoMetProvider', () => {
       lng: -72,
     })
     expect(value).toBeNull()
+  })
+})
+
+describe('weatherTileMaxZoom', () => {
+  it('stops requesting tiles near the native grid so the map enlarges them smoothly', () => {
+    expect(weatherTileMaxZoom(layerDef('radar'))).toBe(8)
+    for (const id of [
+      'precipitation',
+      'temperature',
+      'wind',
+      'gusts',
+      'clouds',
+      'pressure',
+    ] as const)
+      expect(weatherTileMaxZoom(layerDef(id))).toBe(7)
   })
 })

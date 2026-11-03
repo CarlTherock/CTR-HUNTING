@@ -190,6 +190,18 @@ export function buildFrames(
     .map((t) => ({ time: toIsoSeconds(t), kind: 'forecast' }))
 }
 
+/**
+ * Highest zoom at which tiles are REQUESTED. Above it MapLibre enlarges the
+ * tile it already has with bilinear resampling, which turns the coarse
+ * source grid (radar 1 km, HRDPS 2.5 km) into soft gradients instead of the
+ * big square blocks GeoMet draws when asked for a very close zoom. Purely
+ * visual: no extra precision is created, and the value read at the map
+ * center still comes from GetFeatureInfo on the real grid.
+ */
+export function weatherTileMaxZoom(def: GeoMetLayerDef): number {
+  return def.kind === 'observed' ? 8 : 7
+}
+
 /** One GetMap template per WMS layer of `def`. */
 export function geoMetTileUrls(def: GeoMetLayerDef, time: string): string[] {
   return def.wmsLayers.map((layer, i) => geoMetTileUrl(layer, def.styles[i], time))
