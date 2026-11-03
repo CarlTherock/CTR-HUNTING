@@ -15,7 +15,7 @@ import { useHashScroll } from './useHashScroll'
  * `navItems` config and route through the same `<Outlet />`.
  *
  * Height chain (one definite height from html down to the map canvas):
- *   root `h-dvh` → column `min-h-0 flex-1` → `main` `min-h-0 flex-1`.
+ *   root `.app-shell` (100dvh; 100lvh when installed) → column `min-h-0 flex-1` → `main` `min-h-0 flex-1`.
  * TopBar and BottomNav are *in flow* (not `fixed`) so they take their own
  * space instead of covering the bottom of the page, and safe-area insets
  * are applied once, by the element touching that screen edge — never on
@@ -43,7 +43,7 @@ export function AppShell() {
 
   return (
     <div
-      className="bg-surface-950 text-ink-100 flex h-dvh overflow-hidden"
+      className="app-shell bg-surface-950 text-ink-100 flex overflow-hidden"
       style={{
         // Immersive: no reserve here. The map page draws the map to every
         // screen edge and keeps only its controls inside the safe areas.

@@ -91,3 +91,19 @@ coque 0 → 793, navigation 702 → 793 (91 px = 56 + 34 + bordure). La capture 
   (A bas ancré, B `100vh`, C `100lvh`, D `100dvh`, E `screen.height` en px). Les lettres visibles au ras du bord de
   l'écran disent quelle règle peut réellement **peindre** jusqu'au bord (une règle peut atteindre la bonne hauteur mais être
   rognée à l'affichage).
+
+## Correction de la coque en application installée (PR de correction)
+
+Relevé du 3 nov. (iPhone 16 / iOS 26.6.2, installée, diagnostic de la PR 23) : `100vh` 852,
+`100lvh` 852, `100dvh` 852, `100svh` 793, `fill-available` 793 ; repères A à E **tous** peints
+jusqu'au bord ; coque et navigation à 852 (écart 0). Ce relevé ne montre **pas** la réduction :
+elle apparaît selon l'état de lancement. Mesure du 11 oct. (état réduit) : `innerHeight` 793,
+coque 0 → 793. Dans l'état réduit, `100dvh` suit le petit viewport (793) alors que
+`100lvh` vaut 852 dans l'état normal ; **non mesuré dans l'état réduit**.
+
+Changement : la coque utilise `100lvh` en mode standalone (`display-mode`) et `100dvh`
+dans un navigateur ordinaire (classe `.app-shell`). Aucune autre unité `dvh` du projet n'est
+touchée ; immersif, zones sûres et navigation inchangés (pas de +59 px, pas de `screen.height`).
+
+Limite : si, dans l'état réduit, `100lvh` valait aussi 793, la bande subsisterait ; il
+faudrait alors chercher du côté de la barre d'état. Le diagnostic permet de le lire.
