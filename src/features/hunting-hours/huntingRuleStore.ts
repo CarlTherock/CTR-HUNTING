@@ -14,10 +14,15 @@ interface HuntingRuleState {
   choose: (ruleId: HuntingRuleId | 'off' | null) => Promise<void>
 }
 
+/** Counts explicit choices, so a slow `load()` never overwrites a choice made
+ * while it was still reading the database. */
+let choiceVersion = 0
+
 export const useHuntingRuleStore = create<HuntingRuleState>((set) => ({
   ruleId: null,
   loaded: false,
   load: async () => {
+    const versionAtStart = choiceVersion
     try {
       const stored = await getSetting<string | null>(KEY, null)
       const ruleId =
@@ -26,12 +31,15 @@ export const useHuntingRuleStore = create<HuntingRuleState>((set) => ({
           : stored && stored in HUNTING_RULES
             ? (stored as HuntingRuleId)
             : null
-      set({ ruleId, loaded: true })
+      if (versionAtStart === choiceVersion) set({ ruleId, loaded: true })
+      else set({ loaded: true })
     } catch {
-      set({ ruleId: null, loaded: true })
+      if (versionAtStart === choiceVersion) set({ ruleId: null, loaded: true })
+      else set({ loaded: true })
     }
   },
   choose: async (ruleId) => {
+    choiceVersion += 1
     set({ ruleId })
     try {
       await setSetting<string | null>(KEY, ruleId)
