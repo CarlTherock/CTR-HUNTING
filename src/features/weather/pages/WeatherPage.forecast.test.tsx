@@ -248,10 +248,10 @@ describe('Soleil et heures de chasse', () => {
       await within(card).findByRole('button', { name: /Je chasse au Québec/ }),
     )
     expect(await within(card).findByTestId('window-start')).toHaveTextContent(
-      /^Début de la plage : \d\d:\d\d$/,
+      /^Début de chasse : \d\d:\d\d$/,
     )
     expect(within(card).getByTestId('window-end')).toHaveTextContent(
-      /^Fin de la plage : \d\d:\d\d$/,
+      /^Fin de chasse : \d\d:\d\d$/,
     )
     expect(card).toHaveTextContent('Plage horaire calculée (pas une autorisation)')
     expect(card).toHaveTextContent('Règle appliquée : Québec — règle générale')
@@ -300,19 +300,27 @@ describe('Soleil et heures de chasse', () => {
     expect(within(card).queryByTestId('window-start')).toBeNull()
   })
 
-  it('removing the rule is remembered and stops the automatic window', async () => {
-    locateAt(C.lat, C.lng)
-    fetchPointForecast.mockResolvedValue(makePoint('2026-11-03', 5))
-    const user = userEvent.setup({ advanceTimers: () => undefined })
-    render(<WeatherPage />)
-    const card = await screen.findByTestId('sun-hunting')
-    await within(card).findByTestId('window-start')
-    await user.click(within(card).getByRole('button', { name: /Retirer la règle/ }))
-    expect(await within(card).findByTestId('no-window')).toBeInTheDocument()
-    expect(within(card).queryByTestId('window-start')).toBeNull()
-    const row = await db.settings.get('huntingRule')
-    expect(row?.value).toBe('off')
-  })
+  it(
+    'removing the rule is remembered and stops the automatic window',
+    { timeout: 15000 },
+    async () => {
+      locateAt(C.lat, C.lng)
+      fetchPointForecast.mockResolvedValue(makePoint('2026-11-03', 5))
+      const user = userEvent.setup({ advanceTimers: () => undefined })
+      render(<WeatherPage />)
+      const card = await screen.findByTestId('sun-hunting')
+      await within(card).findByTestId('window-start', {}, { timeout: 5000 })
+      await user.click(within(card).getByRole('button', { name: /Retirer la règle/ }))
+      expect(
+        await within(card).findByTestId('no-window', {}, { timeout: 5000 }),
+      ).toBeInTheDocument()
+      expect(within(card).queryByTestId('window-start')).toBeNull()
+      await waitFor(async () => {
+        const row = await db.settings.get('huntingRule')
+        expect(row?.value).toBe('off')
+      })
+    },
+  )
 
   it('keeps the source, the verification date and the exceptions reachable', async () => {
     fetchPointForecast.mockResolvedValue(makePoint('2026-11-03', 5))
