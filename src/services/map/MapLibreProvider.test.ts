@@ -1037,6 +1037,41 @@ describe('MapLibreProvider', () => {
       ],
     }
 
+    it('keeps the credits folded when MapLibre reopens them, but respects the ⓘ button', async () => {
+      const container = document.createElement('div')
+      const attrib = document.createElement('details')
+      attrib.className = 'maplibregl-ctrl-attrib'
+      attrib.setAttribute('open', '')
+      container.appendChild(attrib)
+      const provider = new MapLibreProvider({ mapTiler: 'test-key' })
+      provider.createMap({
+        container,
+        initialView: { center: { lat: 0, lng: 0 }, zoom: 5, pitch: 0, bearing: 0 },
+        initialBaseLayer: 'outdoor',
+        initialOverlays: { trails: true, hydrography: true, contours: true },
+      })
+      expect(attrib.hasAttribute('open')).toBe(false)
+
+      // MapLibre re-adds `open` on its own (resize / style update): folded again.
+      attrib.setAttribute('open', '')
+      await Promise.resolve()
+      expect(attrib.hasAttribute('open')).toBe(false)
+
+      // A tap on ⓘ (MapLibre then sets `open`) must stay open.
+      attrib.dispatchEvent(new Event('click'))
+      attrib.setAttribute('open', '')
+      await Promise.resolve()
+      expect(attrib.hasAttribute('open')).toBe(true)
+
+      // Tapping again closes it, and it stays closed.
+      attrib.dispatchEvent(new Event('click'))
+      attrib.removeAttribute('open')
+      await Promise.resolve()
+      attrib.setAttribute('open', '')
+      await Promise.resolve()
+      expect(attrib.hasAttribute('open')).toBe(false)
+    })
+
     it('adds a canvas overlay to the container on creation', () => {
       const container = document.createElement('div')
       const provider = new MapLibreProvider({ mapTiler: 'test-key' })
