@@ -719,6 +719,39 @@ export function MapPage() {
     instanceRef.current?.setAnalysisHeatmap(projected)
   }, [heatmapEnabled, heatmapCells, heatmapSelectedView, heatmapSelectedCell])
 
+  // On opening, centre once on the first real GPS fix — unless the person has
+  // already moved the map themselves, or a shared point is waiting to be seen.
+  // Never a guessed position: only an actual fix ('available') triggers it.
+  const autoLocatedRef = useRef(false)
+  const userMovedMapRef = useRef(false)
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+    const markMoved = () => {
+      userMovedMapRef.current = true
+    }
+    const events = ['pointerdown', 'wheel', 'touchstart'] as const
+    for (const name of events)
+      element.addEventListener(name, markMoved, { passive: true })
+    return () => {
+      for (const name of events) element.removeEventListener(name, markMoved)
+    }
+  }, [])
+  useEffect(() => {
+    if (autoLocatedRef.current || gpsReading.status !== 'available') return
+    const instance = instanceRef.current
+    if (!instance) return // retried on the next GPS update, once the map exists
+    autoLocatedRef.current = true
+    if (userMovedMapRef.current || useSharedPointStore.getState().point) return
+    const coordinate = gpsReading.value
+    const nextView = {
+      center: { lat: coordinate.lat, lng: coordinate.lng },
+      zoom: Math.max(view.zoom, GPS_LOCATE_ZOOM),
+    }
+    setView(nextView)
+    instance.setView(nextView)
+  }, [gpsReading, view.zoom, setView])
+
   function locate() {
     if (gpsReading.status !== 'available') return
     // A tap is the gesture iOS needs to start the compass (direction cone).

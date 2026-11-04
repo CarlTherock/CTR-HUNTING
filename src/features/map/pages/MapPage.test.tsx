@@ -1054,6 +1054,57 @@ describe('MapPage', () => {
     expect(setUserLocationMarker).toHaveBeenLastCalledWith(null)
   })
 
+  describe('automatic centring on the first GPS fix', () => {
+    const fix = (lat: number, lng: number): GeolocationReading => ({
+      status: 'available',
+      value: { lat, lng, accuracyMeters: 8, timestampMs: FIX_TIME_MS },
+      confidence: 'measured',
+      source: 'browser-geolocation',
+    })
+
+    it('centres once on the first real fix, with no button press', () => {
+      mockGpsReading = fix(46.8, -71.2)
+      render(<MapPage />)
+      expect(setView).toHaveBeenCalledWith(
+        expect.objectContaining({ center: { lat: 46.8, lng: -71.2 } }),
+      )
+    })
+
+    it('does nothing without a fix, and never recentres again on later fixes', () => {
+      const { rerender } = render(<MapPage />)
+      expect(setView).not.toHaveBeenCalled()
+      mockGpsReading = fix(46.8, -71.2)
+      rerender(<MapPage />)
+      expect(setView).toHaveBeenCalledTimes(1)
+      mockGpsReading = fix(46.9, -71.3)
+      rerender(<MapPage />)
+      expect(setView).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves the map alone once the person has moved it', () => {
+      const { rerender } = render(<MapPage />)
+      screen
+        .getByTestId('map-container')
+        .dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      mockGpsReading = fix(46.8, -71.2)
+      rerender(<MapPage />)
+      expect(setView).not.toHaveBeenCalledWith(
+        expect.objectContaining({ center: { lat: 46.8, lng: -71.2 } }),
+      )
+    })
+
+    it('does not override a shared point waiting to be shown', () => {
+      useSharedPointStore.setState({
+        point: { coordinate: { lat: 47.1, lng: -70.9 }, name: 'Mirador' },
+      })
+      mockGpsReading = fix(46.8, -71.2)
+      render(<MapPage />)
+      expect(setView).not.toHaveBeenCalledWith(
+        expect.objectContaining({ center: { lat: 46.8, lng: -71.2 } }),
+      )
+    })
+  })
+
   it('flags an old GPS fix in the badge', () => {
     mockGpsReading = {
       status: 'available',
