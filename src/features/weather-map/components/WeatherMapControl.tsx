@@ -17,6 +17,7 @@ import { geoMetLegendUrl, layerDef } from '@/services/weather-map'
 import { useIsWide } from '@/features/compare/useIsWide'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
+import { useWindPanelStore } from '@/features/wind/state/windPanelStore'
 import { WindCompass } from '@/features/wind/components/WindCompass'
 import { cn } from '@/utils/cn'
 import type { Coordinate } from '@/types'
@@ -90,6 +91,7 @@ export function WeatherMapControl({
   const analysisOpen = useWindAnalysisStore((s) => s.open)
   const openAnalysis = useWindAnalysisStore((s) => s.openPanel)
   const closeAnalysis = useWindAnalysisStore((s) => s.closePanel)
+  const windPanelOpen = useWindPanelStore((s) => s.open)
 
   const [legendOpen, setLegendOpen] = useState(false)
   const [expanded, setExpanded] = useState(true)
@@ -122,6 +124,12 @@ export function WeatherMapControl({
   /** The rail button: with the analysis open it brings back the layers
    * panel (closing the analysis); otherwise it opens/closes the panel. */
   function handleRail() {
+    // One bottom panel at a time: the dedicated wind panel gives way.
+    const windPanelWasOpen = useWindPanelStore.getState().open
+    useWindPanelStore.getState().close()
+    // Wind panel open over an enabled weather layer: the click just brings
+    // the weather panel back instead of switching the layer off.
+    if (windPanelWasOpen && enabled && !analysisOpen) return
     if (analysisOpen) {
       closeAnalysis()
       if (!enabled) toggle()
@@ -403,7 +411,7 @@ export function WeatherMapControl({
         order={30}
       />
 
-      {enabled && !analysisOpen && wide && (
+      {enabled && !analysisOpen && !windPanelOpen && wide && (
         <>
           <aside
             data-testid="weather-side-panel"
@@ -432,7 +440,7 @@ export function WeatherMapControl({
         </>
       )}
 
-      {enabled && !analysisOpen && !wide && (
+      {enabled && !analysisOpen && !windPanelOpen && !wide && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <div
             data-testid="weather-bottom-panel"

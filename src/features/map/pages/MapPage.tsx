@@ -56,6 +56,7 @@ import { MeasureTools } from '@/features/measure/components/MeasureTools'
 import { useMeasureStore } from '@/features/measure/state/measureStore'
 import { useMeasureExclusivity } from '@/features/measure/useMeasureExclusivity'
 import { WeatherMapControl } from '@/features/weather-map/components/WeatherMapControl'
+import { WindMapControl } from '@/features/wind/components/WindMapControl'
 import { WindAnalysisPanel } from '@/features/wind/components/WindAnalysisPanel'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
@@ -976,6 +977,10 @@ export function MapPage() {
                   isFrameReady={(key) =>
                     instanceRef.current?.isWeatherFrameReady(key) ?? false
                   }
+                  viewCenter={view.center}
+                />
+                <WindMapControl
+                  getBounds={() => instanceRef.current?.getBounds() ?? null}
                   viewCenter={view.center}
                 />
                 <ForestLayersControl
