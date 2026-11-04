@@ -3,6 +3,11 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Rail d'icônes sur une colonne + centrage automatique (2026-11-04)
+
+- Le bouton « Mode immersif » (plein écran) revient en bas de la barre d'icônes verticale, dans la même colonne que les autres. Depuis l'ajout du bouton « Vent », le rail dépassait de quelques points la hauteur disponible sur iPhone 16 et repliait ce dernier bouton en 2e colonne ; l'espacement entre les boutons est réduit de 8 à 6 px.
+- À l'ouverture de la carte, la vue se centre automatiquement sur la première vraie position GPS, sans appuyer sur « Me localiser ». Une seule fois par ouverture : rien si tu as déjà déplacé la carte, si un point partagé attend d'être affiché, ou si le GPS n'a pas de position (jamais de position inventée).
+
 ## Crédits de la carte repliés à l'ouverture (2026-11-04)
 
 - Le grand rectangle blanc « Sources : Esri, TomTom… » ne s'affiche plus à l'ouverture de la carte : seul le « i » reste visible. Un toucher sur le « i » ouvre les crédits (et un second les referme) ; MapLibre ne les rouvre plus tout seul.
