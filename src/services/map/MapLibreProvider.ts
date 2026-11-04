@@ -118,7 +118,33 @@ export class MapLibreProvider implements MapProvider {
     // In its compact form MapLibre starts with the `open` attribute set
     // (that is what showed the large block); dropping it leaves the ⓘ button,
     // and a tap on it reveals every provider's credits.
-    container.querySelector('.maplibregl-ctrl-attrib')?.removeAttribute('open')
+    const attribution = container.querySelector('.maplibregl-ctrl-attrib')
+    attribution?.removeAttribute('open')
+    // MapLibre sets `open` again by itself on a resize or a style update, which
+    // brought the white block back. Keep it folded unless the person opened it
+    // with the ⓘ button (the capture listener records that intent first).
+    let attributionWanted = false
+    const attributionGuard =
+      attribution && typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(() => {
+            if (!attributionWanted && attribution.hasAttribute('open')) {
+              attribution.removeAttribute('open')
+            }
+          })
+        : null
+    if (attribution && attributionGuard) {
+      attribution.addEventListener(
+        'click',
+        () => {
+          attributionWanted = !attribution.hasAttribute('open')
+        },
+        true,
+      )
+      attributionGuard.observe(attribution, {
+        attributes: true,
+        attributeFilter: ['open'],
+      })
+    }
 
     // Compass only: the always-visible zoom +/− buttons are replaced by the
     // 2D/3D + relief controls (zoom stays available by gesture, keyboard and
@@ -374,6 +400,7 @@ export class MapLibreProvider implements MapProvider {
         return sweepDownloadArea(map, bounds, minZoom, maxZoom, onProgress, signal)
       },
       destroy() {
+        attributionGuard?.disconnect()
         markers.destroy()
         windLayer.destroy()
         analysisHeatmapLayer.destroy()

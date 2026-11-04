@@ -3,6 +3,10 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Crédits de la carte repliés à l'ouverture (2026-11-04)
+
+- Le grand rectangle blanc « Sources : Esri, TomTom… » ne s'affiche plus à l'ouverture de la carte : seul le « i » reste visible. Un toucher sur le « i » ouvre les crédits (et un second les referme) ; MapLibre ne les rouvre plus tout seul.
+
 ## Cône de direction sur le point bleu (2026-11-04)
 
 - Le point bleu « vous êtes ici » affiche maintenant un faisceau dans la direction du haut du téléphone (comme Google Maps), sur la carte normale et plus seulement pendant « Aller à ».
