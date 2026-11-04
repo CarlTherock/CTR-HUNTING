@@ -72,3 +72,11 @@ A « Flèches » mode (direction visible at rest) is **not** implemented yet.
 
 Offline: GeoMet tiles are excluded from the offline tile cache (live
 data only); the panel shows the error state when offline.
+
+## Rendu du radar
+
+Trois niveaux (Météo → Réglages → Radar, clé `weatherSmoothing`) : `precis` (tuile GeoMet
+brute), `doux` et `tres-doux`. Les deux derniers passent par `ctrsoft://` / `ctrsoftx://`
+(`services/weather-map/softTiles.ts`) : la tuile est agrandie à 512 px et floutée
+(`smoothing.ts`, alpha prémultiplié, bords répétés pour éviter les coutures). Visuel
+seulement, pour `radar` et `precipitation`. Repli : tuile d'origine si le canvas échoue.

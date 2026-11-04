@@ -1362,6 +1362,39 @@ describe('MapPage', () => {
     expect(setWeatherFrames).toHaveBeenLastCalledWith(null, 0, 0.75)
   })
 
+  it('draws the radar « Doux » by default, follows the chosen level, and never softens other layers', async () => {
+    const user = userEvent.setup()
+    render(<MapPage />)
+    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+
+    const lastTemplates = () => {
+      const frames = setWeatherFrames.mock.lastCall?.[0] as
+        { tileUrlTemplates: string[] }[] | null
+      return frames?.at(-1)?.tileUrlTemplates ?? []
+    }
+    const allStartWith = (prefix: string) =>
+      lastTemplates().length === 2 && lastTemplates().every((t) => t.startsWith(prefix))
+    await vi.waitFor(() => expect(allStartWith('ctrsoft://')).toBe(true))
+
+    await user.click(screen.getByRole('tab', { name: 'Réglages' }))
+    await user.click(screen.getByRole('radio', { name: 'Très doux' }))
+    await vi.waitFor(() => expect(allStartWith('ctrsoftx://')).toBe(true))
+    await user.click(screen.getByRole('radio', { name: 'Précis' }))
+    await vi.waitFor(() => expect(allStartWith('https://')).toBe(true))
+    await user.click(screen.getByRole('radio', { name: 'Doux' }))
+    await vi.waitFor(() => expect(allStartWith('ctrsoft://')).toBe(true))
+
+    fetchFrames.mockResolvedValueOnce([
+      { time: '2026-09-25T15:00:00Z', kind: 'forecast' },
+    ])
+    await user.click(screen.getByRole('tab', { name: 'Couches' }))
+    await user.click(screen.getByRole('radio', { name: 'Temp.' }))
+    await vi.waitFor(() => {
+      expect(lastTemplates()[0]).toContain('HRDPS.CONTINENTAL_TT')
+      expect(lastTemplates()[0].startsWith('https://')).toBe(true)
+    })
+  })
+
   it('shows a recent-spots comparison strip after analyzing 2+ points, and recalls a cached one with no re-fetch', async () => {
     const user = userEvent.setup()
     queryElevation.mockReturnValue(300)
