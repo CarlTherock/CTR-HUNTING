@@ -2089,9 +2089,11 @@ describe('Analyse du vent', () => {
     })
     try {
       render(<MapPage />)
-      expect(await screen.findByTestId('wind-analysis')).toHaveAttribute(
-        'data-state',
-        'collapsed',
+      await vi.waitFor(() =>
+        expect(screen.getByTestId('wind-analysis')).toHaveAttribute(
+          'data-state',
+          'collapsed',
+        ),
       )
       await user.click(screen.getByRole('button', { name: 'Heure suivante' }))
       expect(useWindStore.getState().selectedHourOffset).toBe(11)

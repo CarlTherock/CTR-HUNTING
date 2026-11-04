@@ -105,3 +105,11 @@ rendered particle animation and color overlays on a real map canvas. The
 math (`utils/windField.ts`, `utils/weatherMapColors.ts`) and the
 store/UI wiring are fully unit/integration tested instead, the same
 caveat as Phases 3/4/6's other map-dependent visuals.
+
+## Panneau « Vent » (carte)
+
+`components/WindMapControl.tsx` + `state/windPanelStore.ts` : bouton « Vent » du rail, panneau
+dédié aux particules du vent réel (grille Open-Meteo). Heure partagée (`selectedHourOffset`),
+lecture au centre via `readSlot`/`describeWind` (direction « d'où vient »), réglages de
+présentation (`weather-map/windStyleStore`). À l'ouverture sur le curseur par défaut (0), le
+vent « maintenant » est affiché ; un choix délibéré n'est jamais écrasé.

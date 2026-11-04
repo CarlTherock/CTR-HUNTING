@@ -3,6 +3,12 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Panneau « Vent » dédié sur la carte (2026-11-03)
+
+- Nouveau bouton « Vent » dans le rail, à côté de « Météo et radar » : panneau pour les particules du vent réel (prévision Open-Meteo, points de grille réels) avec heure (précédente / suivante / Maintenant / curseur), pause du vent, lecture au centre de la carte (direction d'où vient le vent, vitesse, rafales), accès à « Analyse du vent » et réglages de présentation (taille, épaisseur, densité, contraste).
+- iPhone : panneau inférieur repliable ; grand écran : panneau latéral. Un seul panneau du bas à la fois (le panneau météo s'efface, sa couche reste).
+- Le vent HRDPS (image) reste dans « Météo et radar » : autre source.
+
 ## Radar et prévisions plus doux, moins pixélisés (2026-11-03)
 
 - Les tuiles météo ne sont plus demandées au-delà du zoom 8 (radar) / 7 (prévisions HRDPS) : la carte agrandit ensuite l'image en lissant, au lieu des gros carrés de la grille source. Purement visuel : aucune précision n'est ajoutée, la valeur au centre vient toujours de la grille réelle.
