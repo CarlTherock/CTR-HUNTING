@@ -30,6 +30,7 @@ import type {
   MeasureShape,
 } from './MapProvider'
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
+import { ensureSoftTileProtocolRegistered } from '../weather-map/softTiles'
 import { createPathLayers } from './pathLayers'
 import { createRasterOverlays, createWeatherFrames } from './rasterLayers'
 import { createLongPressDetector } from './longPress'
@@ -89,6 +90,7 @@ export class MapLibreProvider implements MapProvider {
     // `services/map/index.ts`.
     setWorkerUrl(`${import.meta.env.BASE_URL}maplibre/maplibre-gl-worker.mjs`)
     ensureOfflineProtocolsRegistered()
+    ensureSoftTileProtocolRegistered()
 
     const map = new MapLibreMap({
       container,

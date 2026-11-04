@@ -3,6 +3,13 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Radar : rendu doux, 3 niveaux (2026-11-04)
+
+- Le radar (et les précipitations prévues) n'apparaît plus en gros blocs : les tuiles sont agrandies à 512 px et lissées avant l'affichage. Mêmes données, mêmes couleurs de légende ; la valeur lue au centre de la carte vient toujours de GeoMet.
+- Réglages (panneau Météo) → « Radar » → trois niveaux : **Précis** (cellules brutes de 1 km), **Doux** (par défaut, ≈ 0,4 km de flou) et **Très doux** (≈ 0,9 km). Enregistré sur l'appareil. Essai : une fois le niveau préféré choisi, on pourra ne garder que celui-là.
+- Si le navigateur ne peut pas lisser une tuile, la tuile d'origine est affichée telle quelle. Les autres couches (vent, température, pression…) ne sont pas touchées.
+- Non vérifié sur un vrai iPhone ; l'effet exact dépend du zoom.
+
 ## Rail d'icônes sur une colonne + centrage automatique (2026-11-04)
 
 - Le bouton « Mode immersif » (plein écran) revient en bas de la barre d'icônes verticale, dans la même colonne que les autres. Depuis l'ajout du bouton « Vent », le rail dépassait de quelques points la hauteur disponible sur iPhone 16 et repliait ce dernier bouton en 2e colonne ; l'espacement entre les boutons est réduit de 8 à 6 px.
