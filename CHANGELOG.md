@@ -3,6 +3,12 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Cône de direction sur le point bleu (2026-11-04)
+
+- Le point bleu « vous êtes ici » affiche maintenant un faisceau dans la direction du haut du téléphone (comme Google Maps), sur la carte normale et plus seulement pendant « Aller à ».
+- Cap réel de la boussole uniquement (jamais la direction de déplacement GPS) ; aucun cône si le cap est absent, peu fiable ou si le GPS n'a pas de position. Pendant « Aller à », le panneau de guidage garde la main.
+- iPhone : la boussole demande une autorisation à un toucher. Touche « Me localiser » ou « Suivre ma position » une fois par session pour l'activer.
+
 ## Panneau « Vent » dédié sur la carte (2026-11-03)
 
 - Nouveau bouton « Vent » dans le rail, à côté de « Météo et radar » : panneau pour les particules du vent réel (prévision Open-Meteo, points de grille réels) avec heure (précédente / suivante / Maintenant / curseur), pause du vent, lecture au centre de la carte (direction d'où vient le vent, vitesse, rafales), accès à « Analyse du vent » et réglages de présentation (taille, épaisseur, densité, contraste).

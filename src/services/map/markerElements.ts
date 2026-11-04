@@ -19,10 +19,12 @@ export function createUserLocationElement(): HTMLDivElement {
   el.setAttribute('data-testid', 'user-location-marker')
   const cone = document.createElement('div')
   cone.setAttribute('data-testid', 'user-heading-cone')
+  // A beam that fades out from the dot (Google-Maps style), not a hard triangle.
   cone.style.cssText =
-    'display:none;position:absolute;left:50%;bottom:50%;transform:translateX(-50%);width:0;height:0;' +
-    'border-left:11px solid transparent;border-right:11px solid transparent;' +
-    'border-bottom:26px solid rgba(37,99,235,0.55);pointer-events:none;z-index:-1;'
+    'display:none;position:absolute;left:50%;bottom:50%;transform:translateX(-50%);' +
+    'width:56px;height:58px;pointer-events:none;z-index:-1;' +
+    'background:linear-gradient(to top,rgba(37,99,235,0.7),rgba(37,99,235,0));' +
+    '-webkit-clip-path:polygon(50% 100%,0 0,100% 0);clip-path:polygon(50% 100%,0 0,100% 0);'
   el.appendChild(cone)
   return el
 }

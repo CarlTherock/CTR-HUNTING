@@ -31,6 +31,8 @@ import {
 import { baseLayerLabel } from '@/features/layers/baseLayerOptions'
 import { useLayersStore } from '@/features/layers/state/layersStore'
 import { GpsControl } from '@/features/gps/components/GpsControl'
+import { HeadingCone } from '@/features/gps/components/HeadingCone'
+import { useHeadingConeStore } from '@/features/gps/state/headingConeStore'
 import { GpsStatusBadge } from '@/features/gps/components/GpsStatusBadge'
 import { MyPositionControl } from '@/features/gps/components/MyPositionControl'
 import { GuidancePanel } from '@/features/guidance/components/GuidancePanel'
@@ -719,6 +721,8 @@ export function MapPage() {
 
   function locate() {
     if (gpsReading.status !== 'available') return
+    // A tap is the gesture iOS needs to start the compass (direction cone).
+    useHeadingConeStore.getState().activate()
     const coordinate = gpsReading.value
     // Recentering should actually bring the user's position into view at
     // a useful field scale — only zoom *in* to it (never out, in case
@@ -859,6 +863,7 @@ export function MapPage() {
               />
             )}
             <MapToolRail setHost={setRailHost} />
+            <HeadingCone gpsReading={gpsReading} getMapInstance={getMapInstance} />
             <GpsControl reading={gpsReading} onLocate={locate} large={fieldModeEnabled} />
             <FollowControl
               gpsReading={gpsReading}
