@@ -23,8 +23,6 @@ import { cn } from '@/utils/cn'
 import type { Coordinate } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 import { useWeatherMapStore } from '../state/weatherMapStore'
-import { useRadarSmoothingStore } from '../state/radarSmoothingStore'
-import { RadarSmoothingSettings } from './RadarSmoothingSettings'
 import { useWindStyleStore } from '../state/windStyleStore'
 import { formatFrameClock } from '../formatFrameTime'
 import { LAYER_PRESENTATION } from '../layerPresentation'
@@ -89,8 +87,6 @@ export function WeatherMapControl({
 
   const windStyle = useWindStyleStore((s) => s.style)
   const updateWindStyle = useWindStyleStore((s) => s.update)
-  const smoothing = useRadarSmoothingStore((s) => s.level)
-  const setSmoothing = useRadarSmoothingStore((s) => s.setLevel)
 
   const analysisOpen = useWindAnalysisStore((s) => s.open)
   const openAnalysis = useWindAnalysisStore((s) => s.openPanel)
@@ -367,15 +363,6 @@ export function WeatherMapControl({
         </label>
         <section className="border-surface-700 flex flex-col gap-2 border-t pt-3">
           <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
-            Radar
-          </p>
-          <RadarSmoothingSettings
-            level={smoothing}
-            onChange={(level) => void setSmoothing(level)}
-          />
-        </section>
-        <section className="border-surface-700 flex flex-col gap-2 border-t pt-3">
-          <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
             Présentation du vent
           </p>
           {!windEnabled && (
@@ -516,6 +503,21 @@ export function WeatherMapControl({
                 {closeButton}
               </div>
             </div>
+
+            {!expanded && status === 'available' && frame && (
+              <TimelineBar
+                compact
+                className="mt-1"
+                frames={frames}
+                frameIndex={frameIndex}
+                playing={playing}
+                now={now}
+                maxTicks={5}
+                onPlayingChange={setPlaying}
+                onStep={step}
+                onSeek={setFrameIndex}
+              />
+            )}
 
             {expanded && (
               <>

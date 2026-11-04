@@ -12,8 +12,8 @@ vi.mock('maplibre-gl', () => ({
   },
 }))
 
-import { SOFT_LEVELS, isSoftLayer, softTileTemplate } from './softTemplate'
-import { ensureSoftTileProtocolRegistered } from './softTiles'
+import { SOFT_TILE_PROTOCOL, isSoftLayer, softTileTemplate } from './softTemplate'
+import { ensureSoftTileProtocolRegistered, paddedGetMapUrl } from './softTiles'
 
 const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 1, 2, 3]).buffer
 
@@ -37,28 +37,23 @@ describe('softTiles', () => {
     expect(isSoftLayer({ id: 'wind' })).toBe(false)
   })
 
-  it('routes a GeoMet template through the protocol of its level, keeping the bbox token', () => {
+  it('routes a GeoMet template through the soft-tile protocol, keeping the bbox token', () => {
     const template =
       'https://geo.weather.gc.ca/geomet?SERVICE=WMS&LAYERS=RADAR_1KM_RRAI&BBOX={bbox-epsg-3857}'
-    expect(softTileTemplate(template, 'doux')).toBe(
+    expect(softTileTemplate(template)).toBe(
       'ctrsoft://geo.weather.gc.ca/geomet?SERVICE=WMS&LAYERS=RADAR_1KM_RRAI&BBOX={bbox-epsg-3857}',
     )
-    expect(softTileTemplate(template, 'tres-doux')).toMatch(/^ctrsoftx:\/\/geo\./)
-    // « Précis »: GeoMet's tile untouched.
-    expect(softTileTemplate(template, 'precis')).toBe(template)
   })
 
-  it('registers one protocol per soft level, with a stronger blur for « Très doux »', () => {
-    expect(protocols.handlers[SOFT_LEVELS.doux.protocol]).toBeTypeOf('function')
-    expect(protocols.handlers[SOFT_LEVELS['tres-doux'].protocol]).toBeTypeOf('function')
-    expect(SOFT_LEVELS['tres-doux'].radius).toBeGreaterThan(SOFT_LEVELS.doux.radius)
+  it('registers the protocol once', () => {
+    expect(protocols.handlers[SOFT_TILE_PROTOCOL]).toBeTypeOf('function')
   })
 
   it('falls back to the original GeoMet bytes when the browser cannot smooth the tile', async () => {
     // jsdom has no createImageBitmap / canvas: the plain tile is returned.
     const fetchMock = vi.fn(async (_url: string) => pngResponse())
     vi.stubGlobal('fetch', fetchMock)
-    const result = await protocols.handlers[SOFT_LEVELS.doux.protocol](
+    const result = await protocols.handlers[SOFT_TILE_PROTOCOL](
       { url: 'ctrsoft://geo.weather.gc.ca/geomet?BBOX=1,2,3,4' },
       new AbortController(),
     )
@@ -70,13 +65,23 @@ describe('softTiles', () => {
     )
   })
 
+  it('widens the GetMap request by 32 px per side so the blur sees real neighbours', () => {
+    const url = 'https://geo.weather.gc.ca/geomet?WIDTH=256&HEIGHT=256&BBOX=0,0,2560,2560'
+    const padded = new URL(paddedGetMapUrl(url) as string)
+    expect(padded.searchParams.get('WIDTH')).toBe('320')
+    expect(padded.searchParams.get('HEIGHT')).toBe('320')
+    expect(padded.searchParams.get('BBOX')).toBe('-320,-320,2880,2880')
+    expect(paddedGetMapUrl('https://geo.weather.gc.ca/geomet?BBOX=1,2,3,4')).toBeNull()
+    expect(paddedGetMapUrl('not a url')).toBeNull()
+  })
+
   it('rejects an HTTP error and an XML (non-image) answer instead of drawing them', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => pngResponse(503)),
     )
     await expect(
-      protocols.handlers[SOFT_LEVELS.doux.protocol](
+      protocols.handlers[SOFT_TILE_PROTOCOL](
         { url: 'ctrsoft://geo.weather.gc.ca/x' },
         new AbortController(),
       ),
@@ -86,7 +91,7 @@ describe('softTiles', () => {
       vi.fn(async () => pngResponse(200, 'text/xml')),
     )
     await expect(
-      protocols.handlers[SOFT_LEVELS.doux.protocol](
+      protocols.handlers[SOFT_TILE_PROTOCOL](
         { url: 'ctrsoft://geo.weather.gc.ca/x' },
         new AbortController(),
       ),

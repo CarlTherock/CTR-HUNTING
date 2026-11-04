@@ -9,11 +9,41 @@
  */
 import { addProtocol } from 'maplibre-gl'
 import { smoothRgba } from './smoothing'
-import { SOFT_LEVELS } from './softTemplate'
+import { SOFT_BLUR_RADIUS, SOFT_TILE_PROTOCOL } from './softTemplate'
 
 /** Tile size actually produced (GeoMet sends 256 px; enlarged to keep detail). */
 export const SOFT_TILE_SIZE = 512
 const REQUEST_TIMEOUT_MS = 15_000
+/** Margin fetched around each tile, in source pixels (of 256). The blur then
+ * sees the real neighbours at the tile edges, so no seam shows between tiles. */
+export const SOFT_PAD_SRC = 32
+const SRC_SIZE = 256
+
+/** Same GetMap request widened by `SOFT_PAD_SRC` px on every side; `null` when
+ * the URL carries no usable BBOX/WIDTH/HEIGHT (then the tile is fetched as is). */
+export function paddedGetMapUrl(rawUrl: string): string | null {
+  let url: URL
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    return null
+  }
+  const box = (url.searchParams.get('BBOX') ?? '').split(',').map(Number)
+  if (box.length !== 4 || box.some((n) => !Number.isFinite(n))) return null
+  const width = Number(url.searchParams.get('WIDTH'))
+  const height = Number(url.searchParams.get('HEIGHT'))
+  if (width !== SRC_SIZE || height !== SRC_SIZE) return null
+  const [minX, minY, maxX, maxY] = box
+  const padX = ((maxX - minX) / SRC_SIZE) * SOFT_PAD_SRC
+  const padY = ((maxY - minY) / SRC_SIZE) * SOFT_PAD_SRC
+  url.searchParams.set(
+    'BBOX',
+    [minX - padX, minY - padY, maxX + padX, maxY + padY].join(','),
+  )
+  url.searchParams.set('WIDTH', String(SRC_SIZE + 2 * SOFT_PAD_SRC))
+  url.searchParams.set('HEIGHT', String(SRC_SIZE + 2 * SOFT_PAD_SRC))
+  return url.toString()
+}
 
 function createCanvas(size: number): HTMLCanvasElement | OffscreenCanvas | null {
   if (typeof document !== 'undefined') {
@@ -34,51 +64,88 @@ async function canvasToPng(
   return blob ? blob.arrayBuffer() : null
 }
 
-/** Enlarges and blurs a PNG tile; `null` when the browser cannot do it. */
+/**
+ * Enlarges 2×, blurs, and returns the centre `SOFT_TILE_SIZE` px. A tile wider
+ * than 256 px (the padded request) is cropped back to its centre; a plain
+ * 256 px tile is simply enlarged. `null` when the browser cannot do it.
+ */
 export async function softenTile(
   png: ArrayBuffer,
   radius: number,
 ): Promise<ArrayBuffer | null> {
   if (typeof createImageBitmap === 'undefined') return null
-  const canvas = createCanvas(SOFT_TILE_SIZE)
-  const context = canvas?.getContext('2d') as
-    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined
-  if (!canvas || !context) return null
   const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }))
+  const full = bitmap.width * 2
+  const work = createCanvas(full)
+  const out = createCanvas(SOFT_TILE_SIZE)
+  const ctx = work?.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined
+  const outCtx = out?.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null | undefined
+  if (!work || !out || !ctx || !outCtx) {
+    bitmap.close?.()
+    return null
+  }
   try {
-    context.imageSmoothingEnabled = true
-    context.imageSmoothingQuality = 'high'
-    context.clearRect(0, 0, SOFT_TILE_SIZE, SOFT_TILE_SIZE)
-    context.drawImage(bitmap, 0, 0, SOFT_TILE_SIZE, SOFT_TILE_SIZE)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.clearRect(0, 0, full, full)
+    ctx.drawImage(bitmap, 0, 0, full, full)
   } finally {
     bitmap.close?.()
   }
-  const pixels = context.getImageData(0, 0, SOFT_TILE_SIZE, SOFT_TILE_SIZE)
-  const smoothed = smoothRgba(pixels.data, SOFT_TILE_SIZE, SOFT_TILE_SIZE, radius)
-  context.putImageData(new ImageData(smoothed, SOFT_TILE_SIZE, SOFT_TILE_SIZE), 0, 0)
-  return canvasToPng(canvas)
+  const pixels = ctx.getImageData(0, 0, full, full)
+  const smoothed = smoothRgba(pixels.data, full, full, radius)
+  ctx.putImageData(new ImageData(smoothed, full, full), 0, 0)
+  const margin = (full - SOFT_TILE_SIZE) / 2
+  outCtx.clearRect(0, 0, SOFT_TILE_SIZE, SOFT_TILE_SIZE)
+  outCtx.drawImage(
+    work,
+    margin,
+    margin,
+    SOFT_TILE_SIZE,
+    SOFT_TILE_SIZE,
+    0,
+    0,
+    SOFT_TILE_SIZE,
+    SOFT_TILE_SIZE,
+  )
+  return canvasToPng(out)
 }
 
-const registered = new Set<string>()
+let registered = false
 
-function registerSoftProtocol(protocol: string, radius: number): void {
-  if (registered.has(protocol)) return
-  registered.add(protocol)
-  addProtocol(protocol, async (params, abortController) => {
-    const url = params.url.replace(`${protocol}://`, 'https://')
+export function ensureSoftTileProtocolRegistered(): void {
+  if (registered) return
+  registered = true
+  addProtocol(SOFT_TILE_PROTOCOL, async (params, abortController) => {
+    const url = params.url.replace(`${SOFT_TILE_PROTOCOL}://`, 'https://')
     const timeout = new AbortController()
     const timer = setTimeout(() => timeout.abort(), REQUEST_TIMEOUT_MS)
     const onAbort = () => timeout.abort()
     abortController.signal.addEventListener('abort', onAbort)
     try {
-      const response = await fetch(url, { signal: timeout.signal })
-      if (!response.ok) throw new Error(`GeoMet a répondu ${response.status}`)
-      // GeoMet answers an out-of-range TIME with an XML error, not a PNG.
-      const type = response.headers.get('content-type') ?? ''
-      if (!type.includes('image')) throw new Error('GeoMet : image indisponible')
-      const original = await response.arrayBuffer()
+      const fetchTile = async (target: string): Promise<ArrayBuffer> => {
+        const response = await fetch(target, { signal: timeout.signal })
+        if (!response.ok) throw new Error(`GeoMet a répondu ${response.status}`)
+        // GeoMet answers an out-of-range TIME with an XML error, not a PNG.
+        const type = response.headers.get('content-type') ?? ''
+        if (!type.includes('image')) throw new Error('GeoMet : image indisponible')
+        return response.arrayBuffer()
+      }
+      const padded = paddedGetMapUrl(url)
+      if (padded) {
+        try {
+          const soft = await softenTile(await fetchTile(padded), SOFT_BLUR_RADIUS)
+          if (soft) return { data: soft }
+        } catch (error) {
+          if (timeout.signal.aborted) throw error
+        }
+      }
+      // Plain tile: the padded request failed, or the URL could not be padded.
+      const original = await fetchTile(url)
       try {
-        const soft = await softenTile(original.slice(0), radius)
+        const soft = await softenTile(original.slice(0), SOFT_BLUR_RADIUS)
         return { data: soft ?? original }
       } catch {
         return { data: original }
@@ -88,10 +155,4 @@ function registerSoftProtocol(protocol: string, radius: number): void {
       abortController.signal.removeEventListener('abort', onAbort)
     }
   })
-}
-
-export function ensureSoftTileProtocolRegistered(): void {
-  for (const { protocol, radius } of Object.values(SOFT_LEVELS)) {
-    registerSoftProtocol(protocol, radius)
-  }
 }
