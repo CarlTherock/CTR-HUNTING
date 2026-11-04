@@ -67,6 +67,31 @@ describe('TimelineBar', () => {
     expect(onSeek).toHaveBeenCalledTimes(1)
   })
 
+  it('compact variant keeps only the scrub slider (no buttons, no readout)', () => {
+    const onSeek = vi.fn()
+    render(
+      <TimelineBar
+        compact
+        frames={frames}
+        frameIndex={0}
+        playing={false}
+        now={NOW}
+        maxTicks={5}
+        onPlayingChange={vi.fn()}
+        onStep={vi.fn()}
+        onSeek={onSeek}
+      />,
+    )
+    const slider = screen.getByRole('slider', { name: 'Ligne du temps' })
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByTestId('frame-readout')).toBeNull()
+    fireEvent.change(slider, { target: { value: '7' } })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    expect(onSeek).toHaveBeenCalledWith(7)
+  })
+
   it('previous / next / play use the store callbacks', () => {
     const { onStep, onPlayingChange } = setup()
     fireEvent.click(screen.getByRole('button', { name: 'Image précédente' }))

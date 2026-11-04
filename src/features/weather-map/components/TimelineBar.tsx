@@ -15,6 +15,8 @@ export interface TimelineBarProps {
   playing: boolean
   now: Date
   maxTicks: number
+  /** Slim variant: only the scrub slider and its hour marks (collapsed panel). */
+  compact?: boolean
   onPlayingChange: (playing: boolean) => void
   onStep: (delta: number) => void
   onSeek: (index: number) => void
@@ -27,6 +29,7 @@ export function TimelineBar({
   playing,
   now,
   maxTicks,
+  compact = false,
   onPlayingChange,
   onStep,
   onSeek,
@@ -64,6 +67,44 @@ export function TimelineBar({
   const ticks = timelineTicks(frames, maxTicks)
   const last = Math.max(1, frames.length - 1)
   const observed = frame.kind === 'observed'
+
+  const slider = (
+    <input
+      type="range"
+      min={0}
+      max={frames.length - 1}
+      value={shownIndex}
+      onChange={(e) => onInput(Number(e.target.value))}
+      onPointerUp={() => pending !== null && commit(pending)}
+      onKeyUp={() => pending !== null && commit(pending)}
+      onBlur={() => pending !== null && commit(pending)}
+      aria-label="Ligne du temps"
+      aria-valuetext={`${formatFrameDay(frame)}, ${formatFrameClock(frame, now)}`}
+      className="accent-brand-500 h-9 min-w-0 flex-1 pointer-coarse:h-11"
+    />
+  )
+  const tickRow = (margin: string) => (
+    <div className={cn('relative mt-0.5 h-4', margin)} aria-hidden="true">
+      {ticks.map((tick) => (
+        <span
+          key={tick.index}
+          className="text-ink-500 absolute -translate-x-1/2 text-[10px] whitespace-nowrap tabular-nums"
+          style={{ left: `${(tick.index / last) * 100}%` }}
+        >
+          {tick.label}
+        </span>
+      ))}
+    </div>
+  )
+
+  if (compact) {
+    return (
+      <div className={className} data-testid="weather-timeline-compact">
+        <div className="flex items-center">{slider}</div>
+        {tickRow('mx-2')}
+      </div>
+    )
+  }
 
   return (
     <div className={className} data-testid="weather-timeline">
@@ -118,32 +159,10 @@ export function TimelineBar({
         >
           <SkipForward size={18} aria-hidden="true" />
         </button>
-        <input
-          type="range"
-          min={0}
-          max={frames.length - 1}
-          value={shownIndex}
-          onChange={(e) => onInput(Number(e.target.value))}
-          onPointerUp={() => pending !== null && commit(pending)}
-          onKeyUp={() => pending !== null && commit(pending)}
-          onBlur={() => pending !== null && commit(pending)}
-          aria-label="Ligne du temps"
-          aria-valuetext={`${formatFrameDay(frame)}, ${formatFrameClock(frame, now)}`}
-          className="accent-brand-500 h-9 min-w-0 flex-1 pointer-coarse:h-11"
-        />
+        {slider}
       </div>
 
-      <div className="relative mx-[4.5rem] mt-0.5 h-4" aria-hidden="true">
-        {ticks.map((tick) => (
-          <span
-            key={tick.index}
-            className="text-ink-500 absolute -translate-x-1/2 text-[10px] whitespace-nowrap tabular-nums"
-            style={{ left: `${(tick.index / last) * 100}%` }}
-          >
-            {tick.label}
-          </span>
-        ))}
-      </div>
+      {tickRow('mx-[4.5rem]')}
       <p className="text-ink-500 mt-1 text-[11px]">
         Période disponible : {formatFrameClock(frames[0], now)} →{' '}
         {formatFrameClock(frames[frames.length - 1], now)} (

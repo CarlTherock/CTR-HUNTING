@@ -62,7 +62,6 @@ import { WindMapControl } from '@/features/wind/components/WindMapControl'
 import { WindAnalysisPanel } from '@/features/wind/components/WindAnalysisPanel'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
-import { useRadarSmoothingStore } from '@/features/weather-map/state/radarSmoothingStore'
 import { useWindStyleStore } from '@/features/weather-map/state/windStyleStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
 import { geoMetTileUrls, layerDef, weatherTileMaxZoom } from '@/services/weather-map'
@@ -207,7 +206,6 @@ export function MapPage() {
   const windField = useWindStore((state) => state.field)
   const windHourOffset = useWindStore((state) => state.selectedHourOffset)
   const windPaused = useWindStore((state) => state.animationPaused)
-  const radarSmoothing = useRadarSmoothingStore((state) => state.level)
   const windStyle = useWindStyleStore((state) => state.style)
   const heatmapEnabled = useHeatmapStore((state) => state.enabled)
   const heatmapCells = useHeatmapStore((state) => state.cells)
@@ -653,7 +651,6 @@ export function MapPage() {
 
   useEffect(() => {
     void useWindStyleStore.getState().load()
-    void useRadarSmoothingStore.getState().load()
   }, [])
 
   useEffect(() => {
@@ -680,7 +677,7 @@ export function MapPage() {
       weatherMapFrames.map((frame) => ({
         key: frameKey(weatherMapLayer, frame.time),
         tileUrlTemplates: geoMetTileUrls(def, frame.time).map((template) =>
-          isSoftLayer(def) ? softTileTemplate(template, radarSmoothing) : template,
+          isSoftLayer(def) ? softTileTemplate(template) : template,
         ),
         maxZoom: weatherTileMaxZoom(def),
       })),
@@ -693,7 +690,6 @@ export function MapPage() {
     weatherMapFrames,
     weatherMapFrameIndex,
     weatherMapOpacity,
-    radarSmoothing,
   ])
 
   useEffect(() => {
