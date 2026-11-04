@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
+import { useGuidanceDestination } from '@/features/guidance/state/guidanceStore'
 import { useIsWide } from '@/features/compare/useIsWide'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { useWindStyleStore } from '@/features/weather-map/state/windStyleStore'
@@ -51,6 +52,7 @@ export interface WindMapControlProps {
  */
 export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
   const panelOpen = useWindPanelStore((s) => s.open)
+  const guiding = useGuidanceDestination() !== null
   const setPanelOpen = useWindPanelStore((s) => s.setOpen)
   const enabled = useWindStore((s) => s.enabled)
   const toggleWind = useWindStore((s) => s.toggle)
@@ -350,16 +352,19 @@ export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
 
   return (
     <>
-      <ToolTrigger
-        placement="rail"
-        label="Vent"
-        title="Vent : particules, heure, réglages"
-        icon={<Wind size={20} aria-hidden="true" />}
-        onClick={handleRail}
-        pressed={panelOpen}
-        active={panelOpen}
-        order={31}
-      />
+      {(!guiding || panelOpen) && (
+        <ToolTrigger
+          placement="rail"
+          label="Vent"
+          title="Vent : particules, heure, réglages"
+          icon={<Wind size={20} aria-hidden="true" />}
+          onClick={handleRail}
+          pressed={panelOpen}
+          active={panelOpen}
+          order={31}
+          secondary
+        />
+      )}
 
       {panelVisible && wide && (
         <aside
