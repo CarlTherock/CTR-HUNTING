@@ -52,7 +52,7 @@ let valueRequestId = 0
 
 export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
   enabled: false,
-  activeLayer: 'radar',
+  activeLayer: 'precipitation',
   status: 'idle',
   errorReason: null,
   frames: [],
