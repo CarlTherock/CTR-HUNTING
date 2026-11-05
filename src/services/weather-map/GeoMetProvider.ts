@@ -43,8 +43,10 @@ export const RADAR_EXTRAPOLATION = {
 } as const
 /** The user wants the next 4 h; ECCC publishes what it publishes (about 2 h). */
 const EXTRAPOLATION_MAX_AHEAD_MS = 4 * 3600_000
-/** Past kept with the radar: enough to see the echoes move, no long history. */
-const RADAR_PAST_MS = 60 * 60_000
+/** How far ahead the radar timeline goes, extrapolation first, then the model. */
+const RADAR_HORIZON_MS = 4 * 3600_000
+/** No past is kept with the radar: only the latest image ("now"), then the future. */
+const RADAR_PAST_MS = 0
 const RADAR_FRAME_SPACING_MS = 12 * 60_000
 
 export const GEOMET_LAYERS: GeoMetLayerDef[] = [
@@ -60,6 +62,7 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
       // Observed snow is in cm/h; ECCC's extrapolated snow layer is in mm/h
       // (units as documented on the MSC radar page).
       if (layer === RADAR_EXTRAPOLATION.snow) return `Neige ${fmt(raw, 1)} mm/h`
+      if (layer.startsWith('HRDPS')) return `${fmt(raw, 1)} mm/h (modèle)`
       return layer === 'RADAR_1KM_RSNO'
         ? `Neige ${fmt(raw, 1)} cm/h`
         : `Pluie ${fmt(raw, 1)} mm/h`
@@ -344,11 +347,42 @@ export class GeoMetProvider {
     if (def.id !== 'radar') return frames
     // Radar: the next hours come from ECCC's extrapolation. If it cannot be
     // read, the observed radar is still shown (the panel says so).
+    let extrapolated: WeatherMapFrame[] = []
     try {
-      return [...frames, ...(await this.fetchExtrapolatedFrames(def, frames))]
+      extrapolated = await this.fetchExtrapolatedFrames(def, frames)
     } catch {
-      return frames
+      // Observed radar still shown.
     }
+    const covered = [...frames, ...extrapolated]
+    try {
+      return [...covered, ...(await this.fetchModelContinuation(covered, now))]
+    } catch {
+      return covered
+    }
+  }
+
+  /** ECCC only extrapolates the radar for about an hour: the rest of the
+   * horizon is the HRDPS model's hourly rain forecast, labelled as a model. */
+  private async fetchModelContinuation(
+    covered: WeatherMapFrame[],
+    now: Date,
+  ): Promise<WeatherMapFrame[]> {
+    const precip = layerDef('precipitation')
+    const xml = await this.capabilities(precip.timeLayer)
+    const dimension = extractTimeDimension(xml)
+    if (!dimension) return []
+    const lastMs = new Date(covered[covered.length - 1].time).getTime()
+    const limit = new Date(covered[0].time).getTime() + RADAR_HORIZON_MS
+    return parseTimeDimension(dimension)
+      .filter((t) => t.getTime() > lastMs + 20 * 60_000 && t.getTime() <= limit)
+      .filter((t) => t.getTime() >= now.getTime() - 3600_000)
+      .map((t) => ({
+        time: toIsoSeconds(t),
+        kind: 'forecast' as const,
+        modelForecast: true,
+        wmsLayers: precip.wmsLayers,
+        styles: precip.styles,
+      }))
   }
 
   private async fetchExtrapolatedFrames(

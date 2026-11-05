@@ -3,6 +3,12 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Radar : seulement le futur, jusqu'à +4 h (2026-11-05)
+
+- Plus aucun passé : la ligne du temps commence à « maintenant » (dernière image du radar) et va vers l'avant.
+- ECCC n'extrapole le radar que pendant environ 1 h (images « Extrapolé »). Pour atteindre +4 h, la suite est la prévision de pluie horaire du modèle HRDPS d'ECCC, étiquetée « Modèle » (cumul sur 1 h, grille 2,5 km — ce n'est pas le radar).
+- Si l'extrapolation ou le modèle sont illisibles, on affiche ce qui reste (au pire le radar « maintenant » avec une note).
+
 ## Radar : prochaines heures (extrapolation ECCC) + animation dès l'ouverture (2026-11-05)
 
 - Le radar montre 1 h d'observé puis les **prochaines heures extrapolées par ECCC** (couches `Radar_1km_RainPrecipRate-Extrapolation` / `SnowPrecipRate`, jusqu'à 4 h au plus : on affiche ce qu'ECCC publie, environ 2 h). Les images futures sont marquées « Extrapolé » (calcul d'ECCC à partir du radar, pas une observation).

@@ -21,6 +21,9 @@ export interface WeatherMapFrame {
   /** Radar only: ECCC's extrapolation of the radar (a calculation moving the
    * echoes forward), not an observation. Always `kind: 'forecast'`. */
   extrapolated?: boolean
+  /** Radar only: a frame of the HRDPS model's rain forecast, used after the
+   * extrapolation ends (hourly, 1 h accumulation) — a model, not the radar. */
+  modelForecast?: boolean
   /** WMS layers / styles of this frame when they differ from the layer's own
    * (the extrapolation layers). */
   wmsLayers?: string[]

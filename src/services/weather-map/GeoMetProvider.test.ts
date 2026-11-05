@@ -42,12 +42,10 @@ describe('GeoMet time dimension parsing', () => {
 describe('buildFrames', () => {
   const now = new Date('2026-09-25T15:20:00Z')
 
-  it('radar: only the last hour, every 12 min, ending on the latest real frame (no long history)', () => {
+  it('radar: no past at all, only the latest real frame ("now")', () => {
     const times = parseTimeDimension('2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M')
     const frames = buildFrames(layerDef('radar'), times, now)
-    expect(frames).toHaveLength(6)
-    expect(frames.at(-1)).toEqual({ time: '2026-09-25T15:00:00Z', kind: 'observed' })
-    expect(frames[0].time).toBe('2026-09-25T14:00:00Z')
+    expect(frames).toEqual([{ time: '2026-09-25T15:00:00Z', kind: 'observed' }])
   })
 
   it('forecast: hourly from the current hour, never past hours, capped at +48 h', () => {
@@ -117,7 +115,7 @@ describe('GeoMetProvider', () => {
       layerDef('radar'),
       new Date('2026-09-25T15:10:00Z'),
     )
-    expect(frames).toHaveLength(6)
+    expect(frames).toHaveLength(1)
     expect(frames.some((f) => f.extrapolated)).toBe(false)
   })
 
@@ -139,7 +137,7 @@ describe('GeoMetProvider', () => {
       new Date('2026-09-25T15:10:00Z'),
     )
     const extrapolated = frames.filter((f) => f.extrapolated)
-    expect(frames.slice(0, 6).every((f) => f.kind === 'observed')).toBe(true)
+    expect(frames[0].kind).toBe('observed')
     expect(extrapolated.length).toBe(10)
     expect(extrapolated[0].time).toBe('2026-09-25T15:12:00Z')
     expect(extrapolated.at(-1)?.time).toBe('2026-09-25T17:00:00Z')
@@ -170,8 +168,39 @@ describe('GeoMetProvider', () => {
       }),
     )
     const frames = await new GeoMetProvider().fetchFrames(layerDef('radar'))
-    expect(frames).toHaveLength(6)
+    expect(frames).toHaveLength(1)
     expect(frames.some((f) => f.extrapolated)).toBe(false)
+  })
+
+  it('radar: after the ~1 h extrapolation, the HRDPS hourly forecast continues to +4 h, labelled as a model', async () => {
+    const caps = (layer: string) => {
+      if (layer === 'RADAR_1KM_RRAI')
+        return '<Dimension name="time">2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M</Dimension>'
+      if (layer.includes('Extrapolation'))
+        return '<Dimension name="time">2026-09-25T15:00:00Z/2026-09-25T16:00:00Z/PT6M</Dimension>'
+      return '<Dimension name="time">2026-09-25T06:00:00Z/2026-09-27T06:00:00Z/PT1H</Dimension>'
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL) => ({
+        ok: true,
+        text: () => Promise.resolve(caps(url.searchParams.get('LAYER') ?? '')),
+      })),
+    )
+    const frames = await new GeoMetProvider().fetchFrames(
+      layerDef('radar'),
+      new Date('2026-09-25T15:10:00Z'),
+    )
+    const model = frames.filter((f) => f.modelForecast)
+    expect(frames[0]).toEqual({ time: '2026-09-25T15:00:00Z', kind: 'observed' })
+    expect(frames.filter((f) => f.extrapolated).at(-1)?.time).toBe('2026-09-25T16:00:00Z')
+    expect(model.map((f) => f.time)).toEqual([
+      '2026-09-25T17:00:00Z',
+      '2026-09-25T18:00:00Z',
+      '2026-09-25T19:00:00Z',
+    ])
+    expect(model[0].wmsLayers).toEqual(['HRDPS.CONTINENTAL.DIAG_PR_PT1H'])
+    expect(model.every((f) => f.kind === 'forecast')).toBe(true)
   })
 
   it('returns the real point value, converting m/s to km/h for wind', async () => {

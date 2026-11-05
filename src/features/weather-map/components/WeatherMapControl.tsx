@@ -162,7 +162,7 @@ export function WeatherMapControl({
                   ? 'Centre : aucun écho'
                   : 'Centre : —'}
         </p>
-        {def.id === 'radar' && !frames.some((f) => f.extrapolated) && (
+        {def.id === 'radar' && !frames.some((f) => f.extrapolated || f.modelForecast) && (
           <p
             className="text-ink-500 mt-1 text-[11px]"
             data-testid="radar-no-extrapolation"
@@ -390,7 +390,7 @@ export function WeatherMapControl({
   const sourceLine = (
     <span className="text-ink-500 text-[10px]">
       {def.kind === 'observed'
-        ? 'Radar observé + extrapolation · ECCC 1 km'
+        ? 'Radar maintenant + extrapolation (~1 h) puis modèle HRDPS · ECCC'
         : 'Prévision HRDPS 2,5 km · ECCC'}
     </span>
   )
@@ -477,7 +477,9 @@ export function WeatherMapControl({
                           ? 'observé'
                           : frame.extrapolated
                             ? 'extrapolé'
-                            : 'prévu'}
+                            : frame.modelForecast
+                              ? 'modèle'
+                              : 'prévu'}
                       </span>
                     )}
                   </span>
