@@ -88,6 +88,17 @@ describe('weatherMapStore', () => {
     expect(state.frames).toHaveLength(3)
   })
 
+  it('opens on the rain forecast, which starts at the current hour (not on past radar)', async () => {
+    const initial = useWeatherMapStore.getInitialState()
+    expect(initial.activeLayer).toBe('precipitation')
+    useWeatherMapStore.setState({ activeLayer: 'precipitation' })
+    fetchFrames.mockResolvedValueOnce(TEMP)
+    await useWeatherMapStore.getState().setEnabled(true)
+    const state = useWeatherMapStore.getState()
+    expect(state.frameIndex).toBe(0)
+    expect(state.frames[0].kind).toBe('forecast')
+  })
+
   it('step wraps around for looping playback', async () => {
     fetchFrames.mockResolvedValue(RADAR)
     await useWeatherMapStore.getState().loadFrames()

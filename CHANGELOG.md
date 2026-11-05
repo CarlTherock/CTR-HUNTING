@@ -3,6 +3,11 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Météo : s'ouvre sur les prochaines heures (2026-11-04)
+
+- Le bouton météo s'ouvre maintenant sur « Précip. » (prévision HRDPS d'ECCC) : la ligne du temps commence à l'heure courante et avance vers l'avant, jusqu'à 48 h, sans historique.
+- Le radar (pluie et neige observées, environ 2 h 40 d'historique) reste disponible dans Couches → Observé. C'est de l'observation : ECCC ne publie pas de prévision radar.
+
 ## Radar : mise à jour automatique corrigée (2026-11-04)
 
 - Le radar se rafraîchit dès que l'app revient au premier plan (ou que le réseau revient), au lieu d'attendre la minuterie de 5 min que l'iPhone gèle en arrière-plan.
