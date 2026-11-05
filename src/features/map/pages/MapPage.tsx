@@ -2,7 +2,7 @@ import type { Coordinate, ForestLayerId, MapBaseLayerId } from '@/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { recordMapDisplay } from '@/features/about/displayDiagnostic'
-import { Expand, Maximize, MapPinOff, Minimize, Shrink, Wrench } from 'lucide-react'
+import { Expand, MapPinOff, Shrink, Wrench } from 'lucide-react'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { availableBaseLayers, mapProvider } from '@/services/map'
 import type { MapInstance } from '@/services/map'
@@ -93,7 +93,6 @@ import { sampleSlopeAspect } from '../terrainQuery'
 import { ElevationProfileControl } from '../components/ElevationProfileControl'
 import { TerrainInfoControl } from '../components/TerrainInfoControl'
 import { ViewModeToggle } from '../components/ViewModeToggle'
-import { ZoomTool } from '../components/ZoomTool'
 
 /** Field/street scale — close enough to make out individual trails and
  * terrain features after tapping "recenter on me", per user feedback
@@ -173,8 +172,7 @@ export function MapPage() {
     () => ({ railHost, sheetHost, closeSheet: closeTools }),
     [railHost, sheetHost, closeTools],
   )
-  const { immersive, nativeSupported, nativeActive, toggleImmersive, toggleNative } =
-    useImmersiveMode()
+  const { immersive, toggleImmersive } = useImmersiveMode()
   const gpsReading = useGeolocation()
   const getMapInstance = useCallback(() => instanceRef.current, [])
   const isOnline = useOnlineStatus()
@@ -794,12 +792,6 @@ export function MapPage() {
     instanceRef.current?.setView(nextView)
   }
 
-  function changeZoom(delta: number) {
-    const zoom = Math.min(22, Math.max(0, Math.round(view.zoom) + delta))
-    setView({ zoom })
-    instanceRef.current?.setView({ zoom })
-  }
-
   function setViewMode(pitch: number, bearing: number) {
     setView({ pitch, bearing })
     instanceRef.current?.setView({ pitch, bearing })
@@ -889,7 +881,6 @@ export function MapPage() {
             ) : (
               <LayerManagerPanel />
             )}
-            <ZoomTool zoom={view.zoom} onZoom={changeZoom} />
             {!fieldModeEnabled && (
               <ViewModeToggle
                 pitch={view.pitch}
@@ -940,25 +931,6 @@ export function MapPage() {
               // the exit button is never hidden (it is the way out).
               secondary={!immersive}
             />
-            {nativeSupported && (
-              <ToolTrigger
-                label={
-                  nativeActive
-                    ? 'Quitter le plein écran du navigateur'
-                    : 'Plein écran du navigateur'
-                }
-                icon={
-                  nativeActive ? (
-                    <Minimize size={18} aria-hidden="true" />
-                  ) : (
-                    <Maximize size={18} aria-hidden="true" />
-                  )
-                }
-                onClick={() => void toggleNative()}
-                active={nativeActive}
-                order={1}
-              />
-            )}
             <ToolsSheet open={toolsOpen} onClose={closeTools} setHost={setSheetHost} />
             {!fieldModeEnabled && (
               <WindAnalysisPanel

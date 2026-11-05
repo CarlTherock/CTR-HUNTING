@@ -8,6 +8,8 @@ import type { GeolocationReading } from '../useGeolocation'
 
 export interface MyPositionBlockProps {
   reading: GeolocationReading
+  /** Heading of the block (« Ma position » in a waypoint sheet). */
+  title?: string
 }
 
 const TONE_TO_VARIANT = {
@@ -23,18 +25,21 @@ const TONE_TO_VARIANT = {
  * — it never falls back to the map centre or a default. The share action
  * only exists for a fix that is not stale, and it shares a one-off snapshot.
  */
-export function MyPositionBlock({ reading }: MyPositionBlockProps) {
+export function MyPositionBlock({
+  reading,
+  title = 'Ma position',
+}: MyPositionBlockProps) {
   const nowMs = useGpsClock()
   const view = gpsStatusView(reading, nowMs)
 
   return (
     <section
-      aria-label="Ma position"
+      aria-label={title}
       data-testid="my-position"
       className="border-surface-600 flex flex-col gap-2 rounded-md border p-3"
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-ink-100 text-sm font-semibold">Ma position</h3>
+        <h3 className="text-ink-100 text-sm font-semibold">{title}</h3>
         <Badge variant={TONE_TO_VARIANT[view.tone]} data-testid="gps-state">
           {view.label}
         </Badge>

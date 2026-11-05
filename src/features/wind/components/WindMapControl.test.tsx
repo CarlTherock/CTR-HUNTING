@@ -116,10 +116,13 @@ describe('WindMapControl — panneau Vent', () => {
     expect(screen.queryByTestId('wind-hour-controls')).toBeNull()
   })
 
-  it('shows the presentation settings and saves them', async () => {
+  it('hides the style settings behind a « Réglages » button, then shows and saves them', async () => {
     const user = userEvent.setup({ advanceTimers: () => undefined })
     setup()
     await user.click(screen.getByRole('button', { name: 'Vent' }))
+    expect(screen.queryByRole('radiogroup', { name: 'Taille du vent' })).toBeNull()
+    expect(screen.queryByText('Présentation')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Réglages' }))
     const size = screen.getByRole('radiogroup', { name: 'Taille du vent' })
     await user.click(within(size).getByRole('radio', { name: 'Très grand' }))
     expect(useWindStyleStore.getState().style.size).toBe('xlarge')

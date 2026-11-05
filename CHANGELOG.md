@@ -3,6 +3,14 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Vent, Outils et « Analyser cet endroit » : corrections (2026-11-05)
+
+- **Vent** : le panneau s'ouvre avec les particules actives; la présentation (taille, etc.) est derrière un bouton « Réglages ».
+- **Boussole du vent** : une flèche pointe vers où le vent souffle (vent du sud → flèche vers le nord), à la place de l'aiguille. Zone rouge NO–N–NE : flèche dans la zone = l'odeur est portée vers ce secteur (risque de détection par le gibier); une note l'indique dans le panneau.
+- **Météo** : la section « Vent superposé » est retirée (le bouton « Vent » de la carte la remplace).
+- **Outils** : « Zoom » et « Plein écran du navigateur » retirés (pincer / double-toucher restent); « Ma position » devient « Coordonnées GPS ».
+- **Analyser cet endroit** : les observations (journal, repères, traces) ne sont plus prises en compte dans le calcul ni dans la couverture; le groupe « Observations » n'est plus affiché. La carte de potentiel n'est pas modifiée.
+
 ## Radar : seulement le futur, trois états distincts (2026-11-05)
 
 - Plus aucun passé : la ligne du temps commence à « maintenant » (dernière image du radar) et va vers l'avant, jusqu'à +4 h au plus.

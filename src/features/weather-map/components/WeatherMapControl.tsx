@@ -4,26 +4,21 @@ import {
   ChevronUp,
   CloudSunRain,
   Layers,
-  LineChart,
   ListOrdered,
   Pause,
   Play,
   SlidersHorizontal,
-  Wind,
   X,
 } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { geoMetFrameLegendUrl, layerDef } from '@/services/weather-map'
 import { useIsWide } from '@/features/compare/useIsWide'
-import { useWindStore } from '@/features/wind/state/windStore'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWindPanelStore } from '@/features/wind/state/windPanelStore'
-import { WindCompass } from '@/features/wind/components/WindCompass'
 import { cn } from '@/utils/cn'
 import type { Coordinate } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 import { useWeatherMapStore } from '../state/weatherMapStore'
-import { useWindStyleStore } from '../state/windStyleStore'
 import { formatFrameClock } from '../formatFrameTime'
 import { LAYER_PRESENTATION } from '../layerPresentation'
 import { frameKey, useWeatherMapEffects } from '../useWeatherMapEffects'
@@ -34,10 +29,8 @@ import {
   PRODUCT_SOURCE,
   frameProduct,
 } from '../frameProduct'
-import { windSync } from '../windSync'
 import { LayerList } from './LayerList'
 import { TimelineBar } from './TimelineBar'
-import { WindStyleSettings } from './WindStyleSettings'
 
 export interface WeatherMapControlProps {
   getBounds: () => LngLatBounds | null
@@ -59,8 +52,8 @@ type Tab = 'layers' | 'settings'
  * Disposition : sur iPhone, un panneau inférieur repliable (état compact :
  * couche, heure, lecture/pause) ; sur grand écran, un panneau latéral pour
  * les couches et réglages et une ligne du temps large au bas de la carte.
- * Deux onglets : « Couches » (le phénomène, le vent superposé) et
- * « Réglages » (opacité, présentation du vent).
+ * Deux onglets : « Couches » (le phénomène) et
+ * « Réglages » (opacité).
  */
 export function WeatherMapControl({
   getBounds,
@@ -86,20 +79,7 @@ export function WeatherMapControl({
   const centerValueStatus = useWeatherMapStore((s) => s.centerValueStatus)
   const loadFrames = useWeatherMapStore((s) => s.loadFrames)
 
-  const windEnabled = useWindStore((s) => s.enabled)
-  const windStatus = useWindStore((s) => s.status)
-  const toggleWind = useWindStore((s) => s.toggle)
-  const windPaused = useWindStore((s) => s.animationPaused)
-  const setWindPaused = useWindStore((s) => s.setAnimationPaused)
-  const windField = useWindStore((s) => s.field)
-  const windHourOffset = useWindStore((s) => s.selectedHourOffset)
-  const windReading = useWindStore((s) => (s.field ? s.windAt(viewCenter) : null))
-
-  const windStyle = useWindStyleStore((s) => s.style)
-  const updateWindStyle = useWindStyleStore((s) => s.update)
-
   const analysisOpen = useWindAnalysisStore((s) => s.open)
-  const openAnalysis = useWindAnalysisStore((s) => s.openPanel)
   const closeAnalysis = useWindAnalysisStore((s) => s.closePanel)
   const windPanelOpen = useWindPanelStore((s) => s.open)
 
@@ -134,22 +114,6 @@ export function WeatherMapControl({
   }, [failedKey, isFrameFailed])
   const frameFailed = failedState?.key === failedKey && failedState.failed
   const ActiveIcon = LAYER_PRESENTATION[activeLayer].icon
-  const sync = windEnabled
-    ? windSync(windField, frame?.time ?? null, windHourOffset)
-    : null
-
-  function handleToggleWind() {
-    const bounds = getBounds()
-    if (bounds) toggleWind(bounds)
-  }
-
-  /** The analysis panel replaces this one (a single bottom sheet at a time;
-   * the radar/forecast layers keep showing). It needs the wind particles
-   * and their forecast, so they are switched on if they were off. */
-  function handleOpenAnalysis() {
-    if (!windEnabled) handleToggleWind()
-    openAnalysis()
-  }
 
   /** The rail button: with the analysis open it brings back the layers
    * panel (closing the analysis); otherwise it opens/closes the panel. */
@@ -278,87 +242,6 @@ export function WeatherMapControl({
     </div>
   )
 
-  const windSection = (
-    <section className="border-surface-700 flex flex-col gap-2 border-t pt-2">
-      <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
-        Vent superposé
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={handleToggleWind}
-          aria-pressed={windEnabled}
-          className={cn(
-            'flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11',
-            windEnabled
-              ? 'border-brand-400 bg-brand-500/20 text-brand-300'
-              : 'border-surface-600 text-ink-300',
-          )}
-        >
-          <Wind size={14} aria-hidden="true" />
-          Particules de vent
-        </button>
-        <button
-          type="button"
-          onClick={handleOpenAnalysis}
-          className="border-brand-400 bg-brand-500/20 text-brand-300 flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
-        >
-          <LineChart size={14} aria-hidden="true" />
-          Analyse du vent
-        </button>
-      </div>
-      {windEnabled && (
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setWindPaused(!windPaused)}
-            className="border-surface-600 text-ink-300 flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-coarse:min-h-11"
-          >
-            {windPaused ? (
-              <Play size={14} aria-hidden="true" />
-            ) : (
-              <Pause size={14} aria-hidden="true" />
-            )}
-            {windPaused ? 'Lecture du vent' : 'Pause du vent'}
-          </button>
-          {windStatus === 'loading' && (
-            <p className="text-ink-500 text-xs">Chargement du vent…</p>
-          )}
-          {windStatus === 'error' && (
-            <p className="text-status-danger text-xs">Vent indisponible.</p>
-          )}
-          {windReading && (
-            <>
-              <WindCompass
-                directionDegrees={windReading.directionDegrees}
-                speedKmh={windReading.speedKmh}
-              />
-              <p className="text-ink-300 text-xs">
-                {Math.round(windReading.speedKmh)} km/h, rafales{' '}
-                {Math.round(windReading.gustsKmh)} km/h
-                <span className="text-ink-500 block">
-                  Open-Meteo, point de grille le plus proche
-                </span>
-              </p>
-            </>
-          )}
-        </div>
-      )}
-      {sync?.state === 'synced' && (
-        <p className="text-ink-500 text-xs" data-testid="wind-sync">
-          Vent animé : prévision Open-Meteo de {sync.windHourLabel}, suit la ligne du
-          temps.
-        </p>
-      )}
-      {sync?.state === 'out-of-range' && (
-        <p className="text-status-warning text-xs" data-testid="wind-sync">
-          Le vent animé reste à {sync.windHourLabel} : l’heure de la couche affichée est
-          hors de sa période de prévision. Les deux lectures ne correspondent pas.
-        </p>
-      )}
-    </section>
-  )
-
   const tabs = (
     <div role="tablist" aria-label="Carte météo" className="mb-2 grid grid-cols-2 gap-1">
       {(
@@ -399,7 +282,6 @@ export function WeatherMapControl({
       >
         <LayerList active={activeLayer} onSelect={(id) => void setLayer(id)} />
         {legend}
-        {windSection}
       </div>
     ) : (
       <div
@@ -420,21 +302,6 @@ export function WeatherMapControl({
             className="accent-brand-500 w-40 pointer-coarse:h-11"
           />
         </label>
-        <section className="border-surface-700 flex flex-col gap-2 border-t pt-3">
-          <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
-            Présentation du vent
-          </p>
-          {!windEnabled && (
-            <p className="text-ink-500 text-xs">
-              Le vent animé est désactivé (onglet « Couches »). Les réglages sont gardés
-              et s’appliqueront à l’activation.
-            </p>
-          )}
-          <WindStyleSettings
-            style={windStyle}
-            onChange={(patch) => void updateWindStyle(patch)}
-          />
-        </section>
       </div>
     )
 

@@ -2,20 +2,16 @@ import { create } from 'zustand'
 import { vegetationProvider } from '@/services/vegetation'
 import { weatherProvider } from '@/services/weather'
 import { windProvider } from '@/services/wind'
-import { useTracksStore } from '@/features/waypoints/state/tracksStore'
-import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { sampleSlopeAspect } from '@/features/map/terrainQuery'
-import { listObservations } from '@/database/observationsRepository'
 import {
   combineAnalyses,
-  historyAnalyzer,
   terrainAnalyzer,
   unavailableResult,
   vegetationAnalyzer,
 } from '@/utils/analyzers'
 import { dataTimeZone, resolveHour } from '@/utils/analysisTime'
 import { analyzeHourly } from '../heatmapEngine'
-import type { CombinedAnalysis, Coordinate, Observation } from '@/types'
+import type { CombinedAnalysis, Coordinate } from '@/types'
 
 export type AnalysisMode = 'idle' | 'analyzing'
 export type AnalysisStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -106,19 +102,10 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       vegetationProvider.fetchVegetation(coordinate, VEGETATION_RADIUS_METERS),
     ])
 
-    const { waypoints } = useWaypointsStore.getState()
-    const { tracks } = useTracksStore.getState()
-    let observations: Observation[]
-    try {
-      observations = await listObservations()
-    } catch {
-      observations = []
-    }
+    // Les observations (journal, repères, traces) ne participent PAS au calcul
+    // de « Analyser cet endroit » : seuls terrain, végétation, météo, vent et
+    // moment solaire/lunaire comptent.
     const now = new Date()
-    const history = historyAnalyzer(coordinate, waypoints, tracks, {
-      observations,
-      dataTime: now.toISOString(),
-    })
 
     const [weatherOutcome, windOutcome, vegetationOutcome] = await fetches
 
@@ -166,14 +153,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
               : 'Échec de la recherche de végétation.',
           )
 
-    const combined = combineAnalyses([
-      terrain,
-      vegetation,
-      weather,
-      wind,
-      hourly.time,
-      history,
-    ])
+    const combined = combineAnalyses([terrain, vegetation, weather, wind, hourly.time])
     const recent = [{ coordinate, combined }, ...get().recent].slice(0, MAX_RECENT)
     set({ status: 'ready', combined, recent })
   },

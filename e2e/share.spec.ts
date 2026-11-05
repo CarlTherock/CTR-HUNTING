@@ -193,9 +193,9 @@ test.describe('partager ma position (instantané)', () => {
     await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
 
     await page.getByRole('button', { name: 'Outils' }).click()
-    await page.getByRole('button', { name: 'Ma position', exact: true }).click()
+    await page.getByRole('button', { name: 'Coordonnées GPS', exact: true }).click()
 
-    const card = page.getByRole('dialog', { name: 'Ma position' })
+    const card = page.getByRole('dialog', { name: 'Coordonnées GPS' })
     await expect(card.getByTestId('gps-state')).toHaveText('Disponible')
     await card.getByRole('button', { name: 'Partager ma position' }).click()
     await expect.poll(async () => (await sharedCalls(page)).length).toBe(1)
@@ -217,9 +217,9 @@ test.describe('partager ma position (instantané)', () => {
     await page.goto('map')
     await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
     await page.getByRole('button', { name: 'Outils' }).click()
-    await page.getByRole('button', { name: 'Ma position', exact: true }).click()
+    await page.getByRole('button', { name: 'Coordonnées GPS', exact: true }).click()
 
-    const card = page.getByRole('dialog', { name: 'Ma position' })
+    const card = page.getByRole('dialog', { name: 'Coordonnées GPS' })
     await expect(card.getByTestId('gps-warning')).toContainText('trop ancien')
     await expect(card.getByRole('button', { name: 'Partager ma position' })).toHaveCount(
       0,

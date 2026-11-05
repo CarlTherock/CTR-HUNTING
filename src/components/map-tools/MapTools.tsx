@@ -148,7 +148,7 @@ export interface MapToolRailProps {
 /**
  * Quick-action column on the right edge of the map, below MapLibre's own
  * compass control (the zoom +/− buttons were removed: zoom is done by
- * gesture, keyboard or the Zoom entry of « Outils »; the compass grows to 44 px
+ * gesture, keyboard; the compass grows to 44 px
  * on touch devices, hence the larger offset there). If the screen is too short it wraps into a second
  * column instead of running off-screen.
  */

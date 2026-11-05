@@ -149,14 +149,16 @@ export function AnalysisControl() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  {FAMILY_ORDER.map((family) => (
-                    <FamilySection
-                      key={family}
-                      family={family}
-                      summary={combined.families?.find((f) => f.family === family)}
-                      results={combined.results}
-                    />
-                  ))}
+                  {FAMILY_ORDER.filter((family) => family !== 'observations').map(
+                    (family) => (
+                      <FamilySection
+                        key={family}
+                        family={family}
+                        summary={combined.families?.find((f) => f.family === family)}
+                        results={combined.results}
+                      />
+                    ),
+                  )}
                 </div>
               </>
             )}

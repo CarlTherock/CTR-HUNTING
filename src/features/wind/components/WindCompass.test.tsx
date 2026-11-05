@@ -23,4 +23,26 @@ describe('WindCompass', () => {
     )
     expect(withoutOptimal.querySelector('.fill-status-success\\/20')).toBeNull()
   })
+
+  it('the arrow points where the wind goes: wind from the south → toward the north', () => {
+    render(<WindCompass directionDegrees={180} speedKmh={20} />)
+    const svg = screen.getByRole('img', { name: 'Boussole du vent' })
+    expect(svg).toHaveAttribute('data-flow-degrees', '0')
+    expect(screen.getByTestId('wind-arrow')).toBeInTheDocument()
+  })
+
+  it('always draws the red NW–N–NE zone, and flags danger only when the flow enters it', () => {
+    const { rerender } = render(<WindCompass directionDegrees={180} speedKmh={20} />)
+    expect(screen.getByTestId('scent-danger-zone')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Boussole du vent' })).toHaveAttribute(
+      'data-scent-danger',
+      'true',
+    )
+    rerender(<WindCompass directionDegrees={270} speedKmh={20} />)
+    expect(screen.getByTestId('scent-danger-zone')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Boussole du vent' })).toHaveAttribute(
+      'data-scent-danger',
+      'false',
+    )
+  })
 })

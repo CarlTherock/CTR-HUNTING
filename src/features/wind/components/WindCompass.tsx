@@ -1,5 +1,6 @@
 import { weatherLayerColor } from '@/utils/weatherMapColors'
 import { pointOnCircle, wedgePath } from '@/utils/polarGeometry'
+import { SCENT_DANGER_ZONE, isScentDanger, windFlowDegrees } from '@/utils/windScent'
 
 export interface WindCompassProps {
   directionDegrees: number
@@ -19,15 +20,13 @@ const CARDINALS = [
 ]
 
 /**
- * A radar/compass-style wind dial — visually in the spirit of HuntStand's
- * "Read the Wind" (concentric rings, a colored directional indicator),
- * but honestly scoped to what this app can back with real data: real
- * wind direction/speed only. HuntStand's actual ring colors model a
- * proprietary "scent impact" calculation this app has no way to verify
- * or reproduce — never fabricated here. Optimal-wind octants (a real,
- * user-saved preference, Phase 6) are shown as green wedges instead,
- * an honest "is the wind actually blowing from a direction I saved as
- * good for this spot" signal.
+ * A compass-style wind dial in the spirit of HuntStand's "Read the Wind":
+ * an arrow that points where the wind is GOING (wind from the south → the
+ * arrow points north), and a red NW–N–NE sector — when the arrow points into
+ * it, the hunter's scent is carried toward that side (danger of being
+ * detected by game). The red sector is a fixed zone, not a computed scent
+ * model; only real wind direction/speed drive the arrow. Optimal-wind octants
+ * (a real, user-saved preference) are green wedges.
  */
 export function WindCompass({
   directionDegrees,
@@ -38,14 +37,14 @@ export function WindCompass({
   const center = size / 2
   const outerRadius = center - 16
   const color = weatherLayerColor('wind', speedKmh, 1)
-  const arrowTip = pointOnCircle(center, center, outerRadius - 6, directionDegrees)
-  const arrowLeft = pointOnCircle(center, center, outerRadius - 24, directionDegrees - 12)
-  const arrowRight = pointOnCircle(
-    center,
-    center,
-    outerRadius - 24,
-    directionDegrees + 12,
-  )
+  const flow = windFlowDegrees(directionDegrees)
+  const danger = isScentDanger(directionDegrees)
+  const arrowColor = danger ? '#ef4444' : color
+  const tail = pointOnCircle(center, center, outerRadius * 0.5, flow + 180)
+  const neck = pointOnCircle(center, center, outerRadius - 16, flow)
+  const tip = pointOnCircle(center, center, outerRadius - 2, flow)
+  const headLeft = pointOnCircle(center, center, outerRadius - 18, flow - 14)
+  const headRight = pointOnCircle(center, center, outerRadius - 18, flow + 14)
 
   return (
     <svg
@@ -54,7 +53,20 @@ export function WindCompass({
       viewBox={`0 0 ${size} ${size}`}
       role="img"
       aria-label="Boussole du vent"
+      data-flow-degrees={Math.round(flow)}
+      data-scent-danger={danger ? 'true' : 'false'}
     >
+      <path
+        d={wedgePath(
+          center,
+          center,
+          outerRadius,
+          SCENT_DANGER_ZONE.from,
+          SCENT_DANGER_ZONE.to + 360,
+        )}
+        className="fill-status-danger/30"
+        data-testid="scent-danger-zone"
+      />
       {optimalDirections?.map((octant) => (
         <path
           key={octant}
@@ -88,9 +100,19 @@ export function WindCompass({
           </text>
         )
       })}
+      <line
+        x1={tail.x}
+        y1={tail.y}
+        x2={neck.x}
+        y2={neck.y}
+        stroke={arrowColor}
+        strokeWidth={4}
+        strokeLinecap="round"
+        data-testid="wind-arrow"
+      />
       <polygon
-        points={`${arrowTip.x},${arrowTip.y} ${arrowLeft.x},${arrowLeft.y} ${center},${center} ${arrowRight.x},${arrowRight.y}`}
-        fill={color}
+        points={`${tip.x},${tip.y} ${headLeft.x},${headLeft.y} ${headRight.x},${headRight.y}`}
+        fill={arrowColor}
       />
       <circle cx={center} cy={center} r={4} className="fill-ink-100" />
     </svg>
