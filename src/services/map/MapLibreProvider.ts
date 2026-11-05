@@ -350,6 +350,9 @@ export class MapLibreProvider implements MapProvider {
       isWeatherFrameReady(key: string): boolean {
         return weatherFrames.isReady(key)
       },
+      isWeatherFrameFailed(key: string): boolean {
+        return weatherFrames.isFailed(key)
+      },
       setRasterOverlay(
         id: string,
         tileUrlTemplate: string | null,

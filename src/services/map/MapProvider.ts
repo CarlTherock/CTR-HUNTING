@@ -217,6 +217,9 @@ export interface MapInstance {
   /** Whether a frame's tiles for the current view have finished loading —
    * playback waits on this so it never flashes an empty frame. */
   isWeatherFrameReady(key: string): boolean
+  /** Whether a tile of the frame failed to load (HTTP error, timeout…):
+   * the image is incomplete, which is NOT the same as "no precipitation". */
+  isWeatherFrameFailed?(key: string): boolean
   /** Tear down the underlying engine instance and its DOM/WebGL resources. */
   destroy(): void
 }

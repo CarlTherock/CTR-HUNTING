@@ -3,6 +3,15 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Radar : seulement le futur, trois états distincts (2026-11-05)
+
+- Plus aucun passé : la ligne du temps commence à « maintenant » (dernière image du radar) et va vers l'avant, jusqu'à +4 h au plus.
+- Trois états distincts, déduits des images réellement publiées (aucune durée codée en dur) : **Observé** (radar ECCC), **Extrapolation ECCC** (calcul à partir du radar) et **Modèle HRDPS** (prévision de pluie horaire, cumul sur 1 h, grille 2,5 km — ce n'est pas le radar).
+- Chaque image affiche son produit, son heure de validité et sa source; une barre de couleur sur la ligne du temps montre où l'on passe de l'extrapolation au modèle, et une ligne indique la période de chaque produit.
+- La légende suit le produit de l'image affichée (pas de changement d'échelle masqué : aucun fondu entre produits).
+- Une tuile en erreur n'est jamais présentée comme « pas de pluie » : « Image incomplète » s'affiche, et une valeur du centre illisible dit « valeur indisponible ».
+- Si l'extrapolation ou le modèle sont illisibles, on affiche ce qui reste (au pire le radar « maintenant » avec une note).
+
 ## Radar : prochaines heures (extrapolation ECCC) + animation dès l'ouverture (2026-11-05)
 
 - Le radar montre 1 h d'observé puis les **prochaines heures extrapolées par ECCC** (couches `Radar_1km_RainPrecipRate-Extrapolation` / `SnowPrecipRate`, jusqu'à 4 h au plus : on affiche ce qu'ECCC publie, environ 2 h). Les images futures sont marquées « Extrapolé » (calcul d'ECCC à partir du radar, pas une observation).

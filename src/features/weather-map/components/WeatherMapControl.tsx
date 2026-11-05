@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
-import { geoMetLegendUrl, layerDef } from '@/services/weather-map'
+import { geoMetFrameLegendUrl, layerDef } from '@/services/weather-map'
 import { useIsWide } from '@/features/compare/useIsWide'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
@@ -26,7 +26,14 @@ import { useWeatherMapStore } from '../state/weatherMapStore'
 import { useWindStyleStore } from '../state/windStyleStore'
 import { formatFrameClock } from '../formatFrameTime'
 import { LAYER_PRESENTATION } from '../layerPresentation'
-import { useWeatherMapEffects } from '../useWeatherMapEffects'
+import { frameKey, useWeatherMapEffects } from '../useWeatherMapEffects'
+import {
+  PRODUCT_HEADER,
+  PRODUCT_LABEL,
+  PRODUCT_SHORT,
+  PRODUCT_SOURCE,
+  frameProduct,
+} from '../frameProduct'
 import { windSync } from '../windSync'
 import { LayerList } from './LayerList'
 import { TimelineBar } from './TimelineBar'
@@ -35,6 +42,8 @@ import { WindStyleSettings } from './WindStyleSettings'
 export interface WeatherMapControlProps {
   getBounds: () => LngLatBounds | null
   isFrameReady: (key: string) => boolean
+  /** A tile of the frame failed: the image is incomplete (not "no rain"). */
+  isFrameFailed?: (key: string) => boolean
   viewCenter: Coordinate
 }
 
@@ -56,6 +65,7 @@ type Tab = 'layers' | 'settings'
 export function WeatherMapControl({
   getBounds,
   isFrameReady,
+  isFrameFailed,
   viewCenter,
 }: WeatherMapControlProps) {
   const enabled = useWeatherMapStore((s) => s.enabled)
@@ -103,6 +113,26 @@ export function WeatherMapControl({
   const def = layerDef(activeLayer)
   const frame = frames[frameIndex]
   const now = new Date()
+  const product = frame ? frameProduct(frame) : null
+
+  // A failed tile makes the image incomplete; the map shows nothing there,
+  // which must not be read as "no precipitation".
+  const [failedState, setFailedState] = useState<{ key: string; failed: boolean } | null>(
+    null,
+  )
+  const failedKey = enabled && frame ? frameKey(activeLayer, frame.time) : null
+  useEffect(() => {
+    if (!failedKey || !isFrameFailed) return
+    const check = () =>
+      setFailedState({ key: failedKey, failed: isFrameFailed(failedKey) })
+    const first = setTimeout(check, 0)
+    const timer = setInterval(check, 700)
+    return () => {
+      clearTimeout(first)
+      clearInterval(timer)
+    }
+  }, [failedKey, isFrameFailed])
+  const frameFailed = failedState?.key === failedKey && failedState.failed
   const ActiveIcon = LAYER_PRESENTATION[activeLayer].icon
   const sync = windEnabled
     ? windSync(windField, frame?.time ?? null, windHourOffset)
@@ -156,13 +186,29 @@ export function WeatherMapControl({
             ? 'Isobares (hPa)'
             : centerValueStatus === 'loading'
               ? 'Centre : …'
-              : centerValue
-                ? `Centre : ${centerValue}`
-                : def.kind === 'observed'
-                  ? 'Centre : aucun écho'
-                  : 'Centre : —'}
+              : centerValueStatus === 'error'
+                ? 'Centre : valeur indisponible'
+                : centerValue
+                  ? `Centre : ${centerValue}`
+                  : product === 'observed'
+                    ? 'Centre : aucun écho'
+                    : product === 'extrapolated'
+                      ? 'Centre : aucun écho extrapolé'
+                      : product === 'model'
+                        ? 'Centre : aucune précipitation modélisée'
+                        : 'Centre : —'}
         </p>
-        {def.id === 'radar' && !frames.some((f) => f.extrapolated) && (
+        {frameFailed && (
+          <p
+            className="text-status-danger mt-1 text-[11px] font-semibold"
+            role="status"
+            data-testid="frame-incomplete"
+          >
+            Image incomplète : des tuiles n’ont pas pu être chargées. Les zones vides ne
+            signifient pas « pas de précipitations ».
+          </p>
+        )}
+        {def.id === 'radar' && !frames.some((f) => f.extrapolated || f.modelForecast) && (
           <p
             className="text-ink-500 mt-1 text-[11px]"
             data-testid="radar-no-extrapolation"
@@ -209,16 +255,21 @@ export function WeatherMapControl({
         <ListOrdered size={14} aria-hidden="true" />
         Légende
       </button>
+      {legendOpen && product && (
+        <p className="text-ink-300 text-[11px]" data-testid="legend-caption">
+          Légende de l’image affichée : {PRODUCT_SOURCE[product]}
+        </p>
+      )}
       {legendOpen && (
         <div
           className="mx-auto flex w-fit justify-center gap-2 rounded-md bg-white p-1"
           aria-label="Légende"
         >
-          {def.wmsLayers.map((layer, i) => (
+          {(frame?.wmsLayers ?? def.wmsLayers).map((layer, i) => (
             <img
               key={layer}
-              src={geoMetLegendUrl(def, i)}
-              alt={`Légende ${def.label}`}
+              src={geoMetFrameLegendUrl(def, frame, i)}
+              alt={`Légende ${product ? PRODUCT_LABEL[product] : def.label}`}
               className="h-32 w-auto"
             />
           ))}
@@ -389,8 +440,8 @@ export function WeatherMapControl({
 
   const sourceLine = (
     <span className="text-ink-500 text-[10px]">
-      {def.kind === 'observed'
-        ? 'Radar observé + extrapolation · ECCC 1 km'
+      {product && def.id === 'radar'
+        ? PRODUCT_HEADER[product]
         : 'Prévision HRDPS 2,5 km · ECCC'}
     </span>
   )
@@ -473,11 +524,7 @@ export function WeatherMapControl({
                       <span className="text-ink-300 font-normal tabular-nums">
                         {' · '}
                         {formatFrameClock(frame, now)} ·{' '}
-                        {frame.kind === 'observed'
-                          ? 'observé'
-                          : frame.extrapolated
-                            ? 'extrapolé'
-                            : 'prévu'}
+                        {product ? PRODUCT_SHORT[product] : ''}
                       </span>
                     )}
                   </span>

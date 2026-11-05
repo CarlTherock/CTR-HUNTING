@@ -43,8 +43,10 @@ export const RADAR_EXTRAPOLATION = {
 } as const
 /** The user wants the next 4 h; ECCC publishes what it publishes (about 2 h). */
 const EXTRAPOLATION_MAX_AHEAD_MS = 4 * 3600_000
-/** Past kept with the radar: enough to see the echoes move, no long history. */
-const RADAR_PAST_MS = 60 * 60_000
+/** How far ahead the radar timeline goes, extrapolation first, then the model. */
+const RADAR_HORIZON_MS = 4 * 3600_000
+/** No past is kept with the radar: only the latest image ("now"), then the future. */
+const RADAR_PAST_MS = 0
 const RADAR_FRAME_SPACING_MS = 12 * 60_000
 
 export const GEOMET_LAYERS: GeoMetLayerDef[] = [
@@ -60,6 +62,7 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
       // Observed snow is in cm/h; ECCC's extrapolated snow layer is in mm/h
       // (units as documented on the MSC radar page).
       if (layer === RADAR_EXTRAPOLATION.snow) return `Neige ${fmt(raw, 1)} mm/h`
+      if (layer.startsWith('HRDPS')) return `${fmt(raw, 1)} mm/h (modèle)`
       return layer === 'RADAR_1KM_RSNO'
         ? `Neige ${fmt(raw, 1)} cm/h`
         : `Pluie ${fmt(raw, 1)} mm/h`
@@ -306,13 +309,28 @@ export function geoMetFrameTileUrls(
   return layers.map((layer, i) => geoMetTileUrl(layer, styles[i] ?? '', frame.time))
 }
 
-export function geoMetLegendUrl(def: GeoMetLayerDef, index = 0): string {
+/** Legend of the product a frame really is (extrapolation / HRDPS model for
+ * radar frames), never the observed radar's scale for another product. */
+export function geoMetFrameLegendUrl(
+  def: GeoMetLayerDef,
+  frame: WeatherMapFrame | undefined,
+  index = 0,
+): string {
+  return geoMetLegendUrl(def, index, frame?.wmsLayers, frame?.styles)
+}
+
+export function geoMetLegendUrl(
+  def: GeoMetLayerDef,
+  index = 0,
+  layers: string[] = def.wmsLayers,
+  styles: string[] = def.styles,
+): string {
   const url = new URL(GEOMET_WMS_URL)
   url.searchParams.set('SERVICE', 'WMS')
   url.searchParams.set('VERSION', '1.3.0')
   url.searchParams.set('REQUEST', 'GetLegendGraphic')
-  url.searchParams.set('LAYER', def.wmsLayers[index])
-  url.searchParams.set('STYLE', def.styles[index])
+  url.searchParams.set('LAYER', layers[index])
+  url.searchParams.set('STYLE', styles[index] ?? '')
   url.searchParams.set('FORMAT', 'image/png')
   url.searchParams.set('SLD_VERSION', '1.1.0')
   url.searchParams.set('LANG', 'fr')
@@ -344,11 +362,42 @@ export class GeoMetProvider {
     if (def.id !== 'radar') return frames
     // Radar: the next hours come from ECCC's extrapolation. If it cannot be
     // read, the observed radar is still shown (the panel says so).
+    let extrapolated: WeatherMapFrame[] = []
     try {
-      return [...frames, ...(await this.fetchExtrapolatedFrames(def, frames))]
+      extrapolated = await this.fetchExtrapolatedFrames(def, frames)
     } catch {
-      return frames
+      // Observed radar still shown.
     }
+    const covered = [...frames, ...extrapolated]
+    try {
+      return [...covered, ...(await this.fetchModelContinuation(covered, now))]
+    } catch {
+      return covered
+    }
+  }
+
+  /** ECCC only extrapolates the radar for about an hour: the rest of the
+   * horizon is the HRDPS model's hourly rain forecast, labelled as a model. */
+  private async fetchModelContinuation(
+    covered: WeatherMapFrame[],
+    now: Date,
+  ): Promise<WeatherMapFrame[]> {
+    const precip = layerDef('precipitation')
+    const xml = await this.capabilities(precip.timeLayer)
+    const dimension = extractTimeDimension(xml)
+    if (!dimension) return []
+    const lastMs = new Date(covered[covered.length - 1].time).getTime()
+    const limit = new Date(covered[0].time).getTime() + RADAR_HORIZON_MS
+    return parseTimeDimension(dimension)
+      .filter((t) => t.getTime() > lastMs + 20 * 60_000 && t.getTime() <= limit)
+      .filter((t) => t.getTime() >= now.getTime() - 3600_000)
+      .map((t) => ({
+        time: toIsoSeconds(t),
+        kind: 'forecast' as const,
+        modelForecast: true,
+        wmsLayers: precip.wmsLayers,
+        styles: precip.styles,
+      }))
   }
 
   private async fetchExtrapolatedFrames(
@@ -385,6 +434,7 @@ export class GeoMetProvider {
   ): Promise<string | null> {
     if (!def.formatValue) return null
     const d = 0.01
+    let answered = 0
     for (const layer of layers) {
       const url = new URL(GEOMET_WMS_URL)
       url.searchParams.set('SERVICE', 'WMS')
@@ -409,11 +459,15 @@ export class GeoMetProvider {
       const contentType = response.headers.get('content-type') ?? ''
       if (!contentType.includes('json')) continue
       const data = (await response.json()) as FeatureInfoResponse
+      answered += 1
       const raw = data.features?.[0]?.properties?.value
       if (typeof raw !== 'number' || Number.isNaN(raw)) continue
       if (def.kind === 'observed' && raw <= 0) continue
       return def.formatValue(raw, layer)
     }
+    // No layer answered at all (HTTP error, wrong content): that is a failure,
+    // not "no echo here" — the caller must not show it as no precipitation.
+    if (answered === 0) throw new Error('GeoMet : valeur indisponible')
     return null
   }
 }
