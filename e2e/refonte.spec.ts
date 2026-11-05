@@ -106,11 +106,15 @@ for (const size of SIZES) {
       if (size.width < 1000) await shot(page, size, 'carte-3d')
       await page.getByRole('button', { name: '2D', exact: true }).click()
 
-      // Le zoom reste disponible dans Outils.
+      // Outils : plus de Zoom ni de plein écran du navigateur ; « Coordonnées GPS ».
       await page.getByRole('button', { name: 'Outils' }).click()
-      const zoomIn = page.getByRole('button', { name: 'Zoom avant' })
-      await expect(zoomIn).toBeVisible()
-      await zoomIn.click()
+      await expect(page.getByRole('button', { name: 'Zoom avant' })).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: /Plein écran du navigateur/ }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: 'Coordonnées GPS', exact: true }),
+      ).toBeVisible()
       await shot(page, size, 'outils')
       await page.keyboard.press('Escape')
 

@@ -13,6 +13,7 @@ import { useTerritoriesStore } from '@/features/territories/state/territoriesSto
 import { useOfflineStore } from '@/features/offline/state/offlineStore'
 import { useTerrainToolsStore } from '../state/terrainToolsStore'
 import { useMeasureStore } from '@/features/measure/state/measureStore'
+import { useWindPanelStore } from '@/features/wind/state/windPanelStore'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useBloodStore } from '@/features/blood/state/bloodStore'
 import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
@@ -258,6 +259,7 @@ afterEach(async () => {
     selectedHourOffset: 0,
   })
   useWindAnalysisStore.setState({ open: false, expanded: true })
+  useWindPanelStore.setState({ open: false })
   useAnalysisStore.setState({
     mode: 'idle',
     status: 'idle',
@@ -593,18 +595,20 @@ describe('MapPage', () => {
     expect(screen.getByTestId('add-point-gps-line')).toHaveTextContent('46.85000')
   })
 
-  it('has no always-visible zoom buttons: 2D/3D is on the rail and zoom lives in Outils', async () => {
+  it('has no zoom buttons anywhere (pinch / double-tap) and no browser-fullscreen entry in Outils', async () => {
     const user = userEvent.setup()
     render(<MapPage />)
     expect(screen.queryByRole('button', { name: 'Zoom avant' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '3D' })).toBeInTheDocument()
 
     await openTools(user)
-    const before = useMapStore.getState().view.zoom
-    await user.click(screen.getByRole('button', { name: 'Zoom avant' }))
-    expect(useMapStore.getState().view.zoom).toBe(Math.round(before) + 1)
-    await user.click(screen.getByRole('button', { name: 'Zoom arrière' }))
-    expect(useMapStore.getState().view.zoom).toBe(Math.round(before))
+    expect(screen.queryByRole('button', { name: 'Zoom avant' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zoom arrière' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Plein écran du navigateur/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Coordonnées GPS' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ma position' })).not.toBeInTheDocument()
   })
 
   it('switches to the 3D camera preset and back without recreating the map', async () => {
@@ -1161,8 +1165,7 @@ describe('MapPage', () => {
 
     // Turn the wind layer on so the live reading (mocked to blow from
     // 270°/W) is available for the "matches now" badge.
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
     await vi.waitFor(() => {
       expect(
         screen.getAllByRole('img', { name: 'Boussole du vent' }).length,
@@ -1295,8 +1298,7 @@ describe('MapPage', () => {
     const user = userEvent.setup()
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
 
     expect(fetchWindField).toHaveBeenCalledWith(
       { west: -71.3, south: 46.7, east: -71.1, north: 46.9 },
@@ -1314,7 +1316,7 @@ describe('MapPage', () => {
       await screen.findByRole('img', { name: 'Boussole du vent' }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    await user.click(screen.getByRole('button', { name: /Particules de vent/ }))
     expect(setWindField).toHaveBeenLastCalledWith(null, 0, 'wind')
   })
 
@@ -1451,16 +1453,11 @@ describe('MapPage', () => {
     // A real combined score + all 6 analyzers, not a fabricated summary.
     expect(await screen.findByText(/\/100 —/)).toBeInTheDocument()
     const panel = within(screen.getByTestId('spot-analysis-panel'))
-    for (const label of [
-      'Terrain',
-      'Végétation',
-      'Météo',
-      'Vent',
-      'Moment',
-      'Historique',
-    ]) {
+    for (const label of ['Terrain', 'Végétation', 'Météo', 'Vent', 'Moment']) {
       expect(panel.getByText(label)).toBeInTheDocument()
     }
+    // Les observations ne participent pas au calcul : aucun groupe « Historique ».
+    expect(panel.queryByText('Historique')).toBeNull()
 
     await user.click(panel.getByText('Terrain'))
     expect(panel.getByText(/pente/i)).toBeInTheDocument()
@@ -1565,15 +1562,14 @@ describe('MapPage', () => {
     render(<MapPage />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
-    expect(screen.getByRole('button', { name: 'Particules de vent' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
+    expect(screen.getByRole('button', { name: /Particules de vent/ })).toBeInTheDocument()
 
     useFieldModeStore.setState({ enabled: true, loaded: true })
 
     await vi.waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: 'Particules de vent' }),
+        screen.queryByRole('button', { name: /Particules de vent/ }),
       ).not.toBeInTheDocument()
     })
     expect(
@@ -1887,21 +1883,21 @@ describe('Analyse du vent', () => {
     fetchWindField.mockResolvedValueOnce(windFixture())
     render(<MapPage />)
 
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    expect(screen.getByRole('heading', { name: 'Carte météo' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
+    expect(screen.getByTestId('wind-bottom-panel')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Analyse du vent' }))
 
     const panel = await screen.findByTestId('wind-analysis')
     expect(panel).toHaveAttribute('data-state', 'expanded')
-    // une seule feuille du bas : le panneau des couches est remplacé
-    expect(screen.queryByRole('heading', { name: 'Carte météo' })).toBeNull()
+    // une seule feuille du bas : le panneau du vent est remplacé
+    expect(screen.queryByTestId('wind-bottom-panel')).toBeNull()
     expect(useWindStore.getState().enabled).toBe(true)
     expect(fetchWindField).toHaveBeenCalled()
 
-    // le bouton du rail ramène le panneau des couches et ferme l'analyse
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    // le bouton du rail ramène le panneau du vent et ferme l'analyse
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
     expect(screen.queryByTestId('wind-analysis')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Carte météo' })).toBeInTheDocument()
+    expect(screen.getByTestId('wind-bottom-panel')).toBeInTheDocument()
   })
 
   it("ne propose que les jours couverts : Aujourd'hui et Demain pour une prévision de 48 h", async () => {
@@ -2065,12 +2061,12 @@ describe('Analyse du vent', () => {
     const field = windFixture()
     fetchWindField.mockResolvedValueOnce(field)
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
-    await user.click(screen.getByRole('button', { name: 'Particules de vent' }))
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
     await vi.waitFor(async () =>
       expect((await db.settings.get('lastWindField'))?.value).toBeTruthy(),
     )
     cleanup()
+    useWindPanelStore.setState({ open: false })
     useWindStore.setState({
       field: null,
       status: 'idle',
@@ -2080,7 +2076,7 @@ describe('Analyse du vent', () => {
 
     fetchWindField.mockRejectedValue(new Error('Failed to fetch'))
     render(<MapPage />)
-    // le panneau des couches est déjà ouvert (état du store conservé)
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
     await user.click(await screen.findByRole('button', { name: 'Analyse du vent' }))
 
     expect(
@@ -2095,7 +2091,7 @@ describe('Analyse du vent', () => {
     const user = userEvent.setup()
     fetchWindField.mockRejectedValueOnce(new Error('Failed to fetch'))
     render(<MapPage />)
-    await user.click(screen.getByRole('button', { name: 'Météo et radar' }))
+    await user.click(screen.getByRole('button', { name: 'Vent' }))
     await user.click(screen.getByRole('button', { name: 'Analyse du vent' }))
 
     expect(

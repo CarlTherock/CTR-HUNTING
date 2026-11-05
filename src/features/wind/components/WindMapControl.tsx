@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   LineChart,
+  SlidersHorizontal,
   Pause,
   Play,
   SkipBack,
@@ -37,6 +38,7 @@ import { useWindAnalysisStore } from '../state/windAnalysisStore'
 import { useWindPanelStore } from '../state/windPanelStore'
 import { useWindStore } from '../state/windStore'
 import { WindCompass } from './WindCompass'
+import { isScentDanger } from '@/utils/windScent'
 
 export interface WindMapControlProps {
   getBounds: () => LngLatBounds | null
@@ -78,6 +80,7 @@ export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
   const setWeatherEnabled = useWeatherMapStore((s) => s.setEnabled)
 
   const [expanded, setExpanded] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const wide = useIsWide()
   const now = new Date()
 
@@ -232,6 +235,15 @@ export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
                 ? 'indisponibles'
                 : `${described.gustsKmh} km/h`}
             </span>
+            {isScentDanger(read.reading.directionDegrees) && (
+              <span
+                className="text-status-danger block text-xs font-semibold"
+                data-testid="scent-danger-note"
+              >
+                Flèche dans la zone rouge : votre odeur est portée vers le N (danger de
+                détection par le gibier).
+              </span>
+            )}
             <span className="text-ink-500 block text-[11px]">
               Au centre de la carte · point de grille le plus proche (Open-Meteo)
             </span>
@@ -328,12 +340,31 @@ export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
         <LineChart size={16} aria-hidden="true" />
         Analyse du vent
       </button>
-      <section className="border-surface-700 flex flex-col gap-2 border-t pt-3">
-        <p className="text-ink-500 text-[11px] font-semibold tracking-wide uppercase">
-          Présentation
-        </p>
-        <WindStyleSettings style={style} onChange={(patch) => void updateStyle(patch)} />
-      </section>
+      <button
+        type="button"
+        onClick={() => setSettingsOpen((open) => !open)}
+        aria-expanded={settingsOpen}
+        className={cn(
+          'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm pointer-coarse:min-h-11',
+          settingsOpen
+            ? 'border-brand-400 bg-brand-500/20 text-brand-300'
+            : 'border-surface-600 text-ink-300',
+        )}
+      >
+        <SlidersHorizontal size={16} aria-hidden="true" />
+        Réglages
+      </button>
+      {settingsOpen && (
+        <section
+          className="border-surface-700 flex flex-col gap-2 border-t pt-3"
+          aria-label="Réglages du vent"
+        >
+          <WindStyleSettings
+            style={style}
+            onChange={(patch) => void updateStyle(patch)}
+          />
+        </section>
+      )}
     </div>
   )
 
