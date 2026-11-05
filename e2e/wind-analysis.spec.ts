@@ -88,7 +88,7 @@ async function installWind(page: Page) {
 async function openAnalysis(page: Page) {
   await page.goto('map')
   await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible()
-  await page.getByRole('button', { name: 'Météo et radar' }).click()
+  await page.getByRole('button', { name: 'Vent', exact: true }).click()
   await page.getByRole('button', { name: 'Analyse du vent' }).click()
   await expect(page.getByTestId('wind-analysis')).toBeVisible()
   await expect(page.getByTestId('wind-readout')).toBeVisible()
@@ -353,9 +353,13 @@ for (const size of SIZES) {
       const mapAfter = await rect(page, '[data-testid="map-container"]')
       expect(Math.abs((mapAfter?.height ?? 0) - mapBefore.height)).toBeLessThanOrEqual(1)
       expect(Math.abs((mapAfter?.width ?? 0) - mapBefore.width)).toBeLessThanOrEqual(1)
-      // Rouvrir (le panneau météo, rouvert à la fermeture, porte le bouton) :
+      // Rouvrir (via le bouton « Vent » si le panneau n'est pas déjà ouvert) :
       // la même heure partagée est toujours là.
-      await page.getByRole('button', { name: 'Analyse du vent' }).click()
+      const analysisButton = page.getByRole('button', { name: 'Analyse du vent' })
+      if (!(await analysisButton.isVisible())) {
+        await page.getByRole('button', { name: 'Vent', exact: true }).click()
+      }
+      await analysisButton.click()
       await expect(page.getByTestId('wind-analysis')).toBeVisible()
       expect(await selected(page)).toBe(now)
     })
@@ -393,12 +397,17 @@ test.describe('analyse du vent : sans chevauchement avec le guidage', () => {
           // sous la bannière « placer le repère », qui couvre le haut en paysage court
           y: Math.round(canvas.height * 0.62),
         })
-        await page.getByTestId('waypoint-marker').first().click()
-        await page.getByRole('button', { name: 'Aller à', exact: true }).click()
-        await expect(page.getByTestId('guidance-panel')).toBeVisible()
-
-        await page.getByRole('button', { name: 'Météo et radar' }).click()
+        // Le bouton « Vent » est masqué pendant un guidage : on ouvre l'analyse
+        // d'abord, puis on lance le guidage.
+        await page.getByRole('button', { name: 'Vent', exact: true }).click()
         await page.getByRole('button', { name: 'Analyse du vent' }).click()
+        await expect(page.getByTestId('wind-analysis')).toBeVisible()
+        // la feuille du bas peut recouvrir le repère : clic dispatché sur l'élément
+        await page.getByTestId('waypoint-marker').first().dispatchEvent('click')
+        await page
+          .getByRole('button', { name: 'Aller à', exact: true })
+          .dispatchEvent('click')
+        await expect(page.getByTestId('guidance-panel')).toBeVisible()
         await expect(page.getByTestId('wind-analysis')).toBeVisible()
 
         const landscape = size.w > size.h

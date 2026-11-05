@@ -54,7 +54,7 @@ async function installWind(page: Page) {
 }
 
 async function openWind(page: Page) {
-  await page.getByRole('button', { name: 'Météo et radar' }).click()
+  await page.getByRole('button', { name: 'Vent', exact: true }).click()
   await page.getByRole('button', { name: 'Analyse du vent' }).click()
   await expect(page.getByTestId('wind-analysis')).toBeVisible()
   await expect(page.getByTestId('wind-readout')).toBeVisible()
