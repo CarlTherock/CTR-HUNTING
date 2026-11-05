@@ -23,9 +23,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test
+      # Typecheck, lint, unit tests and e2e already ran on the pull request
+      # (ci.yml); the build below still runs `tsc -b`, so a type error cannot
+      # be published.
       - run: npm run build
         env:
           GITHUB_PAGES: 'true'
