@@ -56,6 +56,38 @@ describe('weatherMapStore', () => {
     expect(fetchFrames).toHaveBeenCalledTimes(2)
   })
 
+  it('a refresh follows the newest radar image when the latest one was on screen', async () => {
+    fetchFrames.mockResolvedValueOnce(RADAR)
+    await useWeatherMapStore.getState().setEnabled(true)
+    expect(useWeatherMapStore.getState().frameIndex).toBe(2)
+    const NEWER = [...RADAR.slice(1), { time: '2026-09-25T15:12:00Z', kind: 'observed' }]
+    fetchFrames.mockResolvedValueOnce(NEWER)
+    await useWeatherMapStore.getState().loadFrames(true)
+    const state = useWeatherMapStore.getState()
+    expect(state.frames[state.frameIndex].time).toBe('2026-09-25T15:12:00Z')
+  })
+
+  it('a refresh keeps an older image the user is looking at', async () => {
+    fetchFrames.mockResolvedValueOnce(RADAR)
+    await useWeatherMapStore.getState().setEnabled(true)
+    useWeatherMapStore.getState().setFrameIndex(1)
+    const NEWER = [...RADAR.slice(1), { time: '2026-09-25T15:12:00Z', kind: 'observed' }]
+    fetchFrames.mockResolvedValueOnce(NEWER)
+    await useWeatherMapStore.getState().loadFrames(true)
+    const state = useWeatherMapStore.getState()
+    expect(state.frames[state.frameIndex].time).toBe('2026-09-25T14:48:00Z')
+  })
+
+  it('a failed background refresh keeps the images already shown', async () => {
+    fetchFrames.mockResolvedValueOnce(RADAR)
+    await useWeatherMapStore.getState().setEnabled(true)
+    fetchFrames.mockRejectedValueOnce(new Error('réseau'))
+    await useWeatherMapStore.getState().loadFrames(true)
+    const state = useWeatherMapStore.getState()
+    expect(state.status).toBe('available')
+    expect(state.frames).toHaveLength(3)
+  })
+
   it('step wraps around for looping playback', async () => {
     fetchFrames.mockResolvedValue(RADAR)
     await useWeatherMapStore.getState().loadFrames()
