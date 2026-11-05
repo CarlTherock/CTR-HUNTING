@@ -1,10 +1,10 @@
 name: CI
 
 # Validation only: no secrets, no deployment, read-only token.
+# Runs once per pull request (a push to a PR branch used to start a second,
+# identical run next to it).
 on:
   pull_request:
-  push:
-    branches-ignore: [main]
 
 permissions:
   contents: read
@@ -45,6 +45,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The browser download is cached; system libraries are still installed.
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: npm run e2e:install
       - run: npm run e2e
       - uses: actions/upload-artifact@v4
