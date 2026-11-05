@@ -18,6 +18,13 @@ export interface WeatherMapFrame {
    * dimension — sent back verbatim as the WMS `TIME` parameter. */
   time: string
   kind: WeatherFrameKind
+  /** Radar only: ECCC's extrapolation of the radar (a calculation moving the
+   * echoes forward), not an observation. Always `kind: 'forecast'`. */
+  extrapolated?: boolean
+  /** WMS layers / styles of this frame when they differ from the layer's own
+   * (the extrapolation layers). */
+  wmsLayers?: string[]
+  styles?: string[]
 }
 
 /** One frame as the map engine needs it: a stable key + one real tile

@@ -162,6 +162,14 @@ export function WeatherMapControl({
                   ? 'Centre : aucun écho'
                   : 'Centre : —'}
         </p>
+        {def.id === 'radar' && !frames.some((f) => f.extrapolated) && (
+          <p
+            className="text-ink-500 mt-1 text-[11px]"
+            data-testid="radar-no-extrapolation"
+          >
+            Extrapolation d’ECCC indisponible pour le moment : radar observé seulement.
+          </p>
+        )}
       </>
     ) : null
 
@@ -382,7 +390,7 @@ export function WeatherMapControl({
   const sourceLine = (
     <span className="text-ink-500 text-[10px]">
       {def.kind === 'observed'
-        ? 'Radar observé · ECCC 1 km'
+        ? 'Radar observé + extrapolation · ECCC 1 km'
         : 'Prévision HRDPS 2,5 km · ECCC'}
     </span>
   )
@@ -465,7 +473,11 @@ export function WeatherMapControl({
                       <span className="text-ink-300 font-normal tabular-nums">
                         {' · '}
                         {formatFrameClock(frame, now)} ·{' '}
-                        {frame.kind === 'observed' ? 'observé' : 'prévu'}
+                        {frame.kind === 'observed'
+                          ? 'observé'
+                          : frame.extrapolated
+                            ? 'extrapolé'
+                            : 'prévu'}
                       </span>
                     )}
                   </span>

@@ -35,6 +35,18 @@ const fmt = (n: number, digits = 0) =>
     minimumFractionDigits: digits,
   })
 
+/** ECCC's radar extrapolation (the radar echoes moved forward by ECCC),
+ * published on GeoMet next to the observed composite. */
+export const RADAR_EXTRAPOLATION = {
+  rain: 'Radar_1km_RainPrecipRate-Extrapolation',
+  snow: 'Radar_1km_SnowPrecipRate-Extrapolation',
+} as const
+/** The user wants the next 4 h; ECCC publishes what it publishes (about 2 h). */
+const EXTRAPOLATION_MAX_AHEAD_MS = 4 * 3600_000
+/** Past kept with the radar: enough to see the echoes move, no long history. */
+const RADAR_PAST_MS = 60 * 60_000
+const RADAR_FRAME_SPACING_MS = 12 * 60_000
+
 export const GEOMET_LAYERS: GeoMetLayerDef[] = [
   {
     id: 'radar',
@@ -44,10 +56,14 @@ export const GEOMET_LAYERS: GeoMetLayerDef[] = [
     styles: ['Radar-Rain_Dis-14colors_Fr', 'Radar-Snow_Dis-14colors_Fr'],
     timeLayer: 'RADAR_1KM_RRAI',
     // RRAI title: "precipitation rate for rain [mm/h]"; RSNO: "[cm/h]".
-    formatValue: (raw, layer) =>
-      layer === 'RADAR_1KM_RSNO'
+    formatValue: (raw, layer) => {
+      // Observed snow is in cm/h; ECCC's extrapolated snow layer is in mm/h
+      // (units as documented on the MSC radar page).
+      if (layer === RADAR_EXTRAPOLATION.snow) return `Neige ${fmt(raw, 1)} mm/h`
+      return layer === 'RADAR_1KM_RSNO'
         ? `Neige ${fmt(raw, 1)} cm/h`
-        : `Pluie ${fmt(raw, 1)} mm/h`,
+        : `Pluie ${fmt(raw, 1)} mm/h`
+    },
   },
   {
     id: 'precipitation',
@@ -177,9 +193,13 @@ export function buildFrames(
     // one returns an XML "time outside valid hours" error instead of a
     // PNG. Skip the 3 oldest (18 min of margin, covers the 5-min refresh).
     const usable = times.slice(3)
+    if (usable.length === 0) return []
+    const latest = usable[usable.length - 1].getTime()
     const picked: Date[] = []
-    for (let i = usable.length - 1; i >= 0 && picked.length < 15; i -= 2)
+    for (let i = usable.length - 1; i >= 0; i -= 2) {
+      if (latest - usable[i].getTime() > RADAR_PAST_MS) break
       picked.unshift(usable[i])
+    }
     return picked.map((t) => ({ time: toIsoSeconds(t), kind: 'observed' }))
   }
   const currentHour = new Date(now)
@@ -225,6 +245,67 @@ export function geoMetTileUrl(wmsLayer: string, style: string, time: string): st
   return `${url.toString()}&BBOX={bbox-epsg-3857}`
 }
 
+/** Style names advertised in a single-layer GetCapabilities document. */
+export function extractStyleNames(capabilitiesXml: string): string[] {
+  const names: string[] = []
+  const re = /<Style>[\s\S]*?<Name>([^<]+)<\/Name>/gi
+  for (let m = re.exec(capabilitiesXml); m; m = re.exec(capabilitiesXml)) {
+    if (!names.includes(m[1])) names.push(m[1])
+  }
+  return names
+}
+
+/** Same colours as the observed radar when the extrapolation layer offers
+ * them; otherwise the closest published style, else GeoMet's own default
+ * (empty name). Never a guessed name. */
+export function pickExtrapolationStyle(available: string[], observed: string): string {
+  if (available.includes(observed)) return observed
+  return (
+    available.find((n) => /Dis-14colors_Fr$/i.test(n)) ??
+    available.find((n) => /14colors/i.test(n)) ??
+    ''
+  )
+}
+
+/** The extrapolated frames after the last observed instant: ECCC's own
+ * calculation, labelled as such. Thinned to the radar's 12 min spacing. */
+export function buildExtrapolatedFrames(
+  times: Date[],
+  latestObserved: Date,
+  layers: string[],
+  styles: string[],
+): WeatherMapFrame[] {
+  const from = latestObserved.getTime()
+  const limit = from + EXTRAPOLATION_MAX_AHEAD_MS
+  const frames: WeatherMapFrame[] = []
+  let last = from
+  for (const t of [...times].sort((a, b) => a.getTime() - b.getTime())) {
+    const ms = t.getTime()
+    if (ms <= from || ms > limit) continue
+    if (ms - last < RADAR_FRAME_SPACING_MS) continue
+    last = ms
+    frames.push({
+      time: toIsoSeconds(t),
+      kind: 'forecast',
+      extrapolated: true,
+      wmsLayers: layers,
+      styles,
+    })
+  }
+  return frames
+}
+
+/** GetMap templates of one frame: its own layers (extrapolation) or the
+ * layer's. */
+export function geoMetFrameTileUrls(
+  def: GeoMetLayerDef,
+  frame: WeatherMapFrame,
+): string[] {
+  const layers = frame.wmsLayers ?? def.wmsLayers
+  const styles = frame.styles ?? def.styles
+  return layers.map((layer, i) => geoMetTileUrl(layer, styles[i] ?? '', frame.time))
+}
+
 export function geoMetLegendUrl(def: GeoMetLayerDef, index = 0): string {
   const url = new URL(GEOMET_WMS_URL)
   url.searchParams.set('SERVICE', 'WMS')
@@ -243,20 +324,53 @@ interface FeatureInfoResponse {
 }
 
 export class GeoMetProvider {
-  async fetchFrames(def: GeoMetLayerDef, now = new Date()): Promise<WeatherMapFrame[]> {
+  private async capabilities(layer: string): Promise<string> {
     const url = new URL(GEOMET_WMS_URL)
     url.searchParams.set('SERVICE', 'WMS')
     url.searchParams.set('VERSION', '1.3.0')
     url.searchParams.set('REQUEST', 'GetCapabilities')
-    url.searchParams.set('LAYER', def.timeLayer)
+    url.searchParams.set('LAYER', layer)
     const response = await fetch(url)
     if (!response.ok) throw new Error(`GeoMet a répondu ${response.status}`)
-    const xml = await response.text()
+    return response.text()
+  }
+
+  async fetchFrames(def: GeoMetLayerDef, now = new Date()): Promise<WeatherMapFrame[]> {
+    const xml = await this.capabilities(def.timeLayer)
     const dimension = extractTimeDimension(xml)
     if (!dimension) throw new Error('Aucune période disponible pour cette couche')
     const frames = buildFrames(def, parseTimeDimension(dimension), now)
     if (frames.length === 0) throw new Error('Aucune image disponible pour cette période')
-    return frames
+    if (def.id !== 'radar') return frames
+    // Radar: the next hours come from ECCC's extrapolation. If it cannot be
+    // read, the observed radar is still shown (the panel says so).
+    try {
+      return [...frames, ...(await this.fetchExtrapolatedFrames(def, frames))]
+    } catch {
+      return frames
+    }
+  }
+
+  private async fetchExtrapolatedFrames(
+    def: GeoMetLayerDef,
+    observed: WeatherMapFrame[],
+  ): Promise<WeatherMapFrame[]> {
+    const latest = new Date(observed[observed.length - 1].time)
+    const [rainXml, snowXml] = await Promise.all([
+      this.capabilities(RADAR_EXTRAPOLATION.rain),
+      this.capabilities(RADAR_EXTRAPOLATION.snow).catch(() => null),
+    ])
+    const dimension = extractTimeDimension(rainXml)
+    if (!dimension) return []
+    const layers: string[] = [RADAR_EXTRAPOLATION.rain]
+    const styles: string[] = [
+      pickExtrapolationStyle(extractStyleNames(rainXml), def.styles[0]),
+    ]
+    if (snowXml && extractTimeDimension(snowXml)) {
+      layers.push(RADAR_EXTRAPOLATION.snow)
+      styles.push(pickExtrapolationStyle(extractStyleNames(snowXml), def.styles[1]))
+    }
+    return buildExtrapolatedFrames(parseTimeDimension(dimension), latest, layers, styles)
   }
 
   /** Real value at `coordinate` for the frame's time — `null` when
@@ -267,10 +381,11 @@ export class GeoMetProvider {
     def: GeoMetLayerDef,
     time: string,
     coordinate: Coordinate,
+    layers: string[] = def.wmsLayers,
   ): Promise<string | null> {
     if (!def.formatValue) return null
     const d = 0.01
-    for (const layer of def.wmsLayers) {
+    for (const layer of layers) {
       const url = new URL(GEOMET_WMS_URL)
       url.searchParams.set('SERVICE', 'WMS')
       url.searchParams.set('VERSION', '1.3.0')

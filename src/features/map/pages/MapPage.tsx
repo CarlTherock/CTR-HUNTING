@@ -64,7 +64,7 @@ import { useWindAnalysisStore } from '@/features/wind/state/windAnalysisStore'
 import { useWeatherMapStore } from '@/features/weather-map/state/weatherMapStore'
 import { useWindStyleStore } from '@/features/weather-map/state/windStyleStore'
 import { frameKey } from '@/features/weather-map/useWeatherMapEffects'
-import { geoMetTileUrls, layerDef, weatherTileMaxZoom } from '@/services/weather-map'
+import { geoMetFrameTileUrls, layerDef, weatherTileMaxZoom } from '@/services/weather-map'
 import { isSoftLayer, softTileTemplate } from '@/services/weather-map/softTemplate'
 import { useWindStore } from '@/features/wind/state/windStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
@@ -676,7 +676,7 @@ export function MapPage() {
     instanceRef.current?.setWeatherFrames(
       weatherMapFrames.map((frame) => ({
         key: frameKey(weatherMapLayer, frame.time),
-        tileUrlTemplates: geoMetTileUrls(def, frame.time).map((template) =>
+        tileUrlTemplates: geoMetFrameTileUrls(def, frame).map((template) =>
           isSoftLayer(def) ? softTileTemplate(template) : template,
         ),
         maxZoom: weatherTileMaxZoom(def),

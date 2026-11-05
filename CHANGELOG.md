@@ -3,6 +3,15 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Radar : prochaines heures (extrapolation ECCC) + animation dès l'ouverture (2026-11-05)
+
+- Le radar montre 1 h d'observé puis les **prochaines heures extrapolées par ECCC** (couches `Radar_1km_RainPrecipRate-Extrapolation` / `SnowPrecipRate`, jusqu'à 4 h au plus : on affiche ce qu'ECCC publie, environ 2 h). Les images futures sont marquées « Extrapolé » (calcul d'ECCC à partir du radar, pas une observation).
+- Le radar s'ouvre sur « maintenant » (dernière image observée) et **s'anime tout de suite** (pause / curseur pour l'arrêter). Plus d'historique de 3 h.
+- Si l'extrapolation est illisible, le radar observé reste affiché avec une note claire.
+- Animation plus fluide : tuiles douces gardées en cache, 5 images préchargées devant.
+- Le bouton météo s'ouvre de nouveau sur le radar; « Précip. » (HRDPS, jusqu'à 48 h) reste dans Couches.
+- Non vérifié avec le vrai GeoMet (inaccessible depuis l'environnement de développement) : noms de couches pris de la documentation d'ECCC.
+
 ## Météo : s'ouvre sur les prochaines heures (2026-11-04)
 
 - Le bouton météo s'ouvre maintenant sur « Précip. » (prévision HRDPS d'ECCC) : la ligne du temps commence à l'heure courante et avance vers l'avant, jusqu'à 48 h, sans historique.

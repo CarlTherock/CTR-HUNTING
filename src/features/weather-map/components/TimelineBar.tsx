@@ -126,7 +126,8 @@ export function TimelineBar({
               : 'border-amber-400/60 bg-amber-400/15 text-amber-300',
           )}
         >
-          {observed ? 'Observé' : 'Prévu'} · {formatFrameRelative(frame, now)}
+          {observed ? 'Observé' : frame.extrapolated ? 'Extrapolé' : 'Prévu'} ·{' '}
+          {formatFrameRelative(frame, now)}
         </span>
       </div>
 
@@ -166,7 +167,12 @@ export function TimelineBar({
       <p className="text-ink-500 mt-1 text-[11px]">
         Période disponible : {formatFrameClock(frames[0], now)} →{' '}
         {formatFrameClock(frames[frames.length - 1], now)} (
-        {observed ? 'observée' : 'prévue'})
+        {frames.some((f) => f.extrapolated)
+          ? 'observée puis extrapolée'
+          : observed
+            ? 'observée'
+            : 'prévue'}
+        )
       </p>
     </div>
   )

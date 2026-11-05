@@ -45,14 +45,17 @@ interface WeatherMapState {
 /** The frame closest to "now": latest radar image, or the current hour. */
 function defaultIndex(frames: WeatherMapFrame[]): number {
   if (frames.length === 0) return 0
-  return frames[0].kind === 'observed' ? frames.length - 1 : 0
+  if (frames[0].kind !== 'observed') return 0
+  // Radar: "now" = the last observed image; extrapolated ones follow it.
+  const lastObserved = frames.findLastIndex((f) => f.kind === 'observed')
+  return Math.max(0, lastObserved)
 }
 
 let valueRequestId = 0
 
 export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
   enabled: false,
-  activeLayer: 'precipitation',
+  activeLayer: 'radar',
   status: 'idle',
   errorReason: null,
   frames: [],
@@ -66,7 +69,9 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
   toggle: () => get().setEnabled(!get().enabled),
 
   setEnabled: (enabled) => {
-    set({ enabled, playing: false })
+    // The radar opens already animated (the echoes move, as on a weather
+    // site); the person can pause it, and dragging the slider pauses it too.
+    set({ enabled, playing: enabled && get().activeLayer === 'radar' })
     if (enabled) void get().loadFrames()
   },
 
@@ -74,7 +79,7 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
     if (layer === get().activeLayer && get().frames.length > 0) return
     set({
       activeLayer: layer,
-      playing: false,
+      playing: layer === 'radar',
       centerValue: null,
       centerValueStatus: 'idle',
     })
@@ -106,7 +111,7 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
       // Watching the latest radar image = following live: move on to the new
       // latest instead of staying pinned on an image that is getting old.
       const followingLive =
-        def.kind === 'observed' && previousIndex === previous.length - 1
+        def.kind === 'observed' && previousIndex === defaultIndex(previous)
       const keptIndex =
         force && previousTime && !followingLive
           ? frames.findIndex((f) => f.time === previousTime)
@@ -157,7 +162,12 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
     const requestId = ++valueRequestId
     set({ centerValueStatus: 'loading' })
     try {
-      const value = await weatherMapProvider.fetchValueAt(def, frame.time, coordinate)
+      const value = await weatherMapProvider.fetchValueAt(
+        def,
+        frame.time,
+        coordinate,
+        frame.wmsLayers,
+      )
       if (requestId !== valueRequestId) return
       set({ centerValue: value, centerValueStatus: 'available' })
     } catch {

@@ -88,15 +88,28 @@ describe('weatherMapStore', () => {
     expect(state.frames).toHaveLength(3)
   })
 
-  it('opens on the rain forecast, which starts at the current hour (not on past radar)', async () => {
-    const initial = useWeatherMapStore.getInitialState()
-    expect(initial.activeLayer).toBe('precipitation')
-    useWeatherMapStore.setState({ activeLayer: 'precipitation' })
+  it('opens on the animated radar: "now" is the last observed image, extrapolation follows', async () => {
+    expect(useWeatherMapStore.getInitialState().activeLayer).toBe('radar')
+    const mixed = [
+      ...RADAR,
+      { time: '2026-09-25T15:12:00Z', kind: 'forecast', extrapolated: true },
+      { time: '2026-09-25T15:24:00Z', kind: 'forecast', extrapolated: true },
+    ]
+    fetchFrames.mockResolvedValueOnce(mixed)
+    await useWeatherMapStore.getState().setEnabled(true)
+    const state = useWeatherMapStore.getState()
+    expect(state.playing).toBe(true)
+    expect(state.frameIndex).toBe(2)
+    expect(state.frames[state.frameIndex].kind).toBe('observed')
+  })
+
+  it('a forecast layer does not autoplay and starts at the current hour', async () => {
+    useWeatherMapStore.setState({ activeLayer: 'temperature' })
     fetchFrames.mockResolvedValueOnce(TEMP)
     await useWeatherMapStore.getState().setEnabled(true)
     const state = useWeatherMapStore.getState()
+    expect(state.playing).toBe(false)
     expect(state.frameIndex).toBe(0)
-    expect(state.frames[0].kind).toBe('forecast')
   })
 
   it('step wraps around for looping playback', async () => {
