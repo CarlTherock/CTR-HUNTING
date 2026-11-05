@@ -1335,6 +1335,21 @@ describe('MapLibreProvider', () => {
       ).toMatchObject({ 'raster-opacity': 0 })
     })
 
+    it('flags a frame whose tile failed (incomplete image), and clears it when the frame leaves the map', () => {
+      mapInstances.length = 0
+      const instance = createTestMap()
+      const map = mapInstances[0]
+      map.fire('style.load')
+      instance.setWeatherFrames(FRAMES, 1, 0.8)
+      expect(instance.isWeatherFrameFailed?.('radar-t2')).toBe(false)
+      map.fire('error', { sourceId: 'wx-frame-radar-t2-1', error: { status: 503 } })
+      expect(instance.isWeatherFrameFailed?.('radar-t2')).toBe(true)
+      expect(instance.isWeatherFrameFailed?.('radar-t3')).toBe(false)
+      // Far away: t2 is no longer on the map (window -1..+5 around t7 wraps to t6..t4).
+      instance.setWeatherFrames(FRAMES.slice(0, 8), 6, 0.8)
+      instance.setWeatherFrames(FRAMES.slice(0, 8), 7, 0.8)
+    })
+
     it('advancing swaps opacity in place, and drops frames that leave the window', () => {
       mapInstances.length = 0
       const instance = createTestMap()

@@ -85,10 +85,13 @@ d'origine si le canvas échoue. Panneau réduit (mobile) : barre de temps mince
 
 `fetchFrames` (radar) = la dernière image observée (`RADAR_1KM_RRAI/RSNO`, aucun passé) puis les
 instants **après la dernière image observée** de la dimension `time` des couches
-`Radar_1km_RainPrecipRate-Extrapolation` / `Radar_1km_SnowPrecipRate-Extrapolation` (ECCC, ≤ 4 h).
+`Radar_1km_RainPrecipRate-Extrapolation` / `Radar_1km_SnowPrecipRate-Extrapolation` (ECCC, ≤ 4 h au plus ; la durée réelle vient de la dimension `time` publiée).
 Ces images ont `kind: 'forecast'`, `extrapolated: true` et leurs propres `wmsLayers`/`styles`
 (style identique au radar observé s'il existe, sinon le plus proche, sinon le défaut de GeoMet).
 Échec de lecture de l'extrapolation → radar observé seul + note dans le panneau.
 Le radar s'anime à l'ouverture (`setEnabled`/`setLayer('radar')` → `playing`).
-Au-delà de l'extrapolation (~1 h), les heures suivantes jusqu'à +4 h viennent de `HRDPS.CONTINENTAL.DIAG_PR_PT1H`
+Après la dernière image extrapolée, les heures suivantes jusqu'à +4 h viennent de `HRDPS.CONTINENTAL.DIAG_PR_PT1H`
 (`modelForecast: true`, étiquette « Modèle »).
+Trois produits, jamais mélangés : `frameProduct.ts` (observé / extrapolation / modèle) donne l'étiquette,
+la source, la couleur et les segments de la ligne du temps ; la légende suit l'image affichée
+(`geoMetFrameLegendUrl`). Une tuile en erreur (`isWeatherFrameFailed`) affiche « Image incomplète ».

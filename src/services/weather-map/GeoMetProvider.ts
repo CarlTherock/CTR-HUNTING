@@ -309,13 +309,28 @@ export function geoMetFrameTileUrls(
   return layers.map((layer, i) => geoMetTileUrl(layer, styles[i] ?? '', frame.time))
 }
 
-export function geoMetLegendUrl(def: GeoMetLayerDef, index = 0): string {
+/** Legend of the product a frame really is (extrapolation / HRDPS model for
+ * radar frames), never the observed radar's scale for another product. */
+export function geoMetFrameLegendUrl(
+  def: GeoMetLayerDef,
+  frame: WeatherMapFrame | undefined,
+  index = 0,
+): string {
+  return geoMetLegendUrl(def, index, frame?.wmsLayers, frame?.styles)
+}
+
+export function geoMetLegendUrl(
+  def: GeoMetLayerDef,
+  index = 0,
+  layers: string[] = def.wmsLayers,
+  styles: string[] = def.styles,
+): string {
   const url = new URL(GEOMET_WMS_URL)
   url.searchParams.set('SERVICE', 'WMS')
   url.searchParams.set('VERSION', '1.3.0')
   url.searchParams.set('REQUEST', 'GetLegendGraphic')
-  url.searchParams.set('LAYER', def.wmsLayers[index])
-  url.searchParams.set('STYLE', def.styles[index])
+  url.searchParams.set('LAYER', layers[index])
+  url.searchParams.set('STYLE', styles[index] ?? '')
   url.searchParams.set('FORMAT', 'image/png')
   url.searchParams.set('SLD_VERSION', '1.1.0')
   url.searchParams.set('LANG', 'fr')
@@ -419,6 +434,7 @@ export class GeoMetProvider {
   ): Promise<string | null> {
     if (!def.formatValue) return null
     const d = 0.01
+    let answered = 0
     for (const layer of layers) {
       const url = new URL(GEOMET_WMS_URL)
       url.searchParams.set('SERVICE', 'WMS')
@@ -443,11 +459,15 @@ export class GeoMetProvider {
       const contentType = response.headers.get('content-type') ?? ''
       if (!contentType.includes('json')) continue
       const data = (await response.json()) as FeatureInfoResponse
+      answered += 1
       const raw = data.features?.[0]?.properties?.value
       if (typeof raw !== 'number' || Number.isNaN(raw)) continue
       if (def.kind === 'observed' && raw <= 0) continue
       return def.formatValue(raw, layer)
     }
+    // No layer answered at all (HTTP error, wrong content): that is a failure,
+    // not "no echo here" — the caller must not show it as no precipitation.
+    if (answered === 0) throw new Error('GeoMet : valeur indisponible')
     return null
   }
 }

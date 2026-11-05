@@ -3,6 +3,7 @@ import {
   GeoMetProvider,
   buildFrames,
   extractTimeDimension,
+  geoMetFrameLegendUrl,
   geoMetFrameTileUrls,
   geoMetTileUrls,
   buildExtrapolatedFrames,
@@ -53,6 +54,33 @@ describe('buildFrames', () => {
     const frames = buildFrames(layerDef('temperature'), times, now)
     expect(frames[0]).toEqual({ time: '2026-09-25T15:00:00Z', kind: 'forecast' })
     expect(frames).toHaveLength(49)
+  })
+})
+
+describe('legend and point value follow the real product', () => {
+  it('a model frame uses the HRDPS legend, not the observed radar scale', () => {
+    const model = {
+      time: '2026-09-25T17:00:00Z',
+      kind: 'forecast' as const,
+      modelForecast: true,
+      wmsLayers: ['HRDPS.CONTINENTAL.DIAG_PR_PT1H'],
+      styles: ['Precip-Accum_0to40mm_Dis'],
+    }
+    const url = geoMetFrameLegendUrl(layerDef('radar'), model, 0)
+    expect(url).toContain('LAYER=HRDPS.CONTINENTAL.DIAG_PR_PT1H')
+    expect(url).toContain('STYLE=Precip-Accum_0to40mm_Dis')
+    const observed = geoMetFrameLegendUrl(layerDef('radar'), undefined, 0)
+    expect(observed).toContain('LAYER=RADAR_1KM_RRAI')
+  })
+
+  it('a point value that nobody answered is an error, not "no echo"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }))
+    await expect(
+      new GeoMetProvider().fetchValueAt(layerDef('radar'), '2026-09-25T15:00:00Z', {
+        lat: 46.8,
+        lng: -71.2,
+      }),
+    ).rejects.toThrow('indisponible')
   })
 })
 

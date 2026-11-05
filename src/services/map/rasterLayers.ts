@@ -150,6 +150,13 @@ export function createWeatherFrames(map: MapLibreMap) {
   const addedKeys = new Set<string>()
   /** Sub-layer count per frame (radar = rain + snow). */
   const partCounts = new Map<string, number>()
+  /** Frames with at least one failed tile, until the frame leaves the map. */
+  const failedKeys = new Set<string>()
+  map.on('error', (event: object) => {
+    const id = (event as { sourceId?: string }).sourceId
+    if (!id?.startsWith(WEATHER_PREFIX)) return
+    failedKeys.add(id.slice(WEATHER_PREFIX.length).replace(/-\d+$/, ''))
+  })
   const sourceId = (key: string, part: number) => `${WEATHER_PREFIX}${key}-${part}`
   const layerId = (key: string, part: number) => `${WEATHER_PREFIX}${key}-${part}-layer`
 
@@ -174,6 +181,7 @@ export function createWeatherFrames(map: MapLibreMap) {
       }
       addedKeys.delete(key)
       partCounts.delete(key)
+      failedKeys.delete(key)
     }
     if (wanted.size === 0) return
     // Draw weather under the GPS track / measurement lines.
@@ -237,7 +245,11 @@ export function createWeatherFrames(map: MapLibreMap) {
     resetForNewStyle() {
       addedKeys.clear()
       partCounts.clear()
+      failedKeys.clear()
       sync()
+    },
+    isFailed(key: string): boolean {
+      return failedKeys.has(key)
     },
     isReady(key: string): boolean {
       const parts = partCounts.get(key)

@@ -4,6 +4,14 @@ import { cn } from '@/utils/cn'
 import type { WeatherMapFrame } from '@/types'
 import { formatFrameClock, formatFrameRelative } from '../formatFrameTime'
 import { formatFrameDay, timelineTicks } from '../timelineTicks'
+import {
+  PRODUCT_LABEL,
+  PRODUCT_SOURCE,
+  PRODUCT_STYLE,
+  describeSegments,
+  frameProduct,
+  productSegments,
+} from '../frameProduct'
 
 /** Dragging only moves the readout at once; the map frame (and the tiles it
  * loads around it) follows once the finger rests, or on release. */
@@ -66,7 +74,8 @@ export function TimelineBar({
 
   const ticks = timelineTicks(frames, maxTicks)
   const last = Math.max(1, frames.length - 1)
-  const observed = frame.kind === 'observed'
+  const product = frameProduct(frame)
+  const segments = productSegments(frames)
 
   const slider = (
     <input
@@ -83,6 +92,22 @@ export function TimelineBar({
       className="accent-brand-500 h-9 min-w-0 flex-1 pointer-coarse:h-11"
     />
   )
+  const strip = (margin: string) =>
+    segments.length > 1 ? (
+      <div
+        className={cn('mt-0.5 flex h-1.5 overflow-hidden rounded-full', margin)}
+        data-testid="product-strip"
+        aria-hidden="true"
+      >
+        {segments.map((seg) => (
+          <span
+            key={`${seg.product}-${seg.from}`}
+            className={PRODUCT_STYLE[seg.product].bar}
+            style={{ width: `${((seg.to - seg.from + 1) / frames.length) * 100}%` }}
+          />
+        ))}
+      </div>
+    ) : null
   const tickRow = (margin: string) => (
     <div className={cn('relative mt-0.5 h-4', margin)} aria-hidden="true">
       {ticks.map((tick) => (
@@ -101,6 +126,7 @@ export function TimelineBar({
     return (
       <div className={className} data-testid="weather-timeline-compact">
         <div className="flex items-center">{slider}</div>
+        {strip('mx-2')}
         {tickRow('mx-2')}
       </div>
     )
@@ -121,19 +147,11 @@ export function TimelineBar({
         <span
           className={cn(
             'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold',
-            observed
-              ? 'border-sky-400/60 bg-sky-400/15 text-sky-300'
-              : 'border-amber-400/60 bg-amber-400/15 text-amber-300',
+            PRODUCT_STYLE[product].badge,
           )}
+          data-testid="frame-product"
         >
-          {observed
-            ? 'Observé'
-            : frame.extrapolated
-              ? 'Extrapolé'
-              : frame.modelForecast
-                ? 'Modèle'
-                : 'Prévu'}{' '}
-          · {formatFrameRelative(frame, now)}
+          {PRODUCT_LABEL[product]} · {formatFrameRelative(frame, now)}
         </span>
       </div>
 
@@ -169,16 +187,15 @@ export function TimelineBar({
         {slider}
       </div>
 
+      {strip('mx-[4.5rem]')}
       {tickRow('mx-[4.5rem]')}
-      <p className="text-ink-500 mt-1 text-[11px]">
-        Période disponible : {formatFrameClock(frames[0], now)} →{' '}
-        {formatFrameClock(frames[frames.length - 1], now)} (
-        {frames.some((f) => f.extrapolated || f.modelForecast)
-          ? 'maintenant puis prévision'
-          : observed
-            ? 'observée'
-            : 'prévue'}
-        )
+      <p className="text-ink-300 mt-1 text-[11px]" data-testid="frame-source">
+        Source : {PRODUCT_SOURCE[product]}
+      </p>
+      <p className="text-ink-500 mt-0.5 text-[11px]" data-testid="period-line">
+        {segments.length > 1
+          ? describeSegments(frames, now)
+          : `Période disponible : ${formatFrameClock(frames[0], now)} → ${formatFrameClock(frames[frames.length - 1], now)} (${product === 'observed' ? 'observée' : 'prévue'})`}
       </p>
     </div>
   )

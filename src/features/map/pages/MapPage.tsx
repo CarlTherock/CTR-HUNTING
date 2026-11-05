@@ -1018,6 +1018,9 @@ export function MapPage() {
                   isFrameReady={(key) =>
                     instanceRef.current?.isWeatherFrameReady(key) ?? false
                   }
+                  isFrameFailed={(key) =>
+                    instanceRef.current?.isWeatherFrameFailed?.(key) ?? false
+                  }
                   viewCenter={view.center}
                 />
                 <WindMapControl

@@ -92,6 +92,49 @@ describe('TimelineBar', () => {
     expect(onSeek).toHaveBeenCalledWith(7)
   })
 
+  it('radar timeline: three distinct products, source, validity and the extrapolation → model transition', () => {
+    const at = (h: number, m: number) => new Date(2026, 10, 3, h, m).toISOString()
+    const mixed = [
+      { time: at(14, 0), kind: 'observed' },
+      { time: at(14, 12), kind: 'forecast', extrapolated: true },
+      { time: at(15, 0), kind: 'forecast', modelForecast: true },
+    ] as unknown as WeatherMapFrame[]
+    const { rerender } = render(
+      <TimelineBar
+        frames={mixed}
+        frameIndex={1}
+        playing={false}
+        now={NOW}
+        maxTicks={5}
+        onPlayingChange={vi.fn()}
+        onStep={vi.fn()}
+        onSeek={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('frame-product')).toHaveTextContent(/Extrapolation ECCC/)
+    expect(screen.getByTestId('frame-source')).toHaveTextContent(
+      /calcul, pas une observation/,
+    )
+    expect(screen.getByTestId('product-strip').children).toHaveLength(3)
+    const period = screen.getByTestId('period-line')
+    expect(period).toHaveTextContent(/Extrapolation ECCC : 14 h 12/)
+    expect(period).toHaveTextContent(/Modèle HRDPS : 15 h/)
+    rerender(
+      <TimelineBar
+        frames={mixed}
+        frameIndex={2}
+        playing={false}
+        now={NOW}
+        maxTicks={5}
+        onPlayingChange={vi.fn()}
+        onStep={vi.fn()}
+        onSeek={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('frame-product')).toHaveTextContent(/Modèle HRDPS/)
+    expect(screen.getByTestId('frame-source')).toHaveTextContent(/pas le radar/)
+  })
+
   it('previous / next / play use the store callbacks', () => {
     const { onStep, onPlayingChange } = setup()
     fireEvent.click(screen.getByRole('button', { name: 'Image précédente' }))
