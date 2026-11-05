@@ -80,3 +80,13 @@ Un seul rendu, « doux » : les tuiles `radar` et `precipitation` passent par `c
 (`smoothing.ts`, alpha prémultiplié). La requête est élargie de 32 px par côté puis recadrée au centre, pour éviter les coutures entre tuiles. Visuel seulement. Repli : tuile
 d'origine si le canvas échoue. Panneau réduit (mobile) : barre de temps mince
 (`TimelineBar compact`).
+
+## Radar : observé + extrapolation
+
+`fetchFrames` (radar) = 1 h d'images observées (`RADAR_1KM_RRAI/RSNO`, pas de 12 min) puis les
+instants **après la dernière image observée** de la dimension `time` des couches
+`Radar_1km_RainPrecipRate-Extrapolation` / `Radar_1km_SnowPrecipRate-Extrapolation` (ECCC, ≤ 4 h).
+Ces images ont `kind: 'forecast'`, `extrapolated: true` et leurs propres `wmsLayers`/`styles`
+(style identique au radar observé s'il existe, sinon le plus proche, sinon le défaut de GeoMet).
+Échec de lecture de l'extrapolation → radar observé seul + note dans le panneau.
+Le radar s'anime à l'ouverture (`setEnabled`/`setLayer('radar')` → `playing`).

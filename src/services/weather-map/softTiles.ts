@@ -113,6 +113,38 @@ export async function softenTile(
   return canvasToPng(out)
 }
 
+/** Finished soft tiles, newest last. The radar loops over the same few frames;
+ * without this every lap would fetch and blur every tile again. */
+const SOFT_CACHE_MAX_BYTES = 40 * 1024 * 1024
+const softCache = new Map<string, ArrayBuffer>()
+let softCacheBytes = 0
+
+function cacheGet(key: string): ArrayBuffer | undefined {
+  const hit = softCache.get(key)
+  if (!hit) return undefined
+  softCache.delete(key)
+  softCache.set(key, hit)
+  return hit.slice(0)
+}
+
+function cacheSet(key: string, data: ArrayBuffer): void {
+  const previous = softCache.get(key)
+  if (previous) softCacheBytes -= previous.byteLength
+  softCache.set(key, data.slice(0))
+  softCacheBytes += data.byteLength
+  for (const [oldest, value] of softCache) {
+    if (softCacheBytes <= SOFT_CACHE_MAX_BYTES) break
+    softCache.delete(oldest)
+    softCacheBytes -= value.byteLength
+  }
+}
+
+/** Test hook. */
+export function clearSoftTileCache(): void {
+  softCache.clear()
+  softCacheBytes = 0
+}
+
 let registered = false
 
 export function ensureSoftTileProtocolRegistered(): void {
@@ -120,6 +152,8 @@ export function ensureSoftTileProtocolRegistered(): void {
   registered = true
   addProtocol(SOFT_TILE_PROTOCOL, async (params, abortController) => {
     const url = params.url.replace(`${SOFT_TILE_PROTOCOL}://`, 'https://')
+    const cached = cacheGet(url)
+    if (cached) return { data: cached }
     const timeout = new AbortController()
     const timer = setTimeout(() => timeout.abort(), REQUEST_TIMEOUT_MS)
     const onAbort = () => timeout.abort()
@@ -137,7 +171,10 @@ export function ensureSoftTileProtocolRegistered(): void {
       if (padded) {
         try {
           const soft = await softenTile(await fetchTile(padded), SOFT_BLUR_RADIUS)
-          if (soft) return { data: soft }
+          if (soft) {
+            cacheSet(url, soft)
+            return { data: soft }
+          }
         } catch (error) {
           if (timeout.signal.aborted) throw error
         }
@@ -146,6 +183,7 @@ export function ensureSoftTileProtocolRegistered(): void {
       const original = await fetchTile(url)
       try {
         const soft = await softenTile(original.slice(0), SOFT_BLUR_RADIUS)
+        if (soft) cacheSet(url, soft)
         return { data: soft ?? original }
       } catch {
         return { data: original }

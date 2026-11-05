@@ -16,6 +16,13 @@ export function formatFrameClock(frame: WeatherMapFrame, now: Date): string {
 /** "il y a 24 min" / "maintenant" / "dans 5 h". */
 export function formatFrameRelative(frame: WeatherMapFrame, now: Date): string {
   const diffMin = Math.round((new Date(frame.time).getTime() - now.getTime()) / 60_000)
+  if (frame.extrapolated) {
+    if (diffMin < 2) return 'maintenant'
+    if (diffMin < 60) return `dans ${diffMin} min`
+    const h = Math.floor(diffMin / 60)
+    const m = diffMin % 60
+    return m === 0 ? `dans ${h} h` : `dans ${h} h ${String(m).padStart(2, '0')}`
+  }
   if (frame.kind === 'forecast') {
     if (diffMin < 60 && diffMin > -60) return 'heure actuelle'
     const h = Math.round(diffMin / 60)

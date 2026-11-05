@@ -133,7 +133,7 @@ export function createRasterOverlays(
 
 const WEATHER_PREFIX = 'wx-frame-'
 const WEATHER_WINDOW_BEHIND = 1
-const WEATHER_WINDOW_AHEAD = 3
+const WEATHER_WINDOW_AHEAD = 5
 
 /** Animated weather frames (radar / HRDPS forecast). One raster
  * source+layer per frame, all at opacity 0 except the active one, so

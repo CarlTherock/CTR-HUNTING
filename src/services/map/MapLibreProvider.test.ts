@@ -1314,12 +1314,14 @@ describe('MapLibreProvider', () => {
         (l) => l.id.startsWith('wx-frame-') && l.id.endsWith('-0-layer'),
       )
       // Rain + snow: one stacked raster per WMS layer, per frame.
-      expect(map.addedLayers.filter((l) => l.id.startsWith('wx-frame-'))).toHaveLength(10)
-      // 1 behind + active + 3 ahead (wrapping around for looping playback).
+      expect(map.addedLayers.filter((l) => l.id.startsWith('wx-frame-'))).toHaveLength(14)
+      // 1 behind + active + 5 ahead (wrapping around for looping playback).
       expect(wxLayers.map((l) => l.id)).toEqual([
         'wx-frame-radar-t0-0-layer',
         'wx-frame-radar-t1-0-layer',
         'wx-frame-radar-t2-0-layer',
+        'wx-frame-radar-t3-0-layer',
+        'wx-frame-radar-t4-0-layer',
         'wx-frame-radar-t6-0-layer',
         'wx-frame-radar-t7-0-layer',
       ])

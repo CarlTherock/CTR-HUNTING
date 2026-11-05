@@ -3,7 +3,12 @@ import {
   GeoMetProvider,
   buildFrames,
   extractTimeDimension,
+  geoMetFrameTileUrls,
   geoMetTileUrls,
+  buildExtrapolatedFrames,
+  extractStyleNames,
+  pickExtrapolationStyle,
+  RADAR_EXTRAPOLATION,
   weatherTileMaxZoom,
   layerDef,
   parseIsoDurationMs,
@@ -37,12 +42,12 @@ describe('GeoMet time dimension parsing', () => {
 describe('buildFrames', () => {
   const now = new Date('2026-09-25T15:20:00Z')
 
-  it('radar: observed frames every 12 min ending on the latest real frame, skipping the about-to-expire oldest ones', () => {
+  it('radar: only the last hour, every 12 min, ending on the latest real frame (no long history)', () => {
     const times = parseTimeDimension('2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M')
     const frames = buildFrames(layerDef('radar'), times, now)
-    expect(frames).toHaveLength(14)
+    expect(frames).toHaveLength(6)
     expect(frames.at(-1)).toEqual({ time: '2026-09-25T15:00:00Z', kind: 'observed' })
-    expect(frames[0].time).toBe('2026-09-25T12:24:00Z')
+    expect(frames[0].time).toBe('2026-09-25T14:00:00Z')
   })
 
   it('forecast: hourly from the current hour, never past hours, capped at +48 h', () => {
@@ -50,6 +55,37 @@ describe('buildFrames', () => {
     const frames = buildFrames(layerDef('temperature'), times, now)
     expect(frames[0]).toEqual({ time: '2026-09-25T15:00:00Z', kind: 'forecast' })
     expect(frames).toHaveLength(49)
+  })
+})
+
+describe('radar extrapolation helpers', () => {
+  it('reads style names and picks the observed colours, else the closest, else the default', () => {
+    const xml =
+      '<Style><Name>A</Name><Title>x</Title></Style><Style><Name>Radar-Rain_Dis-14colors_Fr</Name></Style>'
+    expect(extractStyleNames(xml)).toEqual(['A', 'Radar-Rain_Dis-14colors_Fr'])
+    expect(
+      pickExtrapolationStyle(
+        ['A', 'Radar-Rain_Dis-14colors_Fr'],
+        'Radar-Rain_Dis-14colors_Fr',
+      ),
+    ).toBe('Radar-Rain_Dis-14colors_Fr')
+    expect(pickExtrapolationStyle(['A', 'Foo_Dis-14colors_Fr'], 'Z')).toBe(
+      'Foo_Dis-14colors_Fr',
+    )
+    expect(pickExtrapolationStyle(['A'], 'Z')).toBe('')
+  })
+
+  it('keeps only instants after the last observed one, within 4 h, 12 min apart', () => {
+    const times = parseTimeDimension('2026-09-25T14:00:00Z/2026-09-25T21:00:00Z/PT6M')
+    const frames = buildExtrapolatedFrames(
+      times,
+      new Date('2026-09-25T15:00:00Z'),
+      ['L'],
+      [''],
+    )
+    expect(frames[0].time).toBe('2026-09-25T15:12:00Z')
+    expect(frames.at(-1)?.time).toBe('2026-09-25T19:00:00Z')
+    expect(frames.every((f) => f.extrapolated && f.kind === 'forecast')).toBe(true)
   })
 })
 
@@ -81,7 +117,61 @@ describe('GeoMetProvider', () => {
       layerDef('radar'),
       new Date('2026-09-25T15:10:00Z'),
     )
-    expect(frames).toHaveLength(14)
+    expect(frames).toHaveLength(6)
+    expect(frames.some((f) => f.extrapolated)).toBe(false)
+  })
+
+  it('radar: appends ECCC extrapolation frames after the last observed one, with their own layers and styles', async () => {
+    const caps = (layer: string) => {
+      if (layer === 'RADAR_1KM_RRAI')
+        return '<Dimension name="time">2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M</Dimension>'
+      return `<Style><Name>Radar-Rain_Dis-14colors_Fr</Name></Style><Style><Name>Other</Name></Style><Dimension name="time">2026-09-25T15:00:00Z/2026-09-25T17:00:00Z/PT6M</Dimension>`
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL) => ({
+        ok: true,
+        text: () => Promise.resolve(caps(url.searchParams.get('LAYER') ?? '')),
+      })),
+    )
+    const frames = await new GeoMetProvider().fetchFrames(
+      layerDef('radar'),
+      new Date('2026-09-25T15:10:00Z'),
+    )
+    const extrapolated = frames.filter((f) => f.extrapolated)
+    expect(frames.slice(0, 6).every((f) => f.kind === 'observed')).toBe(true)
+    expect(extrapolated.length).toBe(10)
+    expect(extrapolated[0].time).toBe('2026-09-25T15:12:00Z')
+    expect(extrapolated.at(-1)?.time).toBe('2026-09-25T17:00:00Z')
+    expect(extrapolated.every((f) => f.kind === 'forecast')).toBe(true)
+    expect(extrapolated[0].wmsLayers).toEqual([
+      RADAR_EXTRAPOLATION.rain,
+      RADAR_EXTRAPOLATION.snow,
+    ])
+    const [rain] = geoMetFrameTileUrls(layerDef('radar'), extrapolated[0])
+    expect(rain).toContain(`LAYERS=${RADAR_EXTRAPOLATION.rain}&`)
+    expect(rain).toContain('STYLES=Radar-Rain_Dis-14colors_Fr')
+    expect(rain).toContain('TIME=2026-09-25T15%3A12%3A00Z')
+  })
+
+  it('radar: if the extrapolation cannot be read, the observed radar is still returned', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL) => {
+        if ((url.searchParams.get('LAYER') ?? '').includes('Extrapolation'))
+          return { ok: false, status: 404, text: () => Promise.resolve('') }
+        return {
+          ok: true,
+          text: () =>
+            Promise.resolve(
+              '<Dimension name="time">2026-09-25T12:00:00Z/2026-09-25T15:00:00Z/PT6M</Dimension>',
+            ),
+        }
+      }),
+    )
+    const frames = await new GeoMetProvider().fetchFrames(layerDef('radar'))
+    expect(frames).toHaveLength(6)
+    expect(frames.some((f) => f.extrapolated)).toBe(false)
   })
 
   it('returns the real point value, converting m/s to km/h for wind', async () => {
