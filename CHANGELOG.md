@@ -3,6 +3,13 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Radar : mise à jour automatique corrigée (2026-11-04)
+
+- Le radar se rafraîchit dès que l'app revient au premier plan (ou que le réseau revient), au lieu d'attendre la minuterie de 5 min que l'iPhone gèle en arrière-plan.
+- Quand tu regardes la dernière image, le curseur suit la nouvelle dernière image au lieu de rester sur une image qui vieillit.
+- Un rafraîchissement raté (réseau pas encore revenu) garde les images déjà affichées au lieu de tout effacer.
+- Rappel : le radar est de l'observé (≈ 2 h 40, jamais de prévision). Les prévisions (Précip., Temp.) vont jusqu'à 48 h.
+
 ## Radar : un seul rendu « doux » + barre de temps du panneau réduit (2026-11-04)
 
 - Le radar n'a plus qu'un rendu, « Doux » (le meilleur à l'essai) : le réglage Précis / Doux / Très doux est retiré.

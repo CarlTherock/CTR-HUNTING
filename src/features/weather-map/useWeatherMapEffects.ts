@@ -76,6 +76,25 @@ export function useWeatherMapEffects({
     return () => clearInterval(timer)
   }, [enabled, activeLayer])
 
+  // A phone freezes timers while the app is in the background: refresh as soon
+  // as the app is back in front or the network returns, not 5 min later.
+  useEffect(() => {
+    if (!enabled || activeLayer !== 'radar') return
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        void useWeatherMapStore.getState().loadFrames(true)
+      }
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('online', refresh)
+    window.addEventListener('pageshow', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('online', refresh)
+      window.removeEventListener('pageshow', refresh)
+    }
+  }, [enabled, activeLayer])
+
   // Real value at the map center (debounced, paused during playback).
   useEffect(() => {
     if (!enabled || playing || frames.length === 0) return

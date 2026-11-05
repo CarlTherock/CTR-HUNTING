@@ -94,15 +94,23 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
       })
       return
     }
-    set({ status: 'loading', errorReason: null })
+    // A background refresh keeps the current images on screen while it runs.
+    if (!force) set({ status: 'loading', errorReason: null })
     try {
       const frames = await weatherMapProvider.fetchFrames(def)
       // A slow response for a layer the user already switched away from
       // must never overwrite the current one.
       if (get().activeLayer !== layer) return
-      const previousTime = get().frames[get().frameIndex]?.time
+      const { frames: previous, frameIndex: previousIndex } = get()
+      const previousTime = previous[previousIndex]?.time
+      // Watching the latest radar image = following live: move on to the new
+      // latest instead of staying pinned on an image that is getting old.
+      const followingLive =
+        def.kind === 'observed' && previousIndex === previous.length - 1
       const keptIndex =
-        force && previousTime ? frames.findIndex((f) => f.time === previousTime) : -1
+        force && previousTime && !followingLive
+          ? frames.findIndex((f) => f.time === previousTime)
+          : -1
       set({
         frames,
         frameIndex: keptIndex >= 0 ? keptIndex : defaultIndex(frames),
@@ -111,6 +119,9 @@ export const useWeatherMapStore = create<WeatherMapState>((set, get) => ({
       })
     } catch (err) {
       if (get().activeLayer !== layer) return
+      // A failed background refresh (phone just woke up, network not back
+      // yet) must not wipe the images already shown; the next one retries.
+      if (force && get().frames.length > 0) return
       set({
         status: 'error',
         errorReason: err instanceof Error ? err.message : 'Erreur inconnue',
