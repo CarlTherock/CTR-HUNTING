@@ -1,6 +1,6 @@
 import { weatherLayerColor } from '@/utils/weatherMapColors'
 import { pointOnCircle, wedgePath } from '@/utils/polarGeometry'
-import { SCENT_DANGER_ZONE, isScentDanger, windFlowDegrees } from '@/utils/windScent'
+import { scentZone, windFlowDegrees } from '@/utils/windScent'
 
 export interface WindCompassProps {
   directionDegrees: number
@@ -22,10 +22,10 @@ const CARDINALS = [
 /**
  * A compass-style wind dial in the spirit of HuntStand's "Read the Wind":
  * an arrow that points where the wind is GOING (wind from the south → the
- * arrow points north), and a red NW–N–NE sector — when the arrow points into
- * it, the hunter's scent is carried toward that side (danger of being
- * detected by game). The red sector is a fixed zone, not a computed scent
- * model; only real wind direction/speed drive the arrow. Optimal-wind octants
+ * arrow points north), and a red zone centred on the arrow tip covering three
+ * compass points (toward N → NW–N–NE): the side the hunter's scent is carried
+ * to (danger of being detected by game). The zone follows the real wind; it is
+ * a fixed-width cone, not a computed scent model. Optimal-wind octants
  * (a real, user-saved preference) are green wedges.
  */
 export function WindCompass({
@@ -38,8 +38,8 @@ export function WindCompass({
   const outerRadius = center - 16
   const color = weatherLayerColor('wind', speedKmh, 1)
   const flow = windFlowDegrees(directionDegrees)
-  const danger = isScentDanger(directionDegrees)
-  const arrowColor = danger ? '#ef4444' : color
+  const zone = scentZone(directionDegrees)
+  const arrowColor = color
   const tail = pointOnCircle(center, center, outerRadius * 0.5, flow + 180)
   const neck = pointOnCircle(center, center, outerRadius - 16, flow)
   const tip = pointOnCircle(center, center, outerRadius - 2, flow)
@@ -54,16 +54,9 @@ export function WindCompass({
       role="img"
       aria-label="Boussole du vent"
       data-flow-degrees={Math.round(flow)}
-      data-scent-danger={danger ? 'true' : 'false'}
     >
       <path
-        d={wedgePath(
-          center,
-          center,
-          outerRadius,
-          SCENT_DANGER_ZONE.from,
-          SCENT_DANGER_ZONE.to + 360,
-        )}
+        d={wedgePath(center, center, outerRadius, zone.start, zone.end)}
         className="fill-status-danger/30"
         data-testid="scent-danger-zone"
       />

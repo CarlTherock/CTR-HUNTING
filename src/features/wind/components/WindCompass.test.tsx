@@ -31,18 +31,13 @@ describe('WindCompass', () => {
     expect(screen.getByTestId('wind-arrow')).toBeInTheDocument()
   })
 
-  it('always draws the red NW–N–NE zone, and flags danger only when the flow enters it', () => {
+  it('draws a red zone centred on the arrow tip, so it moves with the flow', () => {
     const { rerender } = render(<WindCompass directionDegrees={180} speedKmh={20} />)
-    expect(screen.getByTestId('scent-danger-zone')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Boussole du vent' })).toHaveAttribute(
-      'data-scent-danger',
-      'true',
-    )
+    const north = screen.getByTestId('scent-danger-zone').getAttribute('d')
+    expect(north).toBeTruthy()
     rerender(<WindCompass directionDegrees={270} speedKmh={20} />)
-    expect(screen.getByTestId('scent-danger-zone')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Boussole du vent' })).toHaveAttribute(
-      'data-scent-danger',
-      'false',
-    )
+    const east = screen.getByTestId('scent-danger-zone').getAttribute('d')
+    expect(east).toBeTruthy()
+    expect(east).not.toBe(north)
   })
 })

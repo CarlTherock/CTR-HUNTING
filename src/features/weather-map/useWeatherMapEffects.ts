@@ -6,7 +6,7 @@ import type { Coordinate } from '@/types'
 import type { LngLatBounds } from '@/utils/tiles'
 import { useWeatherMapStore } from './state/weatherMapStore'
 
-const PLAY_INTERVAL_MS = 650
+const PLAY_INTERVAL_MS = 2000
 /** Ticks playback waits for the next frame's tiles before advancing
  * anyway (a slow tile must never freeze the loop). */
 const MAX_WAIT_TICKS = 4

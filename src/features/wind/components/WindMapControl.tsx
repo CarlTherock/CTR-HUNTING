@@ -38,7 +38,7 @@ import { useWindAnalysisStore } from '../state/windAnalysisStore'
 import { useWindPanelStore } from '../state/windPanelStore'
 import { useWindStore } from '../state/windStore'
 import { WindCompass } from './WindCompass'
-import { isScentDanger } from '@/utils/windScent'
+import { scentZoneLabels } from '@/utils/windScent'
 
 export interface WindMapControlProps {
   getBounds: () => LngLatBounds | null
@@ -235,15 +235,15 @@ export function WindMapControl({ getBounds, viewCenter }: WindMapControlProps) {
                 ? 'indisponibles'
                 : `${described.gustsKmh} km/h`}
             </span>
-            {isScentDanger(read.reading.directionDegrees) && (
-              <span
-                className="text-status-danger block text-xs font-semibold"
-                data-testid="scent-danger-note"
-              >
-                Flèche dans la zone rouge : votre odeur est portée vers le N (danger de
-                détection par le gibier).
-              </span>
-            )}
+            <span
+              className="text-status-danger block text-xs font-semibold"
+              data-testid="scent-danger-note"
+            >
+              Zone rouge ({scentZoneLabels(read.reading.directionDegrees).span}) : votre
+              odeur est portée vers le{' '}
+              {scentZoneLabels(read.reading.directionDegrees).toward} (danger de détection
+              par le gibier).
+            </span>
             <span className="text-ink-500 block text-[11px]">
               Au centre de la carte · point de grille le plus proche (Open-Meteo)
             </span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isScentDanger, windFlowDegrees } from './windScent'
+import { scentZone, scentZoneLabels, windFlowDegrees } from './windScent'
 
 describe('windScent', () => {
   it('the flow points the opposite way to the wind origin (from the south → toward the north)', () => {
@@ -9,12 +9,16 @@ describe('windScent', () => {
     expect(windFlowDegrees(350)).toBe(170)
   })
 
-  it('danger when the flow heads into NW–N–NE (wind from SE, S or SW…)', () => {
-    expect(isScentDanger(180)).toBe(true) // from S → flows N
-    expect(isScentDanger(135)).toBe(true) // from SE → flows NW (315°)
-    expect(isScentDanger(225)).toBe(true) // from SW → flows NE (45°)
-    expect(isScentDanger(270)).toBe(false) // from W → flows E
-    expect(isScentDanger(0)).toBe(false) // from N → flows S
-    expect(isScentDanger(90)).toBe(false) // from E → flows W
+  it('the red zone is centred on the arrow tip and 90° wide (3 compass points)', () => {
+    expect(scentZone(180)).toEqual({ start: -45, end: 45 }) // flows N
+    expect(scentZone(270)).toEqual({ start: 45, end: 135 }) // flows E
+    expect(scentZone(202)).toEqual({ start: -23, end: 67 }) // follows the real heading (22°)
+  })
+
+  it('names the three covered points', () => {
+    expect(scentZoneLabels(180)).toEqual({ toward: 'N', span: 'NO–N–NE' })
+    expect(scentZoneLabels(270)).toEqual({ toward: 'E', span: 'NE–E–SE' })
+    expect(scentZoneLabels(0)).toEqual({ toward: 'S', span: 'SE–S–SO' })
+    expect(scentZoneLabels(202)).toEqual({ toward: 'N', span: 'NO–N–NE' })
   })
 })
