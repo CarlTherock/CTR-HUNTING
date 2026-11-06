@@ -27,7 +27,7 @@ import {
   slotForDayChange,
 } from '../analysis/windTimeline'
 import { WindCompass } from './WindCompass'
-import { isScentDanger } from '@/utils/windScent'
+import { scentZoneLabels } from '@/utils/windScent'
 
 /** Upper bound of hourly rows read: the 5-day horizon plus a margin. */
 const MAX_ROWS = 24 * 7
@@ -147,15 +147,15 @@ export function WindPanel({ coordinate }: { coordinate: Coordinate }) {
                   {Math.round(current.speedKmh)}
                   <span className="text-ink-500 ml-1 text-sm font-normal">km/h</span>
                 </p>
-                {isScentDanger(current.directionDegrees) && (
-                  <p
-                    className="text-status-danger mt-1 text-xs font-semibold"
-                    data-testid="scent-danger-note"
-                  >
-                    Flèche dans la zone rouge : votre odeur est portée vers le N (danger
-                    de détection par le gibier).
-                  </p>
-                )}
+                <p
+                  className="text-status-danger mt-1 text-xs font-semibold"
+                  data-testid="scent-danger-note"
+                >
+                  Zone rouge ({scentZoneLabels(current.directionDegrees).span}) : votre
+                  odeur est portée vers le{' '}
+                  {scentZoneLabels(current.directionDegrees).toward} (danger de détection
+                  par le gibier).
+                </p>
                 <p className="text-ink-500 mt-1 text-sm">
                   Rafales {Math.round(current.gustsKmh)} km/h · {current.hourLabel}
                 </p>

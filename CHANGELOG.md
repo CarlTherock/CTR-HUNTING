@@ -3,6 +3,11 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Zone d'odeur mobile et lecture radar plus lente (2026-11-05)
+
+- **Boussole du vent** : la zone rouge est centrée sur le bout de la flèche et couvre 3 points cardinaux (vent vers le N → NO–N–NE; vers l'E → NE–E–SE…). Elle suit le vent réel; la flèche garde sa couleur. Les notes du panneau nomment le secteur.
+- **Radar / météo** : la lecture automatique laisse 2 s par image (au lieu de 0,65 s); le pas de 15 min est inchangé.
+
 ## Vent, Outils et « Analyser cet endroit » : corrections (2026-11-05)
 
 - **Vent** : le panneau s'ouvre avec les particules actives; la présentation (taille, etc.) est derrière un bouton « Réglages ».
