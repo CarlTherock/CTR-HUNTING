@@ -11,6 +11,7 @@ import type {
   Waypoint,
   WindField,
 } from '@/types'
+import type { HuntMapOverlay } from '@/features/deer-intel/spatial/overlay'
 import type { LngLatBounds } from '@/utils/tiles'
 import type { WindStyle } from '@/utils/windStyle'
 
@@ -83,6 +84,8 @@ export interface MapInstance {
   /** Draws dashed links between consecutive clues (`null`/`[]` clears). A
    * visual aid between observed points: never the animal's path. */
   setClueLinks(links: readonly (readonly Coordinate[])[] | null): void
+  /** Dessine (ou efface, avec `null`) les secteurs, points candidats A/B/C et l'étendue de l'analyse « Où chasser ». Présentation seulement ; `opacity` règle la transparence des secteurs. */
+  setHuntOverlay(overlay: HuntMapOverlay | null, opacity: number): void
   /** Draws (or clears, with `null`) the dashed straight line of "Aller à"
    * between the device position and the destination. Its own source and
    * layers, a colour distinct from the track preview and the measure path,

@@ -38,6 +38,13 @@ export const router = createBrowserRouter(
             Component: (await import('@/features/ai/pages/AssistantPage')).AssistantPage,
           }),
         },
+        {
+          // Chargée à la demande : le moteur « Où et quand chasser » n'alourdit pas le démarrage.
+          path: 'hunt',
+          lazy: async () => ({
+            Component: (await import('@/features/deer-intel/pages/HuntPage')).default,
+          }),
+        },
         { path: 'settings', element: <SettingsPage /> },
         {
           path: 'deertracker',

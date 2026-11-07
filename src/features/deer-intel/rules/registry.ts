@@ -241,6 +241,50 @@ export const RULE_REGISTRY: readonly RuleEntry[] = [
     implementedBy: ['CND-PRECIP-01'],
   },
   {
+    id: 'HAB-COVER-FOOD-01',
+    title:
+      'Habitat : couvert forestier proche d’un milieu nourricier (secteurs et points candidats)',
+    status: 'active',
+    category: 'D',
+    sources: [MASSE, COURBIN],
+    region:
+      'Anticosti, Québec (femelles à haute densité, activité et sélection d’habitat)',
+    population: 'Femelles adultes ; Massé et Côté : 24 femelles ; Courbin : 27 femelles',
+    variable: 'Ressources alimentaires, couvert et coûts de déplacement',
+    result:
+      'Les travaux distinguent habitat nourricier et besoin de déplacement : des ressources abondantes peuvent réduire le mouvement, et la sélection varie selon l’échelle et la rigueur de l’hiver. Aucun coefficient n’est transféré.',
+    domain:
+      'Classement comparatif des cellules d’après l’occupation du sol : couvert forestier d’autant mieux noté qu’un champ ou milieu ouvert est proche ; eau et bâti exclus ; cellule sans donnée = sans score. Ni probabilité de présence ni piste observée.',
+    transferLimits:
+      'Contexte insulaire, femelles, hiver : non transférable tel quel aux mâles en rut d’un boisé continental. Le guide québécois 2013 (clé et tableau 6 manquants) n’est pas utilisé.',
+    dataNeeded: ['occupation du sol (OpenStreetMap)'],
+    nature: 'quantitative',
+    coefficient: 'heuristique',
+    coefficientNote:
+      'Plancher de couvert 35/100, portée de 400 m, seuils de rang 60 et 75 : choix de conception, non publiés.',
+    implementedBy: ['HAB-COVER-FOOD-01'],
+  },
+  {
+    id: 'UNS-CORRIDOR-01',
+    title: 'Corridors potentiels (graphe de résistance)',
+    status: 'non_pris_en_charge',
+    category: 'D',
+    sources: [GUIDE_RAVAGES],
+    region: 'Québec',
+    population: 'Sans objet',
+    variable: 'Connectivité entre couverts',
+    result:
+      'Les sections du guide 2013 sur les corridors (p. 30) et la connectivité (p. 33) n’ont pas été récupérées, et le modèle d’hétérogénéité individuelle (R11) n’est qu’une notice : aucun paramètre de résistance documenté.',
+    domain:
+      'Non calculé. Un corridor animal ne se déduit ni d’une grille météo ni d’une grille d’habitat ; il se distingue de l’accès du chasseur et des traces enregistrées.',
+    transferLimits: 'Sans objet.',
+    dataNeeded: [],
+    nature: 'quantitative',
+    coefficient: 'aucun',
+    coefficientNote: 'Aucun coefficient.',
+    implementedBy: [],
+  },
+  {
     id: 'IDX-COMBINE-01',
     title: 'Indice de créneau : 65 % activité de référence + 35 % conditions de chasse',
     status: 'active',

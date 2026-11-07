@@ -28,6 +28,7 @@ function fakeMapInstance(
     setTrackPreview: vi.fn(),
     setTraces: vi.fn(),
     setClueLinks: vi.fn(),
+    setHuntOverlay: vi.fn(),
     setMeasurePath: vi.fn(),
     setMeasureShape: vi.fn(),
     setGuidanceLine: vi.fn(),

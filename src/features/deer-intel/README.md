@@ -3,7 +3,11 @@
 Module d'aide à la décision pour le cerf de Virginie. **Indice comparatif, pas un modèle biologique
 validé.** Il fonctionne sans journal, sans observations et sans caméra de chasse.
 
-## Contenu de cette étape (partie « QUAND »)
+## Contenu
+
+Partie **QUAND** (moteur astronomique + créneaux) et partie **OÙ** (secteurs, points candidats), puis page `/hunt`.
+
+### QUAND
 
 - `rules/registry.ts` : registre versionné (`RULE_REGISTRY_VERSION`) de **toutes** les règles :
   actives, informatives, expérimentale, non prises en charge, avec source, niveau de lecture réel,
@@ -21,6 +25,23 @@ validé.** Il fonctionne sans journal, sans observations et sans caméra de chas
   - `windows.ts` : indice (65 % activité + 35 % conditions), fenêtres à seuil **absolu**,
     robustesse (poids 0,5–0,8, seuil 50–60) → `stable`, `fragile`, `équivalent`, `unique`, `aucune`.
   - `solunar.ts` : hypothèse expérimentale opt-in (±6 points max), désactivée par défaut.
+
+### OÙ (`spatial/`)
+
+- `extent.ts` : étendue **ancrée** (point GPS + rayon 300–3000 m), indépendante du zoom et du déplacement de la carte.
+- `services/landcover/OverpassLandCoverProvider.ts` : géométries d'occupation du sol OpenStreetMap (Overpass `out geom`). Une erreur réseau est propagée, jamais comblée.
+- `grid.ts`, `habitat.ts` : grille (≤ 3600 cellules) ; règle `HAB-COVER-FOOD-01` = couvert forestier proche d'un milieu nourricier (heuristique D). Eau et bâti exclus ; cellule sans donnée = sans score ; couverture séparée du score.
+- `sectors.ts` : composantes connexes au-dessus du seuil **absolu** 60, contours tracés (anneaux), classement.
+- `candidates.ts` : ≤ 10 points, espacement ≥ 150 m, rangs absolus A ≥ 75, B ≥ 60, C ≥ 50, raisons et données manquantes ; création de repère par le flux existant (`startDraftAt`).
+- **Corridors : jamais calculés** (aucune méthode documentée ; guide 2013 p. 30 et 33 non récupérés). Distingués de l'accès du chasseur et des traces enregistrées.
+
+### Page `/hunt`, carte et hors ligne
+
+- Onglets QUAND / OÙ / COMMENT / Sources ; graphique horaire SVG calculé (échelle 0–100 fixe), comparaison des jours, « Pourquoi ce créneau ? », paramètres (avancés repliés, avec retour aux valeurs par défaut).
+- Entrées : « Où et quand chasser ici » dans l'analyse de la carte, hub « Plus », sidebar, route `/hunt?lat=&lng=`.
+- `state/huntStore.ts` : calcul annulable ; une réponse d'un ancien calcul est ignorée (jeton). Prévision et occupation du sol en parallèle ; si l'une échoue, l'autre est conservée et l'avis est affiché ; si tout échoue, la dernière analyse enregistrée du même endroit est relue.
+- Dexie **v8** (`huntAnalyses`, additive, sans `upgrade`) : point, étendue, période, versions du moteur et du registre, dates et sources des données, géométries. Cache recalculable : exclu de la sauvegarde d'archive, inclus dans l'effacement des données ; 30 analyses au plus (les plus anciennes seulement).
+- Carte : `MapInstance.setHuntOverlay` (secteurs à transparence réglable, points A/B/C, cercle de l'étendue). La grille de potentiel existante reste la vue technique ; elle n'est pas modifiée.
 
 ## Règles actives, informatives, expérimentales
 

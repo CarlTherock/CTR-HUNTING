@@ -8,6 +8,7 @@ import type {
   OfflineArea,
   Territory,
   SavedForecast,
+  SavedHuntAnalysis,
 } from '@/types'
 
 /**
@@ -56,6 +57,8 @@ export class FieldTerrainDatabase extends Dexie {
   bloodSessions!: EntityTable<BloodSession, 'id'>
   /** « Télécharger pour ma sortie »: forecasts saved for offline use (v7). */
   savedForecasts!: EntityTable<SavedForecast, 'id'>
+  /** Analyses « Où et quand chasser » enregistrées pour la consultation hors ligne (v8). */
+  huntAnalyses!: EntityTable<SavedHuntAnalysis, 'id'>
 
   constructor() {
     super('field-terrain-intelligence')
@@ -112,6 +115,12 @@ export class FieldTerrainDatabase extends Dexie {
     // `.upgrade()`. A re-downloadable cache, not user-authored data.
     this.version(7).stores({
       savedForecasts: 'id, fetchedAt',
+    })
+
+    // Analyses « Où et quand chasser » enregistrées. ADDITIVE: une nouvelle table, aucun
+    // store existant listé, rien de réécrit ni supprimé, donc pas de `.upgrade()`.
+    this.version(8).stores({
+      huntAnalyses: 'id, savedAt, extentKey',
     })
   }
 }

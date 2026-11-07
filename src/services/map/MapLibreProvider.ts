@@ -32,6 +32,7 @@ import type {
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
 import { ensureSoftTileProtocolRegistered } from '../weather-map/softTiles'
 import { createPathLayers } from './pathLayers'
+import { createHuntLayer } from './huntLayer'
 import { createRasterOverlays, createWeatherFrames } from './rasterLayers'
 import { createLongPressDetector } from './longPress'
 import { buildStyleUrl } from './styleUrls'
@@ -159,6 +160,7 @@ export class MapLibreProvider implements MapProvider {
     const analysisHeatmapLayer = createAnalysisHeatmapLayer(map, container)
     const markers = createMarkerController(map, { onWaypointClick, onDraftMove })
     const pathLayers = createPathLayers(map)
+    const huntLayer = createHuntLayer(map)
     const rasterOverlays = createRasterOverlays(map, onRasterOverlayStatus)
     const weatherFrames = createWeatherFrames(map)
 
@@ -194,6 +196,7 @@ export class MapLibreProvider implements MapProvider {
       // setStyle() discards custom sources/layers — re-add all of them
       // every time, seeded with the last known state.
       pathLayers.addToStyle()
+      huntLayer.addToStyle()
       applyTerrain(map, terrainExaggeration)
       rasterOverlays.applyAll()
       weatherFrames.resetForNewStyle()
@@ -312,6 +315,9 @@ export class MapLibreProvider implements MapProvider {
       },
       setTraces(traces: readonly MapTrace[]) {
         pathLayers.setTraces(traces)
+      },
+      setHuntOverlay(overlay, opacity) {
+        huntLayer.setOverlay(overlay, opacity)
       },
       setClueLinks(links: readonly (readonly Coordinate[])[] | null) {
         pathLayers.setClueLinks(links)

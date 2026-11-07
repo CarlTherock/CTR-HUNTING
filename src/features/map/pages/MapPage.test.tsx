@@ -44,6 +44,7 @@ const setSharedPoint = vi.fn()
 const setTrackPreview = vi.fn()
 const setTraces = vi.fn()
 const setClueLinks = vi.fn()
+const setHuntOverlay = vi.fn()
 const setMeasurePath = vi.fn()
 const setMeasureShape = vi.fn()
 const setGuidanceLine = vi.fn()
@@ -73,6 +74,7 @@ const createMap = vi.fn((options: CreateMapOptions) => {
     setTrackPreview,
     setTraces,
     setClueLinks,
+    setHuntOverlay,
     setMeasurePath,
     setMeasureShape,
     setGuidanceLine,

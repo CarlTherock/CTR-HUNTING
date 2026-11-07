@@ -3,6 +3,14 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Intelligence chevreuil — « Où et quand chasser » : secteurs, points candidats, tableau de bord (2026-11-06)
+
+- Nouvelle page `/hunt` (onglets QUAND / OÙ / COMMENT / Sources) : créneaux du jour expliqués, graphique horaire calculé, comparaison des jours (même échelle), soleil et lune, contexte du rut sans date locale inventée, paramètres avec réglages avancés et retour aux valeurs par défaut, règles et limites visibles.
+- Secteurs d'habitat (contours, transparence réglable) et points candidats A/B/C sur une étendue ancrée (point GPS + rayon), d'après l'occupation du sol OpenStreetMap. Heuristique non calibrée ; corridors non calculés (méthode non documentée).
+- Fonctionne sans journal ni observations. Création d'un repère depuis un point candidat par le flux existant.
+- Hors ligne : analyses enregistrées sur l'appareil (Dexie v8, additive) et relues sans réseau ; une réponse périmée est ignorée.
+- Entrées : analyse de la carte (« Où et quand chasser ici »), hub « Plus », barre latérale.
+
 ## Intelligence chevreuil — socle « quand » (2026-11-06)
 
 - Nouveau module `features/deer-intel` : registre versionné (1.1.0) des règles (actives, informatives, expérimentale, non prises en charge) mis à jour d'après le dossier de références V2 : niveau d'accès et passages cités par source, provenance « synthèse documentaire fournie », aucune lecture intégrale revendiquée; aucun coefficient publié transcrit. Pression et habitat hivernal restent informatif / non pris en charge (chapitre 2 de Goethlich et clé du guide 2013 non récupérés). Conseils de Louis Gagnon distincts de la base scientifique.
