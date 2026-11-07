@@ -21,6 +21,35 @@ export function HuntMapPanel() {
   const select = useHuntStore((s) => s.selectCandidate)
   const startDraftAt = useWaypointsStore((s) => s.startDraftAt)
   const [legendOpen, setLegendOpen] = useState(false)
+  const landNote = useHuntStore(
+    (s) =>
+      s.result?.notes.find((n) => n.startsWith('Occupation du sol indisponible')) ?? null,
+  )
+  const hasResult = useHuntStore((s) => s.result !== null)
+  const retry = useHuntStore((s) => s.run)
+  if (hasResult && !spatial && visible && landNote)
+    return (
+      <div
+        role="status"
+        data-testid="hunt-map-missing"
+        className="border-surface-600 bg-surface-900/95 text-ink-200 absolute bottom-20 left-3 z-10 max-w-[80vw] rounded-lg border p-3 text-xs shadow-lg"
+      >
+        <p className="text-ink-100 text-sm font-semibold">
+          Où chasser : aucun secteur à afficher
+        </p>
+        <p className="mt-1">{landNote}</p>
+        <p className="text-ink-400 mt-1">
+          Rien n’est dessiné à la place des données absentes.
+        </p>
+        <button
+          type="button"
+          onClick={() => void retry()}
+          className="bg-brand-500 text-surface-950 mt-2 min-h-11 w-full rounded-md px-3 text-sm font-semibold"
+        >
+          Réessayer
+        </button>
+      </div>
+    )
   if (!spatial || !visible) return null
   const cand = spatial.candidates.find((c) => c.id === selectedId) ?? null
   const corridors = spatial.corridors.computed ? spatial.corridors.corridors.length : 0

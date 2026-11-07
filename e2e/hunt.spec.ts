@@ -225,4 +225,75 @@ test.describe('Où et quand chasser (simulé)', () => {
     await page.getByText('Pourquoi ce créneau ? Détails et calendrier').click()
     await expect(page.getByText(/Contexte saisonnier \(rut\)/)).toBeVisible()
   })
+
+  test('occupation du sol en échec (504) : la cause réelle et le contrôle des services sont visibles', async ({
+    page,
+    backend,
+  }) => {
+    void backend
+    await installProviders(page)
+    await page.unroute('https://overpass-api.de/**')
+    await page.route('https://overpass-api.de/**', (r) =>
+      r.fulfill({
+        status: 504,
+        headers: { 'access-control-allow-origin': '*' },
+        body: '',
+      }),
+    )
+    await page.goto('hunt?lat=46.8&lng=-71.2')
+    await expect(page.getByText(/overpass-api.de a répondu HTTP 504/)).toBeVisible()
+    await page.getByRole('button', { name: 'Vérifier les services' }).click()
+    const check = page.getByTestId('service-check').first()
+    await expect(check).toContainText(/Non joignable — Overpass.*HTTP 504/)
+    await expect(check).toContainText(/Joignable — Open-Meteo/)
+    await shot(page, '8-echec-occupation-du-sol')
+  })
+
+  test('forêt OSM dont le contour est coupé en plusieurs chemins : secteurs et points affichés', async ({
+    page,
+    backend,
+  }) => {
+    void backend
+    await installProviders(page)
+    await page.unroute('https://overpass-api.de/**')
+    await page.route('https://overpass-api.de/**', async (route) => {
+      const data = decodeURIComponent(route.request().postData() ?? '')
+      const m = /\((-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)\)/.exec(data)
+      const [south, west, north, east] = m ? m.slice(1, 5).map(Number) : [0, 0, 1, 1]
+      const w = east - west
+      const p = (x: number, y: number) => ({
+        lat: south + (north - south) * y,
+        lon: west + w * x,
+      })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({
+          elements: [
+            {
+              type: 'relation',
+              id: 7,
+              tags: { landuse: 'forest' },
+              members: [
+                { type: 'way', role: 'outer', geometry: [p(0, 0), p(0.4, 0), p(0.4, 1)] },
+                { type: 'way', role: 'outer', geometry: [p(0, 1), p(0.4, 1)] },
+                { type: 'way', role: 'outer', geometry: [p(0, 1), p(0, 0)] },
+              ],
+            },
+            {
+              type: 'way',
+              id: 8,
+              tags: { landuse: 'farmland' },
+              geometry: [p(0.4, 0), p(1, 0), p(1, 1), p(0.4, 1), p(0.4, 0)],
+            },
+          ],
+        }),
+      })
+    })
+    await page.goto('hunt?lat=46.8&lng=-71.2')
+    await expect(page.getByText(/Point P\d/).first()).toBeVisible()
+    await expect(page.getByText(/[12] secteur\(s\)/).first()).toBeVisible()
+    await expect(page.getByText(/Occupation du sol indisponible/)).toHaveCount(0)
+  })
 })

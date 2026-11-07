@@ -7,11 +7,12 @@ import type {
 } from '@/features/deer-intel/spatial/types'
 import { extentBounds } from '@/features/deer-intel/spatial/extent'
 
-/** Instances publiques, essayées dans l'ordre : le service principal puis un miroir. */
-export const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-] as const
+/**
+ * Service utilisé (le seul autorisé par la politique de sécurité et le registre de
+ * confidentialité). Ajouter un miroir enverrait les coordonnées à un tiers de plus : décision
+ * à valider avant tout ajout.
+ */
+export const ENDPOINTS = ['https://overpass-api.de/api/interpreter'] as const
 
 export interface LandCoverProvider {
   fetchLandCover(extent: AnalysisExtent, signal?: AbortSignal): Promise<LandCoverData>
