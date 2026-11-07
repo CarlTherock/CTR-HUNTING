@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import type { DayAnalysis, HourSlot } from '../engine'
+import { chartDomain } from './hourlyChartDomain'
 
 const W = 720
 const H = 276
@@ -9,17 +10,6 @@ const TOP = 20
 const BOTTOM = 38
 const PW = W - LEFT - RIGHT
 const PH = H - TOP - BOTTOM
-
-export function chartDomain(slots: readonly HourSlot[]): { start: number; end: number } | null {
-  if (!slots.length) return null
-  const starts = slots.map((s) => Date.parse(s.startIso))
-  const ends = slots.map((s) => Date.parse(s.endIso))
-  if (starts.some((v) => !Number.isFinite(v)) || ends.some((v) => !Number.isFinite(v))) return null
-  if (starts.some((v, i) => ends[i] <= v)) return null
-  const start = Math.min(...starts)
-  const end = Math.max(...ends)
-  return end > start ? { start, end } : null
-}
 
 /** Courbes calculées, axe temporel réel, valeurs manquantes non reliées. */
 export function HourlyChart({ day, timeZone }: { day: DayAnalysis; timeZone: string }) {

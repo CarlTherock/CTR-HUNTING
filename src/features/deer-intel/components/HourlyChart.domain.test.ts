@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chartDomain } from './HourlyChart'
+import { chartDomain } from './hourlyChartDomain'
 import type { HourSlot } from '../engine'
 
 const slot = (startIso: string, endIso: string) => ({ startIso, endIso }) as HourSlot
