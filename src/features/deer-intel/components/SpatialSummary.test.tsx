@@ -16,9 +16,18 @@ function show(value: SpatialAnalysis | null) {
 describe('synthèse spatiale du dashboard', () => {
   it('service indisponible : pas de faux pourcentage et bouton carte désactivé', () => {
     show(null)
-    expect(screen.getByText(/Occupation du sol indisponible/)).toBeTruthy()
+    expect(screen.getByText(/Aucune donnée d’occupation du sol exploitable/)).toBeTruthy()
     expect(screen.queryByRole('progressbar')).toBeNull()
     expect(screen.getByRole('button', { name: 'Voir sur la carte' }).hasAttribute('disabled')).toBe(true)
+  })
+  it('le message du fournisseur reste unique lorsque la carte est vide', () => {
+    render(<MemoryRouter>
+      <p>Occupation du sol indisponible : aucun secteur ni point candidat. Cause : HTTP 502.</p>
+      <SpatialSummary spatial={null} />
+    </MemoryRouter>)
+    expect(screen.getAllByText(/Occupation du sol indisponible/)).toHaveLength(1)
+    expect(screen.getByText(/Aucune donnée d’occupation du sol exploitable/)).toBeTruthy()
+    expect(screen.getByText('Contrôle des services')).toBeTruthy()
   })
   it('couverture nulle : absence de donnée, pas habitat défavorable', () => {
     show(spatial(0))

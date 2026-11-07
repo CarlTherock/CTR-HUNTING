@@ -42,7 +42,7 @@ export function SpatialSummary({ spatial }: { spatial: SpatialAnalysis | null })
         </>
       ) : (
         <>
-          <p className="text-ink-300 mt-2 text-sm">Occupation du sol indisponible : aucun secteur ni point (cause dans les messages ci-dessus). Rien n’est inventé.</p>
+          <p className="text-ink-300 mt-2 text-sm">Aucune donnée d’occupation du sol exploitable pour afficher des secteurs ou des points. Consultez les messages ci-dessus pour la cause. Rien n’est inventé.</p>
           <ServiceCheck />
         </>
       )}
