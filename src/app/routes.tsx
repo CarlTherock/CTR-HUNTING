@@ -45,6 +45,12 @@ export const router = createBrowserRouter(
             Component: (await import('@/features/deer-intel/pages/HuntPage')).default,
           }),
         },
+        {
+          path: 'rut',
+          lazy: async () => ({
+            Component: (await import('@/features/rut/pages/RutPage')).default,
+          }),
+        },
         { path: 'settings', element: <SettingsPage /> },
         {
           path: 'deertracker',

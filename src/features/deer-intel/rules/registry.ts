@@ -1,7 +1,7 @@
 import type { RuleEntry, RuleSource } from './types'
 
 /** À incrémenter à chaque changement de règle, de source ou de coefficient. */
-export const RULE_REGISTRY_VERSION = '1.2.0'
+export const RULE_REGISTRY_VERSION = '1.3.0'
 
 const V = '2026-11-06'
 const PROV = 'synthese_documentaire_fournie' as const
@@ -29,7 +29,38 @@ const HUNSAKER: RuleSource = {
   url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12240682/',
   verification: 'lecture_substantielle',
   locator:
-    'Résumé ; méthodes 2.1–2.4.4 ; résultats 3.1–3.4 ; début de discussion 4 (R01). Suppléments S1–S7 non récupérés',
+    'Résumé ; méthodes 2.1–2.4.4 ; résultats 3.1–3.4 ; début de discussion 4 (R01). Suppléments S1–S7 non récupérés. Note 1.3.0 : ces sections n’ont pas pu être relues le 2026-11-07 (seul le résumé l’a été) ; voir HUNSAKER_RESUME pour INF-RUT-01.',
+  provenance: PROV,
+  verifiedOn: V,
+}
+const QUEBEC_ESPECE: RuleSource = {
+  citation:
+    'Gouvernement du Québec. Cerf de Virginie (fiche espèce, Québec.ca). Date affichée à la consultation : « Dernière mise à jour : 3 novembre 2026 » ; consultée le 2026-11-07. Un autre assistant avait rapporté « 10 mars 2026 » : écart non expliqué.',
+  kind: 'gouvernement',
+  url: 'https://www.quebec.ca/tourisme-et-loisirs/chasse/especes/cerf-de-virginie',
+  verification: 'lecture_substantielle',
+  locator: 'Passages sur la reproduction, la gestation et les naissances de la fiche.',
+  provenance: PROV,
+  verifiedOn: '2026-11-07',
+}
+const CEAEQ: RuleSource = {
+  citation:
+    'CEAEQ (2006). Document sur le cerf de Virginie au Québec ; citations de seconde main (Hesselton et Hesselton 1982 ; Goudreault 1980).',
+  kind: 'gouvernement',
+  verification: 'lecture_substantielle',
+  locator: 'Passages cités de seconde main ; travaux d’origine non lus.',
+  provenance: PROV,
+  verifiedOn: '2026-11-07',
+}
+const HUNSAKER_RESUME: RuleSource = {
+  citation:
+    '[Résumé seulement] Hunsaker, Gilbertson, Storm et Turner (2025). The breeding season and movement ecology of male white-tailed deer in southwest Wisconsin. Ecology and Evolution 15(7): e71589.',
+  kind: 'article',
+  doi: '10.1002/ece3.71589',
+  url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12240682/',
+  verification: 'partiel',
+  locator:
+    'Résumé seulement (relu le 2026-11-07 via la notice USGS). Les sections méthodes/résultats citées dans les versions 1.0–1.2 n’ont pas pu être revérifiées : toute valeur au-delà du résumé est à considérer non vérifiée.',
   provenance: PROV,
   verifiedOn: V,
 }
@@ -428,24 +459,26 @@ export const RULE_REGISTRY: readonly RuleEntry[] = [
   },
   {
     id: 'INF-RUT-01',
-    title: 'Contexte saisonnier : période de reproduction (tendance publiée)',
+    title: 'Repères saisonniers du rut — contexte québécois (deux bandes séparées)',
     status: 'informatif',
     category: 'B',
-    sources: [HUNSAKER, WEBB, MSU],
-    region: 'Sud-ouest du Wisconsin ; sud de l’Oklahoma ; Mississippi central',
+    sources: [QUEBEC_ESPECE, CEAEQ, HUNSAKER_RESUME, WEBB],
+    region: 'Québec (texte officiel, par mois) ; sud-ouest du Wisconsin (étude externe)',
     population:
-      'Mâles (Hunsaker : 188 mâles, mi-octobre au 1er décembre 2017–2020, suivis répétés possibles)',
-    variable: 'Date du pic de reproduction et déplacements des mâles',
+      'Québec : cerf de Virginie en général, sans distinction régionale. Wisconsin : 188 mâles munis de colliers GPS, 2017–2020.',
+    variable:
+      'Période de reproduction (mois) et déplacements maximaux des mâles (étude externe)',
     result:
-      'Wisconsin : période intense vers le 23 octobre–12 novembre (début et fin varient selon la métrique), mouvements moyens maximaux la semaine du 5–11 novembre ; les mâles de 2,5 ans se déplacent davantage ; les plus âgés montrent une transition plus nocturne au pic. Oklahoma : mouvement moyen des mâles environ 20 % plus élevé au rut qu’après, mais le test donne P = 0,07 (non significatif au seuil de 0,05). Mississippi : le rut pèse bien plus que la lune.',
+      'Québec.ca : reproduction principalement en novembre et en décembre ; gestation moyenne d’environ 200 jours ; naissances de la fin mai au début juillet. Wisconsin (résumé seulement) : pic des déplacements de mâles du 23 octobre au 12 novembre. Oklahoma (Webb) : mouvement moyen des mâles environ 20 % plus élevé au rut, mais P = 0,07, non significatif au seuil de 0,05. Les deux repères principaux sont affichés en deux bandes séparées, jamais fusionnés ; aucune bande de conception calculée, aucun pic quotidien, aucune courbe.',
     domain:
-      'Texte de contexte avec la région de l’étude, jamais une prédiction locale ni un facteur du score. Aucune date locale précise n’est inventée.',
+      'Contexte affiché avec la mention « Estimation régionale documentée — non calibrée pour votre territoire ». Le GPS personnalise la météo et les heures solaires, pas ce calendrier ; latitude, durée du jour, température et lune ne le déplacent pas.',
     transferLimits:
-      'Ne pas transférer le calendrier au Québec par simple correction de latitude ; non vérifié pour le Québec.',
+      'Le repère du Wisconsin est tiré des déplacements de mâles, pas de dates de conception, et n’a pas été calibré pour le Québec. La fiche Québec.ca donne des mois, pas des dates.',
     dataNeeded: ['date'],
     nature: 'qualitative',
     coefficient: 'aucun',
-    coefficientNote: 'Aucun coefficient.',
+    coefficientNote:
+      'Aucun coefficient : le calendrier ne modifie ni le créneau ni les indices.',
     implementedBy: [],
   },
   {

@@ -85,3 +85,12 @@ tableau 6, 3.6.2, 3.6.5) pour habitat hivernal et corridors.
 - **Robustesse numérique** : fuseaux, heure d'été (23/25 h), minuit, événements lunaires absents, 359°/1°.
 - **Validation scientifique** : aucune ; les tests du code ne prouvent pas la précision biologique.
 - **Validation locale (Québec)** : absente. Pas de taux de réussite ni de probabilité de rencontre.
+
+## Pondérations du moteur : heuristiques, pas un modèle biologique validé
+
+- Le mélange **65 % / 35 %** entre l’activité de référence et les conditions, la **forme des pics crépusculaires**, les hauteurs de pics et les seuils de classement sont des **choix de conception** (voir `ACT-CREPUSCULAR-01`, `ACT-BASELINE-01`). Aucune étude citée ne les fournit.
+- Les indices sont **comparatifs** (un créneau par rapport à un autre pour le même lieu et le même jour), jamais une probabilité de voir un cerf.
+- Pression, température et lune ne modifient pas l’indice.
+- Le calendrier du rut (`INF-RUT-01`, page `/rut`) est **informatif** : deux bandes de contexte séparées (Québec.ca : novembre–décembre ; Wisconsin, étude externe : 23 octobre–12 novembre), sans pic, sans courbe et sans multiplicateur sur le créneau.
+- Le résumé des observations (`features/rut/observationsSummary.ts`) est descriptif : il ne déclenche aucune tendance et ne conclut pas à une hausse ou baisse d’activité.
+- Registre 1.3.0 : la source Hunsaker utilisée par `INF-RUT-01` est marquée « résumé seulement » ; les sections méthodes/résultats citées par les versions antérieures n’ont pas pu être relues.

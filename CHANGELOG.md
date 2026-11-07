@@ -3,6 +3,13 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Non publié — Repères saisonniers du rut
+
+- Nouvelle page `/rut` : « Repères saisonniers du rut — contexte québécois ». Deux bandes séparées (Québec ; Wisconsin, étude externe non calibrée), position de la date avant/dans/après, aucune bande de conception, aucun pic ni courbe, le GPS ne déplace pas le calendrier.
+- Résumé descriptif des observations dès la première entrée (directes / indices au sol / caméras, jours couverts, effort via sorties enregistrées, séquences regroupées), sans tendance.
+- Gabarit de rapport unique (HTML/SVG) pour l'aperçu et l'impression/PDF.
+- Registre 1.3.0 : INF-RUT-01 réécrit, sources Québec.ca (date affichée 3 novembre 2026, consultée le 2026-11-07) et CEAEQ ajoutées, Hunsaker marqué « résumé seulement » pour cette règle. Moteur de créneaux inchangé.
+
 ## [Non publié] — Parcours « Où et quand chasser » refait
 
 - Entrée directe sur la carte (bouton « Où et quand chasser ») : toucher un point → analyse automatique → dashboard. Le point touché est conservé tel quel (jamais remplacé par la position GPS ni le centre de la carte) ; une seule analyse par point. Accès aussi depuis l'accueil.
