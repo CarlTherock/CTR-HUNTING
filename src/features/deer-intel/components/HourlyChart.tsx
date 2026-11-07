@@ -67,7 +67,7 @@ export function HourlyChart({ day, timeZone }: { day: DayAnalysis; timeZone: str
         <h2 id={`${id}-title`} className="text-ink-100 text-base font-semibold">Votre journée, heure par heure</h2>
         <span className="text-ink-500 text-xs">Indices comparatifs · 0–100</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Indices horaires du ${day.dateKey}, heures du lieu ${timeZone}. Les créneaux sont surlignés.`} className="bg-surface-950 block w-full touch-pan-y rounded-xl" onPointerDown={(e) => {
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Indice horaire du ${day.dateKey}, heures du lieu ${timeZone}. Les créneaux sont surlignés.`} className="bg-surface-950 block w-full touch-pan-y rounded-xl" onPointerDown={(e) => {
         const r = e.currentTarget.getBoundingClientRect()
         const px = ((e.clientX - r.left) / r.width) * W
         const at = domain.start + Math.max(0, Math.min(1, (px - LEFT) / PW)) * (domain.end - domain.start)
