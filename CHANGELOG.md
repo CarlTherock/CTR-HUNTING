@@ -3,6 +3,14 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Intelligence chevreuil — socle « quand » (2026-11-06)
+
+- Nouveau module `features/deer-intel` : registre versionné (1.1.0) des règles (actives, informatives, expérimentale, non prises en charge) mis à jour d'après le dossier de références V2 : niveau d'accès et passages cités par source, provenance « synthèse documentaire fournie », aucune lecture intégrale revendiquée; aucun coefficient publié transcrit. Pression et habitat hivernal restent informatif / non pris en charge (chapitre 2 de Goethlich et clé du guide 2013 non récupérés). Conseils de Louis Gagnon distincts de la base scientifique.
+- Moteur « quand » (pur, hors ligne) : soleil et lune du jour local (passages haut/bas de la lune, événements absents gérés), activité de référence crépusculaire ancrée sur le lever/coucher, conditions de chasse (vent × poste, rafales, pluie), fenêtres à seuil absolu, robustesse du classement (stable / fragile / équivalent), hypothèse solunaire expérimentale désactivée par défaut.
+- La météo reste facultative; sans prévision, l'indice se limite à l'activité de référence et le dit. Aucune dépendance au journal ni aux observations.
+- Prévision point : neige au sol et chute de neige demandées en plus (champs optionnels; anciennes copies enregistrées inchangées).
+- Pas encore d'interface : elle arrive avec le tableau de bord « Où et quand chasser » (PR suivante).
+
 ## Zone d'odeur mobile et lecture radar plus lente (2026-11-05)
 
 - **Boussole du vent** : la zone rouge est centrée sur le bout de la flèche et couvre 3 points cardinaux (vent vers le N → NO–N–NE; vers l'E → NE–E–SE…). Elle suit le vent réel; la flèche garde sa couleur. Les notes du panneau nomment le secteur.

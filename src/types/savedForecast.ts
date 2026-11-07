@@ -50,6 +50,10 @@ export interface PointHourly {
   /** Meteorological convention: where the wind comes FROM (0 = north). */
   windDirectionDegrees: number | null
   isDay: boolean | null
+  /** Profondeur de neige au sol prévue (m). Absent des copies enregistrées avant l'ajout. */
+  snowDepthMeters?: number | null
+  /** Chute de neige horaire prévue (cm). Idem. */
+  snowfallCm?: number | null
 }
 
 export interface PointDaily {

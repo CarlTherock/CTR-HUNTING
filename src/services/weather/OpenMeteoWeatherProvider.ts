@@ -54,6 +54,8 @@ export const POINT_HOURLY_PARAMS = [
   'wind_gusts_10m',
   'wind_direction_10m',
   'is_day',
+  'snowfall',
+  'snow_depth',
 ] as const
 
 /** Daily variables of the same request (min/max, sun, precipitation total). */
@@ -116,6 +118,8 @@ export function mapPointResponse(data: OpenMeteoPointResponse): PointForecast {
       windGustsKmh: numberOrNull(h.wind_gusts_10m, i),
       windDirectionDegrees: numberOrNull(h.wind_direction_10m, i),
       isDay: day === null ? null : day === 1,
+      snowDepthMeters: numberOrNull(h.snow_depth, i),
+      snowfallCm: numberOrNull(h.snowfall, i),
     }
   })
   const daily: PointDaily[] = (d.time ?? []).map((date, i) => ({
