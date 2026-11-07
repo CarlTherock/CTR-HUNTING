@@ -1,29 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Badge, Button, Card, PageHeader } from '@/components/ui'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Button, Card } from '@/components/ui'
 import { useWaypointsStore } from '@/features/waypoints/state/waypointsStore'
 import { useOnlineStatus } from '@/offline/useOnlineStatus'
-import { cn } from '@/utils/cn'
-import { HowTab } from '../components/HowTab'
+import { Dashboard } from '../components/Dashboard'
 import { ParamsPanel } from '../components/ParamsPanel'
-import { SourcesPanel } from '../components/SourcesPanel'
-import { WhenTab } from '../components/WhenTab'
-import { WhereTab } from '../components/WhereTab'
 import { useHuntStore } from '../state/huntStore'
 
-type Tab = 'quand' | 'ou' | 'comment' | 'sources'
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'quand', label: 'QUAND' },
-  { id: 'ou', label: 'OÙ' },
-  { id: 'comment', label: 'COMMENT' },
-  { id: 'sources', label: 'Sources' },
-]
-
-/** « Où et quand chasser » : analyse d'un point GPS, créneaux expliqués, secteurs et points candidats. */
+/**
+ * « Où et quand chasser » : le point touché sur la carte lance directement l'analyse et ouvre
+ * le dashboard. Les paramètres (lieu, date, emprise) restent derrière un bouton discret.
+ */
 export default function HuntPage() {
   const [params] = useSearchParams()
-  const [tab, setTab] = useState<Tab>('quand')
-  const [paramsOpen, setParamsOpen] = useState(true)
+  const navigate = useNavigate()
+  const [paramsOpen, setParamsOpen] = useState(false)
   const status = useHuntStore((s) => s.status)
   const result = useHuntStore((s) => s.result)
   const error = useHuntStore((s) => s.error)
@@ -32,7 +23,8 @@ export default function HuntPage() {
   const cancel = useHuntStore((s) => s.cancel)
   const loadSaved = useHuntStore((s) => s.loadSaved)
   const refreshSaved = useHuntStore((s) => s.refreshSaved)
-  const setInputs = useHuntStore((s) => s.setInputs)
+  const startFor = useHuntStore((s) => s.startFor)
+  const startPicking = useHuntStore((s) => s.startPicking)
   const wpLoaded = useWaypointsStore((s) => s.loaded)
   const wpLoad = useWaypointsStore((s) => s.load)
   const online = useOnlineStatus()
@@ -42,7 +34,8 @@ export default function HuntPage() {
     void refreshSaved()
   }, [wpLoaded, wpLoad, refreshSaved])
 
-  // Point reçu de la carte (« Où et quand chasser ici ») : appliqué une seule fois.
+  // Point reçu de la carte : une analyse initiale, sans formulaire. Le point est celui qui a été
+  // touché (jamais remplacé par la position GPS ni le centre de la carte) ; un re-rendu ne relance rien.
   const lat = params.get('lat')
   const lng = params.get('lng')
   useEffect(() => {
@@ -55,19 +48,13 @@ export default function HuntPage() {
       Math.abs(la) <= 90 &&
       Math.abs(ln) <= 180
     )
-      setInputs({ coordinate: { lat: la, lng: ln } })
-  }, [lat, lng, setInputs])
+      startFor({ lat: la, lng: ln })
+  }, [lat, lng, startFor])
 
   const busy = status === 'loading'
-  const record = result?.record
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
-      <PageHeader
-        title="Où et quand chasser"
-        description="Créneaux, secteurs et points candidats pour un point GPS. Indice comparatif, pas une prédiction validée."
-      />
-
+    <div className="flex flex-col gap-3 pb-6">
       {!online && (
         <p role="status" className="text-status-warning text-sm">
           Hors ligne : l’astronomie se calcule ici ; la météo et l’occupation du sol
@@ -75,35 +62,34 @@ export default function HuntPage() {
         </p>
       )}
 
-      <Card className="p-3">
-        <button
-          type="button"
-          className="text-ink-100 flex min-h-11 w-full items-center justify-between text-sm font-semibold"
-          aria-expanded={paramsOpen}
-          onClick={() => setParamsOpen((o) => !o)}
-        >
-          Paramètres
-          <span className="text-ink-500 text-xs">
-            {paramsOpen ? 'Masquer' : 'Afficher'}
-          </span>
-        </button>
-        {paramsOpen && (
-          <div className="mt-2">
-            <ParamsPanel
-              onRun={() => {
-                void run()
-                setParamsOpen(false)
-              }}
-              busy={busy}
-            />
+      {paramsOpen && (
+        <Card className="p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-ink-100 text-sm font-semibold">Paramètres</h2>
+            <Button type="button" variant="ghost" onClick={() => setParamsOpen(false)}>
+              Fermer
+            </Button>
           </div>
-        )}
-        {busy && (
+          <ParamsPanel
+            onRun={() => {
+              void run()
+              setParamsOpen(false)
+            }}
+            busy={busy}
+          />
+        </Card>
+      )}
+
+      {busy && (
+        <Card className="p-3" role="status">
+          <p className="text-ink-100 text-sm font-semibold">
+            Analyse en cours : soleil, météo et occupation du sol…
+          </p>
           <Button type="button" variant="ghost" className="mt-2" onClick={cancel}>
             Annuler le calcul
           </Button>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {status === 'error' && error && (
         <p role="alert" className="text-status-danger text-sm">
@@ -111,65 +97,36 @@ export default function HuntPage() {
         </p>
       )}
 
-      {record && result && (
-        <>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge>
-              {result.origin === 'live'
-                ? 'Calculée maintenant'
-                : 'Enregistrée sur l’appareil'}
-            </Badge>
-            <span className="text-ink-500">{record.label}</span>
-          </div>
-          {result.notes.map((n) => (
-            <p key={n} className="text-status-warning text-sm">
-              {n}
-            </p>
-          ))}
-
-          <div
-            role="tablist"
-            aria-label="Sections"
-            className="flex gap-1.5 overflow-x-auto"
-          >
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                role="tab"
-                type="button"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'min-h-11 shrink-0 rounded-md border px-4 text-sm font-semibold',
-                  tab === t.id
-                    ? 'border-brand-500 bg-brand-500/15 text-brand-300'
-                    : 'border-surface-700 text-ink-300',
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div role="tabpanel">
-            {tab === 'quand' && <WhenTab hunt={record.hunt} />}
-            {tab === 'ou' && <WhereTab spatial={record.spatial} />}
-            {tab === 'comment' && <HowTab hunt={record.hunt} spatial={record.spatial} />}
-            {tab === 'sources' && <SourcesPanel record={record} />}
-          </div>
-        </>
+      {result && (
+        <Dashboard result={result} onOpenParams={() => setParamsOpen((o) => !o)} />
       )}
 
-      {!record && status !== 'loading' && (
-        <Card className="p-3 text-sm">
-          <p className="text-ink-100 font-semibold">
-            Choisissez un point GPS, puis « Analyser ».
-          </p>
+      {!result && !busy && (
+        <Card className="p-4 text-sm">
+          <p className="text-ink-100 text-base font-semibold">Où et quand chasser</p>
           <p className="text-ink-300 mt-1">
-            Sans journal ni observation, l’analyse donne les créneaux du jour d’après le
-            soleil et la météo, puis les secteurs d’habitat autour du point. Ce qui manque
-            est dit, jamais inventé.
+            Choisissez un point sur la carte : le meilleur créneau, le graphique de la
+            journée et les secteurs d’habitat s’affichent directement. Sans journal ni
+            observation ; ce qui manque est dit, jamais inventé.
           </p>
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            onClick={() => {
+              startPicking()
+              navigate('/map')
+            }}
+          >
+            Choisir un point sur la carte
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-1 w-full"
+            onClick={() => setParamsOpen(true)}
+          >
+            Saisir des coordonnées
+          </Button>
         </Card>
       )}
 

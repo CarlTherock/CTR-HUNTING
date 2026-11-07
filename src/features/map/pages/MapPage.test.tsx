@@ -1408,12 +1408,12 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await useTool(user, 'Analyser cet endroit')
+    await useTool(user, 'Détails avancés — analyse générale')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
-    await screen.findByRole('heading', { name: 'Analyse de l’endroit' })
+    await screen.findByRole('heading', { name: 'Détails avancés — analyse générale' })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(1))
 
-    await useTool(user, 'Analyser cet endroit')
+    await useTool(user, 'Détails avancés — analyse générale')
     lastCreateMapOptions?.onMapClick?.({ lat: 46.82, lng: -71.21 })
     await vi.waitFor(() => expect(fetchForecast).toHaveBeenCalledTimes(2))
     await vi.waitFor(() => {
@@ -1437,7 +1437,7 @@ describe('MapPage', () => {
     queryElevation.mockReturnValue(300)
     render(<MapPage />)
 
-    await useTool(user, 'Analyser cet endroit')
+    await useTool(user, 'Détails avancés — analyse générale')
     expect(
       screen.getByText('Touchez la carte pour analyser cet endroit'),
     ).toBeInTheDocument()
@@ -1445,7 +1445,7 @@ describe('MapPage', () => {
     lastCreateMapOptions?.onMapClick?.({ lat: 46.8139, lng: -71.208 })
 
     expect(
-      await screen.findByRole('heading', { name: 'Analyse de l’endroit' }),
+      await screen.findByRole('heading', { name: 'Détails avancés — analyse générale' }),
     ).toBeInTheDocument()
     await vi.waitFor(() => {
       expect(fetchForecast).toHaveBeenCalledWith({ lat: 46.8139, lng: -71.208 })
@@ -1578,7 +1578,7 @@ describe('MapPage', () => {
       screen.queryByRole('button', { name: 'Carte de potentiel' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Analyser cet endroit' }),
+      screen.queryByRole('button', { name: 'Détails avancés — analyse générale' }),
     ).not.toBeInTheDocument()
     // Real CompassDisplay is now shown instead — jsdom has no orientation
     // API, so it honestly reports unavailable rather than a fake heading.

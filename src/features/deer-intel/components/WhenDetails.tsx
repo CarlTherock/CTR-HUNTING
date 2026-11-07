@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Card } from '@/components/ui'
 import type { DayAnalysis, HuntAnalysis, HuntWindow } from '../engine'
 import { getRule } from '../rules/registry'
 import { DayComparison } from './DayComparison'
-import { HourlyChart } from './HourlyChart'
 import { PressurePanel } from './PressurePanel'
 import { TemperaturePanel } from './TemperaturePanel'
 import { ROBUSTNESS_TEXT, dayLabel, windowLabel } from './format'
@@ -19,7 +17,7 @@ function WhyCard({ day, window: w }: { day: DayAnalysis; window: HuntWindow }) {
   const conditions = mean(slots.map((s) => s.conditions))
   const factorIds = [...new Set(slots.flatMap((s) => s.factors.map((f) => f.id)))]
   return (
-    <details className="border-surface-700 bg-surface-900 rounded-md border p-3" open>
+    <details className="border-surface-700 bg-surface-900 rounded-md border p-3">
       <summary className="text-ink-100 min-h-11 cursor-pointer text-sm font-semibold">
         Pourquoi ce créneau ? ({windowLabel(w)})
       </summary>
@@ -57,10 +55,18 @@ function WhyCard({ day, window: w }: { day: DayAnalysis; window: HuntWindow }) {
   )
 }
 
-/** QUAND : créneaux, graphique horaire, comparaison des jours, contexte du rut et de la lune. */
-export function WhenTab({ hunt }: { hunt: HuntAnalysis }) {
-  const [selected, setSelected] = useState(0)
-  const day = hunt.days[Math.min(selected, hunt.days.length - 1)]
+/** Détails du calendrier (sections repliées du dashboard) : créneaux, comparaison, soleil, lune, rut. */
+export function WhenDetails({
+  hunt,
+  day,
+  selected,
+  onSelect,
+}: {
+  hunt: HuntAnalysis
+  day: DayAnalysis
+  selected: number
+  onSelect: (index: number) => void
+}) {
   const rut = getRule('INF-RUT-01')
   const clock = (d: Date | null) =>
     d
@@ -106,8 +112,6 @@ export function WhenTab({ hunt }: { hunt: HuntAnalysis }) {
         </p>
       </Card>
 
-      <HourlyChart day={day} />
-
       {day.windows[0] && <WhyCard day={day} window={day.windows[0]} />}
 
       <TemperaturePanel day={day} />
@@ -116,7 +120,7 @@ export function WhenTab({ hunt }: { hunt: HuntAnalysis }) {
 
       <section aria-label="Comparer les jours">
         <h2 className="text-ink-100 mb-2 text-sm font-semibold">Comparer les jours</h2>
-        <DayComparison days={hunt.days} selected={selected} onSelect={setSelected} />
+        <DayComparison days={hunt.days} selected={selected} onSelect={onSelect} />
       </section>
 
       <Card className="p-3">
