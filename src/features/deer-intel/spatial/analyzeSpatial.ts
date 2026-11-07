@@ -1,4 +1,4 @@
-import { ENGINE_VERSION } from '../engine/types'
+import { SPATIAL_ENGINE_VERSION } from './version'
 import { buildGrid } from './grid'
 import { scoreHabitat } from './habitat'
 import { buildSectors } from './sectors'
@@ -42,7 +42,7 @@ export function analyzeSpatial(
   if (!land)
     limits.unshift('Aucune donnée d’occupation du sol : aucun secteur n’est calculé.')
   return {
-    engineVersion: ENGINE_VERSION,
+    engineVersion: SPATIAL_ENGINE_VERSION,
     extent,
     cellSizeM,
     cellCount: cells.length,
