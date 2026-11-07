@@ -16,6 +16,7 @@ import { moonDay, moonIsUp } from './moon'
 import { solarDay } from './sunDay'
 import { solunarDelta } from './solunar'
 import { hourWeather, indexForecast } from './weatherContext'
+import { pressureChange, pressureSeries, type PressurePoint } from './pressure'
 import {
   ENGINE_VERSION,
   type DayAnalysis,
@@ -56,6 +57,8 @@ function buildDay(
   params: HuntParams,
   dateKey: string,
   weatherIndex: ReturnType<typeof indexForecast>,
+  pressure: readonly PressurePoint[],
+  nowIso: string,
 ): DayAnalysis {
   const { coordinate, timezone } = params
   const sun = solarDay(coordinate, dateKey, timezone)
@@ -140,6 +143,9 @@ function buildDay(
       signature: cond.score === null ? 'activite' : `activite+${cond.signature}`,
       candidate: inRange && inAvailability,
       weather,
+      pressure4h: pressure.length
+        ? pressureChange(pressure, slotStart.toISOString(), 4, nowIso)
+        : null,
     }
     slot.index = slotIndex(slot, REFERENCE_ACTIVITY_WEIGHT, params.experimentalSolunar)
     slots.push(slot)
@@ -221,9 +227,18 @@ export function analyzeHunt(
 ): HuntAnalysis {
   const days = Math.max(1, Math.min(MAX_DAYS, Math.floor(params.days)))
   const weatherIndex = indexForecast(forecast)
+  const pressure = pressureSeries(forecast, params.timezone)
   const built: DayAnalysis[] = []
   for (let d = 0; d < days; d++) {
-    built.push(buildDay(params, addDays(params.startDateKey, d), weatherIndex))
+    built.push(
+      buildDay(
+        params,
+        addDays(params.startDateKey, d),
+        weatherIndex,
+        pressure,
+        meta.now.toISOString(),
+      ),
+    )
   }
   const times = forecast?.hourly.map((h) => h.time) ?? []
   return {

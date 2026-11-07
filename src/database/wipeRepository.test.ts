@@ -53,6 +53,11 @@ async function seedEverything() {
     fetchedAt: NOW,
     place: { kind: 'gps', name: 'Ma position', coordinate: { lat: 46, lng: -71 } },
   } as never)
+  await db.huntAnalyses.add({
+    id: 'h1',
+    savedAt: NOW,
+    extentKey: 'k',
+  } as never)
   await db.settings.bulkPut([
     { key: 'fieldModeEnabled', value: true },
     { key: 'lastBackupAt', value: NOW },
@@ -106,6 +111,7 @@ describe('deleteAllLocalData', () => {
   it('covers every table of the database (a table added later is included)', async () => {
     expect(db.tables.map((t) => t.name).sort()).toEqual([
       'bloodSessions',
+      'huntAnalyses',
       'observations',
       'offlineAreas',
       'photos',

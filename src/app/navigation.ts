@@ -13,6 +13,7 @@ import {
   Map,
   MapPin,
   CloudSun,
+  Compass,
   Moon,
   MoreHorizontal,
   NotebookPen,
@@ -188,6 +189,15 @@ export const navItems: NavItem[] = [
 
   // — Analyse —
   { path: '/temporal', label: 'Soleil et lune', icon: Moon, phase: 7, group: 'analysis' },
+  {
+    path: '/hunt',
+    label: 'Où et quand chasser',
+    description: 'Créneaux du jour, secteurs et points candidats pour un point GPS.',
+    icon: Compass,
+    phase: null,
+    group: 'analysis',
+    hub: 'more',
+  },
   {
     path: '/analysis',
     label: 'Analyse du terrain',

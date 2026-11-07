@@ -36,10 +36,10 @@ export const BACKUP_TABLES = [
 
 export type BackupTableName = (typeof BACKUP_TABLES)[number]
 
-/** Tables deliberately NOT saved (`savedForecasts` is a re-downloadable
- * cache of provider forecasts, not user data).  A test fails if a database table is in
+/** Tables deliberately NOT saved (`savedForecasts` and `huntAnalyses` are
+ * recomputable caches derived from provider data, not user data).  A test fails if a database table is in
  * neither list, so a future table cannot be forgotten silently. */
-export const EXCLUDED_TABLES = ['syncQueue', 'savedForecasts'] as const
+export const EXCLUDED_TABLES = ['syncQueue', 'savedForecasts', 'huntAnalyses'] as const
 
 /** User preferences worth carrying to another device. A WHITELIST: weather
  * cache, reminders and any future key stay out until added here on purpose,

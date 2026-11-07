@@ -1,6 +1,8 @@
 import { ACTIVITY_RULE_IDS } from './activity'
 import { CONDITION_RULE_IDS } from './conditions'
 import { SOLUNAR_RULE_IDS } from './solunar'
+import { HABITAT_RULE_IDS } from '../spatial/habitat'
+import { CORRIDOR_RULE_IDS } from '../spatial/corridors'
 import { COMBINE_RULE_IDS } from './windows'
 
 export { analyzeHunt, LIMITS, MAX_DAYS } from './analyze'
@@ -15,4 +17,6 @@ export const IMPLEMENTED_RULE_IDS: readonly string[] = [
   ...CONDITION_RULE_IDS,
   ...COMBINE_RULE_IDS,
   ...SOLUNAR_RULE_IDS,
+  ...HABITAT_RULE_IDS,
+  ...CORRIDOR_RULE_IDS,
 ]

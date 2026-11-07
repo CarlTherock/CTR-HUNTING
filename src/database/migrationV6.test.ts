@@ -69,7 +69,7 @@ describe('Dexie migration v5 -> v6 (blood-search sessions)', () => {
     const upgraded = new FieldTerrainDatabase()
     await upgraded.open()
     try {
-      expect(upgraded.verno).toBe(7)
+      expect(upgraded.verno).toBe(8)
       expect(await upgraded.waypoints.toArray()).toEqual([WAYPOINT])
       expect(await upgraded.tracks.toArray()).toEqual([TRACK])
       expect(await upgraded.territories.count()).toBe(1)

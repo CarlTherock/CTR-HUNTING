@@ -15,6 +15,8 @@ import {
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
 import { cn } from '@/utils/cn'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
+import { useHuntStore } from '@/features/deer-intel/state/huntStore'
+import { toOverlay } from '@/features/deer-intel/spatial/overlay'
 import { HeatmapControl } from '@/features/analytics/components/HeatmapControl'
 import { useAnalysisStore } from '@/features/analytics/state/analysisStore'
 import { projectHeatmapCells } from '@/features/analytics/heatmapProjection'
@@ -583,6 +585,31 @@ export function MapPage() {
       showClueLinks && open ? clueLinkPaths(sessionClues(waypoints, open.id)) : null,
     )
   }, [bloodSessions, showClueLinks, waypoints])
+
+  // Secteurs et points candidats de l'analyse « Où et quand chasser » (présentation seulement).
+  const huntSpatial = useHuntStore((state) => state.result?.record.spatial ?? null)
+  const huntMapVisible = useHuntStore((state) => state.mapVisible)
+  const huntOpacity = useHuntStore((state) => state.sectorOpacity)
+  const huntFocusedRef = useRef<string | null>(null)
+  useEffect(() => {
+    instanceRef.current?.setHuntOverlay(
+      huntSpatial && huntMapVisible ? toOverlay(huntSpatial) : null,
+      huntOpacity,
+    )
+    // Première apparition d'une analyse : la carte se centre sur son étendue (une seule fois).
+    if (huntSpatial && huntMapVisible) {
+      const { center, radiusM } = huntSpatial.extent
+      const key = `${center.lat},${center.lng},${radiusM}`
+      if (huntFocusedRef.current !== key) {
+        huntFocusedRef.current = key
+        instanceRef.current?.setView({
+          center,
+          zoom: Math.min(16, Math.max(10, 13.7 - Math.log2(radiusM / 1000))),
+        })
+      }
+    }
+    // `sharedPoint` recrée la carte : la couche est alors redessinée.
+  }, [huntSpatial, huntMapVisible, huntOpacity, sharedPoint])
 
   // The waypoint whose sheet is open is highlighted on the map.
   useEffect(() => {
