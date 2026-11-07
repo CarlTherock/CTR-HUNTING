@@ -1,169 +1,111 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { DayAnalysis, HourSlot } from '../engine'
 
-const W = 24
-const H = 100
+const W = 720
+const H = 276
+const LEFT = 38
+const RIGHT = 16
+const TOP = 20
+const BOTTOM = 38
+const PW = W - LEFT - RIGHT
+const PH = H - TOP - BOTTOM
 
-function segments(
-  slots: readonly HourSlot[],
-  value: (s: HourSlot) => number | null,
-): string[] {
-  const out: string[] = []
-  let current = ''
-  slots.forEach((s, i) => {
-    const v = value(s)
-    if (v === null) {
-      if (current) out.push(current)
-      current = ''
-      return
-    }
-    const x = i + 0.5
-    const y = H - v
-    current += `${current ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)} `
-  })
-  if (current) out.push(current)
-  return out
+export function chartDomain(slots: readonly HourSlot[]): { start: number; end: number } | null {
+  if (!slots.length) return null
+  const starts = slots.map((s) => Date.parse(s.startIso))
+  const ends = slots.map((s) => Date.parse(s.endIso))
+  if (starts.some((v) => !Number.isFinite(v)) || ends.some((v) => !Number.isFinite(v))) return null
+  if (starts.some((v, i) => ends[i] <= v)) return null
+  const start = Math.min(...starts)
+  const end = Math.max(...ends)
+  return end > start ? { start, end } : null
 }
 
-/** Graphique horaire calculé (SVG) : échelle fixe 0–100 pour tous les jours, trous visibles. */
+/** Courbes calculées, axe temporel réel, valeurs manquantes non reliées. */
 export function HourlyChart({ day, timeZone }: { day: DayAnalysis; timeZone: string }) {
-  const [pick, setPick] = useState<number | null>(null)
+  const id = useId().replace(/:/g, '')
+  const [picked, setPicked] = useState(0)
   const slots = day.slots
-  const hourAt = (d: Date | null) => {
-    const first = slots[0]
-    if (!d || !first) return null
-    const x = (d.getTime() - Date.parse(first.startIso)) / 3_600_000
-    return x >= 0 && x <= slots.length ? x : null
+  const domain = chartDomain(slots)
+  if (!domain) return <p role="status" className="text-ink-300 p-4 text-sm">Aucune série horaire exploitable pour cette journée.</p>
+  const selectedIndex = Math.min(picked, slots.length - 1)
+  const selected = slots[selectedIndex]
+  const clock = (ms: number) => new Intl.DateTimeFormat('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(new Date(ms))
+  const x = (ms: number) => LEFT + ((ms - domain.start) / (domain.end - domain.start)) * PW
+  const y = (v: number) => TOP + PH * (1 - Math.max(0, Math.min(100, v)) / 100)
+  const middle = (s: HourSlot) => (Date.parse(s.startIso) + Date.parse(s.endIso)) / 2
+  const paths = (value: (s: HourSlot) => number | null) => {
+    const lines: string[] = []
+    let line = ''
+    let previousEnd: number | null = null
+    for (const s of slots) {
+      const v = value(s)
+      const start = Date.parse(s.startIso)
+      if (previousEnd !== null && start > previousEnd && line) { lines.push(line); line = '' }
+      if (v === null || !Number.isFinite(v)) {
+        if (line) lines.push(line)
+        line = ''
+      } else line += `${line ? ' L' : 'M'}${x(middle(s)).toFixed(2)},${y(v).toFixed(2)}`
+      previousEnd = Date.parse(s.endIso)
+    }
+    if (line) lines.push(line)
+    return lines
   }
-  const sunX = [
-    { x: hourAt(day.sun.sunrise), label: 'lever' },
-    { x: hourAt(day.sun.sunset), label: 'coucher' },
+  const value = (v: number | null) => v === null || !Number.isFinite(v) ? '—' : String(Math.round(v))
+  const sun = [
+    { at: day.sun.sunrise, label: 'Lever' },
+    { at: day.sun.sunset, label: 'Coucher' },
   ]
-  void timeZone
-  const sel = pick === null ? null : (slots[pick] ?? null)
-  const indexSegs = segments(slots, (s) => s.index)
-  const activitySegs = segments(slots, (s) => s.activity)
-  const summary = day.windows.length
-    ? `Meilleurs créneaux : ${day.windows.map((w) => `${w.startClock}–${w.endClock}`).join(', ')}.`
-    : 'Aucun créneau au-dessus du seuil.'
+  const series = [
+    { label: 'Indice du créneau', color: '#4ade80', dash: undefined, read: (s: HourSlot) => s.index },
+    { label: 'Référence journalière', color: '#c4cbdb', dash: '6 5', read: (s: HourSlot) => s.activity },
+    { label: 'Conditions pratiques', color: '#38bdf8', dash: '2 5', read: (s: HourSlot) => s.conditions },
+  ]
   return (
-    <figure className="m-0">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`Indice horaire du ${day.dateKey}, échelle 0 à 100. ${summary}`}
-        className="border-surface-700 bg-surface-950 h-56 w-full touch-pan-y rounded-md border"
-        onPointerDown={(e) => {
-          const r = e.currentTarget.getBoundingClientRect()
-          const i = Math.floor(((e.clientX - r.left) / r.width) * slots.length)
-          setPick(Math.min(slots.length - 1, Math.max(0, i)))
-        }}
-      >
-        {[25, 50, 75].map((v) => (
-          <line
-            key={v}
-            x1={0}
-            x2={W}
-            y1={H - v}
-            y2={H - v}
-            stroke="currentColor"
-            className="text-surface-700"
-            strokeWidth={0.15}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {day.windows.map((w) => {
-          const start = slots.findIndex((s) => s.startIso === w.startIso)
-          if (start < 0) return null
-          return (
-            <rect
-              key={w.startIso}
-              x={start}
-              y={0}
-              width={w.hours}
-              height={H}
-              className="fill-brand-500/20"
-            />
-          )
-        })}
-        {slots.map((s, i) =>
-          s.candidate ? null : (
-            <rect
-              key={s.startIso}
-              x={i}
-              y={0}
-              width={1}
-              height={H}
-              className="fill-surface-800/60"
-            />
-          ),
-        )}
-        {sunX.map((m) =>
-          m.x === null ? null : (
-            <line
-              key={m.label}
-              x1={m.x}
-              x2={m.x}
-              y1={0}
-              y2={H}
-              stroke="#fbbf24"
-              strokeWidth={1.2}
-              strokeDasharray="2 2"
-              vectorEffect="non-scaling-stroke"
-            />
-          ),
-        )}
-        {pick !== null && (
-          <rect x={pick} y={0} width={1} height={H} className="fill-ink-100/15" />
-        )}
-        {activitySegs.map((d) => (
-          <path
-            key={`a${d}`}
-            d={d}
-            fill="none"
-            stroke="currentColor"
-            className="text-ink-500"
-            strokeDasharray="0.5 0.4"
-            strokeWidth={1.5}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {indexSegs.map((d) => (
-          <path
-            key={`i${d}`}
-            d={d}
-            fill="none"
-            stroke="currentColor"
-            className="text-brand-400"
-            strokeWidth={2.5}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-      <div className="text-ink-600 mt-1 flex justify-between text-[11px] tabular-nums">
-        {[0, 6, 12, 18, 24].map((h) => (
-          <span key={h}>{String(h % 24).padStart(2, '0')}h</span>
-        ))}
+    <figure className="m-0 min-w-0" aria-labelledby={`${id}-title`}>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id={`${id}-title`} className="text-ink-100 text-base font-semibold">Votre journée, heure par heure</h2>
+        <span className="text-ink-500 text-xs">Indices comparatifs · 0–100</span>
       </div>
-      <p aria-live="polite" className="text-ink-100 mt-2 min-h-10 text-sm tabular-nums">
-        {sel
-          ? `${sel.clock} · indice ${sel.index === null ? 'indisponible' : Math.round(sel.index)} · activité de référence ${sel.activity === null ? 'indisponible' : Math.round(sel.activity)} · conditions ${sel.conditions === null ? 'non évaluées' : Math.round(sel.conditions)}${sel.weather?.temperatureC != null ? ` · ${sel.weather.temperatureC.toFixed(1)} °C` : ''}`
-          : 'Touchez une heure du graphique pour lire ses valeurs.'}
-      </p>
-      <figcaption className="text-ink-400 mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        <span>
-          <span className="text-brand-400">━</span> indice du créneau
-        </span>
-        <span>
-          <span className="text-ink-500">┅</span> activité de référence
-        </span>
-        <span>
-          <span className="text-amber-400">┆</span> lever / coucher
-        </span>
-        <span>
-          <span className="text-brand-400">▮</span> créneau retenu
-        </span>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Indice horaire du ${day.dateKey}, heures du lieu ${timeZone}. Les créneaux sont surlignés.`} className="bg-surface-950 block w-full touch-pan-y rounded-xl" onPointerDown={(e) => {
+        const r = e.currentTarget.getBoundingClientRect()
+        const px = ((e.clientX - r.left) / r.width) * W
+        const at = domain.start + Math.max(0, Math.min(1, (px - LEFT) / PW)) * (domain.end - domain.start)
+        let nearest = 0
+        for (let i = 1; i < slots.length; i++) if (Math.abs(middle(slots[i]) - at) < Math.abs(middle(slots[nearest]) - at)) nearest = i
+        setPicked(nearest)
+      }}>
+        <defs><clipPath id={`${id}-clip`}><rect x={LEFT} y={TOP} width={PW} height={PH} /></clipPath></defs>
+        {[0, 25, 50, 75, 100].map((v) => <g key={v}><line x1={LEFT} x2={W - RIGHT} y1={y(v)} y2={y(v)} stroke="#29334a" strokeDasharray="3 5" /><text x={LEFT - 8} y={y(v) + 4} textAnchor="end" fill="#8b96b3" fontSize={11}>{v}</text></g>)}
+        <g clipPath={`url(#${id}-clip)`}>
+          {slots.filter((s) => !s.candidate).map((s) => <rect key={s.startIso} x={x(Date.parse(s.startIso))} y={TOP} width={x(Date.parse(s.endIso)) - x(Date.parse(s.startIso))} height={PH} fill="#1b2333" opacity={0.5} />)}
+          {day.windows.map((w) => {
+            const start = Math.max(domain.start, Date.parse(w.startIso), day.planningRange.start?.getTime() ?? domain.start)
+            const end = Math.min(domain.end, Date.parse(w.endIso), day.planningRange.end?.getTime() ?? domain.end)
+            return Number.isFinite(start) && Number.isFinite(end) && end > start ? <rect key={w.startIso} x={x(start)} y={TOP} width={x(end) - x(start)} height={PH} fill="#22c55e" opacity={0.14} /> : null
+          })}
+          {sun.map((m) => m.at && m.at.getTime() >= domain.start && m.at.getTime() <= domain.end ? <g key={m.label}><line x1={x(m.at.getTime())} x2={x(m.at.getTime())} y1={TOP} y2={TOP + PH} stroke="#fbbf24" strokeDasharray="5 5" /><title>{m.label} : {clock(m.at.getTime())}</title></g> : null)}
+          {series.map((s) => <g key={s.label}>{paths(s.read).map((d, i) => <path key={i} d={d} fill="none" stroke={s.color} strokeWidth={s.dash ? 2 : 3} strokeDasharray={s.dash} strokeLinecap="round" strokeLinejoin="round" />)}</g>)}
+          <line x1={x(middle(selected))} x2={x(middle(selected))} y1={TOP} y2={TOP + PH} stroke="#f4f6fa" opacity={0.65} />
+          {selected.index !== null && Number.isFinite(selected.index) && <circle cx={x(middle(selected))} cy={y(selected.index)} r={5} fill="#4ade80" stroke="#05070a" strokeWidth={2} />}
+        </g>
+        {Array.from({ length: 5 }, (_, i) => domain.start + ((domain.end - domain.start) * i) / 4).map((t, i) => <text key={i} x={x(t)} y={H - 13} textAnchor={i === 0 ? 'start' : i === 4 ? 'end' : 'middle'} fill="#8b96b3" fontSize={12}>{clock(t)}</text>)}
+      </svg>
+      <label className="text-ink-300 mt-3 flex flex-col gap-2 text-xs">
+        Explorer les heures
+        <input type="range" min={0} max={slots.length - 1} step={1} value={selectedIndex} onChange={(e) => setPicked(Number(e.target.value))} aria-label="Heure sélectionnée" aria-valuetext={clock(middle(selected))} className="accent-brand-500 min-h-11 w-full" />
+      </label>
+      <div aria-live="polite" className="border-surface-700 bg-surface-800 grid grid-cols-2 gap-2 rounded-lg border p-3 text-sm sm:grid-cols-4">
+        <p className="text-ink-100 font-semibold tabular-nums">{clock(Date.parse(selected.startIso))}<span className="text-ink-500 block text-xs font-normal">Heure du lieu</span></p>
+        <p className="text-brand-400 font-semibold tabular-nums">{value(selected.index)}<span className="text-ink-500 block text-xs font-normal">Indice du créneau</span></p>
+        <p className="text-ink-300 tabular-nums">{value(selected.activity)}<span className="text-ink-500 block text-xs">Référence journalière</span></p>
+        <p className="text-sky-300 tabular-nums">{value(selected.conditions)}<span className="text-ink-500 block text-xs">Conditions pratiques</span></p>
+      </div>
+      <figcaption className="text-ink-400 mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs">
+        {series.map((s) => <span key={s.label}><span aria-hidden="true" style={{ color: s.color }}>{s.dash ? '┅' : '━'}</span> {s.label}</span>)}
+        <span className="text-amber-300">Lever {day.sun.sunrise ? clock(day.sun.sunrise.getTime()) : '—'} · coucher {day.sun.sunset ? clock(day.sun.sunset.getTime()) : '—'}</span>
+        <span>Fond vert : créneaux retenus. Une interruption de courbe indique une donnée manquante.</span>
+        <span>Heures : {timeZone}. Référence schématique, pas une probabilité de rencontre.</span>
       </figcaption>
     </figure>
   )
