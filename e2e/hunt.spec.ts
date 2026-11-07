@@ -96,6 +96,8 @@ test.describe('Où et quand chasser (simulé)', () => {
     void backend
     await installProviders(page)
     await page.goto('map')
+    // Entrée : « Outils » → « Où et quand chasser » (premier élément de la liste).
+    await page.getByRole('button', { name: 'Outils' }).click()
     const entry = page.getByRole('button', { name: 'Où et quand chasser' })
     await expect(entry).toBeVisible()
     await shot(page, '1-entree-carte')

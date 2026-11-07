@@ -36,16 +36,6 @@ export function HuntControl() {
   return (
     <>
       {inRouter && <PickedNavigator />}
-      {!picking && (
-        <button
-          type="button"
-          onClick={start}
-          className="border-brand-500/60 bg-surface-900/95 text-ink-100 absolute top-12 left-3 z-10 flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-lg"
-        >
-          <Compass size={18} aria-hidden="true" className="text-brand-400" />
-          Où et quand chasser
-        </button>
-      )}
       <ToolTrigger
         label="Où et quand chasser"
         icon={<Compass size={18} aria-hidden="true" />}
