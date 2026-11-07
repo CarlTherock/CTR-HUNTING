@@ -63,7 +63,43 @@ describe('compose', () => {
     expect(withTz.timezoneNote).toBeNull()
     const without = composeAnalysis(inputs, null, null, meta)
     expect(without.record.timezone).toBe('UTC')
-    expect(without.timezoneNote).toContain('Fuseau de l’appareil')
+    expect(without.timezoneNote).toContain('Fuseau déduit du territoire')
+  })
+
+  it('sans prévision ni fuseau de territoire : aucun calcul, jamais le fuseau du téléphone', () => {
+    const inputs = {
+      ...DEFAULT_INPUTS,
+      coordinate: COORD,
+      startDateKey: '2026-11-06',
+      days: 1,
+    }
+    expect(() =>
+      composeAnalysis(inputs, null, null, {
+        now: new Date('2026-11-06T15:00:00Z'),
+        forecastFetchedAt: null,
+        fallbackTimeZone: null,
+      }),
+    ).toThrow(/Fuseau du point non établi/)
+  })
+
+  it('les réglages de poste et de vent donnent une autre clé d’analyse', () => {
+    const base = {
+      ...DEFAULT_INPUTS,
+      coordinate: COORD,
+      startDateKey: '2026-11-06',
+      days: 1,
+    }
+    const meta = {
+      now: new Date('2026-11-06T15:00:00Z'),
+      forecastFetchedAt: null,
+      fallbackTimeZone: 'America/Toronto',
+    }
+    const a = composeAnalysis(base, null, null, meta).record.id
+    const b = composeAnalysis({ ...base, favorableWindFrom: [270] }, null, null, meta)
+      .record.id
+    const c = composeAnalysis(base, null, null, meta).record.id
+    expect(a).not.toBe(b)
+    expect(a).toBe(c)
   })
 
   it('refuse sans point GPS', () => {

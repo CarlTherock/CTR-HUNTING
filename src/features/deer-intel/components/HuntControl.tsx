@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useInRouterContext, useNavigate } from 'react-router-dom'
 import { Compass, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { useSharedPointStore } from '@/features/share/sharedPointStore'
+import { zonedDateKey } from '@/features/hunting-hours/zonedTime'
+import { resolveTimeZone, classifyTerritory } from '@/features/rut/territory'
+import { deviceTimeZone } from '../state/compose'
 import { useHuntStore } from '../state/huntStore'
 
 export const HUNT_ROUTE = '/hunt'
@@ -18,6 +21,87 @@ function PickedNavigator() {
     consume()
   }, [picked, navigate, consume])
   return null
+}
+
+const PERIODS = [
+  { days: 1, label: '1 jour' },
+  { days: 3, label: '3 jours' },
+  { days: 7, label: '7 jours' },
+] as const
+
+/** Fiche après le toucher : date préremplie (modifiable), période, puis « Évaluer ce lieu ». */
+function EvaluateSheet() {
+  const pending = useHuntStore((s) => s.pending)
+  const evaluate = useHuntStore((s) => s.evaluatePending)
+  const cancel = useHuntStore((s) => s.cancelPending)
+  const startPicking = useHuntStore((s) => s.startPicking)
+  const [date, setDate] = useState<string | null>(null)
+  const [days, setDays] = useState<number>(1)
+  if (!pending) return null
+  const zone = resolveTimeZone(pending.lat, pending.lng)
+  // Préremplissage seulement : « aujourd'hui » au lieu si son fuseau est connu, sinon à l'appareil.
+  const prefilled = zonedDateKey(new Date(), zone.timeZone ?? deviceTimeZone())
+  const value = date ?? prefilled
+  const territory = classifyTerritory(pending.lat, pending.lng)
+  return (
+    <div
+      data-testid="hunt-evaluate-sheet"
+      role="dialog"
+      aria-label="Évaluer ce lieu"
+      className="border-brand-500/40 bg-surface-900 text-ink-100 fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md flex-col gap-3 rounded-t-xl border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg"
+    >
+      <p className="text-sm font-semibold">
+        Lieu choisi : {pending.lat.toFixed(5)}, {pending.lng.toFixed(5)}
+      </p>
+      {territory.state === 'hors_territoire' && (
+        <p className="text-status-warning text-xs">
+          Hors du territoire documenté : les repères saisonniers du Québec ne seront pas
+          appliqués.
+        </p>
+      )}
+      <label className="flex flex-col gap-1 text-sm">
+        Date de début
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => setDate(e.target.value || null)}
+          className="border-surface-600 bg-surface-800 min-h-11 rounded-md border px-3"
+        />
+      </label>
+      <div role="group" aria-label="Période" className="flex gap-2">
+        {PERIODS.map((p) => (
+          <button
+            key={p.days}
+            type="button"
+            aria-pressed={days === p.days}
+            onClick={() => setDays(p.days)}
+            className={`min-h-11 flex-1 rounded-md border px-3 text-sm ${days === p.days ? 'border-brand-500 bg-brand-500/20' : 'border-surface-600'}`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => evaluate({ startDateKey: value, days })}
+        className="bg-brand-500 text-surface-900 min-h-11 rounded-md px-4 font-semibold"
+      >
+        Évaluer ce lieu
+      </button>
+      <div className="flex gap-2 text-sm">
+        <button
+          type="button"
+          onClick={startPicking}
+          className="min-h-11 flex-1 underline"
+        >
+          Changer le point
+        </button>
+        <button type="button" onClick={cancel} className="min-h-11 flex-1 underline">
+          Annuler
+        </button>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -36,6 +120,7 @@ export function HuntControl() {
   return (
     <>
       {inRouter && <PickedNavigator />}
+      <EvaluateSheet />
       <ToolTrigger
         label="Où et quand chasser"
         icon={<Compass size={18} aria-hidden="true" />}

@@ -10,6 +10,12 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 - Gabarit de rapport unique (HTML/SVG) pour l'aperçu et l'impression/PDF.
 - Registre 1.3.0 : INF-RUT-01 réécrit, sources Québec.ca (date affichée 3 novembre 2026, consultée le 2026-11-07) et CEAEQ ajoutées, Hunsaker marqué « résumé seulement » pour cette règle. Moteur de créneaux inchangé.
 
+- Fiche « Évaluer ce lieu » après le toucher sur la carte : date préremplie modifiable, période de 1/3/7 jours.
+- Carte « Recommandation » en tête du dashboard : prend position, 2–3 raisons, limite principale, détails repliés (contexte saisonnier, informations manquantes, hypothèses).
+- Conseil saisonnier qualitatif avec transitions heuristiques de 14 jours ; hors territoire / Anticosti / Madeleine : « territoire non couvert ».
+- Créneaux découpés à la plage applicable ; classement limité aux éléments de même composition ; égalités affichées ; poste inconnu ≠ vent favorable.
+- Fuseau du point sans météo : déduit du territoire, sinon horaires non établis (plus de repli sur le téléphone) ; clé d'analyse = lieu + période + réglages poste/vent.
+
 ## [Non publié] — Parcours « Où et quand chasser » refait
 
 - Entrée directe sur la carte (bouton « Où et quand chasser ») : toucher un point → analyse automatique → dashboard. Le point touché est conservé tel quel (jamais remplacé par la position GPS ni le centre de la carte) ; une seule analyse par point. Accès aussi depuis l'accueil.

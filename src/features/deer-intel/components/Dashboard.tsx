@@ -6,6 +6,7 @@ import type { SavedHuntAnalysis } from '@/types'
 import { formatLatitude, formatLongitude } from '@/utils/coordinateFormat'
 import { useHuntStore, type HuntResult } from '../state/huntStore'
 import { HourlyChart } from './HourlyChart'
+import { RecommendationCard } from './RecommendationCard'
 import { HowTab } from './HowTab'
 import { SourcesPanel } from './SourcesPanel'
 import { PressurePanel } from './PressurePanel'
@@ -129,6 +130,8 @@ export function Dashboard({
           ))}
         </div>
       )}
+
+      <RecommendationCard record={record} dayIndex={selected} />
 
       <Card className="border-brand-500/40 p-4">
         <p className="text-brand-300 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">

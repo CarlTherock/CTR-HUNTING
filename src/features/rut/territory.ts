@@ -110,12 +110,16 @@ export interface ZoneResult {
  */
 export function resolveTimeZone(lat: number, lng: number): ZoneResult {
   const t = classifyTerritory(lat, lng)
-  if (t.state === 'quebec' && lng <= -63.5)
+  // À l'ouest de 69° O, tous les voisins du Québec (Ontario, New York, Vermont, New Hampshire,
+  // Maine) sont à l'heure de l'Est : un point « incertain » (fleuve, frontière) y a le même fuseau.
+  const eastern =
+    (t.state === 'quebec' && lng <= -63.5) || (t.state === 'incertain' && lng <= -69)
+  if (eastern)
     return {
       timeZone: 'America/Toronto',
       note: 'Fuseau déduit du territoire (heure de l’Est).',
     }
-  if (t.state === 'quebec' || t.state === 'anticosti')
+  if (t.state === 'quebec' || t.state === 'anticosti' || t.state === 'incertain')
     return {
       timeZone: null,
       note: 'Fuseau non établi à cet endroit sans prévision : certaines zones de l’est du Québec suivent l’heure de l’Atlantique.',

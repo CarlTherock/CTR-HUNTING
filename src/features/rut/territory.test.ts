@@ -29,6 +29,7 @@ describe('territoire', () => {
   })
   it('fuseau sans météo : établi au Québec de l’ouest, non établi ailleurs, jamais le téléphone', () => {
     expect(resolveTimeZone(45.6, -72.0).timeZone).toBe('America/Toronto')
+    expect(resolveTimeZone(46.8, -71.2).timeZone).toBe('America/Toronto') // fleuve : « incertain » mais heure de l’Est
     expect(resolveTimeZone(44.0, -80.5).timeZone).toBeNull()
     expect(resolveTimeZone(50.2, -61.0).timeZone).toBeNull()
   })

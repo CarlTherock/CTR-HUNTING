@@ -8,11 +8,14 @@ import {
   putHuntAnalysis,
 } from '@/database/huntAnalysesRepository'
 import { addDays, zonedDateKey } from '@/features/hunting-hours/zonedTime'
+import { resolveTimeZone } from '@/features/rut/territory'
 import { createExtent, extentKey } from '../spatial'
 import {
   DEFAULT_INPUTS,
   composeAnalysis,
   deviceTimeZone,
+  inputsSignature,
+  savedId,
   type HuntInputs,
 } from './compose'
 
@@ -36,7 +39,9 @@ interface HuntState {
   sectorOpacity: number
   /** Mode « touchez la carte » armé par le bouton principal de la carte. */
   picking: boolean
-  /** Point touché, en attente de navigation vers le dashboard. */
+  /** Point touché, en attente de « Évaluer ce lieu » (fiche date/période). */
+  pending: Coordinate | null
+  /** Point confirmé, en attente de navigation vers le dashboard. */
   picked: Coordinate | null
   selectedCandidateId: string | null
   /** Incrémenté pour recadrer la carte sur l'emprise (« Voir sur la carte »). */
@@ -44,6 +49,9 @@ interface HuntState {
   startPicking(): void
   cancelPicking(): void
   pick(coordinate: Coordinate): void
+  cancelPending(): void
+  /** « Évaluer ce lieu » : applique la date/période choisies puis ouvre le dashboard. */
+  evaluatePending(period: { startDateKey: string; days: number }): void
   consumePicked(): void
   selectCandidate(id: string | null): void
   requestMapFocus(): void
@@ -72,6 +80,7 @@ export const useHuntStore = create<HuntState>((set, get) => ({
   mapVisible: true,
   sectorOpacity: 0.45,
   picking: false,
+  pending: null,
   picked: null,
   selectedCandidateId: null,
   focusToken: 0,
@@ -83,7 +92,26 @@ export const useHuntStore = create<HuntState>((set, get) => ({
     set({ picking: false })
   },
   pick(coordinate) {
-    set({ picking: false, picked: coordinate })
+    set({ picking: false, pending: coordinate })
+  },
+  cancelPending() {
+    set({ pending: null })
+  },
+  evaluatePending({ startDateKey, days }) {
+    const { pending } = get()
+    if (!pending) return
+    controller?.abort()
+    token++
+    // Nouvelle analyse : l'ancien résultat (autre point ou autre période) est écarté.
+    set((s) => ({
+      pending: null,
+      picked: pending,
+      status: 'idle',
+      result: null,
+      error: null,
+      selectedCandidateId: null,
+      inputs: { ...s.inputs, coordinate: pending, startDateKey, days },
+    }))
   },
   consumePicked() {
     set({ picked: null })
@@ -176,7 +204,9 @@ export const useHuntStore = create<HuntState>((set, get) => ({
 
     const coordinate: Coordinate = inputs.coordinate
     const extent = createExtent(coordinate, inputs.radiusM)
-    const tzGuess = deviceTimeZone()
+    // Fuseau du POINT (territoire) ; celui de l'appareil ne sert qu'à compter les jours de prévision.
+    const zone = resolveTimeZone(coordinate.lat, coordinate.lng)
+    const tzGuess = zone.timeZone ?? deviceTimeZone()
     const now = new Date()
     // Nombre de jours de prévision à demander pour couvrir la période (≤ 16).
     const startKey = inputs.startDateKey ?? zonedDateKey(now, tzGuess)
@@ -199,9 +229,14 @@ export const useHuntStore = create<HuntState>((set, get) => ({
 
     if (!forecast && !land) {
       // Tout a échoué (probablement hors ligne) : relire la dernière analyse du même endroit.
-      const key = extentKey(extent)
+      const expectedId = savedId(
+        extentKey(extent),
+        startKey,
+        inputs.days,
+        inputsSignature(inputs),
+      )
       const previous = (await listHuntAnalyses().catch(() => [])).find(
-        (r) => r.extentKey === key,
+        (r) => r.id === expectedId,
       )
       if (mine !== token) return
       if (previous) {
@@ -212,7 +247,7 @@ export const useHuntStore = create<HuntState>((set, get) => ({
             record: previous,
             origin: 'enregistree',
             notes: [
-              'Réseau indisponible : dernière analyse enregistrée pour cet endroit, relue sans réseau.',
+              'Réseau indisponible : analyse enregistrée pour cet endroit, cette période et ces réglages, relue sans réseau.',
             ],
           },
         })
@@ -235,7 +270,7 @@ export const useHuntStore = create<HuntState>((set, get) => ({
       const { record, timezoneNote } = composeAnalysis(inputs, forecast, land, {
         now,
         forecastFetchedAt: forecast ? now.toISOString() : null,
-        fallbackTimeZone: tzGuess,
+        fallbackTimeZone: zone.timeZone,
       })
       if (timezoneNote) notes.push(timezoneNote)
       set({ status: 'ready', error: null, result: { record, origin: 'live', notes } })

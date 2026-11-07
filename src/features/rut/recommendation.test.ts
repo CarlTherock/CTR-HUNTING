@@ -243,3 +243,87 @@ describe('robustesse', () => {
     expect(observationNote(empty)).toBeNull()
   })
 })
+
+describe('texte de recommandation et classement des jours', () => {
+  it('prend position, mentionne l’égalité et la limite principale', async () => {
+    const { recommendationText } = await import('./recommendationText')
+    const day = analyze({}, forecast('2026-11-07'))
+    const r = recommend({
+      day,
+      timeZone: TZ,
+      territory: 'quebec',
+      summary: empty,
+      hasPostInfo: false,
+    })
+    const t = recommendationText(r)
+    expect(t.headline).toMatch(/^Pour ce lieu et cette période/)
+    expect(t.reasons.length).toBeGreaterThanOrEqual(2)
+    expect(t.reasons.length).toBeLessThanOrEqual(3)
+    expect(t.mainLimit).toMatch(/Poste et secteurs sensibles inconnus/)
+  })
+  it('sans météo, le texte ne prétend pas utiliser les conditions', async () => {
+    const { recommendationText } = await import('./recommendationText')
+    const day = analyze({}, null)
+    const r = recommend({
+      day,
+      timeZone: TZ,
+      territory: 'quebec',
+      summary: empty,
+      hasPostInfo: false,
+    })
+    const t = recommendationText(r)
+    expect(t.reasons.join(' ')).toMatch(/Sans météo/)
+    expect(t.mainLimit).toMatch(/Météo indisponible/)
+  })
+  it('hors territoire : aucun conseil de période, horaires conservés', async () => {
+    const { recommendationText } = await import('./recommendationText')
+    const day = analyze({}, forecast('2026-11-07'))
+    const r = recommend({
+      day,
+      timeZone: TZ,
+      territory: 'hors_territoire',
+      summary: empty,
+      hasPostInfo: true,
+    })
+    expect(r.seasonal.covered).toBe(false)
+    expect(recommendationText(r).reasons[0]).toMatch(/Aucun repère saisonnier documenté/)
+    expect(r.windows.length).toBeGreaterThan(0)
+  })
+  it('classement des jours : composition différente ou égalité, jamais un faux vainqueur', async () => {
+    const { rankDays } = await import('./recommendationText')
+    const w = (
+      composition: ClippedWindow['composition'],
+      meanIndex: number,
+    ): ClippedWindow => ({
+      startClock: '06:00',
+      endClock: '08:00',
+      minutes: 120,
+      clipped: false,
+      meanIndex,
+      evaluated: [],
+      notEvaluated: [],
+      composition,
+    })
+    expect(
+      rankDays([
+        { dateKey: 'a', best: w('activite_seule', 80) },
+        { dateKey: 'b', best: w('conditions_completes', 70) },
+      ]).state,
+    ).toBe('non_comparables')
+    expect(
+      rankDays([
+        { dateKey: 'a', best: w('conditions_completes', 76.7) },
+        { dateKey: 'b', best: w('conditions_completes', 75.2) },
+      ]).state,
+    ).toBe('equivalents')
+    expect(
+      rankDays([
+        { dateKey: 'a', best: w('conditions_completes', 80) },
+        { dateKey: 'b', best: w('conditions_completes', 60) },
+      ]).order,
+    ).toEqual(['a', 'b'])
+    expect(rankDays([{ dateKey: 'a', best: w('conditions_completes', 80) }]).state).toBe(
+      'insuffisant',
+    )
+  })
+})
