@@ -1,5 +1,4 @@
-import { Link, useInRouterContext } from 'react-router-dom'
-import { Activity, Clock, X } from 'lucide-react'
+import { Activity, X } from 'lucide-react'
 import { ToolTrigger } from '@/components/map-tools'
 import { cn } from '@/utils/cn'
 import { FAMILY_ORDER } from '@/utils/analysisFamilies'
@@ -21,7 +20,6 @@ import { scoreLabel } from './analyzerFormat'
  * families (Habitat / Conditions / Observations) and its factor coverage.
  */
 export function AnalysisControl() {
-  const inRouter = useInRouterContext()
   const mode = useAnalysisStore((state) => state.mode)
   const status = useAnalysisStore((state) => state.status)
   const combined = useAnalysisStore((state) => state.combined)
@@ -51,7 +49,7 @@ export function AnalysisControl() {
   return (
     <>
       <ToolTrigger
-        label="Analyser cet endroit"
+        label="Détails avancés — analyse générale"
         icon={<Activity size={18} aria-hidden="true" />}
         onClick={startAnalyzing}
         order={40}
@@ -64,7 +62,9 @@ export function AnalysisControl() {
             className="border-surface-600 bg-surface-900 max-h-[75vh] w-full max-w-sm overflow-y-auto rounded-lg border p-4 shadow-2xl"
           >
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-ink-100 text-sm font-semibold">Analyse de l’endroit</h2>
+              <h2 className="text-ink-100 text-sm font-semibold">
+                Détails avancés — analyse générale
+              </h2>
               <button
                 type="button"
                 onClick={close}
@@ -74,16 +74,6 @@ export function AnalysisControl() {
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
-
-            {coordinate && inRouter && (
-              <Link
-                to={`/hunt?lat=${coordinate.lat.toFixed(5)}&lng=${coordinate.lng.toFixed(5)}`}
-                className="border-brand-500/50 bg-brand-500/10 text-brand-400 mb-3 flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium"
-              >
-                <Clock size={16} aria-hidden="true" />
-                Où et quand chasser ici
-              </Link>
-            )}
 
             {recent.length > 1 && (
               <div

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { PointForecast } from '@/types'
@@ -55,54 +55,79 @@ function renderPage(url = '/hunt') {
 }
 
 describe('HuntPage', () => {
-  it('sans point GPS, le bouton Analyser est désactivé et l’aide est affichée', () => {
+  it('sans point : propose de choisir sur la carte, sans ancien panneau ni formulaire', () => {
     renderPage()
-    expect(screen.getByRole('button', { name: 'Analyser' })).toBeDisabled()
-    expect(screen.getByText(/Choisissez un point GPS/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Choisir un point sur la carte' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Analyse environnementale/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Analyser' })).not.toBeInTheDocument()
   })
 
-  it('reprend le point reçu de la carte, analyse sans observation et montre QUAND, OÙ, COMMENT et Sources', async () => {
+  it('point reçu : analyse initiale automatique, point conservé, dashboard immédiat', async () => {
+    fetchPointForecast.mockResolvedValue(FORECAST)
+    fetchLandCover.mockResolvedValue(LAND)
+    renderPage('/hunt?lat=45.6&lng=-72.9')
+
+    await screen.findByText('Meilleur créneau estimé')
+    expect(screen.getByRole('img', { name: /Indice horaire/ })).toBeInTheDocument()
+    expect(
+      screen.getByText(/Estimation comparative — pas une garantie/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Voir sur la carte/)).toBeInTheDocument()
+    // Pas de formulaire imposé : les paramètres sont derrière un bouton discret.
+    expect(screen.queryByRole('button', { name: 'Analyser' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Paramètres/ })).toBeInTheDocument()
+    // Le point touché est celui qui est analysé, une seule fois.
+    expect(useHuntStore.getState().inputs.coordinate).toEqual({ lat: 45.6, lng: -72.9 })
+    expect(fetchPointForecast).toHaveBeenCalledTimes(1)
+    expect(fetchPointForecast.mock.calls[0]?.[0]).toEqual({ lat: 45.6, lng: -72.9 })
+    expect(fetchLandCover).toHaveBeenCalledTimes(1)
+  })
+
+  it('les explications restent accessibles mais repliées', async () => {
     fetchPointForecast.mockResolvedValue(FORECAST)
     fetchLandCover.mockResolvedValue(LAND)
     const user = userEvent.setup()
     renderPage('/hunt?lat=45.6&lng=-72.9')
-    const run = screen.getByRole('button', { name: 'Analyser' })
-    await waitFor(() => expect(run).toBeEnabled())
-    await user.click(run)
+    await screen.findByText('Meilleur créneau estimé')
 
-    await screen.findByText(/Calculée maintenant/)
-    expect(screen.getByText(/Pourquoi ce créneau/)).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Indice horaire/ })).toBeInTheDocument()
-    expect(screen.getByText(/Aucun bonus lunaire/)).toBeInTheDocument()
+    const sources = screen
+      .getByText('Sources, règles et bibliographie')
+      .closest('details')
+    expect(sources).not.toHaveAttribute('open')
+    await user.click(screen.getByText('Sources, règles et bibliographie'))
+    expect(sources).toHaveAttribute('open')
+    const rules = screen.getByRole('region', { name: 'Règles' })
+    expect(within(rules).getAllByText('Active').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('tab', { name: 'OÙ' }))
+    await user.click(screen.getByText('Secteurs, points et corridors'))
     expect(screen.getByText(/Secteurs d’habitat/)).toBeInTheDocument()
-    expect(screen.getByText(/Corridors potentiels/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Corridors potentiels/).length).toBeGreaterThan(0)
     expect(
       screen.getAllByRole('button', { name: 'Créer un repère' }).length,
     ).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('tab', { name: 'COMMENT' }))
-    expect(screen.getByText(/non évaluée/)).toBeInTheDocument()
+    await user.click(screen.getByText('Formule, méthodologie et limites'))
+    expect(screen.getAllByText(/non évaluée/).length).toBeGreaterThan(0)
+  })
 
-    await user.click(screen.getByRole('tab', { name: 'Sources' }))
-    const rules = screen.getByRole('region', { name: 'Règles' })
-    expect(within(rules).getAllByText('Active').length).toBeGreaterThan(0)
-    expect(
-      screen.getByText(/Aucune référence n’est présentée comme lue intégralement/),
-    ).toBeInTheDocument()
+  it('le bouton Paramètres ouvre le formulaire (lieu, date, emprise)', async () => {
+    fetchPointForecast.mockResolvedValue(FORECAST)
+    fetchLandCover.mockResolvedValue(LAND)
+    const user = userEvent.setup()
+    renderPage('/hunt?lat=45.6&lng=-72.9')
+    await screen.findByText('Meilleur créneau estimé')
+    await user.click(screen.getByRole('button', { name: /Paramètres/ }))
+    expect(screen.getByRole('button', { name: 'Analyser' })).toBeInTheDocument()
   })
 
   it('hors ligne : dit ce qui manque au lieu d’inventer des secteurs', async () => {
     fetchPointForecast.mockRejectedValue(new Error('hors ligne'))
     fetchLandCover.mockRejectedValue(new Error('hors ligne'))
-    const user = userEvent.setup()
     renderPage('/hunt?lat=45.6&lng=-72.9')
-    const run = screen.getByRole('button', { name: 'Analyser' })
-    await waitFor(() => expect(run).toBeEnabled())
-    await user.click(run)
     await screen.findByText(/Réseau indisponible/)
-    await user.click(screen.getByRole('tab', { name: 'OÙ' }))
-    expect(screen.getByText(/Aucune donnée d’occupation du sol/)).toBeInTheDocument()
+    expect(screen.getByText(/Occupation du sol indisponible/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voir sur la carte' })).toBeDisabled()
   })
 })

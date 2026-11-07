@@ -3,6 +3,13 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## [Non publié] — Parcours « Où et quand chasser » refait
+
+- Entrée directe sur la carte (bouton « Où et quand chasser ») : toucher un point → analyse automatique → dashboard. Le point touché est conservé tel quel (jamais remplacé par la position GPS ni le centre de la carte) ; une seule analyse par point. Accès aussi depuis l'accueil.
+- L'ancien panneau devient « Détails avancés — analyse générale » ; il n'est plus la première expérience du parcours chasse.
+- Dashboard : en-tête compact, « Meilleur créneau estimé » (heures en grand, durée, 3 raisons tirées des calculs, alternative, créneau passé/restant distingués), graphique horaire visible et tactile (soleil, créneaux), bandeau météo compact, aperçu spatial + « Voir sur la carte ». Formule, méthodologie, limites, sources, températures/pression : sections repliées. Paramètres derrière un bouton discret.
+- Carte : toucher un point candidat ouvre une fiche courte (raisons, état des données, « Enregistrer comme repère ») ; légende repliable ; cadrage de l'emprise.
+
 ## [Non publié] — Complément habitat, corridors et pression
 
 - Corridors potentiels de connectivité (moindre coût, résistances heuristiques, sensibilité robuste/fragile, alternatives) et indice d'entremêlement couvert/nourriture (m/ha) ; tracé en pointillé sur la carte, étiqueté « non piste observée ».

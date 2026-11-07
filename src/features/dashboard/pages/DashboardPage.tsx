@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { Compass } from 'lucide-react'
+import { useHuntStore } from '@/features/deer-intel/state/huntStore'
 import { APP_NAME } from '@/app/appInfo'
 import { Badge, PageHeader } from '@/components/ui'
 import { InstallPrompt } from '@/features/install/components/InstallPrompt'
@@ -18,6 +20,30 @@ import { ProjectProgressCard } from '../components/ProjectProgressCard'
 import { QuickAccessCard } from '../components/QuickAccessCard'
 import { TerritoryCard } from '../components/TerritoryCard'
 import { WeatherCard } from '../components/WeatherCard'
+
+/** Accès direct : choisir un point sur la carte, puis le dashboard « Où et quand chasser ». */
+function HuntEntry() {
+  const navigate = useNavigate()
+  const startPicking = useHuntStore((s) => s.startPicking)
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        startPicking()
+        navigate('/map')
+      }}
+      className="border-brand-500/50 bg-brand-500/10 text-ink-100 flex min-h-14 w-full items-center gap-3 rounded-lg border px-4 text-left"
+    >
+      <Compass size={22} aria-hidden="true" className="text-brand-400 shrink-0" />
+      <span>
+        <span className="block text-sm font-semibold">Où et quand chasser</span>
+        <span className="text-ink-300 block text-xs">
+          Touchez un point sur la carte : meilleur créneau, graphique et secteurs.
+        </span>
+      </span>
+    </button>
+  )
+}
 
 /** Loads, once, the data the cards summarise. A store that fails to load
  * simply leaves its card on its empty/loading state. */
@@ -66,6 +92,8 @@ export function DashboardPage() {
       />
 
       <InstallPrompt />
+
+      <HuntEntry />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <QuickAccessCard />

@@ -14,6 +14,8 @@ import {
 } from '@/components/map-tools'
 import { Badge, EmptyState, PageHeader } from '@/components/ui'
 import { cn } from '@/utils/cn'
+import { HuntControl } from '@/features/deer-intel/components/HuntControl'
+import { HuntMapPanel } from '@/features/deer-intel/components/HuntMapPanel'
 import { AnalysisControl } from '@/features/analytics/components/AnalysisControl'
 import { useHuntStore } from '@/features/deer-intel/state/huntStore'
 import { toOverlay } from '@/features/deer-intel/spatial/overlay'
@@ -272,6 +274,7 @@ export function MapPage() {
       // Long press (or right-click): the same type/position choice as « + Repère »,
       // for the point that was pressed.
       onMapLongPress: (coordinate) => useAddPointStore.getState().openSheetAt(coordinate),
+      onHuntCandidateClick: (id) => useHuntStore.getState().selectCandidate(id),
       onMapClick: (coordinate) => {
         // Manual placement of a blood clue (no usable GPS): the tap chooses
         // the position, saved only after the user confirms in the panel.
@@ -282,6 +285,11 @@ export function MapPage() {
         // An animal observation waiting for its place (« + Repère »).
         if (useAddPointStore.getState().picking) {
           void useAddPointStore.getState().completePicking(coordinate)
+          return
+        }
+        // « Où et quand chasser » : le point touché part vers le dashboard.
+        if (useHuntStore.getState().picking) {
+          useHuntStore.getState().pick(coordinate)
           return
         }
         const waypoints = useWaypointsStore.getState()
@@ -590,6 +598,7 @@ export function MapPage() {
   const huntSpatial = useHuntStore((state) => state.result?.record.spatial ?? null)
   const huntMapVisible = useHuntStore((state) => state.mapVisible)
   const huntOpacity = useHuntStore((state) => state.sectorOpacity)
+  const huntFocusToken = useHuntStore((state) => state.focusToken)
   const huntFocusedRef = useRef<string | null>(null)
   useEffect(() => {
     instanceRef.current?.setHuntOverlay(
@@ -599,7 +608,7 @@ export function MapPage() {
     // Première apparition d'une analyse : la carte se centre sur son étendue (une seule fois).
     if (huntSpatial && huntMapVisible) {
       const { center, radiusM } = huntSpatial.extent
-      const key = `${center.lat},${center.lng},${radiusM}`
+      const key = `${center.lat},${center.lng},${radiusM},${huntFocusToken}`
       if (huntFocusedRef.current !== key) {
         huntFocusedRef.current = key
         instanceRef.current?.setView({
@@ -609,7 +618,7 @@ export function MapPage() {
       }
     }
     // `sharedPoint` recrée la carte : la couche est alors redessinée.
-  }, [huntSpatial, huntMapVisible, huntOpacity, sharedPoint])
+  }, [huntSpatial, huntMapVisible, huntOpacity, huntFocusToken, sharedPoint])
 
   // The waypoint whose sheet is open is highlighted on the map.
   useEffect(() => {
@@ -1033,6 +1042,8 @@ export function MapPage() {
                   }
                 />
                 <TerritoryMapControl />
+                <HuntControl />
+                <HuntMapPanel />
                 <AnalysisControl />
                 <HeatmapControl
                   getBounds={() => instanceRef.current?.getBounds() ?? null}

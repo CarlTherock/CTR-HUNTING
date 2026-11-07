@@ -34,6 +34,21 @@ interface HuntState {
   /** Secteurs et points affichés sur la carte. */
   mapVisible: boolean
   sectorOpacity: number
+  /** Mode « touchez la carte » armé par le bouton principal de la carte. */
+  picking: boolean
+  /** Point touché, en attente de navigation vers le dashboard. */
+  picked: Coordinate | null
+  selectedCandidateId: string | null
+  /** Incrémenté pour recadrer la carte sur l'emprise (« Voir sur la carte »). */
+  focusToken: number
+  startPicking(): void
+  cancelPicking(): void
+  pick(coordinate: Coordinate): void
+  consumePicked(): void
+  selectCandidate(id: string | null): void
+  requestMapFocus(): void
+  /** Point reçu : une seule analyse par point, même si le composant se redessine. */
+  startFor(coordinate: Coordinate): void
   setInputs(patch: Partial<HuntInputs>): void
   resetAdvanced(): void
   setMapVisible(visible: boolean): void
@@ -56,6 +71,39 @@ export const useHuntStore = create<HuntState>((set, get) => ({
   saved: [],
   mapVisible: true,
   sectorOpacity: 0.45,
+  picking: false,
+  picked: null,
+  selectedCandidateId: null,
+  focusToken: 0,
+
+  startPicking() {
+    set({ picking: true })
+  },
+  cancelPicking() {
+    set({ picking: false })
+  },
+  pick(coordinate) {
+    set({ picking: false, picked: coordinate })
+  },
+  consumePicked() {
+    set({ picked: null })
+  },
+  selectCandidate(id) {
+    set({ selectedCandidateId: id })
+  },
+  requestMapFocus() {
+    set((s) => ({ focusToken: s.focusToken + 1, mapVisible: true }))
+  },
+  startFor(coordinate) {
+    const key = `${coordinate.lat.toFixed(5)},${coordinate.lng.toFixed(5)}`
+    const { inputs, status } = get()
+    const same =
+      inputs.coordinate &&
+      `${inputs.coordinate.lat.toFixed(5)},${inputs.coordinate.lng.toFixed(5)}` === key
+    if (same && (status === 'loading' || status === 'ready')) return
+    set((s) => ({ inputs: { ...s.inputs, coordinate }, selectedCandidateId: null }))
+    void get().run()
+  },
 
   setInputs(patch) {
     set((s) => ({ inputs: { ...s.inputs, ...patch } }))

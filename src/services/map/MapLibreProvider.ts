@@ -32,7 +32,7 @@ import type {
 import { ensureOfflineProtocolsRegistered, transformMapRequest } from './offlineProtocols'
 import { ensureSoftTileProtocolRegistered } from '../weather-map/softTiles'
 import { createPathLayers } from './pathLayers'
-import { createHuntLayer } from './huntLayer'
+import { HUNT_CANDIDATE_CIRCLE_ID, createHuntLayer } from './huntLayer'
 import { createRasterOverlays, createWeatherFrames } from './rasterLayers'
 import { createLongPressDetector } from './longPress'
 import { buildStyleUrl } from './styleUrls'
@@ -73,6 +73,7 @@ export class MapLibreProvider implements MapProvider {
     initialOverlays,
     onViewChange,
     onMapClick,
+    onHuntCandidateClick,
     onMapLongPress,
     onWaypointClick,
     onDraftMove,
@@ -234,11 +235,22 @@ export class MapLibreProvider implements MapProvider {
         })
       : null
 
-    if (onMapClick) {
+    if (onMapClick || onHuntCandidateClick) {
       map.on('click', (e) => {
         // The click a browser may emit after a long press is not a tap.
         if (longPress?.justFired(Date.now())) return
-        onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+        // A tap on a hunt candidate selects it and is not a map tap.
+        if (onHuntCandidateClick && map.getLayer(HUNT_CANDIDATE_CIRCLE_ID)) {
+          const hit = map.queryRenderedFeatures(e.point, {
+            layers: [HUNT_CANDIDATE_CIRCLE_ID],
+          })[0]
+          const id: unknown = hit?.properties?.id
+          if (typeof id === 'string') {
+            onHuntCandidateClick(id)
+            return
+          }
+        }
+        onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
       })
     }
 
