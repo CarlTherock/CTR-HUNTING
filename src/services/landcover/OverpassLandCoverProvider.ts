@@ -87,13 +87,14 @@ export function parseWithStats(json: unknown): { polygons: LandPolygon[]; unclos
       const ring = toRing(el.geometry)
       if (samePoint(ring[0], ring[ring.length - 1])) out.push({ id: `w${el.id}`, landClass, rings: [ring] })
     } else if (el.type === 'relation' && el.members) {
-      const segments = (role: string) => el.members!
+      const members = el.members
+      const segments = (role: string) => members
         .filter((m) => m.role === role && m.geometry && m.geometry.length >= 2)
         .map((m) => toRing(m.geometry as OverpassGeomPoint[]))
       const outer = stitchRings(segments('outer'))
       const inner = stitchRings(segments('inner'))
       unclosedRings += outer.unclosed + inner.unclosed
-      const missingInner = el.members.some((m) => m.role === 'inner' && (!m.geometry || m.geometry.length < 2))
+      const missingInner = members.some((m) => m.role === 'inner' && (!m.geometry || m.geometry.length < 2))
       if (missingInner) unclosedRings++
       if (inner.unclosed > 0 || missingInner) continue
       const polygons = outer.rings.map((ring, i): LandPolygon => ({ id: `r${el.id}-${i}`, landClass, rings: [ring] }))
