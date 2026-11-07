@@ -180,6 +180,8 @@ describe('composition des données : aucun avantage artificiel', () => {
       minutes: 120,
       clipped: false,
       meanIndex,
+      coreIndex: meanIndex,
+      blockMeanIndex: meanIndex,
       evaluated: [],
       notEvaluated: [],
       composition,
@@ -195,6 +197,8 @@ describe('composition des données : aucun avantage artificiel', () => {
       minutes: 120,
       clipped: false,
       meanIndex: m,
+      coreIndex: m,
+      blockMeanIndex: m,
       evaluated: [],
       notEvaluated: [],
       composition: 'conditions_partielles',
@@ -300,6 +304,8 @@ describe('texte de recommandation et classement des jours', () => {
       minutes: 120,
       clipped: false,
       meanIndex,
+      coreIndex: meanIndex,
+      blockMeanIndex: meanIndex,
       evaluated: [],
       notEvaluated: [],
       composition,
@@ -313,7 +319,7 @@ describe('texte de recommandation et classement des jours', () => {
     expect(
       rankDays([
         { dateKey: 'a', best: w('conditions_completes', 76.7) },
-        { dateKey: 'b', best: w('conditions_completes', 68.2) },
+        { dateKey: 'b', best: w('conditions_completes', 75.2) },
       ]).state,
     ).toBe('equivalents')
     expect(
@@ -327,19 +333,21 @@ describe('texte de recommandation et classement des jours', () => {
     )
   })
 
-  it('les blocs horaires ne créent pas un classement matin/soir : écart sous la sensibilité = équivalents', () => {
+  it('écart sous 3 points = équivalents, au-delà = départagé', () => {
     const w = (meanIndex: number): ClippedWindow => ({
       startClock: '06:00',
       endClock: '08:00',
       minutes: 120,
       clipped: false,
       meanIndex,
+      coreIndex: meanIndex,
+      blockMeanIndex: meanIndex,
       evaluated: [],
       notEvaluated: [],
       composition: 'conditions_completes',
     })
-    expect(rankWindows([w(74), w(66)]).state).toBe('equivalents')
-    expect(rankWindows([w(80), w(64)]).state).toBe('departage')
+    expect(rankWindows([w(74), w(72)]).state).toBe('equivalents')
+    expect(rankWindows([w(80), w(70)]).state).toBe('departage')
   })
   it('poste inconnu (conditions partielles) n’est jamais classé contre un poste connu', () => {
     const mk = (composition: ClippedWindow['composition'], meanIndex: number) =>
@@ -349,6 +357,8 @@ describe('texte de recommandation et classement des jours', () => {
         minutes: 120,
         clipped: false,
         meanIndex,
+        coreIndex: meanIndex,
+        blockMeanIndex: meanIndex,
         evaluated: [],
         notEvaluated: [],
         composition,
@@ -357,5 +367,26 @@ describe('texte de recommandation et classement des jours', () => {
       rankWindows([mk('conditions_partielles', 76.7), mk('conditions_completes', 72)])
         .state,
     ).toBe('non_comparables')
+  })
+
+  it('même catégorie mais ensembles de facteurs différents (vent absent) : non comparables', () => {
+    const mk = (evaluated: string[], m: number): ClippedWindow => ({
+      startClock: '06:00',
+      endClock: '08:00',
+      minutes: 120,
+      clipped: false,
+      meanIndex: m,
+      coreIndex: m,
+      blockMeanIndex: m,
+      evaluated,
+      notEvaluated: [],
+      composition: 'conditions_partielles',
+    })
+    // Poste inconnu : direction du vent non évaluée, rafales et pluie évaluées.
+    const sansPoste = mk(['gust', 'precip'], 76)
+    // Vent absent de la prévision : direction ET rafales non évaluées.
+    const sansVent = mk(['precip'], 80)
+    expect(rankWindows([sansPoste, sansVent]).state).toBe('non_comparables')
+    expect(rankWindows([sansPoste, mk(['gust', 'precip'], 70)]).state).toBe('departage')
   })
 })

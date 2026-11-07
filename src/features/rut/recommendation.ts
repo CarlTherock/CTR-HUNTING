@@ -1,4 +1,6 @@
 import type { DayAnalysis, HourSlot, HuntWindow } from '@/features/deer-intel/engine'
+import { referenceActivity } from '@/features/deer-intel/engine/activity'
+import { REFERENCE_ACTIVITY_WEIGHT } from '@/features/deer-intel/engine/windows'
 import { zonedClock } from '@/features/hunting-hours/zonedTime'
 import type { ObservationsSummary } from './observationsSummary'
 import { METHOD_VERSION, seasonalAdvice } from './seasonalAdvice'
@@ -8,14 +10,6 @@ import type { TerritoryState } from './territory'
 /** Écart (points d'indice) en dessous duquel on n'affiche aucune différence. */
 export const DISPLAY_EQUIVALENCE_POINTS = 3
 
-/**
- * Entre deux créneaux d'une même journée, l'écart n'est présenté comme une différence qu'au-delà
- * de la sensibilité du calcul à la grille horaire. Mesure (90 jours, même météo, grille décalée
- * de 30 min) : le signe de l'écart matin − soir s'inverse 60 jours sur 90, écart médian 7,2 et
- * maximal 8,4 points. Marge retenue : 9 points (heuristique, ajustable).
- */
-export const WINDOW_EQUIVALENCE_POINTS = 9
-
 export interface ClippedWindow {
   startClock: string
   endClock: string
@@ -23,7 +17,15 @@ export interface ClippedWindow {
   minutes: number
   /** La fenêtre a été raccourcie parce qu'un bloc horaire dépassait la plage applicable. */
   clipped: boolean
+  /** Indice moyen sur la durée RÉELLEMENT retenue (après découpe), pas sur le bloc entier. */
   meanIndex: number
+  /**
+   * Indice du meilleur noyau de 60 min dans la durée retenue (intégré tous les 5 min). Base de
+   * comparaison entre créneaux : indépendante de la longueur du créneau et des bornes de bloc.
+   */
+  coreIndex: number
+  /** Moyenne du bloc horaire entier non découpé, telle que calculée par le moteur (pour comparaison). */
+  blockMeanIndex: number
   /** Facteurs de conditions évalués / non évalués sur toutes les heures de la fenêtre. */
   evaluated: string[]
   notEvaluated: string[]
@@ -59,6 +61,66 @@ function compositionOf(
     : 'conditions_partielles'
 }
 
+/** Pas interne (minutes) de l'intégration de la courbe d'activité. */
+const INTEGRATION_STEP_MIN = 5
+
+/**
+ * Indice moyen sur la durée retenue [start, end] : l'activité de référence est évaluée tous les
+ * 5 min (au lieu d'un seul échantillon par heure, au milieu du bloc) ; les conditions restent
+ * celles de l'heure météo qui contient l'instant (la météo n'est connue qu'à l'heure). Même
+ * pondération 65/35 que le moteur. Sans activité (soleil sans lever/coucher) : `null`.
+ */
+export function integratedMean(
+  day: DayAnalysis,
+  slots: HourSlot[],
+  start: number,
+  end: number,
+): number | null {
+  const step = INTEGRATION_STEP_MIN * 60_000
+  let sum = 0
+  let n = 0
+  for (let t = start; t < end; t += step) {
+    const mid = Math.min(t + step / 2, end)
+    const slot = slots.find(
+      (s) => Date.parse(s.startIso) <= mid && mid < Date.parse(s.endIso),
+    )
+    if (!slot) continue
+    const activity = referenceActivity(new Date(mid), day.sun)
+    if (activity === null) return null
+    sum +=
+      slot.conditions === null
+        ? activity
+        : REFERENCE_ACTIVITY_WEIGHT * activity +
+          (1 - REFERENCE_ACTIVITY_WEIGHT) * slot.conditions
+    n++
+  }
+  return n === 0 ? null : sum / n
+}
+
+const CORE_MIN = 60
+
+/** Meilleur noyau de 60 min (ou toute la durée si elle est plus courte). */
+export function coreMean(
+  day: DayAnalysis,
+  slots: HourSlot[],
+  start: number,
+  end: number,
+): number | null {
+  const core = CORE_MIN * 60_000
+  if (end - start <= core) return integratedMean(day, slots, start, end)
+  let best: number | null = null
+  for (let t = start; t + core <= end; t += INTEGRATION_STEP_MIN * 60_000) {
+    const v = integratedMean(day, slots, t, t + core)
+    if (v !== null && (best === null || v > best)) best = v
+  }
+  return best
+}
+
+/** Identité exacte des facteurs évalués : deux fenêtres ne se comparent que si elle est identique. */
+export function factorKey(w: Pick<ClippedWindow, 'evaluated'>): string {
+  return [...w.evaluated].sort().join('+') || 'aucun'
+}
+
 /**
  * Découpe une fenêtre du moteur à la plage applicable : un bloc horaire qui chevauche à peine la
  * plage ne fait pas entrer ses minutes hors plage dans la fenêtre affichée. La borne de fin
@@ -85,7 +147,9 @@ export function clipWindow(
     endClock: zonedClock(new Date(end), timeZone),
     minutes: Math.round((end - start) / 60_000),
     clipped: start !== winStart || end !== winEnd,
-    meanIndex: w.meanIndex,
+    meanIndex: integratedMean(day, slots, start, end) ?? w.meanIndex,
+    coreIndex: coreMean(day, slots, start, end) ?? w.meanIndex,
+    blockMeanIndex: w.meanIndex,
     evaluated,
     notEvaluated,
     composition: compositionOf(slots, evaluated),
@@ -116,18 +180,21 @@ export function rankWindows(windows: ClippedWindow[]): DayRanking {
       state: 'departage',
       explanation: 'Un seul créneau est marqué : il n’y a rien à comparer.',
     }
-  if (new Set(windows.map((w) => w.composition)).size > 1)
+  if (
+    new Set(windows.map((w) => w.composition)).size > 1 ||
+    new Set(windows.map(factorKey)).size > 1
+  )
     return {
       state: 'non_comparables',
       explanation:
-        'Ces créneaux reposent sur des données de composition différente (météo présente pour certains et pas pour d’autres) : ils ne sont pas comparés entre eux.',
+        'Ces créneaux reposent sur des données de composition différente (météo, vent ou poste évalués pour certains et pas pour d’autres) : ils ne sont pas comparés entre eux.',
     }
-  const sorted = [...windows].sort((a, b) => b.meanIndex - a.meanIndex)
-  if (sorted[0].meanIndex - sorted[1].meanIndex < WINDOW_EQUIVALENCE_POINTS)
+  const sorted = [...windows].sort((a, b) => b.coreIndex - a.coreIndex)
+  if (sorted[0].coreIndex - sorted[1].coreIndex < DISPLAY_EQUIVALENCE_POINTS)
     return {
       state: 'equivalents',
       explanation:
-        'Les deux meilleurs créneaux sont équivalents : l’écart est dans la marge liée au découpage horaire du calcul, trop petit pour être présenté comme une différence.',
+        'Les deux meilleurs créneaux sont équivalents : l’écart est trop petit pour être présenté comme une différence.',
     }
   return {
     state: 'departage',

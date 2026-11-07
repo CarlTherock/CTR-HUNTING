@@ -5,6 +5,8 @@ roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
 ## Non publié — Repères saisonniers du rut
 
+- Classement des créneaux : comparaison sur l'indice du meilleur noyau de 60 min, intégré tous les 5 min sur la durée retenue (après découpe). Mesure reproductible (test `gridBias`) : avec la moyenne du bloc horaire entier, une grille décalée de 30 min inversait matin/soir sur 60 jours sur 90 ; avec le noyau, 0 inversion. Limite restante : quels créneaux atteignent le seuil, et la météo, restent à l'heure. Égalité sous 3 points ; deux créneaux ou jours ne sont comparés que si l'ensemble exact de facteurs évalués est identique (vent absent ≠ poste inconnu).
+
 - Nouvelle page `/rut` : « Repères saisonniers du rut — contexte québécois ». Deux bandes séparées (Québec ; Wisconsin, étude externe non calibrée), position de la date avant/dans/après, aucune bande de conception, aucun pic ni courbe, le GPS ne déplace pas le calendrier.
 - Résumé descriptif des observations dès la première entrée (directes / indices au sol / caméras, jours couverts, effort via sorties enregistrées, séquences regroupées), sans tendance.
 - Gabarit de rapport unique (HTML/SVG) pour l'aperçu et l'impression/PDF.
