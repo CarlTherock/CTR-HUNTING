@@ -72,6 +72,31 @@ export function inputsSignature(inputs: HuntInputs): string {
   return (h >>> 0).toString(16)
 }
 
+/**
+ * Une analyse enregistrée correspond-elle à ces entrées ? Compare lieu, période et réglages
+ * du moteur lus dans l'enregistrement lui-même : les analyses d'avant la clé à empreinte restent
+ * donc relues hors ligne (sans confondre un autre poste, un autre vent ou une autre date).
+ */
+export function recordMatchesInputs(
+  record: SavedHuntAnalysis,
+  inputs: HuntInputs,
+  key: string,
+  startDateKey: string,
+): boolean {
+  const p = record.hunt.params
+  return (
+    record.extentKey === key &&
+    record.startDateKey === startDateKey &&
+    record.days === inputs.days &&
+    p.objective === inputs.objective &&
+    p.huntingRuleId === inputs.huntingRuleId &&
+    p.experimentalSolunar === inputs.experimentalSolunar &&
+    JSON.stringify(p.favorableWindFrom) === JSON.stringify(inputs.favorableWindFrom) &&
+    JSON.stringify(p.sensitiveBearings) === JSON.stringify(inputs.sensitiveBearings) &&
+    JSON.stringify(p.availability) === JSON.stringify(inputs.availability)
+  )
+}
+
 /** Clé d'une analyse : lieu + période + réglages. Un autre poste ou vent = une autre analyse. */
 export function savedId(
   key: string,
@@ -80,6 +105,15 @@ export function savedId(
   signature = '',
 ): string {
   return `${key}|${startDateKey}|${days}|${signature}`
+}
+
+/**
+ * Une analyse enregistrée avant l'ajout des réglages (poste, vent) à la clé n'a pas de
+ * signature : elle reste consultable telle quelle, mais n'est jamais associée à de nouveaux
+ * réglages par approximation.
+ */
+export function isLegacySavedId(id: string): boolean {
+  return id.split('|').length < 4
 }
 
 /** Fuseau du point introuvable sans prévision : aucun horaire fiable n'est calculé. */

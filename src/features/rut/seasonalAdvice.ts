@@ -127,7 +127,7 @@ export function seasonalAdvice(
         effect: `Le repère externe commence dans moins de deux semaines. Rien ne permet de dire que les déplacements sont déjà élevés ou non ici.${uncertain}`,
         extendPresence: {
           status: 'non_etaye',
-          text: 'Aucune source ne justifie de prolonger la présence au-delà des créneaux habituels à ce stade.',
+          text: 'À ce stade, le modèle dispose de moins d’éléments pour recommander une présence prolongée en journée.',
         },
         dayRanking:
           'Le contexte ne départage pas ces jours entre eux ; il distingue seulement, avec prudence, la proximité du repère.',
@@ -139,7 +139,7 @@ export function seasonalAdvice(
         effect: `Le 12 novembre est une borne du Wisconsin, pas un « après-rut » québécois. Aucune donnée québécoise ne permet de dire si les déplacements diminuent ici. Le conseil reste prudent plutôt que de conclure.${uncertain}`,
         extendPresence: {
           status: 'non_etaye',
-          text: 'Les sources ne permettent ni de prolonger ni d’écourter la présence.',
+          text: 'Le modèle ne dispose pas d’éléments pour recommander de prolonger ou d’écourter la présence ; l’absence de repère n’indique pas que ces heures sont mauvaises.',
         },
         dayRanking: 'Le contexte ne départage pas ces jours.',
       }
@@ -153,7 +153,7 @@ export function seasonalAdvice(
         effect: `Le repère externe ne s’applique pas à cette date. Le conseil repose sur les créneaux solaires et les conditions pratiques seulement.${uncertain}`,
         extendPresence: {
           status: 'non_etaye',
-          text: 'Aucune source ne justifie de prolonger la présence au-delà des créneaux habituels.',
+          text: 'Hors du repère de référence, le modèle dispose de moins d’éléments pour recommander une présence prolongée en journée.',
         },
         dayRanking:
           'Le contexte saisonnier ne change pas le classement des jours : seules les conditions pratiques les distinguent.',

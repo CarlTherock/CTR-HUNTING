@@ -313,7 +313,7 @@ describe('texte de recommandation et classement des jours', () => {
     expect(
       rankDays([
         { dateKey: 'a', best: w('conditions_completes', 76.7) },
-        { dateKey: 'b', best: w('conditions_completes', 75.2) },
+        { dateKey: 'b', best: w('conditions_completes', 68.2) },
       ]).state,
     ).toBe('equivalents')
     expect(
@@ -325,5 +325,37 @@ describe('texte de recommandation et classement des jours', () => {
     expect(rankDays([{ dateKey: 'a', best: w('conditions_completes', 80) }]).state).toBe(
       'insuffisant',
     )
+  })
+
+  it('les blocs horaires ne créent pas un classement matin/soir : écart sous la sensibilité = équivalents', () => {
+    const w = (meanIndex: number): ClippedWindow => ({
+      startClock: '06:00',
+      endClock: '08:00',
+      minutes: 120,
+      clipped: false,
+      meanIndex,
+      evaluated: [],
+      notEvaluated: [],
+      composition: 'conditions_completes',
+    })
+    expect(rankWindows([w(74), w(66)]).state).toBe('equivalents')
+    expect(rankWindows([w(80), w(64)]).state).toBe('departage')
+  })
+  it('poste inconnu (conditions partielles) n’est jamais classé contre un poste connu', () => {
+    const mk = (composition: ClippedWindow['composition'], meanIndex: number) =>
+      ({
+        startClock: '06:00',
+        endClock: '08:00',
+        minutes: 120,
+        clipped: false,
+        meanIndex,
+        evaluated: [],
+        notEvaluated: [],
+        composition,
+      }) satisfies ClippedWindow
+    expect(
+      rankWindows([mk('conditions_partielles', 76.7), mk('conditions_completes', 72)])
+        .state,
+    ).toBe('non_comparables')
   })
 })

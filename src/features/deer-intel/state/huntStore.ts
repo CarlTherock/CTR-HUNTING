@@ -14,8 +14,7 @@ import {
   DEFAULT_INPUTS,
   composeAnalysis,
   deviceTimeZone,
-  inputsSignature,
-  savedId,
+  recordMatchesInputs,
   type HuntInputs,
 } from './compose'
 
@@ -229,14 +228,9 @@ export const useHuntStore = create<HuntState>((set, get) => ({
 
     if (!forecast && !land) {
       // Tout a échoué (probablement hors ligne) : relire la dernière analyse du même endroit.
-      const expectedId = savedId(
-        extentKey(extent),
-        startKey,
-        inputs.days,
-        inputsSignature(inputs),
-      )
-      const previous = (await listHuntAnalyses().catch(() => [])).find(
-        (r) => r.id === expectedId,
+      const key = extentKey(extent)
+      const previous = (await listHuntAnalyses().catch(() => [])).find((r) =>
+        recordMatchesInputs(r, inputs, key, startKey),
       )
       if (mine !== token) return
       if (previous) {

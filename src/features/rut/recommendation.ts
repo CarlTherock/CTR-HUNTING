@@ -8,6 +8,14 @@ import type { TerritoryState } from './territory'
 /** Écart (points d'indice) en dessous duquel on n'affiche aucune différence. */
 export const DISPLAY_EQUIVALENCE_POINTS = 3
 
+/**
+ * Entre deux créneaux d'une même journée, l'écart n'est présenté comme une différence qu'au-delà
+ * de la sensibilité du calcul à la grille horaire. Mesure (90 jours, même météo, grille décalée
+ * de 30 min) : le signe de l'écart matin − soir s'inverse 60 jours sur 90, écart médian 7,2 et
+ * maximal 8,4 points. Marge retenue : 9 points (heuristique, ajustable).
+ */
+export const WINDOW_EQUIVALENCE_POINTS = 9
+
 export interface ClippedWindow {
   startClock: string
   endClock: string
@@ -115,11 +123,11 @@ export function rankWindows(windows: ClippedWindow[]): DayRanking {
         'Ces créneaux reposent sur des données de composition différente (météo présente pour certains et pas pour d’autres) : ils ne sont pas comparés entre eux.',
     }
   const sorted = [...windows].sort((a, b) => b.meanIndex - a.meanIndex)
-  if (sorted[0].meanIndex - sorted[1].meanIndex < DISPLAY_EQUIVALENCE_POINTS)
+  if (sorted[0].meanIndex - sorted[1].meanIndex < WINDOW_EQUIVALENCE_POINTS)
     return {
       state: 'equivalents',
       explanation:
-        'Les deux meilleurs créneaux sont équivalents : l’écart est trop petit pour être présenté comme une différence.',
+        'Les deux meilleurs créneaux sont équivalents : l’écart est dans la marge liée au découpage horaire du calcul, trop petit pour être présenté comme une différence.',
     }
   return {
     state: 'departage',

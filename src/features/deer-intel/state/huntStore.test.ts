@@ -11,7 +11,8 @@ vi.mock('@/services/landcover/OverpassLandCoverProvider', () => ({
 }))
 
 const { useHuntStore } = await import('./huntStore')
-const { DEFAULT_INPUTS, composeAnalysis } = await import('./compose')
+const { DEFAULT_INPUTS, composeAnalysis, recordMatchesInputs, isLegacySavedId } =
+  await import('./compose')
 
 const COORD = { lat: 45.6, lng: -72.9 }
 const FOREST_RING = [
@@ -82,6 +83,35 @@ describe('compose', () => {
     ).toThrow(/Fuseau du point non établi/)
   })
 
+  it('relecture hors ligne : même lieu, même période ET mêmes réglages seulement', () => {
+    const base = {
+      ...DEFAULT_INPUTS,
+      coordinate: COORD,
+      startDateKey: '2026-11-06',
+      days: 1,
+    }
+    const meta = {
+      now: new Date('2026-11-06T15:00:00Z'),
+      forecastFetchedAt: null,
+      fallbackTimeZone: 'America/Toronto',
+    }
+    const { record } = composeAnalysis(base, null, null, meta)
+    const key = record.extentKey
+    expect(recordMatchesInputs(record, base, key, '2026-11-06')).toBe(true)
+    expect(recordMatchesInputs(record, base, key, '2026-11-07')).toBe(false)
+    expect(
+      recordMatchesInputs(
+        record,
+        { ...base, favorableWindFrom: [270] },
+        key,
+        '2026-11-06',
+      ),
+    ).toBe(false)
+    expect(recordMatchesInputs(record, { ...base, days: 3 }, key, '2026-11-06')).toBe(
+      false,
+    )
+  })
+
   it('les réglages de poste et de vent donnent une autre clé d’analyse', () => {
     const base = {
       ...DEFAULT_INPUTS,
@@ -100,6 +130,11 @@ describe('compose', () => {
     const c = composeAnalysis(base, null, null, meta).record.id
     expect(a).not.toBe(b)
     expect(a).toBe(c)
+  })
+
+  it('une analyse à l’ancienne clé est reconnue comme version précédente, sans être modifiée', () => {
+    expect(isLegacySavedId('45.6,-72.9|2026-11-06|1')).toBe(true)
+    expect(isLegacySavedId('45.6,-72.9|2026-11-06|1|sig')).toBe(false)
   })
 
   it('refuse sans point GPS', () => {

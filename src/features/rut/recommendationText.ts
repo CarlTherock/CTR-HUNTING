@@ -1,4 +1,4 @@
-import { DISPLAY_EQUIVALENCE_POINTS } from './recommendation'
+import { WINDOW_EQUIVALENCE_POINTS } from './recommendation'
 import type { ClippedWindow, Recommendation } from './recommendation'
 
 export const INDICATIVE_NOTICE =
@@ -97,7 +97,7 @@ export function rankDays(days: DayRank[]): {
         'Ces jours reposent sur des données de composition différente : ils ne sont pas comparés entre eux.',
     }
   const sorted = [...withBest].sort((a, b) => b.best.meanIndex - a.best.meanIndex)
-  if (sorted[0].best.meanIndex - sorted[1].best.meanIndex < DISPLAY_EQUIVALENCE_POINTS)
+  if (sorted[0].best.meanIndex - sorted[1].best.meanIndex < WINDOW_EQUIVALENCE_POINTS)
     return {
       state: 'equivalents',
       order: sorted.map((d) => d.dateKey),
