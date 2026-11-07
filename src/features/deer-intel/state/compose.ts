@@ -132,7 +132,17 @@ export function composeAnalysis(
   forecast: PointForecast | null,
   land: LandCoverData | null,
   /** `fallbackTimeZone` : fuseau déduit du TERRITOIRE du point (jamais celui du téléphone) ; `null` si non établi. */
-  meta: { now: Date; forecastFetchedAt: string | null; fallbackTimeZone: string | null },
+  meta: {
+    now: Date
+    forecastFetchedAt: string | null
+    fallbackTimeZone: string | null
+    /** Occupation du sol d'une analyse précédente du MÊME endroit, quand le service est en panne. */
+    reusedLand?: {
+      spatial: SpatialAnalysis
+      fetchedAt: string | null
+      source: string | null
+    }
+  },
 ): { record: SavedHuntAnalysis; timezoneNote: string | null } {
   if (!inputs.coordinate) throw new Error('Aucun point GPS choisi.')
   const extent = createExtent(inputs.coordinate, inputs.radiusM)
@@ -170,7 +180,7 @@ export function composeAnalysis(
         },
         land,
       )
-    : null
+    : (meta.reusedLand?.spatial ?? null)
   const key = extentKey(extent)
   return {
     timezoneNote,
@@ -194,8 +204,8 @@ export function composeAnalysis(
       data: {
         forecastFetchedAt: meta.forecastFetchedAt,
         forecastSource: forecast ? 'Open-Meteo (prévision de modèle)' : null,
-        landCoverFetchedAt: land?.fetchedAt ?? null,
-        landCoverSource: land?.source ?? null,
+        landCoverFetchedAt: land?.fetchedAt ?? meta.reusedLand?.fetchedAt ?? null,
+        landCoverSource: land?.source ?? meta.reusedLand?.source ?? null,
       },
     },
   }

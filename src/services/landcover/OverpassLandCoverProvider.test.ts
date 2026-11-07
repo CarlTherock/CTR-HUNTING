@@ -61,7 +61,7 @@ describe('OverpassLandCoverProvider', () => {
       vi.fn().mockResolvedValue({ ok: false, status: 504, json: () => null }),
     )
     await expect(
-      new OverpassLandCoverProvider().fetchLandCover(
+      new OverpassLandCoverProvider(undefined, [0, 0]).fetchLandCover(
         createExtent({ lat: 45.5, lng: -72.5 }, 800),
       ),
     ).rejects.toThrow(/504/)
@@ -81,7 +81,7 @@ describe('OverpassLandCoverProvider', () => {
           }),
       }),
     )
-    const data = await new OverpassLandCoverProvider().fetchLandCover(
+    const data = await new OverpassLandCoverProvider(undefined, [0, 0]).fetchLandCover(
       createExtent({ lat: 45.5, lng: -72.5 }, 800),
     )
     expect(data.polygons).toHaveLength(1)
@@ -136,10 +136,10 @@ describe('OverpassLandCoverProvider', () => {
           Promise.resolve({ elements: [], remark: 'runtime error: Query timed out' }),
       }),
     )
-    const promise = new OverpassLandCoverProvider([
-      'https://a.example/api',
-      'https://b.example/api',
-    ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
+    const promise = new OverpassLandCoverProvider(
+      ['https://a.example/api', 'https://b.example/api'],
+      [],
+    ).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
     await expect(promise).rejects.toBeInstanceOf(LandCoverError)
     await expect(promise).rejects.toThrow(/réponse incomplète/)
   })
@@ -154,10 +154,10 @@ describe('OverpassLandCoverProvider', () => {
         json: () => Promise.resolve({ elements: [splitForest] }),
       })
     vi.stubGlobal('fetch', fetchMock)
-    const data = await new OverpassLandCoverProvider([
-      'https://a.example/api',
-      'https://b.example/api',
-    ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
+    const data = await new OverpassLandCoverProvider(
+      ['https://a.example/api', 'https://b.example/api'],
+      [],
+    ).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(data.polygons).toHaveLength(1)
     expect(data.source).toContain('b.example')
@@ -172,12 +172,57 @@ describe('OverpassLandCoverProvider', () => {
         .mockRejectedValueOnce(new TypeError('Failed to fetch')),
     )
     await expect(
-      new OverpassLandCoverProvider([
-        'https://a.example/api',
-        'https://b.example/api',
-      ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800)),
+      new OverpassLandCoverProvider(
+        ['https://a.example/api', 'https://b.example/api'],
+        [],
+      ).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800)),
     ).rejects.toThrow(
       /a\.example a répondu HTTP 429.*b\.example injoignable.*Failed to fetch/,
     )
+  })
+
+  it('réessaie après un 502 passager puis réussit (service public surchargé)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 502, json: () => null })
+      .mockResolvedValueOnce({ ok: false, status: 502, json: () => null })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ elements: [splitForest] }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    const data = await new OverpassLandCoverProvider(
+      ['https://a.example/api'],
+      [0, 0],
+    ).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(data.polygons).toHaveLength(1)
+  })
+
+  it('trois 502 de suite : erreur avec le nombre d’essais, sans données inventées', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 502, json: () => null })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(
+      new OverpassLandCoverProvider(['https://a.example/api'], [0, 0]).fetchLandCover(
+        createExtent({ lat: 45.5, lng: -72.5 }, 800),
+      ),
+    ).rejects.toThrow(/HTTP 502.*essai 2.*essai 3/)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('une erreur non passagère (404) n’est pas réessayée', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 404, json: () => null })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(
+      new OverpassLandCoverProvider(['https://a.example/api'], [0, 0]).fetchLandCover(
+        createExtent({ lat: 45.5, lng: -72.5 }, 800),
+      ),
+    ).rejects.toThrow(/HTTP 404/)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

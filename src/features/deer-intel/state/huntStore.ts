@@ -224,6 +224,23 @@ export const useHuntStore = create<HuntState>((set, get) => ({
 
     const forecast = forecastRes.status === 'fulfilled' ? forecastRes.value : null
     const land = landRes.status === 'fulfilled' ? landRes.value : null
+    // Service d'occupation du sol en panne : relire les secteurs déjà calculés pour CE point.
+    const reusedRecord = land
+      ? null
+      : ((await listHuntAnalyses().catch(() => [])).find(
+          (r) =>
+            r.extentKey === extentKey(extent) &&
+            r.spatial !== null &&
+            r.spatial.coverage > 0,
+        ) ?? null)
+    const reused =
+      reusedRecord && reusedRecord.spatial
+        ? {
+            spatial: reusedRecord.spatial,
+            fetchedAt: reusedRecord.data.landCoverFetchedAt,
+            source: reusedRecord.data.landCoverSource,
+          }
+        : null
     const notes: string[] = []
 
     if (!forecast && !land) {
@@ -261,7 +278,15 @@ export const useHuntStore = create<HuntState>((set, get) => ({
           `Prévision météo indisponible : indice limité à l’activité de référence.${why}`,
         )
       }
-      if (!land) {
+      if (!land && reused) {
+        const why =
+          landRes.status === 'rejected' && landRes.reason instanceof Error
+            ? ` Cause : ${landRes.reason.message}`
+            : ''
+        notes.push(
+          `Occupation du sol : service indisponible, secteurs et points relus de l’analyse du ${reused.fetchedAt?.slice(0, 10) ?? 'jour précédent'} pour ce même endroit (données enregistrées, pas une nouvelle lecture).${why}`,
+        )
+      } else if (!land) {
         const why =
           landRes.status === 'rejected' && landRes.reason instanceof Error
             ? ` Cause : ${landRes.reason.message}`
@@ -283,6 +308,7 @@ export const useHuntStore = create<HuntState>((set, get) => ({
         now,
         forecastFetchedAt: forecast ? now.toISOString() : null,
         fallbackTimeZone: zone.timeZone,
+        reusedLand: reused ?? undefined,
       })
       if (timezoneNote) notes.push(timezoneNote)
       set({ status: 'ready', error: null, result: { record, origin: 'live', notes } })
