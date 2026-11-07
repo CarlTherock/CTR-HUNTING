@@ -3,6 +3,21 @@
 All notable changes to this project are documented here, grouped by
 roadmap phase (see `PROJECT_SPECIFICATION.md`).
 
+## Non publié — Repères saisonniers du rut
+
+- Classement des créneaux : comparaison sur l'indice du meilleur noyau de 60 min, intégré tous les 5 min sur la durée retenue (après découpe). Mesure reproductible (test `gridBias`) : avec la moyenne du bloc horaire entier, une grille décalée de 30 min inversait matin/soir sur 60 jours sur 90 ; avec le noyau, 0 inversion. Limite restante : quels créneaux atteignent le seuil, et la météo, restent à l'heure. Égalité sous 3 points ; deux créneaux ou jours ne sont comparés que si l'ensemble exact de facteurs évalués est identique (vent absent ≠ poste inconnu).
+
+- Nouvelle page `/rut` : « Repères saisonniers du rut — contexte québécois ». Deux bandes séparées (Québec ; Wisconsin, étude externe non calibrée), position de la date avant/dans/après, aucune bande de conception, aucun pic ni courbe, le GPS ne déplace pas le calendrier.
+- Résumé descriptif des observations dès la première entrée (directes / indices au sol / caméras, jours couverts, effort via sorties enregistrées, séquences regroupées), sans tendance.
+- Gabarit de rapport unique (HTML/SVG) pour l'aperçu et l'impression/PDF.
+- Registre 1.3.0 : INF-RUT-01 réécrit, sources Québec.ca (date affichée 3 novembre 2026, consultée le 2026-11-07) et CEAEQ ajoutées, Hunsaker marqué « résumé seulement » pour cette règle. Moteur de créneaux inchangé.
+
+- Fiche « Évaluer ce lieu » après le toucher sur la carte : date préremplie modifiable, période de 1/3/7 jours.
+- Carte « Recommandation » en tête du dashboard : prend position, 2–3 raisons, limite principale, détails repliés (contexte saisonnier, informations manquantes, hypothèses).
+- Conseil saisonnier qualitatif avec transitions heuristiques de 14 jours ; hors territoire / Anticosti / Madeleine : « territoire non couvert ».
+- Créneaux découpés à la plage applicable ; classement limité aux éléments de même composition ; égalités affichées ; poste inconnu ≠ vent favorable.
+- Fuseau du point sans météo : déduit du territoire, sinon horaires non établis (plus de repli sur le téléphone) ; clé d'analyse = lieu + période + réglages poste/vent.
+
 ## [Non publié] — Parcours « Où et quand chasser » refait
 
 - Entrée directe sur la carte (bouton « Où et quand chasser ») : toucher un point → analyse automatique → dashboard. Le point touché est conservé tel quel (jamais remplacé par la position GPS ni le centre de la carte) ; une seule analyse par point. Accès aussi depuis l'accueil.

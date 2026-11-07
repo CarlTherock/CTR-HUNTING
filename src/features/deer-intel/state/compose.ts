@@ -56,8 +56,74 @@ export function deviceTimeZone(): string {
   }
 }
 
-export function savedId(key: string, startDateKey: string, days: number): string {
-  return `${key}|${startDateKey}|${days}`
+/** Empreinte courte des réglages qui changent le résultat (poste, vent, plage, règle…). */
+export function inputsSignature(inputs: HuntInputs): string {
+  const raw = JSON.stringify([
+    inputs.objective,
+    inputs.favorableWindFrom,
+    inputs.sensitiveBearings,
+    inputs.availability,
+    inputs.huntingRuleId,
+    inputs.experimentalSolunar,
+    inputs.maxCandidates,
+  ])
+  let h = 5381
+  for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) | 0
+  return (h >>> 0).toString(16)
+}
+
+/**
+ * Une analyse enregistrée correspond-elle à ces entrées ? Compare lieu, période et réglages
+ * du moteur lus dans l'enregistrement lui-même : les analyses d'avant la clé à empreinte restent
+ * donc relues hors ligne (sans confondre un autre poste, un autre vent ou une autre date).
+ */
+export function recordMatchesInputs(
+  record: SavedHuntAnalysis,
+  inputs: HuntInputs,
+  key: string,
+  startDateKey: string,
+): boolean {
+  const p = record.hunt.params
+  return (
+    record.extentKey === key &&
+    record.startDateKey === startDateKey &&
+    record.days === inputs.days &&
+    p.objective === inputs.objective &&
+    p.huntingRuleId === inputs.huntingRuleId &&
+    p.experimentalSolunar === inputs.experimentalSolunar &&
+    JSON.stringify(p.favorableWindFrom) === JSON.stringify(inputs.favorableWindFrom) &&
+    JSON.stringify(p.sensitiveBearings) === JSON.stringify(inputs.sensitiveBearings) &&
+    JSON.stringify(p.availability) === JSON.stringify(inputs.availability)
+  )
+}
+
+/** Clé d'une analyse : lieu + période + réglages. Un autre poste ou vent = une autre analyse. */
+export function savedId(
+  key: string,
+  startDateKey: string,
+  days: number,
+  signature = '',
+): string {
+  return `${key}|${startDateKey}|${days}|${signature}`
+}
+
+/**
+ * Une analyse enregistrée avant l'ajout des réglages (poste, vent) à la clé n'a pas de
+ * signature : elle reste consultable telle quelle, mais n'est jamais associée à de nouveaux
+ * réglages par approximation.
+ */
+export function isLegacySavedId(id: string): boolean {
+  return id.split('|').length < 4
+}
+
+/** Fuseau du point introuvable sans prévision : aucun horaire fiable n'est calculé. */
+export class TimezoneUnresolvedError extends Error {
+  constructor() {
+    super(
+      'Fuseau du point non établi sans prévision météo : les horaires fiables sont indisponibles. Réessayez avec une connexion.',
+    )
+    this.name = 'TimezoneUnresolvedError'
+  }
 }
 
 /** Assemble l'analyse complète (pure) à partir des données réellement obtenues. */
@@ -65,18 +131,18 @@ export function composeAnalysis(
   inputs: HuntInputs,
   forecast: PointForecast | null,
   land: LandCoverData | null,
-  meta: { now: Date; forecastFetchedAt: string | null; fallbackTimeZone: string },
+  /** `fallbackTimeZone` : fuseau déduit du TERRITOIRE du point (jamais celui du téléphone) ; `null` si non établi. */
+  meta: { now: Date; forecastFetchedAt: string | null; fallbackTimeZone: string | null },
 ): { record: SavedHuntAnalysis; timezoneNote: string | null } {
   if (!inputs.coordinate) throw new Error('Aucun point GPS choisi.')
   const extent = createExtent(inputs.coordinate, inputs.radiusM)
-  const tz =
-    forecast && isValidTimeZone(forecast.timezone)
-      ? forecast.timezone
-      : meta.fallbackTimeZone
-  const timezoneNote =
-    forecast && isValidTimeZone(forecast.timezone)
-      ? null
-      : `Fuseau de l’appareil (${tz}) utilisé : la prévision qui donne le fuseau du lieu est absente.`
+  const forecastTz =
+    forecast && isValidTimeZone(forecast.timezone) ? forecast.timezone : null
+  const tz = forecastTz ?? meta.fallbackTimeZone
+  if (tz === null) throw new TimezoneUnresolvedError()
+  const timezoneNote = forecastTz
+    ? null
+    : `Fuseau déduit du territoire du point (${tz}) : la prévision qui donne le fuseau est absente.`
   const startDateKey = inputs.startDateKey ?? zonedDateKey(meta.now, tz)
   const params: HuntParams = {
     coordinate: extent.center,
@@ -109,7 +175,12 @@ export function composeAnalysis(
   return {
     timezoneNote,
     record: {
-      id: savedId(key, hunt.params.startDateKey, hunt.params.days),
+      id: savedId(
+        key,
+        hunt.params.startDateKey,
+        hunt.params.days,
+        inputsSignature(inputs),
+      ),
       savedAt: meta.now.toISOString(),
       label: `${extent.center.lat.toFixed(4)}, ${extent.center.lng.toFixed(4)} · ${hunt.params.startDateKey}`,
       extentKey: key,

@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Clock, MapPin, Settings2, Sun } from 'lucide-react'
 import { Badge, Button, Card } from '@/components/ui'
 import type { SavedHuntAnalysis } from '@/types'
 import { formatLatitude, formatLongitude } from '@/utils/coordinateFormat'
 import { useHuntStore, type HuntResult } from '../state/huntStore'
 import { HourlyChart } from './HourlyChart'
+import { RecommendationCard } from './RecommendationCard'
 import { HowTab } from './HowTab'
 import { SourcesPanel } from './SourcesPanel'
 import { PressurePanel } from './PressurePanel'
@@ -130,6 +131,8 @@ export function Dashboard({
         </div>
       )}
 
+      <RecommendationCard record={record} dayIndex={selected} />
+
       <Card className="border-brand-500/40 p-4">
         <p className="text-brand-300 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
           <Clock size={14} aria-hidden="true" /> Meilleur créneau estimé
@@ -246,6 +249,13 @@ export function Dashboard({
           Voir sur la carte
         </Button>
       </Card>
+
+      <Link
+        to="/rut"
+        className="flex min-h-11 items-center rounded border border-slate-700 px-3 text-sm text-sky-300 underline"
+      >
+        Repères saisonniers du rut — contexte québécois
+      </Link>
 
       <div className="flex flex-col gap-2">
         <Fold title="Pourquoi ce créneau ? Détails et calendrier">

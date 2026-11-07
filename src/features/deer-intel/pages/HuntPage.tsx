@@ -6,6 +6,7 @@ import { useOnlineStatus } from '@/offline/useOnlineStatus'
 import { Dashboard } from '../components/Dashboard'
 import { ParamsPanel } from '../components/ParamsPanel'
 import { useHuntStore } from '../state/huntStore'
+import { isLegacySavedId } from '../state/compose'
 
 /**
  * « Où et quand chasser » : le point touché sur la carte lance directement l'analyse et ouvre
@@ -145,8 +146,16 @@ export default function HuntPage() {
                 >
                   {s.label}{' '}
                   <span className="text-ink-600">
-                    · enregistrée {s.savedAt.slice(0, 16).replace('T', ' ')} UTC
+                    · {s.startDateKey}, {s.days} j · enregistrée{' '}
+                    {s.savedAt.slice(0, 16).replace('T', ' ')} UTC
                   </span>
+                  {isLegacySavedId(s.id) && (
+                    <span className="text-ink-400 mt-0.5 block text-xs">
+                      Enregistrée avec une version précédente : réglages de poste et de
+                      vent non enregistrés. Consultable telle quelle ; refaites l’analyse
+                      avec réseau pour l’appliquer à vos réglages actuels.
+                    </span>
+                  )}
                 </button>
               </li>
             ))}

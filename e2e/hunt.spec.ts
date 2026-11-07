@@ -111,7 +111,18 @@ test.describe('Où et quand chasser (simulé)', () => {
     if (!box) throw new Error('carte introuvable')
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
 
-    // Dashboard directement : pas d'ancien panneau, pas de formulaire.
+    // Fiche « Évaluer ce lieu » : date préremplie et modifiable, puis un seul bouton.
+    const sheet = page.getByTestId('hunt-evaluate-sheet')
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByLabel('Date de début')).not.toHaveValue('')
+    await shot(page, '1c-evaluer-ce-lieu')
+    await sheet.getByRole('button', { name: 'Évaluer ce lieu' }).click()
+
+    // Dashboard : la recommandation d'abord : pas d'ancien panneau, pas de formulaire.
+    await expect(page.getByTestId('hunt-recommendation')).toBeVisible()
+    await expect(page.getByTestId('hunt-recommendation')).toContainText(
+      /Pour ce lieu et cette période/,
+    )
     await expect(page.getByText('Meilleur créneau estimé')).toBeVisible()
     await expect(page.getByText(/Détails avancés — analyse générale/)).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Analyser', exact: true })).toHaveCount(
@@ -145,6 +156,37 @@ test.describe('Où et quand chasser (simulé)', () => {
       await expect(page.getByTestId('hunt-point-sheet')).toBeVisible()
       await shot(page, '5-fiche-point')
     }
+  })
+
+  test('sans météo : la recommandation reste, dit ce qui manque et ne valorise pas l’absence', async ({
+    page,
+    backend,
+  }) => {
+    void backend
+    await page.route('https://api.open-meteo.com/**', (r) => r.abort())
+    await page.route('https://overpass-api.de/**', (r) => r.abort())
+    await page.goto('hunt?lat=45.6&lng=-72.0')
+    const reco = page.getByTestId('hunt-recommendation')
+    await expect(reco).toBeVisible()
+    await expect(reco).toContainText(/Sans météo/)
+    await reco.getByText(/Contexte saisonnier, informations manquantes/).click()
+    await expect(reco).toContainText(/Météo indisponible/)
+    await expect(reco).not.toContainText(/favorable au poste/)
+    await shot(page, '6-sans-meteo')
+  })
+
+  test('hors territoire documenté : aucun repère québécois appliqué, horaires conservés', async ({
+    page,
+    backend,
+  }) => {
+    void backend
+    await installProviders(page)
+    await page.goto('hunt?lat=44.0&lng=-80.5')
+    const reco = page.getByTestId('hunt-recommendation')
+    await expect(reco).toBeVisible()
+    await expect(reco).toContainText(/Aucun repère saisonnier documenté/)
+    await expect(reco).not.toContainText(/fin octobre à mi-novembre/)
+    await shot(page, '7-hors-territoire')
   })
 
   test('hors ligne : la dernière analyse du même endroit est relue', async ({
