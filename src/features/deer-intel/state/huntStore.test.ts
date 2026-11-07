@@ -149,6 +149,34 @@ describe('compose', () => {
 })
 
 describe('huntStore', () => {
+  it('service d’occupation du sol en panne : relit les secteurs déjà calculés pour ce même point, avec date et cause', async () => {
+    fetchPointForecast.mockResolvedValue(FORECAST)
+    fetchLandCover.mockResolvedValue(LAND)
+    await useHuntStore.getState().run()
+    const firstSectors = useHuntStore.getState().result?.record.spatial?.sectors.length
+    expect(firstSectors).toBeGreaterThan(0)
+    useHuntStore.setState({ result: null, status: 'idle' })
+
+    fetchLandCover.mockRejectedValue(new Error('overpass-api.de a répondu HTTP 502'))
+    await useHuntStore.getState().run()
+    const s = useHuntStore.getState()
+    expect(s.result?.origin).toBe('live')
+    expect(s.result?.record.spatial?.sectors.length).toBe(firstSectors)
+    expect(s.result?.notes.join(' ')).toMatch(
+      /relus de l’analyse du 2026-11-06.*HTTP 502/,
+    )
+    expect(s.result?.record.data.landCoverFetchedAt).toBe('2026-11-06T12:00:00.000Z')
+  })
+
+  it('service en panne et aucun enregistrement du même point : aucun secteur, cause affichée', async () => {
+    fetchPointForecast.mockResolvedValue(FORECAST)
+    fetchLandCover.mockRejectedValue(new Error('overpass-api.de a répondu HTTP 502'))
+    await useHuntStore.getState().run()
+    const s = useHuntStore.getState()
+    expect(s.result?.record.spatial).toBeNull()
+    expect(s.result?.notes.join(' ')).toMatch(/Occupation du sol indisponible.*HTTP 502/)
+  })
+
   it('sans journal ni observation : calcule et enregistre l’analyse', async () => {
     fetchPointForecast.mockResolvedValue(FORECAST)
     fetchLandCover.mockResolvedValue(LAND)

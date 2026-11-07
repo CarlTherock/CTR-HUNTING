@@ -169,10 +169,34 @@ export class LandCoverError extends Error {
 const hostOf = (url: string) => new URL(url).host
 
 /** Géométries d'occupation du sol (OpenStreetMap via Overpass) sur l'étendue demandée. Jamais de donnée inventée : une erreur est propagée avec sa cause. */
+/** Statuts qui signalent une surcharge ou une panne passagère du serveur public. */
+const TRANSIENT = new Set([429, 500, 502, 503, 504])
+/** Attente avant chaque nouvel essai (ms) : 3 essais au total par service. */
+export const RETRY_DELAYS_MS = [2000, 5000] as const
+
+const wait = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'))
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(new DOMException('Aborted', 'AbortError'))
+      },
+      { once: true },
+    )
+  })
+
 export class OverpassLandCoverProvider implements LandCoverProvider {
   private readonly endpoints: readonly string[]
-  constructor(endpoints: readonly string[] = ENDPOINTS) {
+  private readonly delays: readonly number[]
+  constructor(
+    endpoints: readonly string[] = ENDPOINTS,
+    delays: readonly number[] = RETRY_DELAYS_MS,
+  ) {
     this.endpoints = endpoints
+    this.delays = delays
   }
 
   async fetchLandCover(
@@ -182,42 +206,56 @@ export class OverpassLandCoverProvider implements LandCoverProvider {
     const attempts: string[] = []
     for (const endpoint of this.endpoints) {
       const host = hostOf(endpoint)
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          body: new URLSearchParams({ data: buildQuery(extent) }),
-          signal,
-        })
-        if (!response.ok) {
-          attempts.push(`${host} a répondu HTTP ${response.status}`)
-          continue
-        }
-        const json: unknown = await response.json()
-        // Overpass répond 200 même quand la requête a expiré ou manqué de mémoire : le résultat
-        // est alors incomplet et ne doit pas passer pour « aucune occupation du sol ».
-        const remark = (json as { remark?: unknown } | null)?.remark
-        if (typeof remark === 'string' && /error|timed out|out of memory/i.test(remark)) {
-          attempts.push(`${host} : réponse incomplète (${remark.slice(0, 120)})`)
-          continue
-        }
-        const { polygons, unclosedRings } = parseWithStats(json)
-        return {
-          polygons,
-          source: `OpenStreetMap (Overpass, ${host})`,
-          fetchedAt: new Date().toISOString(),
-          ...(unclosedRings > 0
-            ? {
-                warnings: [
-                  `${unclosedRings} contour(s) incomplet(s) dans OpenStreetMap ignoré(s), non reconstitués.`,
-                ],
+      for (let attempt = 0; attempt <= this.delays.length; attempt++) {
+        if (attempt > 0) await wait(this.delays[attempt - 1], signal)
+        const tag = attempt > 0 ? ` (essai ${attempt + 1})` : ''
+        let transient: boolean
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            body: new URLSearchParams({ data: buildQuery(extent) }),
+            signal,
+          })
+          if (!response.ok) {
+            attempts.push(`${host} a répondu HTTP ${response.status}${tag}`)
+            transient = TRANSIENT.has(response.status)
+          } else {
+            const json: unknown = await response.json()
+            // Overpass répond 200 même quand la requête a expiré ou manqué de mémoire : le
+            // résultat est alors incomplet et ne doit pas passer pour « aucune occupation du sol ».
+            const remark = (json as { remark?: unknown } | null)?.remark
+            if (
+              typeof remark === 'string' &&
+              /error|timed out|out of memory/i.test(remark)
+            ) {
+              attempts.push(
+                `${host} : réponse incomplète (${remark.slice(0, 120)})${tag}`,
+              )
+              transient = true
+            } else {
+              const { polygons, unclosedRings } = parseWithStats(json)
+              return {
+                polygons,
+                source: `OpenStreetMap (Overpass, ${host})`,
+                fetchedAt: new Date().toISOString(),
+                ...(unclosedRings > 0
+                  ? {
+                      warnings: [
+                        `${unclosedRings} contour(s) incomplet(s) dans OpenStreetMap ignoré(s), non reconstitués.`,
+                      ],
+                    }
+                  : {}),
               }
-            : {}),
+            }
+          }
+        } catch (error) {
+          if (signal?.aborted) throw error
+          const detail =
+            error instanceof Error ? `${error.name}: ${error.message}` : 'erreur'
+          attempts.push(`${host} injoignable (${detail})${tag}`)
+          transient = true
         }
-      } catch (error) {
-        if (signal?.aborted) throw error
-        const detail =
-          error instanceof Error ? `${error.name}: ${error.message}` : 'erreur'
-        attempts.push(`${host} injoignable (${detail})`)
+        if (!transient) break
       }
     }
     throw new LandCoverError(attempts)
