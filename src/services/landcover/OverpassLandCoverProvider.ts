@@ -1,7 +1,7 @@
 import type { Coordinate } from '@/types'
 import type { AnalysisExtent, LandClass, LandCoverData, LandPolygon } from '@/features/deer-intel/spatial/types'
 import { extentBounds } from '@/features/deer-intel/spatial/extent'
-import { pointInRing } from '@/features/deer-intel/spatial/geo'
+import { ringStrictlyContainsRing } from '@/features/deer-intel/spatial/ringContainment'
 
 /** Aucun nouveau destinataire de coordonnées n’est ajouté. */
 export const ENDPOINTS = ['https://overpass-api.de/api/interpreter'] as const
@@ -75,7 +75,7 @@ export function parseOverpassLandCover(json: unknown): LandPolygon[] {
   return parseWithStats(json).polygons
 }
 
-/** Conserve [extérieur, ...trous] ; un trou incomplet ne devient jamais du couvert plein. */
+/** Conserve [extérieur, ...trous] ; un trou incomplet ou non strictement inclus n'est jamais rempli. */
 export function parseWithStats(json: unknown): { polygons: LandPolygon[]; unclosedRings: number } {
   const elements = (json as { elements?: OverpassElement[] } | null)?.elements ?? []
   const out: LandPolygon[] = []
@@ -100,7 +100,7 @@ export function parseWithStats(json: unknown): { polygons: LandPolygon[]; unclos
       const polygons = outer.rings.map((ring, i): LandPolygon => ({ id: `r${el.id}-${i}`, landClass, rings: [ring] }))
       let orphan = false
       for (const hole of inner.rings) {
-        const owners = polygons.filter((p) => pointInRing(hole[0], p.rings[0]))
+        const owners = polygons.filter((p) => ringStrictlyContainsRing(p.rings[0], hole))
           .sort((a, b) => ringArea(a.rings[0]) - ringArea(b.rings[0]))
         if (!owners.length) { unclosedRings++; orphan = true; break }
         owners[0].rings.push(hole)
@@ -174,7 +174,7 @@ export class OverpassLandCoverProvider implements LandCoverProvider {
                 polygons,
                 source: `OpenStreetMap (Overpass, ${host})`,
                 fetchedAt: new Date().toISOString(),
-                ...(unclosedRings > 0 ? { warnings: [`${unclosedRings} contour(s) incomplet(s) ou trou(s) non rattachable(s) ignoré(s) ; les relations à trous incomplets sont écartées, jamais remplies.`] } : {}),
+                ...(unclosedRings > 0 ? { warnings: [`${unclosedRings} contour(s) incomplet(s) ou trou(s) non rattachable(s) ignoré(s) ; les relations à trous incomplets ou non strictement inclus sont écartées, jamais remplies.`] } : {}),
               }
             }
           }
