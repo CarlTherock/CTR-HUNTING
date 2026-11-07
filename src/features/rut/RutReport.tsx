@@ -76,7 +76,12 @@ export function RutReport({ dateKey, summary }: Props) {
                   strokeWidth={1.5}
                   strokeDasharray={b.origin === 'quebec' ? undefined : '4 3'}
                 />
-                <text x={x1 + 4} y={y + 15} fontSize={9} fill="#f1f5f9">
+                <text
+                  x={x2 - x1 < 100 ? x2 + 5 : x1 + 4}
+                  y={y + 15}
+                  fontSize={9}
+                  fill="#f1f5f9"
+                >
                   {b.origin === 'quebec' ? 'Québec' : 'Wisconsin (externe)'}
                 </text>
               </g>
