@@ -22,6 +22,8 @@ export interface LandCoverData {
   source: string
   /** ISO — date de récupération des données. */
   fetchedAt: string
+  /** Avertissements de la source (p. ex. contours incomplets ignorés). */
+  warnings?: string[]
 }
 
 export type CellState = 'scored' | 'excluded' | 'unknown'
