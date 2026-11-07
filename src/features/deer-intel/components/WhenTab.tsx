@@ -5,6 +5,7 @@ import { getRule } from '../rules/registry'
 import { DayComparison } from './DayComparison'
 import { HourlyChart } from './HourlyChart'
 import { PressurePanel } from './PressurePanel'
+import { TemperaturePanel } from './TemperaturePanel'
 import { ROBUSTNESS_TEXT, dayLabel, windowLabel } from './format'
 
 function mean(values: (number | null)[]): number | null {
@@ -108,6 +109,8 @@ export function WhenTab({ hunt }: { hunt: HuntAnalysis }) {
       <HourlyChart day={day} />
 
       {day.windows[0] && <WhyCard day={day} window={day.windows[0]} />}
+
+      <TemperaturePanel day={day} />
 
       <PressurePanel day={day} />
 

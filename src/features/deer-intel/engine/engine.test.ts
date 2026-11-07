@@ -302,6 +302,29 @@ describe('moteur « quand »', () => {
     expect(idx(none)).toEqual(idx(calm))
   })
 
+  it('la température (valeur ou baisse) ne change aucun indice ; la variation depuis hier est calculée', () => {
+    const base = (t: (h: number) => number | null) => ({
+      timezone: TZ,
+      hourly: [
+        ...Array.from({ length: 24 }, (_, h) =>
+          hourly('2026-11-05', h, { temperatureCelsius: 10 }),
+        ),
+        ...Array.from({ length: 24 }, (_, h) =>
+          hourly('2026-11-06', h, { temperatureCelsius: t(h) }),
+        ),
+      ],
+      daily: [],
+    })
+    const idx = (f: PointForecast) =>
+      analyzeHunt(params(), f, { now }).days[0]?.slots.map((s) => s.index)
+    const warm = base(() => 10)
+    const cold = base(() => -8)
+    expect(idx(cold)).toEqual(idx(warm))
+    expect(idx(base(() => null))).toEqual(idx(warm))
+    const slot = analyzeHunt(params(), cold, { now }).days[0]?.slots[12]
+    expect(slot?.weather?.temperatureChangeSinceYesterdayC).toBe(-18)
+  })
+
   it('fonctionne sans prévision, sans journal et sans observations : activité de référence seulement', () => {
     const a = analyzeHunt(params(), null, { now })
     expect(a.forecast).toBeNull()
