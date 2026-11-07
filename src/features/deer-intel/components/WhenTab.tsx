@@ -4,6 +4,7 @@ import type { DayAnalysis, HuntAnalysis, HuntWindow } from '../engine'
 import { getRule } from '../rules/registry'
 import { DayComparison } from './DayComparison'
 import { HourlyChart } from './HourlyChart'
+import { PressurePanel } from './PressurePanel'
 import { ROBUSTNESS_TEXT, dayLabel, windowLabel } from './format'
 
 function mean(values: (number | null)[]): number | null {
@@ -107,6 +108,8 @@ export function WhenTab({ hunt }: { hunt: HuntAnalysis }) {
       <HourlyChart day={day} />
 
       {day.windows[0] && <WhyCard day={day} window={day.windows[0]} />}
+
+      <PressurePanel day={day} />
 
       <section aria-label="Comparer les jours">
         <h2 className="text-ink-100 mb-2 text-sm font-semibold">Comparer les jours</h2>

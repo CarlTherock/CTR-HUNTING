@@ -77,7 +77,7 @@ describe('HuntPage', () => {
 
     await user.click(screen.getByRole('tab', { name: 'OÙ' }))
     expect(screen.getByText(/Secteurs d’habitat/)).toBeInTheDocument()
-    expect(screen.getByText(/Corridors non calculés/)).toBeInTheDocument()
+    expect(screen.getByText(/Corridors potentiels/)).toBeInTheDocument()
     expect(
       screen.getAllByRole('button', { name: 'Créer un repère' }).length,
     ).toBeGreaterThan(0)

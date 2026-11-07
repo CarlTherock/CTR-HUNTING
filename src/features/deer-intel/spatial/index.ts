@@ -1,5 +1,6 @@
 export * from './types'
 export * from './extent'
-export { analyzeSpatial, defaultSpatialParams, CORRIDOR_REASON } from './analyzeSpatial'
+export { analyzeSpatial, defaultSpatialParams } from './analyzeSpatial'
+export { CORRIDOR_LABEL, CORRIDOR_RULE_IDS, CORRIDOR_LIMITS } from './corridors'
 export { HABITAT_RULE_IDS } from './habitat'
 export { toOverlay, type HuntMapOverlay } from './overlay'

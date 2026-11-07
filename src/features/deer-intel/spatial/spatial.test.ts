@@ -156,12 +156,6 @@ describe('habitat, secteurs et points candidats', () => {
     expect(a.sectors).toEqual([])
   })
 
-  it('corridors : jamais calculés, avec la raison', () => {
-    const a = analyzeSpatial(params(), land([rect('f', 'forest', -800, -800, 800, 800)]))
-    expect(a.corridors.computed).toBe(false)
-    expect(a.corridors.reason).toContain('Corridors non calculés')
-  })
-
   it('fonctionne sans aucune observation (aucune entrée de journal)', () => {
     const a = analyzeSpatial(params(), land([rect('f', 'forest', -800, -800, 800, 800)]))
     expect(
@@ -185,5 +179,75 @@ describe('habitat, secteurs et points candidats', () => {
     }
     expect(o.candidates.features[0].properties.grade).toBe(a.candidates[0].grade)
     expect(o.extent.length).toBeGreaterThan(40)
+  })
+})
+
+describe('corridors potentiels (moindre coût)', () => {
+  const two = (extra: LandPolygon[] = []) =>
+    land([
+      rect('f1', 'forest', -700, -700, -300, 700),
+      rect('f2', 'forest', 300, -700, 700, 700),
+      rect('a', 'agricultural', -300, -700, 300, 700),
+      ...extra,
+    ])
+  it('relie deux noyaux, étiquette « non piste observée », sans observation', () => {
+    const a = analyzeSpatial(params(), two())
+    if (!a.corridors.computed) throw new Error('attendu : calculé')
+    expect(a.corridors.label).toContain('non piste observée')
+    expect(a.corridors.cores.length).toBeGreaterThanOrEqual(2)
+    const main = a.corridors.corridors.find((c) => c.kind === 'principal')
+    expect(main?.path.length).toBeGreaterThan(2)
+    expect(main?.lengthM).toBeGreaterThan(300)
+  })
+  it('est déterministe et indépendant de la vue de la carte', () => {
+    expect(analyzeSpatial(params(), two())).toEqual(analyzeSpatial(params(), two()))
+  })
+  it('contourne l’eau (obstacle connu) et signale l’absence de chemin si tout est bloqué', () => {
+    const wall = rect('w', 'water', -50, -800, 50, 800)
+    const a = analyzeSpatial(params(), two([wall]))
+    if (!a.corridors.computed) throw new Error('attendu : calculé')
+    expect(a.corridors.corridors).toHaveLength(0)
+    expect(a.corridors.notes.join(' ')).toContain('aucun chemin')
+  })
+  it('passe par un gué et évite les cellules d’eau', () => {
+    const top = rect('w1', 'water', -50, 150, 50, 800)
+    const bottom = rect('w2', 'water', -50, -800, 50, -150)
+    const a = analyzeSpatial(params(), two([top, bottom]))
+    if (!a.corridors.computed) throw new Error('attendu : calculé')
+    const main = a.corridors.corridors.find((c) => c.kind === 'principal')
+    expect(main).toBeDefined()
+    const crossing = main?.path.filter((p) => Math.abs(proj.toMeters(p).x) < 40) ?? []
+    expect(crossing.every((p) => Math.abs(proj.toMeters(p).y) <= 160)).toBe(true)
+  })
+  it('un seul noyau : aucun tracé inventé', () => {
+    const a = analyzeSpatial(params(), land([rect('f', 'forest', -700, -700, 0, 700)]))
+    if (!a.corridors.computed) throw new Error('attendu : calculé')
+    expect(a.corridors.corridors).toEqual([])
+    expect(a.corridors.notes.join(' ')).toContain('aucun tracé inventé')
+  })
+  it('sans donnée : indisponible avec la raison', () => {
+    const a = analyzeSpatial(params(), null)
+    expect(a.corridors.computed).toBe(false)
+  })
+  it('indice d’entremêlement : longueur de contact / surface fixe de l’emprise', () => {
+    const a = analyzeSpatial(params(), two())
+    if (!a.corridors.computed) throw new Error('attendu : calculé')
+    const area = (Math.PI * 800 * 800) / 10_000
+    expect(a.corridors.contactIndexMPerHa).toBeCloseTo(
+      a.corridors.contactLengthM / area,
+      6,
+    )
+    expect(a.corridors.contactLengthM).toBeGreaterThan(0)
+  })
+  it('le tracé reste dans l’emprise ancrée ; l’overlay expose les corridors', () => {
+    const a = analyzeSpatial(params(), two())
+    const o = toOverlay(a)
+    expect(o.corridors.features.length).toBeGreaterThan(0)
+    if (a.corridors.computed)
+      for (const c of a.corridors.corridors)
+        for (const p of c.path)
+          expect(Math.hypot(proj.toMeters(p).x, proj.toMeters(p).y)).toBeLessThanOrEqual(
+            800,
+          )
   })
 })

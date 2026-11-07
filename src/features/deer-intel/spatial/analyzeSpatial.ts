@@ -4,6 +4,7 @@ import { scoreHabitat } from './habitat'
 import { buildSectors } from './sectors'
 import { pickCandidates } from './candidates'
 import { createExtent } from './extent'
+import { computeCorridors, CORRIDOR_LIMITS } from './corridors'
 import type { LandCoverData, SpatialAnalysis, SpatialParams } from './types'
 
 export const SPATIAL_LIMITS: string[] = [
@@ -12,9 +13,6 @@ export const SPATIAL_LIMITS: string[] = [
   'Relief, pente, vent sous couvert, accès et pression de chasse ne sont pas intégrés.',
   'La précision dépend de la complétude d’OpenStreetMap ; une zone sans polygone est « sans donnée », jamais « peu favorable ».',
 ]
-
-export const CORRIDOR_REASON =
-  'Corridors non calculés : aucune méthode documentée n’est disponible (le guide québécois 2013, p. 30 et 33, n’a pas pu être récupéré) et une grille d’habitat ne montre pas où le cerf passe réellement.'
 
 export function defaultSpatialParams(
   center: { lat: number; lng: number },
@@ -35,12 +33,12 @@ export function analyzeSpatial(
 ): SpatialAnalysis {
   const extent = createExtent(params.extent.center, params.extent.radiusM)
   const polygons = land?.polygons ?? []
-  const { cells, width, cellSizeM } = buildGrid(extent, polygons)
+  const { cells, width, height, cellSizeM } = buildGrid(extent, polygons)
   scoreHabitat(cells, width, cellSizeM)
   const classed = cells.filter((c) => c.landClass !== null).length
   const sectors = buildSectors(extent, cellSizeM, cells)
   const candidates = pickCandidates({ ...params, extent }, cells, sectors)
-  const limits = [...SPATIAL_LIMITS]
+  const limits = [...SPATIAL_LIMITS, ...CORRIDOR_LIMITS]
   if (!land)
     limits.unshift('Aucune donnée d’occupation du sol : aucun secteur n’est calculé.')
   return {
@@ -51,7 +49,13 @@ export function analyzeSpatial(
     coverage: cells.length === 0 ? 0 : classed / cells.length,
     sectors,
     candidates,
-    corridors: { computed: false, reason: CORRIDOR_REASON },
+    corridors: computeCorridors({
+      cells,
+      width,
+      height,
+      cellSizeM,
+      radiusM: extent.radiusM,
+    }),
     source: land ? { name: land.source, fetchedAt: land.fetchedAt } : null,
     limits,
   }

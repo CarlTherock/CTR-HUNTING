@@ -1,5 +1,6 @@
 import type { Coordinate, PointForecast } from '@/types'
 import type { HuntingRuleId } from '@/features/hunting-hours/huntingRules'
+import type { PressureChange } from './pressure'
 
 /** À incrémenter à chaque changement de calcul. */
 export const ENGINE_VERSION = '1.0.0'
@@ -119,6 +120,8 @@ export interface HourSlot {
   /** Heure admissible comme créneau de chasse (plage + disponibilité). */
   candidate: boolean
   weather: HourWeather | null
+  /** Variation de pression de surface sur 4 h écoulées (technique, non biologique) ; `null` sans prévision. */
+  pressure4h: PressureChange | null
 }
 
 export interface HuntWindow {

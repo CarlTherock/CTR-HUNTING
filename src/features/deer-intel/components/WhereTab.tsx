@@ -134,11 +134,44 @@ export function WhereTab({ spatial }: { spatial: SpatialAnalysis | null }) {
       </Card>
 
       <Card className="p-3">
-        <h2 className="text-ink-100 text-sm font-semibold">Corridors</h2>
-        <p className="text-ink-300 mt-1 text-sm">{spatial.corridors.reason}</p>
+        <h2 className="text-ink-100 text-sm font-semibold">Corridors potentiels</h2>
+        {spatial.corridors.computed ? (
+          <>
+            <p className="text-ink-300 mt-1 text-sm">{spatial.corridors.label}</p>
+            {spatial.corridors.corridors.length === 0 ? (
+              <p className="text-ink-400 mt-1 text-sm">Aucun tracé calculé.</p>
+            ) : (
+              <ul className="text-ink-300 mt-2 space-y-1 text-sm">
+                {spatial.corridors.corridors.map((c) => (
+                  <li key={c.id}>
+                    {c.kind === 'alternative' ? 'Alternative' : 'Principal'} — noyau{' '}
+                    {c.fromCore + 1} ↔ {c.toCore + 1} : {c.lengthM} m
+                    {c.robustness === 'non_evalue' ? '' : `, ${c.robustness}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {spatial.corridors.contactIndexMPerHa !== null && (
+              <p className="text-ink-300 mt-2 text-sm">
+                Indice d’entremêlement couvert/nourriture :{' '}
+                {spatial.corridors.contactIndexMPerHa.toFixed(1)} m/ha (
+                {Math.round(spatial.corridors.contactLengthM)} m de contact, surface =
+                emprise fixe).
+              </p>
+            )}
+            {spatial.corridors.notes.map((n) => (
+              <p key={n} className="text-ink-400 mt-1 text-xs">
+                {n}
+              </p>
+            ))}
+          </>
+        ) : (
+          <p className="text-ink-300 mt-1 text-sm">{spatial.corridors.reason}</p>
+        )}
         <p className="text-ink-500 mt-1 text-xs">
-          Un corridor animal se distingue de l’accès du chasseur et des traces
-          enregistrées ; aucun des trois n’est dessiné ici.
+          Heuristique : résistances de conception non calibrées. Un corridor animal se
+          distingue de l’accès du chasseur et des traces enregistrées ; aucun passage,
+          fréquentation ou heure n’est déduit.
         </p>
       </Card>
     </div>

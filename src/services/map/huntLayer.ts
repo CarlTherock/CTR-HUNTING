@@ -6,6 +6,8 @@ export const HUNT_SECTOR_FILL_ID = 'hunt-sectors-fill'
 export const HUNT_SECTOR_LINE_ID = 'hunt-sectors-line'
 export const HUNT_CANDIDATE_SOURCE_ID = 'hunt-candidates'
 export const HUNT_CANDIDATE_CIRCLE_ID = 'hunt-candidates-circle'
+export const HUNT_CORRIDOR_SOURCE_ID = 'hunt-corridors'
+export const HUNT_CORRIDOR_LINE_ID = 'hunt-corridors-line'
 export const HUNT_EXTENT_SOURCE_ID = 'hunt-extent'
 export const HUNT_EXTENT_LINE_ID = 'hunt-extent-line'
 
@@ -65,6 +67,21 @@ export function createHuntLayer(map: MapLibreMap) {
         source: HUNT_EXTENT_SOURCE_ID,
         paint: { 'line-color': '#e2e8f0', 'line-width': 1.5, 'line-dasharray': [3, 3] },
       })
+      map.addSource(HUNT_CORRIDOR_SOURCE_ID, {
+        type: 'geojson',
+        data: overlay?.corridors ?? empty,
+      })
+      map.addLayer({
+        id: HUNT_CORRIDOR_LINE_ID,
+        type: 'line',
+        source: HUNT_CORRIDOR_SOURCE_ID,
+        // Pointillé : hypothèse de connectivité, pas une piste observée ; alternative plus fine.
+        paint: {
+          'line-color': '#f0abfc',
+          'line-width': ['match', ['get', 'kind'], 'alternative', 2, 3.5],
+          'line-dasharray': [1.5, 2],
+        },
+      })
       map.addSource(HUNT_CANDIDATE_SOURCE_ID, {
         type: 'geojson',
         data: overlay?.candidates ?? empty,
@@ -98,6 +115,8 @@ export function createHuntLayer(map: MapLibreMap) {
       sectors?.setData(next?.sectors ?? empty)
       const cands = map.getSource(HUNT_CANDIDATE_SOURCE_ID) as GeoJSONSource | undefined
       cands?.setData(next?.candidates ?? empty)
+      const cor = map.getSource(HUNT_CORRIDOR_SOURCE_ID) as GeoJSONSource | undefined
+      cor?.setData(next?.corridors ?? empty)
       const ext = map.getSource(HUNT_EXTENT_SOURCE_ID) as GeoJSONSource | undefined
       ext?.setData(extentGeoJson(next))
       if (map.getLayer(HUNT_SECTOR_FILL_ID))

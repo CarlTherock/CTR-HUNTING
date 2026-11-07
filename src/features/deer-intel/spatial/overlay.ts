@@ -19,6 +19,14 @@ export interface HuntMapOverlay {
       geometry: { type: 'Point'; coordinates: number[] }
     }[]
   }
+  corridors: {
+    type: 'FeatureCollection'
+    features: {
+      type: 'Feature'
+      properties: { id: string; kind: string; robustness: string }
+      geometry: { type: 'LineString'; coordinates: number[][] }
+    }[]
+  }
   extent: Coordinate[]
 }
 
@@ -58,6 +66,21 @@ export function toOverlay(a: SpatialAnalysis): HuntMapOverlay {
         properties: { id: c.id, grade: c.grade, score: c.score },
         geometry: { type: 'Point', coordinates: [c.coordinate.lng, c.coordinate.lat] },
       })),
+    },
+    corridors: {
+      type: 'FeatureCollection',
+      features: a.corridors.computed
+        ? a.corridors.corridors
+            .filter((c) => c.path.length >= 2)
+            .map((c) => ({
+              type: 'Feature' as const,
+              properties: { id: c.id, kind: c.kind, robustness: c.robustness },
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: c.path.map((p) => [p.lng, p.lat]),
+              },
+            }))
+        : [],
     },
     extent: circle,
   }

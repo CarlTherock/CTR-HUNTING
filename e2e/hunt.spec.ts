@@ -105,7 +105,7 @@ test.describe('Où et quand chasser (simulé)', () => {
 
     await page.getByRole('tab', { name: 'OÙ' }).click()
     await expect(page.getByText(/Secteurs d’habitat/)).toBeVisible()
-    await expect(page.getByText(/Corridors non calculés/)).toBeVisible()
+    await expect(page.getByText(/Corridors potentiels/)).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Créer un repère' }).first(),
     ).toBeVisible()

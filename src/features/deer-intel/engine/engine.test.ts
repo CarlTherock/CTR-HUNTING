@@ -290,6 +290,18 @@ describe('conditions de chasse', () => {
 describe('moteur « quand »', () => {
   const now = new Date('2026-11-06T15:00:00Z')
 
+  it('la pression (valeur ou variation) ne change aucun indice : aucun bonus biologique', () => {
+    const calm = dayForecast('2026-11-06', () => ({ surfacePressureHpa: 1013 }))
+    const storm = dayForecast('2026-11-06', (h) => ({
+      surfacePressureHpa: 1030 - h * 1.5,
+    }))
+    const none = dayForecast('2026-11-06', () => ({ surfacePressureHpa: null }))
+    const idx = (f: PointForecast) =>
+      analyzeHunt(params(), f, { now }).days[0]?.slots.map((s) => s.index)
+    expect(idx(storm)).toEqual(idx(calm))
+    expect(idx(none)).toEqual(idx(calm))
+  })
+
   it('fonctionne sans prévision, sans journal et sans observations : activité de référence seulement', () => {
     const a = analyzeHunt(params(), null, { now })
     expect(a.forecast).toBeNull()
@@ -441,6 +453,7 @@ describe('robustesse du classement', () => {
     signature: conditions === null ? 'activite' : 'activite+gusts',
     candidate: true,
     weather: null,
+    pressure4h: null,
   })
 
   it('heures presque identiques : équivalentes, pas de faux vainqueur', () => {

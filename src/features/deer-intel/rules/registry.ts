@@ -1,7 +1,7 @@
 import type { RuleEntry, RuleSource } from './types'
 
 /** À incrémenter à chaque changement de règle, de source ou de coefficient. */
-export const RULE_REGISTRY_VERSION = '1.1.0'
+export const RULE_REGISTRY_VERSION = '1.2.0'
 
 const V = '2026-11-06'
 const PROV = 'synthese_documentaire_fournie' as const
@@ -98,6 +98,39 @@ const GUIDE_RAVAGES: RuleSource = {
   verification: 'partiel',
   locator:
     'Auteurs/édition, sommaire, introduction, chap. 1.1–1.5 (~p. 10). MANQUENT : clé et tableau 6 (p. 19–20), cibles (p. 25–26), corridors (p. 30), connectivité (p. 33) (R14)',
+  provenance: PROV,
+  verifiedOn: V,
+}
+const NAPPI: RuleSource = {
+  citation:
+    'Nappi, A. (2013). Cerf de Virginie, fascicule 4.7, Manuel de détermination des possibilités forestières 2013–2018, p. 175–181 (MFFP, Québec). Les engagements réglementaires de 2013 ne vérifient pas le droit actuel.',
+  kind: 'gouvernement',
+  url: 'https://forestierenchef.gouv.qc.ca/wp-content/uploads/175-181_MDPF_Cerf.pdf',
+  verification: 'lecture_substantielle',
+  locator:
+    'p. 176 abri/nourriture et corridors (note 14) ; p. 177 organisation spatiale ; p. 178 classes (abri : résineux/mixte à dominance résineuse, strate ≥12 m, couvert ≥60 % ; nourriture-abri : ≥7 m, couvert ≥40 % ; nourriture : régénération <7 m, couvert <40 %) ; p. 179 modèle ; p. 180 limites. Figures non inspectées.',
+  provenance: PROV,
+  verifiedOn: V,
+}
+const MDWFP: RuleSource = {
+  citation:
+    'Mississippi Department of Wildlife, Fisheries, and Parks. Weather Conditions That Influence Deer Movement (K. Owens ; éd. P. Young). Synthèse institutionnelle, pas un article primaire.',
+  kind: 'gouvernement',
+  url: 'https://www.mdwfp.com/wildlife-hunting/private-lands-program/habitat-and-wildlife-information/weather-conditions-influence-deer-movement',
+  verification: 'lecture_substantielle',
+  locator:
+    'Sections « What About Barometric Pressure? », « More Important Factors Than Weather », « Cold Fronts » : preuves insuffisantes pour une pression idéale autonome ; covariance avec vent, température, précipitations',
+  provenance: PROV,
+  verifiedOn: V,
+}
+const PENNSTATE: RuleSource = {
+  citation:
+    'Arnold, D. Penn State Deer-Forest Study, « Spidey Sense », 8 mai 2020. Billet universitaire, non évalué par les pairs dans ce dossier.',
+  kind: 'extension',
+  url: 'https://www.deer.psu.edu/spidey-sense/',
+  verification: 'lecture_substantielle',
+  locator:
+    'Billet et discussion : 30 tempêtes, 52 279 positions de femelles adultes (Pennsylvanie) ; pas d’augmentation cohérente avant tempête ; tempête = épisode composite (vent, température, pression)',
   provenance: PROV,
   verifiedOn: V,
 }
@@ -265,24 +298,28 @@ export const RULE_REGISTRY: readonly RuleEntry[] = [
     implementedBy: ['HAB-COVER-FOOD-01'],
   },
   {
-    id: 'UNS-CORRIDOR-01',
-    title: 'Corridors potentiels (graphe de résistance)',
-    status: 'non_pris_en_charge',
+    id: 'COR-LEASTCOST-01',
+    title:
+      'Corridors potentiels de connectivité (moindre coût) et indice d’entremêlement couvert/nourriture',
+    status: 'active',
     category: 'D',
-    sources: [GUIDE_RAVAGES],
-    region: 'Québec',
-    population: 'Sans objet',
-    variable: 'Connectivité entre couverts',
+    sources: [NAPPI],
+    region: 'Québec (fondement institutionnel) ; méthode générale de connectivité',
+    population:
+      'Cerf de Virginie (ravages, hiver) — transposition à toute saison non démontrée',
+    variable: 'Proximité abri/nourriture ; connectivité entre noyaux d’habitat',
     result:
-      'Les sections du guide 2013 sur les corridors (p. 30) et la connectivité (p. 33) n’ont pas été récupérées, et le modèle d’hétérogénéité individuelle (R11) n’est qu’une notice : aucun paramètre de résistance documenté.',
+      'Nappi 2013 (p. 176–177, note 14) : la proximité abri/nourriture et la connectivité entre éléments structurent l’habitat hivernal. Aucune résistance de déplacement du chevreuil n’y est publiée. Méthodes de connectivité (McRae et coll. 2008, notice seulement ; chapitre USDA, passages partiels ; Terra-Bois Lanaudière p. 19–20, indice longueur de frontière/surface, extraction partielle) : justifient la famille de méthodes, pas des valeurs de résistance.',
     domain:
-      'Non calculé. Un corridor animal ne se déduit ni d’une grille météo ni d’une grille d’habitat ; il se distingue de l’accès du chasseur et des traces enregistrées.',
-    transferLimits: 'Sans objet.',
-    dataNeeded: [],
+      'Chemin de moindre coût (Dijkstra, voisinage à 8 cellules) entre les noyaux d’habitat de l’emprise ancrée ; résistances HEURISTIQUES de conception (forêt 1, ouvert/agricole 2, humide 3, bâti 8, donnée absente 5 ; eau = obstacle). Coût d’arête = longueur × moyenne des résistances des extrémités (convention). Sensibilité testée sous deux autres tables ; tracé « fragile » signalé. Indice d’entremêlement = longueur de contact couvert/nourriture ÷ surface de l’emprise fixe (m/ha). Ni piste observée, ni circuits électriques, ni passage ou heure.',
+    transferLimits:
+      'Résistances non calibrées ni validées au Québec ; routes, relief et pression de chasse non modélisés ; classes OSM grossières (pas de composition, densité, hauteur).',
+    dataNeeded: ['polygones d’occupation du sol (OpenStreetMap)'],
     nature: 'quantitative',
-    coefficient: 'aucun',
-    coefficientNote: 'Aucun coefficient.',
-    implementedBy: [],
+    coefficient: 'heuristique',
+    coefficientNote:
+      'Résistances, seuil de noyau (rang 60), bande d’alternative (±2 cellules ×4) et seuils de robustesse (0,6) : choix de conception, non publiés et non attribués à une étude.',
+    implementedBy: ['COR-LEASTCOST-01', 'COR-CONTACT-01'],
   },
   {
     id: 'IDX-COMBINE-01',
@@ -353,15 +390,15 @@ export const RULE_REGISTRY: readonly RuleEntry[] = [
     title: 'Pression atmosphérique et tendance (contexte)',
     status: 'informatif',
     category: 'D',
-    sources: [WEBB, GOETHLICH],
+    sources: [WEBB, GOETHLICH, MDWFP, PENNSTATE],
     region:
       'Sud de l’Oklahoma (Webb) ; Caroline du Sud (Goethlich, chapitre 2 non récupéré)',
     population: 'Cerfs adultes munis de colliers GPS',
     variable: 'Pression barométrique',
     result:
-      'Webb : seulement 8 modèles linéaires météo sur 80 significatifs (11/80 pour les extrêmes, 10/80 pour les changements journaliers), sans réponse générale cohérente ; données d’une station à 18 km. Les résultats de pression de Goethlich (chapitre 2, p. 62, tableau 2.2 p. 90, figures p. 111–116) n’ont PAS été récupérés : aucune règle comportementale n’en est tirée. Aucune loi « haute pression = bon » ou « baisse = activité accrue ».',
+      'Webb : seulement 8 modèles linéaires météo sur 80 significatifs (11/80 pour les extrêmes, 10/80 pour les changements journaliers), sans réponse générale cohérente ; données d’une station à 18 km. Les résultats de pression de Goethlich (chapitre 2, p. 62, tableau 2.2 p. 90, figures p. 111–116) n’ont PAS été récupérés : aucune règle comportementale n’en est tirée. Synthèse du Mississippi DWFP : preuves insuffisantes pour une pression idéale autonome, variables corrélées (vent, température, pluie). Penn State (30 tempêtes) : pas d’augmentation cohérente avant tempête ; épisodes composites, femelles hivernantes. Autres pistes (résumé étudiant EKU, site commercial) : contradictoires ou secondaires, non utilisées. Aucune loi « haute pression = bon » ou « baisse = activité accrue ».',
     domain:
-      'Affiche la pression de SURFACE (station) du fournisseur et sa variation sur 3 h ; aucun seuil publié pour la pression au niveau de la mer n’est comparé à cette valeur. Règle comportementale en attente des pages du chapitre 2.',
+      'Affiche la pression de SURFACE (station) du fournisseur et sa variation sur 3 h ; aucun seuil publié pour la pression au niveau de la mer n’est comparé à cette valeur. Statut informatif par décision justifiée (preuves contradictoires ou non transférables), pas seulement faute de PDF. Le calcul de variation (fenêtre réellement couverte, passée/prévue) est technique : ce n’est pas une reproduction certifiée du modèle Goethlich.',
     transferLimits: 'Sud-Est et Sud des États-Unis ; direction et ampleur non lues.',
     dataNeeded: ['pression de surface horaire'],
     nature: 'qualitative',
@@ -527,17 +564,17 @@ export const RULE_REGISTRY: readonly RuleEntry[] = [
   },
   {
     id: 'UNS-WINTER-YARD-01',
-    title: 'Habitat hivernal / ravage (clé du guide québécois)',
+    title: 'Potentiel d’habitat hivernal (clé Hébert 2013 / approximation Nappi 2013)',
     status: 'non_pris_en_charge',
     category: 'B',
-    sources: [GUIDE_RAVAGES],
+    sources: [GUIDE_RAVAGES, NAPPI],
     region: 'Québec continental (Anticosti exclu du guide)',
     population: 'Cerf de Virginie en hiver',
     variable: 'Critères d’aménagement d’un ravage',
     result:
-      'Seuls l’édition, les auteurs, le sommaire et les chapitres 1.1–1.5 sont récupérés : proximité nourriture/abri et coûts de déplacement hivernaux structurants. La clé (p. 19–20), le tableau 6, les cibles, les corridors (p. 30) et la connectivité (p. 33) manquent : aucune classification n’en est tirée. Les objectifs d’aménagement ne sont pas des probabilités de présence, et les pages légales de 2013 ne sont pas la réglementation actuelle.',
+      'La clé Hébert 2013 est retrouvée (PDF Québec.ca) mais son tableau multi-colonnes est aplati à l’extraction : certaines sous-lignes (abri, NA1–NA4, peu utilisé) restent à vérifier visuellement ; les codes NAIPF sont des classes, pas des pourcentages ; le mélèze est un feuillu ; la borne de 12 m est ambiguë. Nappi 2013 (p. 178) donne le résumé : abri = résineux/mixte résineux, strate ≥12 m, couvert ≥60 % ; nourriture-abri ≥7 m, couvert ≥40 % ; nourriture = régénération <7 m, couvert <40 %. Les cibles (7/15/25/35 % d’abri, 25 % nourriture-abri) sont des objectifs d’aménagement, pas des probabilités de présence.',
     domain:
-      'Non pris en charge ; couche hivernale indisponible tant que la clé n’est pas obtenue.',
+      'NON calculé pour ce GPS : les polygones d’occupation du sol OpenStreetMap n’ont ni composition (résineux/mixte/feuillu) fiable, ni dominance, ni densité/couvert, ni hauteur, ni classe d’âge, ni distinction inventaire initial/NAIPF. Un raster WMS visible n’est pas une source de géométries et d’attributs analytiques. Une couche « Potentiel d’habitat hivernal » ne serait qu’une « approximation fondée sur Nappi 2013 » et jamais un « habitat officiel » ni une aire de confinement reconnue ; elle sera activée quand des peuplements avec ces attributs seront disponibles.',
     transferLimits:
       'Les critères hivernaux ne s’appliquent pas toute l’année ; ne pas fusionner avec les règles d’Anticosti.',
     dataNeeded: [],

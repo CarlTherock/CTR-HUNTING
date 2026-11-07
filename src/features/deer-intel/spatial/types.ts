@@ -1,4 +1,5 @@
 import type { Coordinate } from '@/types'
+import type { CorridorOutcome } from './corridors'
 
 /** Étendue d'analyse ANCRÉE (point GPS + rayon), indépendante de la vue de la carte. */
 export interface AnalysisExtent {
@@ -80,8 +81,8 @@ export interface SpatialAnalysis {
   coverage: number
   sectors: Sector[]
   candidates: CandidatePoint[]
-  /** Corridors : jamais calculés tant qu'aucune méthode documentée n'est disponible. */
-  corridors: { computed: false; reason: string }
+  /** Corridors potentiels de connectivité (heuristiques) ou raison précise de l'indisponibilité. */
+  corridors: CorridorOutcome
   source: { name: string; fetchedAt: string } | null
   limits: string[]
 }
