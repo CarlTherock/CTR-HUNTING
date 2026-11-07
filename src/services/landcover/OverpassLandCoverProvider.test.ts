@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createExtent } from '@/features/deer-intel/spatial/extent'
+import { pointInPolygon } from '@/features/deer-intel/spatial/geo'
 import {
   LandCoverError,
   OverpassLandCoverProvider,
@@ -7,6 +8,7 @@ import {
   stitchRings,
   classifyTags,
   parseOverpassLandCover,
+  parseWithStats,
 } from './OverpassLandCoverProvider'
 
 const ring = [
@@ -14,6 +16,14 @@ const ring = [
   { lat: 45.0, lon: -71.99 },
   { lat: 45.01, lon: -71.99 },
   { lat: 45.0, lon: -72.0 },
+]
+
+// Trou strictement intérieur au triangle : ne partage ni arête ni sommet avec lui.
+const innerRing = [
+  { lat: 45.002, lon: -71.996 },
+  { lat: 45.002, lon: -71.994 },
+  { lat: 45.003, lon: -71.994 },
+  { lat: 45.002, lon: -71.996 },
 ]
 
 describe('OverpassLandCoverProvider', () => {
@@ -39,7 +49,7 @@ describe('OverpassLandCoverProvider', () => {
           tags: { natural: 'water' },
           members: [
             { type: 'way', role: 'outer', geometry: ring },
-            { type: 'way', role: 'inner', geometry: ring },
+            { type: 'way', role: 'inner', geometry: innerRing },
           ],
         },
         { type: 'way', id: 4, tags: { highway: 'path' }, geometry: ring },
@@ -47,6 +57,21 @@ describe('OverpassLandCoverProvider', () => {
     })
     expect(polys.map((p) => p.id)).toEqual(['w1', 'r3-0'])
     expect(polys[0].rings[0][0]).toEqual({ lat: 45, lng: -72 })
+    expect(polys[1].rings).toHaveLength(2)
+    expect(pointInPolygon({ lat: 45.0022, lng: -71.995 }, polys[1].rings)).toBe(false)
+    expect(pointInPolygon({ lat: 45.001, lng: -71.995 }, polys[1].rings)).toBe(true)
+  })
+
+  it('rejette une relation dont le trou est identique à son extérieur, avec diagnostic', () => {
+    const result = parseWithStats({ elements: [{
+      type: 'relation', id: 3, tags: { natural: 'water' },
+      members: [
+        { type: 'way', role: 'outer', geometry: ring },
+        { type: 'way', role: 'inner', geometry: ring },
+      ],
+    }] })
+    expect(result.polygons).toEqual([])
+    expect(result.unclosedRings).toBeGreaterThan(0)
   })
 
   it('la requête couvre la boîte de l’étendue et demande la géométrie', () => {
