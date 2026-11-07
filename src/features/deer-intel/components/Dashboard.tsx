@@ -8,6 +8,7 @@ import { useHuntStore, type HuntResult } from '../state/huntStore'
 import { HourlyChart } from './HourlyChart'
 import { RecommendationCard } from './RecommendationCard'
 import { HowTab } from './HowTab'
+import { ServiceCheck } from './ServiceCheck'
 import { SourcesPanel } from './SourcesPanel'
 import { PressurePanel } from './PressurePanel'
 import { TemperaturePanel } from './TemperaturePanel'
@@ -226,10 +227,11 @@ export function Dashboard({
           </p>
         ) : (
           <p className="text-ink-300 mt-1 text-sm">
-            Occupation du sol indisponible (réseau) : aucun secteur ni point. Rien n’est
-            inventé.
+            Occupation du sol indisponible : aucun secteur ni point (cause dans les
+            messages ci-dessus). Rien n’est inventé.
           </p>
         )}
+        {!spatial && <ServiceCheck />}
         {spatial && (
           <p className="text-ink-500 mt-1 text-xs">
             {spatial.sectors.length} secteur(s) ·{' '}

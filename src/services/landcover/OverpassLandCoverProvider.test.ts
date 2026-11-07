@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createExtent } from '@/features/deer-intel/spatial/extent'
 import {
+  LandCoverError,
   OverpassLandCoverProvider,
   buildQuery,
+  stitchRings,
   classifyTags,
   parseOverpassLandCover,
 } from './OverpassLandCoverProvider'
@@ -85,5 +87,97 @@ describe('OverpassLandCoverProvider', () => {
     expect(data.polygons).toHaveLength(1)
     expect(data.source).toContain('OpenStreetMap')
     expect(Number.isNaN(Date.parse(data.fetchedAt))).toBe(false)
+  })
+
+  const pt = (lat: number, lon: number) => ({ lat, lon })
+  // Une forêt dont le contour est coupé en trois chemins ouverts (cas courant des relations OSM).
+  const splitForest = {
+    type: 'relation',
+    id: 9,
+    tags: { landuse: 'forest' },
+    members: [
+      {
+        type: 'way',
+        role: 'outer',
+        geometry: [pt(45, -72), pt(45, -71.99), pt(45.01, -71.99)],
+      },
+      // Segment fourni à l'envers : l'assemblage doit le retourner.
+      { type: 'way', role: 'outer', geometry: [pt(45.01, -72), pt(45.01, -71.99)] },
+      { type: 'way', role: 'outer', geometry: [pt(45.01, -72), pt(45, -72)] },
+    ],
+  }
+
+  it('assemble un contour multipolygone coupé en plusieurs chemins (au lieu de le perdre)', () => {
+    const polys = parseOverpassLandCover({ elements: [splitForest] })
+    expect(polys).toHaveLength(1)
+    const r = polys[0].rings[0]
+    expect(r[0]).toEqual(r[r.length - 1])
+    expect(r.length).toBe(5)
+  })
+
+  it('un contour qui ne se ferme pas est compté, jamais complété', () => {
+    const { rings, unclosed } = stitchRings([
+      [
+        { lat: 0, lng: 0 },
+        { lat: 0, lng: 1 },
+      ],
+    ])
+    expect(rings).toHaveLength(0)
+    expect(unclosed).toBe(1)
+  })
+
+  it('réponse 200 avec remarque de délai dépassé : ce n’est pas « aucune occupation du sol »', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ elements: [], remark: 'runtime error: Query timed out' }),
+      }),
+    )
+    const promise = new OverpassLandCoverProvider([
+      'https://a.example/api',
+      'https://b.example/api',
+    ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
+    await expect(promise).rejects.toBeInstanceOf(LandCoverError)
+    await expect(promise).rejects.toThrow(/réponse incomplète/)
+  })
+
+  it('bascule sur le miroir quand le service principal échoue et le nomme dans la source', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ elements: [splitForest] }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+    const data = await new OverpassLandCoverProvider([
+      'https://a.example/api',
+      'https://b.example/api',
+    ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(data.polygons).toHaveLength(1)
+    expect(data.source).toContain('b.example')
+  })
+
+  it('l’erreur finale nomme chaque service, le code HTTP ou la cause', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 429, json: () => null })
+        .mockRejectedValueOnce(new TypeError('Failed to fetch')),
+    )
+    await expect(
+      new OverpassLandCoverProvider([
+        'https://a.example/api',
+        'https://b.example/api',
+      ]).fetchLandCover(createExtent({ lat: 45.5, lng: -72.5 }, 800)),
+    ).rejects.toThrow(
+      /a\.example a répondu HTTP 429.*b\.example injoignable.*Failed to fetch/,
+    )
   })
 })

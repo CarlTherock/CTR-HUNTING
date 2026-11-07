@@ -252,13 +252,31 @@ export const useHuntStore = create<HuntState>((set, get) => ({
         'Réseau indisponible : seule l’activité de référence (astronomie) est calculée.',
       )
     } else {
-      if (!forecast)
+      if (!forecast) {
+        const why =
+          forecastRes.status === 'rejected' && forecastRes.reason instanceof Error
+            ? ` Cause : ${forecastRes.reason.message}`
+            : ''
         notes.push(
-          'Prévision météo indisponible : indice limité à l’activité de référence.',
+          `Prévision météo indisponible : indice limité à l’activité de référence.${why}`,
         )
-      if (!land)
-        notes.push('Occupation du sol indisponible : aucun secteur ni point candidat.')
+      }
+      if (!land) {
+        const why =
+          landRes.status === 'rejected' && landRes.reason instanceof Error
+            ? ` Cause : ${landRes.reason.message}`
+            : ''
+        notes.push(
+          `Occupation du sol indisponible : aucun secteur ni point candidat.${why}`,
+        )
+      }
     }
+
+    if (land && land.polygons.length === 0)
+      notes.push(
+        'Aucun polygone d’occupation du sol dans OpenStreetMap pour cette zone : zone sans donnée, pas « peu favorable ».',
+      )
+    if (land?.warnings) notes.push(...land.warnings)
 
     try {
       const { record, timezoneNote } = composeAnalysis(inputs, forecast, land, {

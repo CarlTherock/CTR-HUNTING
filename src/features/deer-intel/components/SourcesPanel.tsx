@@ -8,6 +8,7 @@ import {
   BIBLIOGRAPHY,
 } from '../rules/registry'
 import type { SavedHuntAnalysis } from '@/types'
+import { ServiceCheck } from './ServiceCheck'
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Active',
@@ -44,6 +45,14 @@ export function SourcesPanel({ record }: { record: SavedHuntAnalysis }) {
           Indice comparatif non validé au Québec : les tests vérifient le code, pas la
           précision biologique.
         </p>
+      </Card>
+
+      <Card className="p-3 text-sm">
+        <h2 className="text-ink-100 font-semibold">Services de données</h2>
+        <p className="text-ink-300 mt-1">
+          Météo : Open-Meteo. Occupation du sol : OpenStreetMap via Overpass.
+        </p>
+        <ServiceCheck />
       </Card>
 
       <Card className="p-3 text-sm">
