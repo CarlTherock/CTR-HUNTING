@@ -27,6 +27,13 @@ describe('App startup', () => {
     expect(screen.queryByText(/Feuille de route/)).not.toBeInTheDocument()
   })
 
+  it('does not mount the version diagnostic as a global overlay', async () => {
+    render(<App />)
+    await screen.findByRole('heading', { level: 1, name: 'CTR Hunting' })
+    expect(screen.queryByTestId('build-notice')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Interface B1/)).not.toBeInTheDocument()
+  })
+
   it('shows the splash screen only for a standalone/installed launch, not an ordinary tab', () => {
     render(<App />)
     expect(screen.queryByRole('presentation')).not.toBeInTheDocument()

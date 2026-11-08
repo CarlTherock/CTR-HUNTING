@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { InfoSection as Section, PageHeader } from '@/components/ui'
 import { APP_BUILD_DATE, APP_NAME, APP_VERSION } from '@/app/appInfo'
+import { BuildNotice } from '@/app/BuildNotice'
 import { formatBuildMoment } from '../displayDiagnostic'
 import { NETWORK_PROVIDERS } from '@/features/privacy/networkProviders'
 import { DisplayDiagnosticSection } from '../components/DisplayDiagnosticSection'
@@ -31,6 +32,7 @@ export default function AboutPage() {
           Comptes, abonnements et paiement : non disponibles / reportés. Aucune fonction
           de cette version n’en dépend.
         </p>
+        <BuildNotice />
       </Section>
 
       <Section
