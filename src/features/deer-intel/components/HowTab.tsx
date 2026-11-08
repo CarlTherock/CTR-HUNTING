@@ -18,7 +18,7 @@ export function HowTab({
     .slice(0, 24)
   const lowWind = windInfo?.some((s) => (s.weather?.windSpeedKmh ?? 99) < 5)
   return (
-    <div className="flex flex-col gap-4">
+    <section aria-label="Formule, méthodologie et limites" className="flex flex-col gap-4">
       <Card className="p-3 text-sm">
         <h2 className="text-ink-100 font-semibold">Vent et zone sensible</h2>
         {p.favorableWindFrom.length === 0 && p.sensitiveBearings.length === 0 ? (
@@ -73,6 +73,6 @@ export function HowTab({
           ni un résultat scientifique ni un « modèle Louis Gagnon ».
         </p>
       </Card>
-    </div>
+    </section>
   )
 }

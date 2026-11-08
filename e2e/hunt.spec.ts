@@ -139,9 +139,11 @@ test.describe('Où et quand chasser (simulé)', () => {
     )
     expect(overflow).toBeLessThanOrEqual(1)
 
-    // Les explications existent mais restent repliées.
+    // Cible le panneau ouvert, pas un texte homonyme dans des détails repliés.
     await page.getByText('Formule, méthodologie et limites').click()
-    await expect(page.getByText(/non évaluée/).first()).toBeVisible()
+    const methodology = page.getByRole('region', { name: 'Formule, méthodologie et limites' })
+    await expect(methodology).toBeVisible()
+    await expect(methodology.getByText(/non évaluée/).first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Voir sur la carte' }).click()
     await expect(page).toHaveURL(/\/map/)
