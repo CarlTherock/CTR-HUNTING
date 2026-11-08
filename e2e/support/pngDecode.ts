@@ -42,7 +42,7 @@ export function decodePng(input: Uint8Array): DecodedPng {
     const row = Uint8Array.from(raw.subarray(offset + 1, offset + 1 + stride))
     if (filter !== 0) for (let i = 0; i < stride; i++) {
       const a = i >= channels ? row[i - channels] : 0, b = previous[i], c = i >= channels ? previous[i - channels] : 0
-      let predictor = 0
+      let predictor: number
       if (filter === 1) predictor = a
       else if (filter === 2) predictor = b
       else if (filter === 3) predictor = Math.floor((a + b) / 2)
