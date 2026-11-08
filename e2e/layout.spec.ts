@@ -9,15 +9,7 @@ import { TILE_COLOR } from './support/mockMapBackend'
 import { VIEWPORTS } from './support/viewports'
 import { expect, test } from './support/test'
 
-/**
- * Layout of the map page at the required viewports, with the iPhone
- * safe-area insets emulated (Chromium only; WebKit/real devices are NOT
- * covered by this file — see docs/VALIDATION.md).
- *
- * Failure here means a control is off-screen, covered, too small to tap,
- * the page itself scrolls, or the canvas does not match its container —
- * exactly the symptoms of the reported mobile bug.
- */
+/** Chromium avec zones sûres simulées : ni WebKit ni validation sur iPhone physique. */
 for (const viewport of VIEWPORTS) {
   test.describe(`carte ${viewport.name}`, () => {
     test.use({
@@ -27,8 +19,13 @@ for (const viewport of VIEWPORTS) {
       deviceScaleFactor: viewport.mobile ? 2 : 1,
     })
 
-    test.beforeEach(async ({ context, page, backend }) => {
-      void backend
+    test.beforeEach(async ({ context, page, backend }, testInfo) => {
+      const pageErrors: string[] = []
+      const consoleErrors: string[] = []
+      page.on('pageerror', (error) => pageErrors.push(error.message))
+      page.on('console', (message) => {
+        if (message.type() === 'error') consoleErrors.push(message.text())
+      })
       if (viewport.mobile && viewport.width < 768) {
         await applySafeArea(
           context,
@@ -41,28 +38,60 @@ for (const viewport of VIEWPORTS) {
       await page.goto('map')
       const canvas = page.locator('canvas.maplibregl-canvas')
       await expect(canvas).toBeVisible()
-      const green = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
-      await expect
-        .poll(async () => colorsClose(await dominantColor(page, canvas), green), {
+      const expected = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
+      try {
+        await expect.poll(async () => {
+          const observed = await dominantColor(page, canvas)
+          return {
+            rendered: colorsClose(observed, expected),
+            observed,
+            expected,
+            stylesRequested: backend.styleRequests(),
+            served: backend.served(),
+            refused: backend.refused(),
+            failedTiles: backend.failedTiles(),
+            unexpectedHosts: backend.unexpectedHosts(),
+            pageErrors: [...pageErrors],
+            consoleErrors: [...consoleErrors],
+          }
+        }, {
           timeout: 20_000,
-        })
-        .toBe(true)
+          message: 'Le fond satellite simulé doit réellement être rendu ; les diagnostics ne remplacent pas cette exigence.',
+        }).toMatchObject({ rendered: true })
+      } catch (error) {
+        const browser = await page.evaluate(() => {
+          const element = document.querySelector<HTMLCanvasElement>('canvas.maplibregl-canvas')
+          const r = element?.getBoundingClientRect()
+          return {
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            canvas: element ? { width: element.width, height: element.height, rect: r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null } : null,
+            serviceWorkerControlled: 'serviceWorker' in navigator && navigator.serviceWorker.controller !== null,
+          }
+        }).catch(() => null)
+        await testInfo.attach('map-render-diagnostic.json', {
+          body: JSON.stringify({
+            viewport, expected, browser,
+            stylesRequested: backend.styleRequests(), served: backend.served(),
+            refused: backend.refused(), failedTiles: backend.failedTiles(),
+            unexpectedHosts: backend.unexpectedHosts(), pageErrors, consoleErrors,
+          }, null, 2),
+          contentType: 'application/json',
+        }).catch(() => undefined)
+        await page.screenshot({ path: testInfo.outputPath('map-render-failure.png') }).catch(() => undefined)
+        throw error
+      }
     })
 
     test('aucun défilement de page, carte = conteneur, contrôles visibles et utilisables', async ({
       page,
     }) => {
       const m = await measureLayout(page)
-
-      // The page itself must not scroll in either direction.
       expect(m.document.scrollWidth, 'défilement horizontal').toBeLessThanOrEqual(
         m.document.clientWidth,
       )
       expect(m.document.scrollHeight, 'défilement vertical').toBeLessThanOrEqual(
         m.document.clientHeight,
       )
-
-      // The canvas matches its container (minus the optional 1px border).
       const container = m.rects.mapContainer
       const canvas = m.rects.canvas
       expect(container && canvas).toBeTruthy()
@@ -79,8 +108,6 @@ for (const viewport of VIEWPORTS) {
           m.viewport.innerWidth + 1,
         )
       }
-
-      // Every rendered control is inside the viewport and not covered.
       const problems = m.controls
         .filter((c) => !c.inViewport || !c.hit)
         .map(
@@ -88,8 +115,6 @@ for (const viewport of VIEWPORTS) {
             `${c.label} ${JSON.stringify(c.rect)} dansViewport=${c.inViewport} touchable=${c.hit}`,
         )
       expect(problems, 'contrôles hors écran ou masqués').toEqual([])
-
-      // Touch targets >= 44px (attribution links are legal text, not controls).
       if (viewport.mobile) {
         const small = m.controls
           .filter(
@@ -101,8 +126,6 @@ for (const viewport of VIEWPORTS) {
           )
         expect(small, 'cibles tactiles < 44 px').toEqual([])
       }
-
-      // Evidence for the PR: `E2E_SCREENSHOTS=1 npm run e2e` rewrites docs/validation/apres-*.png.
       if (process.env.E2E_SCREENSHOTS === '1') {
         const slug = viewport.name.split(' ')[0] ?? viewport.name
         await page.screenshot({ path: `docs/validation/apres-${slug}.png` })
