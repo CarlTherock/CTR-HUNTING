@@ -6,7 +6,6 @@ import { isStandalonePwa } from '@/utils/pwa'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(isStandalonePwa)
-
   return (
     <>
       <RouterProvider router={router} />

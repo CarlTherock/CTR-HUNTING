@@ -1,2 +1,2 @@
-/** Compatibilité des résultats spatiaux : inclusion complète des trous et attribution aux secteurs. */
-export const SPATIAL_ENGINE_VERSION = '1.2.0'
+/** Résultats avec balayage des cellules, distinct des recommandations. */
+export const SPATIAL_ENGINE_VERSION = '1.3.0'
