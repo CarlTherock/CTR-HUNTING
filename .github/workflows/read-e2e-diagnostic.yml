@@ -29,108 +29,30 @@ jobs:
           repository: CarlTherock/CTR-HUNTING
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/pr57-existing-artifact
-      - name: Decode HTML report and read failure records
+      - name: Read the exact diagnostic attachment from trace archives
         env:
           DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
         shell: bash
         run: |
           python3 - <<'PY'
-          import base64, io, json, os, re, zipfile
+          import json, os, re, zipfile
           from pathlib import Path
           root = Path(os.environ['RUNNER_TEMP'], 'pr57-existing-artifact')
-          report = {
-              'sourceRun': 42510879123,
-              'pullRequest': 57,
-              'downloadOutcome': os.environ.get('DOWNLOAD_OUTCOME'),
-              'artifactRootExists': root.exists(),
-              'files': [], 'parsedSources': [], 'stats': [],
-              'errors': [], 'failedRecords': [], 'attachments': [],
-              'rawDiagnostics': [], 'readerErrors': []
-          }
-          nodes = [0]
-
-          def limited(value, length=6000):
-              return json.dumps(value, ensure_ascii=False)[:length]
-
-          def walk(value, source, trail='', depth=0):
-              nodes[0] += 1
-              if depth > 35 or nodes[0] > 100000:
-                  return
-              if isinstance(value, dict):
-                  if value.get('status') in ('failed', 'timedOut', 'interrupted') and len(report['failedRecords']) < 12:
-                      report['failedRecords'].append({'source': source, 'path': trail, 'record': limited(value)})
-                  if value.get('name') == 'map-render-diagnostic.json' and isinstance(value.get('body'), str) and len(report['rawDiagnostics']) < 6:
-                      report['rawDiagnostics'].append({'source': source, 'body': value['body'][:12000]})
-                  for key, child in value.items():
-                      where = trail + '/' + str(key)
-                      if key in ('error', 'errors') and child and len(report['errors']) < 20:
-                          report['errors'].append({'source': source, 'path': where, 'value': limited(child)})
-                      elif key == 'attachments' and isinstance(child, list):
-                          for attachment in child:
-                              if len(report['attachments']) < 30:
-                                  report['attachments'].append({'source': source, 'attachment': limited(attachment, 2500)})
-                          walk(child, source, where, depth + 1)
-                      elif key not in ('error', 'errors'):
-                          walk(child, source, where, depth + 1)
-              elif isinstance(value, list):
-                  for i, child in enumerate(value):
-                      walk(child, source, trail + '/' + str(i), depth + 1)
-
-          def consume(raw, source):
-              value = json.loads(raw)
-              report['parsedSources'].append(source)
-              if isinstance(value, dict) and isinstance(value.get('stats'), dict):
-                  report['stats'].append({'source': source, 'stats': value['stats']})
-              if source.endswith('map-render-diagnostic.json'):
-                  report['rawDiagnostics'].append({'source': source, 'data': value})
-              walk(value, source)
-
-          def read_archive(payload, source):
-              with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-                  total = 0
-                  for item in archive.infolist()[:500]:
-                      if item.file_size > 5000000 or total + item.file_size > 25000000:
-                          continue
-                      if not item.filename.endswith(('.json', '.trace', '.network')):
-                          continue
-                      total += item.file_size
-                      raw = archive.read(item)
-                      name = source + '::' + item.filename
-                      try:
-                          if item.filename.endswith('.json'):
-                              consume(raw, name)
-                          else:
-                              for line in raw.splitlines():
-                                  try:
-                                      walk(json.loads(line), name)
-                                  except (ValueError, UnicodeError):
-                                      pass
-                      except Exception as error:
-                          report['readerErrors'].append({'source': name, 'error': str(error)})
-
-          files = sorted(p for p in root.rglob('*') if p.is_file())
-          report['files'] = [{'path': str(p.relative_to(root)), 'bytes': p.stat().st_size} for p in files[:80]]
-          for path in files:
-              source = str(path.relative_to(root))
+          digest = '507f42727db4624f992a6758edbcd9ae16acc2d1'
+          report = {'sourceRun': 42510879123, 'pullRequest': 57, 'attachmentName': 'map-render-diagnostic.json', 'attachmentSha1': digest, 'downloadOutcome': os.environ.get('DOWNLOAD_OUTCOME'), 'matches': [], 'readerErrors': []}
+          for path in sorted(root.rglob('*.zip'))[:12]:
               try:
-                  if path.suffix in ('.json', '.txt') and path.stat().st_size <= 5000000:
-                      try:
-                          consume(path.read_bytes(), source)
-                      except (ValueError, UnicodeError):
-                          pass
-                  elif path.name == 'index.html' and path.stat().st_size <= 20000000:
-                      html = path.read_text(errors='replace')
-                      for match in re.finditer(r'data:application/zip;base64,([A-Za-z0-9+/=\r\n]+)', html):
-                          encoded = re.sub(r'\s+', '', match.group(1))
-                          if len(encoded) <= 20000000:
-                              read_archive(base64.b64decode(encoded, validate=True), source + '::embedded')
-                  elif path.suffix == '.zip' and path.stat().st_size <= 25000000:
-                      read_archive(path.read_bytes(), source)
-                  elif path.name == 'error-context.md' and path.stat().st_size <= 100000:
-                      report['errors'].append({'source': source, 'value': path.read_text(errors='replace')[:6000]})
+                  if path.stat().st_size > 25000000:
+                      continue
+                  with zipfile.ZipFile(path) as archive:
+                      for item in archive.infolist():
+                          name = item.filename.rsplit('/', 1)[-1]
+                          if (name == digest or name.startswith(digest + '.')) and item.file_size <= 200000:
+                              data = json.loads(archive.read(item))
+                              report['matches'].append({'archive': str(path.relative_to(root)), 'entry': item.filename, 'diagnostic': data})
               except Exception as error:
-                  report['readerErrors'].append({'source': source, 'error': str(error)})
-          report['noStructuredReportFound'] = not bool(report['parsedSources'])
+                  report['readerErrors'].append({'archive': str(path.relative_to(root)), 'error': str(error)})
+          report['found'] = bool(report['matches'])
           text = json.dumps(report, ensure_ascii=False, indent=2)
           text = re.sub(r'(?i)([?&](?:key|token|access_token|api_key)=)[^&\s"<>]+', r'\1[REDACTED]', text)
           Path(os.environ['RUNNER_TEMP'], 'pr57-diagnostic.json').write_text(text)
@@ -147,5 +69,5 @@ jobs:
             const safe = text.slice(0, 55000).replace(/`/g, '\\u0060');
             await github.rest.issues.createComment({
               owner: 'CarlTherock', repo: 'CTR-HUNTING', issue_number: 57,
-              body: '## Diagnostic HTML et traces du rapport E2E existant\nSource : exécution 42510879123. Lecture de données uniquement, aucun code de l’archive exécuté. Aucun test ni déploiement exécuté par ce job. Le contenu est limité à 55 000 caractères.\n\n```json\n' + safe + '\n```'
+              body: '## Contenu de la pièce jointe du diagnostic E2E\nSource : exécution 42510879123, ressource 507f42727db4624f992a6758edbcd9ae16acc2d1. Lecture de données uniquement. Aucun test, aucune fusion et aucun déploiement exécutés par ce job.\n\n```json\n' + safe + '\n```'
             });
