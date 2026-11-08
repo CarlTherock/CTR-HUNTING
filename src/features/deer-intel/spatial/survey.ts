@@ -5,7 +5,7 @@ export interface SurveyCollection {
   features: { type: 'Feature'; properties: { landClass: LandClass | 'unknown'; score: number | null }; geometry: { type: 'Polygon'; coordinates: number[][][] } }[]
 }
 declare module './types' { interface SpatialAnalysis { survey?: SurveyCollection } }
-type XY = { x: number; y: number }
+interface XY { x: number; y: number }
 /** Découpe chaque cellule au polygone circulaire inscrit ; aucune classe ou note inventée. */
 export function buildSurvey(extent: AnalysisExtent, cellSizeM: number, cells: readonly GridCell[]): SurveyCollection {
   const projection = makeProjection(extent.center)

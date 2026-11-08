@@ -1,7 +1,7 @@
 import type { Coordinate } from '@/types'
 import type { SpatialAnalysis } from './types'
 import type { SurveyCollection } from './survey'
-type Collection<P, G> = { type: 'FeatureCollection'; features: { type: 'Feature'; properties: P; geometry: G }[] }
+interface Collection<P, G> { type: 'FeatureCollection'; features: { type: 'Feature'; properties: P; geometry: G }[] }
 export interface HuntMapOverlay {
   survey?: SurveyCollection
   sectors: Collection<{ id: string; rank: number; meanScore: number }, { type: 'Polygon'; coordinates: number[][][] }>
