@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Settings2, Sun } from 'lucide-react'
-import { Badge, Card } from '@/components/ui'
-import type { SavedHuntAnalysis } from '@/types'
+import { Clock, Settings2 } from 'lucide-react'
+import { Card } from '@/components/ui'
 import type { HuntResult } from '../state/huntStore'
+import { useHuntPresentationStore } from '../state/presentationStore'
 import { HourlyChart } from './HourlyChart'
+import { ConditionsPanel } from './ConditionsPanel'
+import { DayComparison } from './DayComparison'
 import { RecommendationCard } from './RecommendationCard'
 import { SpatialSummary } from './SpatialSummary'
 import { HowTab } from './HowTab'
@@ -13,83 +15,45 @@ import { PressurePanel } from './PressurePanel'
 import { TemperaturePanel } from './TemperaturePanel'
 import { WhenDetails } from './WhenDetails'
 import { WhereTab } from './WhereTab'
-import { durationLabel, pickBestSlot, reasonsFor, weatherBrief, weatherDrivesRanking } from './dashboard'
+import { durationLabel, pickBestSlot, reasonsFor, weatherDrivesRanking } from './dashboard'
 import { ROBUSTNESS_TEXT, dayLabel, windowLabel } from './format'
 
-const num = (v: number | null, unit: string, digits = 0) => v === null ? '—' : `${v.toFixed(digits)} ${unit}`
 function Fold({ title, children }: { title: string; children: ReactNode }) {
-  return <details className="border-surface-700 bg-surface-900 rounded-lg border"><summary className="text-ink-100 min-h-12 cursor-pointer px-3 py-3 text-sm font-semibold">{title}</summary><div className="border-surface-700 border-t p-3">{children}</div></details>
+  return <details className="border-surface-700 bg-surface-900 rounded-xl border"><summary className="text-ink-100 min-h-12 cursor-pointer px-3 py-3 text-sm font-semibold">{title}</summary><div className="border-surface-700 border-t p-3">{children}</div></details>
 }
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return <div className="bg-surface-800 min-w-0 rounded-md px-2 py-2 text-center"><p className="text-ink-500 text-[11px]">{label}</p><p className="text-ink-100 text-base font-semibold tabular-nums">{value}</p>{sub && <p className="text-ink-400 text-[11px]">{sub}</p>}</div>
-}
-function freshness(record: SavedHuntAnalysis, origin: HuntResult['origin']): string {
-  const f = record.data.forecastFetchedAt
-  if (origin === 'enregistree') return `Analyse enregistrée le ${record.savedAt.slice(0, 16).replace('T', ' ')} UTC (relue sans réseau)`
-  return f ? `Prévision reçue à ${new Intl.DateTimeFormat('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: record.timezone }).format(new Date(f))}` : 'Aucune prévision météo : activité de référence seulement'
-}
-
-/** Premier écran : quand, où et pourquoi, sans formulaire ni tableau de scores. */
 export function Dashboard({ result, onOpenParams }: { result: HuntResult; onOpenParams: () => void }) {
-  const record = result.record
-  const hunt = record.hunt
-  const [selected, setSelected] = useState(0)
+  const record = result.record, hunt = record.hunt
+  const dateKey = useHuntPresentationStore((s) => s.dateKey)
+  const setDateKey = useHuntPresentationStore((s) => s.setDateKey)
+  const selected = Math.max(0, hunt.days.findIndex((d) => d.dateKey === dateKey))
+  const select = (i: number) => { const d = hunt.days[i]; if (d) setDateKey(d.dateKey) }
   const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 60_000)
-    return () => window.clearInterval(t)
-  }, [])
-  const dayIndex = Math.min(selected, hunt.days.length - 1)
-  const day = hunt.days[dayIndex]
+  useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(t) }, [])
+  const day = hunt.days[selected]
   if (!day) return null
-  const best = pickBestSlot(day, now)
-  const tz = hunt.params.timezone
-  const brief = best ? weatherBrief(day, best.main) : null
-  const reasons = best ? reasonsFor(day, best.main, tz) : []
-  const spatial = record.spatial
-  return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <header className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-ink-100 truncate text-base font-semibold">{record.label}</h1>
-          <p className="text-ink-400 text-xs">{dayLabel(day.dateKey)} · {tz}</p>
-          <p className="text-ink-500 text-xs">{freshness(record, result.origin)}</p>
-        </div>
-        <button type="button" onClick={onOpenParams} aria-label="Paramètres : lieu, date et emprise" className="border-surface-600 text-ink-300 flex size-11 shrink-0 items-center justify-center rounded-lg border"><Settings2 size={18} aria-hidden="true" /></button>
-      </header>
-      {result.notes.map((n) => <p key={n} className="text-status-warning break-words text-sm">{n}</p>)}
-      {hunt.days.length > 1 && <div role="group" aria-label="Jour" className="flex gap-1.5 overflow-x-auto">{hunt.days.map((d, i) => <button key={d.dateKey} type="button" aria-pressed={i === dayIndex} onClick={() => setSelected(i)} className={i === dayIndex ? 'border-brand-500 bg-brand-500/15 text-brand-300 min-h-11 shrink-0 rounded-md border px-3 text-sm font-semibold' : 'border-surface-700 text-ink-300 min-h-11 shrink-0 rounded-md border px-3 text-sm'}>{dayLabel(d.dateKey)}</button>)}</div>}
-      <RecommendationCard record={record} dayIndex={dayIndex} />
-      <Card className="border-brand-500/40 p-4">
-        <p className="text-brand-300 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"><Clock size={14} aria-hidden="true" /> Meilleur créneau estimé{best?.status === 'en_cours' && <Badge>en cours</Badge>}{best?.status === 'passe' && <Badge>déjà passé</Badge>}</p>
-        {best ? <>
-          <p className="text-ink-100 mt-1 text-4xl font-bold tabular-nums">{windowLabel(best.main)}</p>
-          <p className="text-ink-300 text-sm">{durationLabel(best.main)}</p>
-          {best.earlierBest && <p className="text-ink-400 mt-1 text-xs">Le meilleur créneau du jour ({windowLabel(best.earlierBest)}) est déjà passé ; voici le meilleur restant.</p>}
-          {best.status === 'passe' && <p className="text-ink-400 mt-1 text-xs">Tous les créneaux de ce jour sont passés.</p>}
-          <ul className="text-ink-200 mt-3 flex flex-col gap-1 text-sm">{reasons.map((r) => <li key={r} className="flex gap-2"><span aria-hidden="true" className="text-brand-400">•</span>{r}</li>)}</ul>
-          {best.alternative && <p className="text-ink-300 mt-3 text-sm">Alternative : <strong>{windowLabel(best.alternative)}</strong></p>}
-          {(day.robustness === 'equivalent' || day.robustness === 'fragile') && <p className="text-status-warning mt-2 text-xs">{ROBUSTNESS_TEXT[day.robustness]}</p>}
-        </> : <p className="text-ink-300 mt-2 text-sm">Aucun créneau n’atteint le seuil ce jour-là, ou les données sont insuffisantes pour en désigner un.</p>}
-        <p className="text-ink-500 mt-3 text-xs">Estimation comparative — pas une garantie de présence.{!weatherDrivesRanking(day) && ' La météo ne modifie pas ce classement (aucune donnée évaluée).'}</p>
-      </Card>
-      <Card className="p-3"><HourlyChart key={`${record.id}:${day.dateKey}`} day={day} timeZone={tz} /></Card>
-      {brief && <section aria-label="Météo au créneau" className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-        <Stat label="Temp." value={num(brief.temperatureC, '°C', 1)} />
-        <Stat label="Vent" value={num(brief.windKmh, 'km/h')} sub={brief.windFrom ? `du ${brief.windFrom}` : undefined} />
-        <Stat label="Pluie" value={num(brief.rainMm, 'mm', 1)} />
-        <Stat label="Pression" value={num(brief.pressureHpa, 'hPa')} sub={brief.pressureTrend ?? undefined} />
-      </section>}
-      <SpatialSummary spatial={spatial} />
-      <Link to="/rut" className="flex min-h-11 items-center rounded border border-slate-700 px-3 text-sm text-sky-300 underline">Repères saisonniers du rut — contexte québécois</Link>
-      <div className="flex flex-col gap-2">
-        <Fold title="Pourquoi ce créneau ? Détails et calendrier"><WhenDetails hunt={hunt} day={day} selected={dayIndex} onSelect={setSelected} /></Fold>
-        <Fold title="Température et pression (contexte)"><div className="flex flex-col gap-3"><TemperaturePanel day={day} /><PressurePanel day={day} /></div></Fold>
-        <Fold title="Secteurs, points et corridors"><WhereTab spatial={spatial} /></Fold>
-        <Fold title="Formule, méthodologie et limites"><HowTab hunt={hunt} spatial={spatial} /></Fold>
-        <Fold title="Sources, règles et bibliographie"><SourcesPanel record={record} /></Fold>
-      </div>
-      <p className="text-ink-600 flex items-center gap-1 text-[11px]"><Sun size={12} aria-hidden="true" /> Moteur {hunt.engineVersion} · registre {hunt.registryVersion}</p>
-    </div>
-  )
+  const best = pickBestSlot(day, now), tz = record.timezone
+  const fetched = record.data.forecastFetchedAt
+  const fresh = result.origin === 'enregistree'
+    ? `Analyse enregistrée le ${record.savedAt.slice(0, 16).replace('T', ' ')} UTC — pas une nouvelle prévision`
+    : fetched ? `Prévision reçue à ${new Intl.DateTimeFormat('fr-CA', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date(fetched))}` : 'Sans prévision météo : référence astronomique seulement'
+  return <div className="flex min-w-0 flex-col gap-4">
+    <header className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-brand-300 text-xs font-semibold tracking-wide uppercase">Où · Quand · Pourquoi</p><h1 className="text-ink-100 mt-1 break-words text-xl font-semibold">{record.label}</h1><p className="text-ink-300 mt-1 text-sm">{dayLabel(day.dateKey)} · {tz}</p><p className="text-ink-400 mt-1 text-xs">{fresh}</p></div><button type="button" onClick={onOpenParams} aria-label="Paramètres : lieu, date et emprise" className="border-surface-600 text-ink-200 flex size-11 shrink-0 items-center justify-center rounded-xl border"><Settings2 size={18} aria-hidden="true"/></button></header>
+    {result.notes.map((n) => <p key={n} className="text-status-warning break-words text-sm">{n}</p>)}
+    <RecommendationCard record={record} dayIndex={selected}/>
+    {hunt.days.length > 1 && <Fold title="Comparer les journées"><DayComparison days={hunt.days} selected={selected} onSelect={select}/><p className="text-ink-400 mt-2 text-xs">Même échelle 0–100, mais pas de classement entre journées dont les facteurs évalués diffèrent. Aucun pourcentage de réussite.</p></Fold>}
+    <Card className="border-brand-500/40 bg-gradient-to-br from-emerald-950/40 to-slate-900 p-4"><h2 className="text-brand-300 flex items-center gap-2 text-sm font-semibold"><Clock size={16} aria-hidden="true"/>Meilleur créneau estimé</h2>
+      {best ? <><p className="text-ink-100 mt-2 text-4xl font-bold tabular-nums">{windowLabel(best.main)}</p><p className="text-ink-300 mt-1 text-sm">{durationLabel(best.main)}{Date.parse(best.main.endIso) <= now ? ' · déjà passé' : best.status === 'en_cours' ? ' · en cours' : ' · à venir'}</p>{best.earlierBest && <p className="text-ink-400 mt-2 text-xs">Le meilleur créneau du jour ({windowLabel(best.earlierBest)}) est passé ; celui-ci est le meilleur restant.</p>}<ul className="text-ink-200 mt-3 list-disc space-y-1 pl-5 text-sm">{reasonsFor(day, best.main, tz).map((r) => <li key={r}>{r}</li>)}</ul>{best.alternative && <p className="text-ink-300 mt-3 text-sm">Alternative : {windowLabel(best.alternative)}</p>}{(day.robustness === 'equivalent' || day.robustness === 'fragile') && <p className="text-status-warning mt-2 text-xs">{ROBUSTNESS_TEXT[day.robustness]}</p>}</> : <p className="text-ink-300 mt-3 text-sm">Aucun créneau défendable avec les données et les critères actuels.</p>}
+      <p className="text-ink-400 mt-3 text-xs">Estimation comparative — pas une garantie de présence.{!weatherDrivesRanking(day) && ' La météo ne modifie pas ce classement : aucune donnée évaluée.'}</p>
+    </Card>
+    <Card className="p-3"><HourlyChart key={`${record.id}:${day.dateKey}`} day={day} timeZone={tz}/></Card>
+    <ConditionsPanel day={day} timeZone={tz}/>
+    <SpatialSummary spatial={record.spatial}/>
+    <Link to="/rut" className="border-surface-700 text-sky-300 flex min-h-12 items-center rounded-xl border px-3 text-sm">Calendrier du rut · repères et conseils documentés</Link>
+    <Fold title="Pourquoi ce créneau ? Détails et calendrier"><WhenDetails hunt={hunt} day={day} selected={selected} onSelect={select}/></Fold>
+    <Fold title="Température et pression (contexte)"><div className="space-y-3"><TemperaturePanel day={day}/><PressurePanel day={day}/></div></Fold>
+    <Fold title="Secteurs, points et corridors"><WhereTab spatial={record.spatial}/></Fold>
+    <Fold title="Formule, méthodologie et limites"><HowTab hunt={hunt} spatial={record.spatial}/></Fold>
+    <Fold title="Sources, règles et bibliographie"><SourcesPanel record={record}/></Fold>
+    <p className="text-ink-500 text-xs">Moteur {hunt.engineVersion} · registre {hunt.registryVersion} · analyse autonome, journal facultatif.</p>
+  </div>
 }

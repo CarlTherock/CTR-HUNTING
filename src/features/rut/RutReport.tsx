@@ -1,187 +1,21 @@
-import {
-  AXIS_END,
-  AXIS_START,
-  GESTATION_NOTE,
-  GPS_NOTE,
-  POSITION_LABEL,
-  SEASONAL_BANDS,
-  axisFraction,
-  bandPosition,
-  dateFraction,
-} from './seasonalBands'
-import { GROUP_LABEL } from './observationsSummary'
-import type { ObservationsSummary, SourceGroup } from './observationsSummary'
+import { AXIS_END, AXIS_START, GESTATION_NOTE, GPS_NOTE, POSITION_LABEL, SEASONAL_BANDS, axisFraction, bandPosition, dateFraction } from './seasonalBands'
+import { GROUP_LABEL, type ObservationsSummary, type SourceGroup } from './observationsSummary'
 import { RUT_SOURCES } from './sources'
 
-interface Props {
-  /** `YYYY-MM-DD` on the place's calendar. */
-  dateKey: string
-  summary: ObservationsSummary
-}
-
-const W = 320
-const PAD = 12
-
-/**
- * One reusable template (HTML + SVG, no decorative image) rendered both in the
- * app preview and by the browser print dialog (« Enregistrer en PDF »). A PNG
- * export can reuse the same node later.
- */
-export function RutReport({ dateKey, summary }: Props) {
-  const year = Number(dateKey.slice(0, 4))
-  const x = (f: number) => PAD + f * (W - 2 * PAD)
-  const marker = dateFraction(dateKey)
-  const ticks = [
-    { month: 10, day: 15 },
-    { month: 11, day: 1 },
-    { month: 12, day: 1 },
-    { month: 12, day: 31 },
-  ]
-  return (
-    <article
-      data-testid="rut-report"
-      className="rut-report space-y-4 rounded-lg border border-slate-700 bg-slate-900 p-4 text-slate-100"
-    >
-      <header>
-        <h2 className="text-lg font-semibold">
-          Repères saisonniers du rut — contexte québécois
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          Contexte documentaire — pas un prédicteur local. {GPS_NOTE}
-        </p>
-      </header>
-
-      <section aria-label="Bandes saisonnières" className="space-y-2">
-        <svg
-          viewBox={`0 0 ${W} 120`}
-          role="img"
-          aria-label={`Deux bandes de contexte séparées du ${AXIS_START.day} octobre au ${AXIS_END.day} décembre ${year}`}
-          className="w-full"
-        >
-          {SEASONAL_BANDS.map((b, i) => {
-            const y = 20 + i * 36
-            const x1 = x(axisFraction(year, b.start))
-            const x2 = x(axisFraction(year, b.end))
-            return (
-              <g key={b.id}>
-                <rect
-                  x={x1}
-                  y={y}
-                  width={Math.max(2, x2 - x1)}
-                  height={22}
-                  rx={4}
-                  fill={b.origin === 'quebec' ? '#22c55e' : 'none'}
-                  fillOpacity={0.55}
-                  stroke={b.origin === 'quebec' ? '#22c55e' : '#f59e0b'}
-                  strokeWidth={1.5}
-                  strokeDasharray={b.origin === 'quebec' ? undefined : '4 3'}
-                />
-                <text
-                  x={x2 - x1 < 100 ? x2 + 5 : x1 + 4}
-                  y={y + 15}
-                  fontSize={9}
-                  fill="#f1f5f9"
-                >
-                  {b.origin === 'quebec' ? 'Québec' : 'Wisconsin (externe)'}
-                </text>
-              </g>
-            )
-          })}
-          <line
-            x1={x(marker)}
-            x2={x(marker)}
-            y1={8}
-            y2={98}
-            stroke="#38bdf8"
-            strokeWidth={2}
-          />
-          <text x={x(marker)} y={7} fontSize={8} fill="#38bdf8" textAnchor="middle">
-            {dateKey.slice(8)}/{dateKey.slice(5, 7)}
-          </text>
-          {ticks.map((t) => (
-            <text
-              key={`${t.month}-${t.day}`}
-              x={x(axisFraction(year, t))}
-              y={112}
-              fontSize={8}
-              fill="#94a3b8"
-              textAnchor="middle"
-            >
-              {t.day}/{t.month}
-            </text>
-          ))}
-        </svg>
-        <ul className="space-y-2 text-sm">
-          {SEASONAL_BANDS.map((b) => (
-            <li key={b.id} data-testid={`rut-band-${b.id}`}>
-              <p className="font-medium">
-                {b.label} —{' '}
-                <span className="text-sky-300">
-                  {POSITION_LABEL[bandPosition(dateKey, b)]}
-                </span>
-              </p>
-              <p className="text-xs text-slate-400">{b.statement}</p>
-              <p className="text-xs font-medium text-amber-300">{b.caveat}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-slate-400">
-          Les deux bandes sont affichées séparément et ne sont ni fusionnées ni
-          transformées en courbe : aucun pic quotidien n’est proposé. {GESTATION_NOTE}
-        </p>
-      </section>
-
-      <section
-        aria-label="Mes observations"
-        data-testid="rut-observations"
-        className="space-y-2"
-      >
-        <h3 className="text-sm font-semibold">Mes observations (descriptif)</h3>
-        {summary.entries === 0 ? (
-          <p className="text-sm text-slate-300">{summary.statement}</p>
-        ) : (
-          <>
-            <ul className="grid grid-cols-3 gap-2 text-center">
-              {(Object.keys(GROUP_LABEL) as SourceGroup[]).map((g) => (
-                <li key={g} className="rounded border border-slate-700 p-2">
-                  <p className="text-xl font-semibold">{summary.byGroup[g].events}</p>
-                  <p className="text-[11px] text-slate-400">{GROUP_LABEL[g]}</p>
-                  {summary.byGroup[g].entries !== summary.byGroup[g].events && (
-                    <p className="text-[10px] text-slate-500">
-                      {summary.byGroup[g].entries} entrées
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-slate-300">
-              {summary.daysWithEntries} jour(s) avec observation sur {summary.daysSpan}{' '}
-              jour(s) couverts ({summary.firstDay} → {summary.lastDay}).{' '}
-              {summary.hasEffort
-                ? `${summary.effortDays} jour(s) avec sortie enregistrée.`
-                : 'Aucune sortie enregistrée.'}
-            </p>
-            <p className="text-xs text-slate-400">{summary.statement}</p>
-            <p className="text-[11px] text-slate-500">
-              Les entrées proches dans le temps et l’espace (séquence de photos) comptent
-              pour un seul événement. Les caméras reconnues sont celles de vos repères «
-              caméra de chasse » ; leurs déclenchements ne sont pas enregistrés.
-            </p>
-          </>
-        )}
-      </section>
-
-      <section aria-label="Sources" className="space-y-1">
-        <h3 className="text-sm font-semibold">Sources</h3>
-        <ul className="space-y-1 text-[11px] text-slate-400">
-          {RUT_SOURCES.map((s) => (
-            <li key={s.id}>
-              {s.citation} {s.displayedDate ? `${s.displayedDate}. ` : ''}Consultée le{' '}
-              {s.accessedOn}. {s.readScope} {s.discrepancy ?? ''}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </article>
-  )
+/** Bandes documentaires séparées : aucune courbe locale ni probabilité inventée. */
+export function RutReport({ dateKey, summary }: { dateKey: string; summary: ObservationsSummary }) {
+  const year = Number(dateKey.slice(0, 4)), x = (f: number) => 28 + f * 624
+  const marker = x(dateFraction(dateKey))
+  const ticks = [{ month: 10, day: 15 }, { month: 11, day: 1 }, { month: 11, day: 15 }, { month: 12, day: 1 }, { month: 12, day: 15 }, { month: 12, day: 31 }]
+  return <article data-testid="rut-report" className="rut-report space-y-5 rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100"><header><p className="text-xs font-semibold tracking-wide text-emerald-300 uppercase">Calendrier · contexte · tactique</p><h2 className="mt-1 text-xl font-semibold">Repères saisonniers du rut — contexte québécois</h2><p className="mt-2 text-sm text-slate-300">Date consultée : {dateKey}. Contexte documentaire — pas un prédicteur local.</p><p className="mt-1 text-xs text-slate-400">{GPS_NOTE}</p></header>
+    <section aria-label="Bandes saisonnières" className="space-y-3"><div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-950"><svg viewBox="0 0 680 220" role="img" aria-label={`Deux bandes de contexte séparées du ${AXIS_START.day} octobre au ${AXIS_END.day} décembre ${year}`} className="block w-full min-w-[560px]">
+      {ticks.map((t) => <g key={`${t.month}-${t.day}`}><line x1={x(axisFraction(year, t))} x2={x(axisFraction(year, t))} y1={24} y2={182} stroke="#263449"/><text x={x(axisFraction(year, t))} y={207} textAnchor="middle" fill="#cbd5e1" fontSize={12}>{t.day}/{t.month}</text></g>)}
+      {SEASONAL_BANDS.map((b, i) => { const start = x(axisFraction(year, b.start)), end = x(axisFraction(year, b.end)), y = 56 + i * 75; return <g key={b.id}><text x={28} y={y - 12} fill="#e2e8f0" fontSize={13}>{b.origin === 'quebec' ? 'Québec · période de reproduction' : 'Wisconsin · déplacements de mâles, étude externe'}</text><rect x={start} y={y} width={Math.max(2, end - start)} height={28} rx={6} fill={b.origin === 'quebec' ? '#166534' : '#422006'} stroke={b.origin === 'quebec' ? '#4ade80' : '#fbbf24'} strokeDasharray={b.origin === 'quebec' ? undefined : '5 4'}/></g> })}
+      <line x1={marker} x2={marker} y1={24} y2={182} stroke="#38bdf8" strokeWidth={2}/><text x={Math.max(70, Math.min(610, marker))} y={18} textAnchor="middle" fill="#7dd3fc" fontSize={12}>{dateKey}</text>
+    </svg></div><p className="text-xs text-slate-400">Axe du 15 octobre au 31 décembre. Une date hors de cet axe est représentée au bord ; sa position réelle est précisée ci-dessous. Faites défiler horizontalement sur petit écran.</p>
+    <ul className="grid gap-3 sm:grid-cols-2">{SEASONAL_BANDS.map((b) => <li key={b.id} data-testid={`rut-band-${b.id}`} className="rounded-xl border border-slate-700 p-3"><h3 className="text-sm font-semibold">{b.label}</h3><p className="mt-1 text-sm text-sky-300">{POSITION_LABEL[bandPosition(dateKey, b)]}</p><p className="mt-2 text-xs text-slate-300">{b.statement}</p><p className="mt-2 text-xs text-amber-300">{b.caveat}</p></li>)}</ul><p className="text-xs text-slate-400">Ces deux bandes ne sont ni fusionnées ni converties en pic quotidien. {GESTATION_NOTE}</p></section>
+    <section className="space-y-2 rounded-xl border border-slate-700 p-3"><h3 className="text-base font-semibold">Conseils de terrain · Louis Gagnon</h3><p className="text-sm text-slate-300">Dans « Le rut, comment le chasser », Louis Gagnon conseille notamment les transitions entre nourriture et couvert en fin de pré-rut, puis les couloirs naturels et les secteurs fréquentés par les femelles pendant le rut. Il insiste sur le vent et la pression de chasse pour choisir un emplacement.</p><p className="text-xs text-amber-300">Conseils d’auteur, pas une étude de calibration. Aucun site de repos, regroupement de femelles ou stade local du rut n’est déduit de ces conseils par l’application.</p><a href="https://www.chevreuil.net/blogue-louis-gagnon/le-rut-comment-le-chasser" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sm text-sky-300 underline">Lire la source de Louis Gagnon</a></section>
+    <section aria-label="Mes observations" data-testid="rut-observations" className="space-y-2"><h3 className="text-sm font-semibold">Mes observations (facultatif, descriptif)</h3>{summary.entries === 0 ? <p className="text-sm text-slate-300">{summary.statement}</p> : <><ul className="grid grid-cols-3 gap-2">{(Object.keys(GROUP_LABEL) as SourceGroup[]).map((g) => <li key={g} className="rounded-lg border border-slate-700 p-2 text-center"><p className="text-xl font-semibold">{summary.byGroup[g].events}</p><p className="text-xs text-slate-400">{GROUP_LABEL[g]}</p></li>)}</ul><p className="text-xs text-slate-300">{summary.daysWithEntries} jour(s) avec observation sur {summary.daysSpan} jour(s) couverts ({summary.firstDay} → {summary.lastDay}). {summary.hasEffort ? `${summary.effortDays} jour(s) avec sortie enregistrée.` : 'Aucune sortie enregistrée.'}</p><p className="text-xs text-slate-400">{summary.statement}</p><p className="text-xs text-slate-400">Les séquences proches dans le temps et l’espace sont regroupées. Ces comptes ne mesurent pas l’activité réelle des cerfs.</p></>}</section>
+    <section aria-label="Sources" className="space-y-2"><h3 className="text-sm font-semibold">Sources et portée</h3><ul className="space-y-3 text-xs text-slate-400">{RUT_SOURCES.map((s) => <li key={s.id}><p>{s.citation}</p><p>Consultée le {s.accessedOn}. {s.readScope}</p><p>{s.limits}</p>{s.url && <a href={s.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sky-300 underline">Consulter la source</a>}{s.doi && <a href={`https://doi.org/${s.doi}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-sky-300 underline">DOI : {s.doi}</a>}</li>)}</ul></section>
+  </article>
 }
