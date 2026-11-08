@@ -5,6 +5,7 @@ import {
   measureLayout,
 } from './support/layout'
 import { colorsClose, dominantColor } from './support/pixels'
+import type { Rgb } from './support/png'
 import { TILE_COLOR } from './support/mockMapBackend'
 import { VIEWPORTS } from './support/viewports'
 import { expect, test } from './support/test'
@@ -39,9 +40,11 @@ for (const viewport of VIEWPORTS) {
       const canvas = page.locator('canvas.maplibregl-canvas')
       await expect(canvas).toBeVisible()
       const expected = TILE_COLOR['esri-imagery'] ?? [0, 0, 0]
+      let lastObserved: Rgb | null = null
       try {
         await expect.poll(async () => {
           const observed = await dominantColor(page, canvas)
+          lastObserved = observed
           return {
             rendered: colorsClose(observed, expected),
             observed,
@@ -70,7 +73,7 @@ for (const viewport of VIEWPORTS) {
         }).catch(() => null)
         await testInfo.attach('map-render-diagnostic.json', {
           body: JSON.stringify({
-            viewport, expected, browser,
+            viewport, expected, observed: lastObserved, browser,
             stylesRequested: backend.styleRequests(), served: backend.served(),
             refused: backend.refused(), failedTiles: backend.failedTiles(),
             unexpectedHosts: backend.unexpectedHosts(), pageErrors, consoleErrors,
