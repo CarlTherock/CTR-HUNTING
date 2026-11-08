@@ -1,0 +1,155 @@
+name: Read existing E2E diagnostic for PR 57
+on:
+  push:
+    branches: [fix/hunt-balayage-et-version-visible]
+    paths: [.github/workflows/read-e2e-diagnostic.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: read-e2e-pr57-42510879123
+  cancel-in-progress: true
+jobs:
+  read-diagnostic:
+    if: github.repository == 'CarlTherock/CTR-HUNTING'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Download the existing report, not a new test run
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v5
+        with:
+          name: playwright-report
+          run-id: 42510879123
+          repository: CarlTherock/CTR-HUNTING
+          github-token: ${{ github.token }}
+          path: diagnostic-artifact
+      - name: Read JSON and sample the failed map screenshot
+        env:
+          DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, math, os, re, struct, zlib
+          from pathlib import Path
+          from collections import Counter
+
+          def read_png(data):
+              if data[:8] != b'\x89PNG\r\n\x1a\n':
+                  raise ValueError('Signature PNG invalide')
+              offset, payload, header = 8, bytearray(), None
+              while offset + 12 <= len(data):
+                  size = struct.unpack('>I', data[offset:offset + 4])[0]
+                  kind = data[offset + 4:offset + 8]
+                  chunk = data[offset + 8:offset + 8 + size]
+                  if kind == b'IHDR':
+                      header = struct.unpack('>IIBBBBB', chunk)
+                  elif kind == b'IDAT':
+                      payload.extend(chunk)
+                  offset += size + 12
+                  if kind == b'IEND':
+                      break
+              if header is None:
+                  raise ValueError('IHDR absent')
+              w, h, depth, color, comp, filt, interlace = header
+              if not (0 < w <= 4096 and 0 < h <= 4096 and depth == 8 and color in (2, 6) and comp == 0 and filt == 0 and interlace == 0):
+                  raise ValueError('Format PNG non pris en charge')
+              channels = 3 if color == 2 else 4
+              stride = w * channels
+              expected = (stride + 1) * h
+              raw = zlib.decompressobj().decompress(payload, expected + 1)
+              if len(raw) != expected:
+                  raise ValueError('Taille PNG invalide')
+              rows, previous = [], bytearray(stride)
+              for y in range(h):
+                  start = y * (stride + 1)
+                  method = raw[start]
+                  row = bytearray(raw[start + 1:start + 1 + stride])
+                  if method not in range(5):
+                      raise ValueError('Filtre PNG inconnu')
+                  for x in range(stride):
+                      a = row[x - channels] if x >= channels else 0
+                      b = previous[x]
+                      c = previous[x - channels] if x >= channels else 0
+                      if method == 1:
+                          add = a
+                      elif method == 2:
+                          add = b
+                      elif method == 3:
+                          add = (a + b) // 2
+                      elif method == 4:
+                          p = a + b - c
+                          distances = (abs(p - a), abs(p - b), abs(p - c))
+                          add = (a, b, c)[distances.index(min(distances))]
+                      else:
+                          add = 0
+                      row[x] = (row[x] + add) % 256
+                  rows.append(row)
+                  previous = row
+              return w, h, channels, rows
+
+          root = Path('diagnostic-artifact')
+          files = sorted(root.rglob('map-render-diagnostic.json'))[:6]
+          report = {'sourceRun': 42510879123, 'pullRequest': 57, 'downloadOutcome': os.environ.get('DOWNLOAD_OUTCOME'), 'diagnostics': []}
+          for path in files:
+              entry = {'path': str(path.relative_to(root))}
+              try:
+                  if path.stat().st_size > 200000:
+                      raise ValueError('JSON trop volumineux')
+                  data = json.loads(path.read_text())
+                  if not isinstance(data, dict):
+                      raise ValueError('Diagnostic JSON non objet')
+                  entry['recordedDiagnostic'] = data
+                  image = path.with_name('map-render-failure.png')
+                  if image.exists():
+                      if image.stat().st_size > 10000000:
+                          raise ValueError('Capture trop volumineuse')
+                      w, h, channels, rows = read_png(image.read_bytes())
+                      browser = data.get('browser') or {}
+                      rect = (browser.get('canvas') or {}).get('rect')
+                      viewport = browser.get('viewport') or {}
+                      x0, y0, x1, y1 = 0, 0, w, h
+                      if rect and viewport.get('width') and viewport.get('height'):
+                          sx, sy = w / viewport['width'], h / viewport['height']
+                          x0, y0 = max(0, math.floor(rect['x'] * sx)), max(0, math.floor(rect['y'] * sy))
+                          x1, y1 = min(w, math.ceil((rect['x'] + rect['width']) * sx)), min(h, math.ceil((rect['y'] + rect['height']) * sy))
+                      counts = Counter()
+                      for y in range(y0, y1, 7):
+                          row = rows[y]
+                          for x in range(x0, x1, 7):
+                              i = x * channels
+                              if channels == 4 and row[i + 3] == 0:
+                                  continue
+                              counts[tuple((row[i + k] >> 3) << 3 for k in range(3))] += 1
+                      entry['screenshotSample'] = {'scope': 'canvas rectangle, controls included' if rect else 'whole page', 'imageSize': [w, h], 'sampleBounds': [x0, y0, x1, y1], 'topColors': [{'rgb': list(rgb), 'samples': n} for rgb, n in counts.most_common(5)]}
+                  else:
+                      entry['screenshotMissing'] = True
+              except Exception as error:
+                  entry['readerError'] = str(error)
+              report['diagnostics'].append(entry)
+          if not files:
+              report['missingDiagnostic'] = True
+              report['availableJsonFiles'] = [str(p.relative_to(root)) for p in root.rglob('*.json')][:20]
+          text = json.dumps(report, ensure_ascii=False, indent=2)
+          text = re.sub(r'(?i)([?&](?:key|token|access_token|api_key)=)[^&\s"<>]+', r'\1[REDACTED]', text)
+          Path(os.environ['RUNNER_TEMP'], 'pr57-diagnostic.json').write_text(text)
+          PY
+      - name: Publish the diagnostic only to PR 57
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            if (context.repo.owner !== 'CarlTherock' || context.repo.repo !== 'CTR-HUNTING') throw new Error('Unexpected repository');
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const text = fs.readFileSync(path.join(process.env.RUNNER_TEMP, 'pr57-diagnostic.json'), 'utf8');
+            const safe = text.slice(0, 55000).replace(/`/g, '\\u0060');
+            await github.rest.issues.createComment({
+              owner: 'CarlTherock', repo: 'CTR-HUNTING', issue_number: 57,
+              body: '## Diagnostic automatique du rapport E2E existant\nSource : exécution 42510879123. Aucun test ni déploiement exécuté par ce job. Les couleurs sont échantillonnées dans la capture, avec les éventuels contrôles superposés ; elles ne constituent pas une preuve de la cause à elles seules.\n\n```json\n' + safe + '\n```'
+            });
