@@ -52,7 +52,11 @@ export function SourcesPanel({ record }: { record: SavedHuntAnalysis }) {
         <p className="text-ink-300 mt-1">
           Météo : Open-Meteo. Occupation du sol : OpenStreetMap via Overpass.
         </p>
-        <ServiceCheck />
+        {record.spatial ? <ServiceCheck /> : (
+          <p className="text-ink-400 mt-2 text-xs">
+            Le contrôle des services reste accessible dans la synthèse des données manquantes.
+          </p>
+        )}
       </Card>
 
       <Card className="p-3 text-sm">

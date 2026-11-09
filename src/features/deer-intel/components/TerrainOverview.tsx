@@ -1,0 +1,21 @@
+import { useNavigate } from 'react-router-dom'
+import type { SpatialAnalysis } from '../spatial/types'
+import { useHuntStore } from '../state/huntStore'
+import { terrainSummary } from './terrainSummary'
+
+export function TerrainOverview({ spatial }: { spatial: SpatialAnalysis | null }) {
+  const navigate = useNavigate()
+  const requestFocus = useHuntStore((s) => s.requestMapFocus)
+  const selectCandidate = useHuntStore((s) => s.selectCandidate)
+  const summary = terrainSummary(spatial)
+  const open = (id: string | null) => { requestFocus(); selectCandidate(id); navigate('/map') }
+  return <section aria-labelledby="terrain-overview-title" data-testid="hunt-terrain-overview" className="border-surface-700 bg-surface-950 min-w-0 overflow-hidden rounded-3xl border">
+    <header className="border-surface-700 flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><p className="text-brand-300 text-xs font-semibold tracking-widest uppercase">Décision terrain</p><h2 id="terrain-overview-title" className="text-ink-100 mt-1 text-xl font-semibold">Où prospecter</h2></div><button type="button" disabled={!summary.hasSpatial} onClick={() => open(null)} className="bg-brand-500 text-surface-950 min-h-11 rounded-xl px-4 text-sm font-semibold disabled:opacity-40">Explorer la carte</button></header>
+    <div className="space-y-4 p-5">
+      <dl className="grid grid-cols-3 gap-2">{[['Secteurs', summary.sectorCount], ['Points', summary.candidateCount], ['Corridors', summary.corridorCount]].map(([label, value]) => <div key={label} className="bg-surface-900 min-w-0 rounded-2xl p-3"><dt className="text-ink-400 break-words text-xs">{label}</dt><dd className="text-ink-100 mt-1 text-2xl font-semibold tabular-nums">{summary.hasSpatial ? value : '—'}</dd></div>)}</dl>
+      <p className="text-ink-300 text-sm">Couverture des données : {summary.coverage === null ? 'indisponible' : `${Math.round(summary.coverage * 100)} %`}. Ce pourcentage ne mesure pas la présence de cerfs.</p>
+      {!summary.hasSpatial ? <p className="text-ink-300 text-sm">Aucune analyse spatiale disponible. Les créneaux et les données manquantes restent consultables ci-dessous.</p> : summary.coverage === 0 ? <p className="text-ink-300 text-sm">Aucune cellule classée : ce territoire est sans donnée exploitable, pas défavorable.</p> : summary.topCandidates.length === 0 ? <p className="text-ink-300 text-sm">Aucun point candidat exploitable avec les données et seuils actuels.</p> : <ol className="grid gap-3 lg:grid-cols-3">{summary.topCandidates.map((candidate, index) => <li key={candidate.id} className="border-surface-700 bg-surface-900 flex min-w-0 flex-col rounded-2xl border p-4"><div className="flex items-start justify-between gap-2"><div><p className="text-ink-400 text-xs">Priorité de prospection {index + 1}</p><h3 className="text-ink-100 mt-1 text-lg font-semibold">{candidate.id} · rang {candidate.grade}</h3></div><p className="text-brand-300 shrink-0 text-xl font-semibold tabular-nums">{candidate.score}<span className="text-ink-400 text-xs">/100</span></p></div><ul className="text-ink-300 mt-3 flex-1 space-y-1 text-sm">{candidate.reasons.slice(0, 2).map((reason) => <li key={reason} className="break-words">{reason}</li>)}</ul><p className="text-ink-400 mt-3 text-xs">{candidate.distanceFromCenterM} m du centre analysé{candidate.sectorId ? ` · ${candidate.sectorId}` : ''}</p><button type="button" onClick={() => open(candidate.id)} className="border-surface-600 text-sky-300 mt-3 min-h-11 rounded-xl border px-3 text-sm">Voir {candidate.id} sur la carte</button></li>)}</ol>}
+      <div className="border-surface-700 border-t pt-4"><h3 className="text-ink-100 font-semibold">Corridors potentiels</h3><p className="text-ink-300 mt-1 text-sm">{summary.corridorsComputed ? `${summary.robustPrincipalCount} tracé(s) principal(aux) stable(s) entre les scénarios testés, sur ${summary.corridorCount} tracé(s) au total.` : summary.corridorReason ?? 'Calcul de connectivité indisponible.'}</p><p className="text-ink-400 mt-2 text-xs">Stabilité du calcul, pas une piste observée. Le classement repose sur l’occupation du sol : relief, accès, pression de chasse et vent au poste ne sont pas intégrés à ce score. Autorisations à vérifier séparément.</p></div>
+    </div>
+  </section>
+}
