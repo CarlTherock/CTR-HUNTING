@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { localPlan } from './localPlan'
 import type { DayRank } from './recommendationText'
+import type { ClippedWindow } from './recommendation'
 
-function day(dateKey: string, coreIndex: number, meanIndex = coreIndex): DayRank {
+interface TestDay extends DayRank {
+  best: ClippedWindow
+}
+
+function day(dateKey: string, coreIndex: number, meanIndex = coreIndex): TestDay {
   return { dateKey, best: { startClock: '06:00', endClock: '08:00', minutes: 120, clipped: false, meanIndex, coreIndex, blockMeanIndex: meanIndex, evaluated: ['gust', 'precip'], notEvaluated: ['wind-direction'], composition: 'conditions_partielles' } }
 }
 
@@ -25,12 +30,12 @@ describe('localPlan', () => {
   })
   it('refuses different factor coverage', () => {
     const a = day('2026-11-09', 80), b = day('2026-11-10', 60)
-    b.best!.evaluated = ['gust']
+    b.best.evaluated = ['gust']
     expect(localPlan('2026-11-09', 'quebec', [a, b]).state).toBe('non_comparables')
   })
   it('excludes activity-only, invalid and out-of-week indices', () => {
     const a = day('2026-11-09', 80)
-    a.best!.composition = 'activite_seule'
+    a.best.composition = 'activite_seule'
     expect(localPlan('2026-11-09', 'quebec', [a, day('2026-11-10', NaN), day('2026-11-16', 90)]).eligible).toHaveLength(0)
   })
   it('rejects invalid dates', () => {
