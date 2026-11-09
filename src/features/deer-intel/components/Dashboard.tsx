@@ -40,7 +40,8 @@ export function Dashboard({ result, onOpenParams }: { result: HuntResult; onOpen
     : fetched ? `Prévision reçue à ${new Intl.DateTimeFormat('fr-CA', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date(fetched))}` : 'Sans prévision météo : référence astronomique seulement'
   return <div className="flex min-w-0 flex-col gap-5">
     <header className="border-surface-700 bg-surface-950 flex items-start justify-between gap-3 rounded-3xl border p-5"><div className="min-w-0"><p className="text-brand-300 text-xs font-semibold tracking-widest uppercase">Où · Quand · Pourquoi</p><h1 className="text-ink-100 mt-2 break-words text-2xl font-semibold sm:text-3xl">{record.label}</h1><p className="text-ink-300 mt-3 text-sm">{dayLabel(day.dateKey)} · {tz}</p><p className="text-ink-400 mt-1 text-xs">{fresh}</p></div><button type="button" onClick={onOpenParams} aria-label="Paramètres : lieu, date et emprise" className="border-surface-600 text-ink-200 flex size-11 shrink-0 items-center justify-center rounded-xl border"><Settings2 size={18} aria-hidden="true"/></button></header>
-    {result.notes.length > 0 && <details className="border-surface-700 bg-surface-900 rounded-2xl border p-4"><summary className="text-status-warning min-h-11 cursor-pointer text-sm font-semibold">État des données · {result.notes.length} information(s)</summary><div className="mt-2 space-y-2">{result.notes.map((n) => <p key={n} className="text-status-warning break-words text-sm">{n}</p>)}</div></details>}
+    {result.notes.length > 0 && <section aria-label="État des données" data-testid="hunt-data-notes" className="border-surface-700 bg-surface-900 rounded-2xl border p-4"><h2 className="text-status-warning text-sm font-semibold">État des données · {result.notes.length} information(s)</h2><div className="mt-2 space-y-2">{result.notes.map((n) => <p key={n} className="text-status-warning break-words text-sm">{n}</p>)}</div></section>}
+    {!record.spatial && <SpatialSummary spatial={null}/>}
     <TerrainOverview spatial={record.spatial}/>
     <section aria-label="Quand chasser" className="grid min-w-0 gap-4 lg:grid-cols-2">
       <Card className="border-brand-500/40 bg-gradient-to-br from-emerald-950/40 to-slate-900 min-w-0 rounded-3xl p-5"><h2 className="text-brand-300 flex items-center gap-2 text-sm font-semibold"><Clock size={16} aria-hidden="true"/>Meilleur créneau estimé</h2>
@@ -54,7 +55,7 @@ export function Dashboard({ result, onOpenParams }: { result: HuntResult; onOpen
     <ConditionsPanel day={day} timeZone={tz}/>
     <Link to="/rut" className="border-surface-700 bg-surface-900 text-sky-300 flex min-h-12 items-center rounded-2xl border px-4 text-sm">Calendrier du rut · repères et conseils documentés</Link>
     <Fold title="Secteurs, points et corridors"><WhereTab spatial={record.spatial}/></Fold>
-    <Fold title="Qualité et provenance des données cartographiques"><SpatialSummary spatial={record.spatial}/></Fold>
+    {record.spatial && <Fold title="Qualité et provenance des données cartographiques"><SpatialSummary spatial={record.spatial}/></Fold>}
     <Fold title="Pourquoi ce créneau ? Détails et calendrier"><WhenDetails hunt={hunt} day={day} selected={selected} onSelect={select}/></Fold>
     <Fold title="Température et pression (contexte)"><div className="space-y-3"><TemperaturePanel day={day}/><PressurePanel day={day}/></div></Fold>
     <Fold title="Formule, méthodologie et limites"><HowTab hunt={hunt} spatial={record.spatial}/></Fold>
