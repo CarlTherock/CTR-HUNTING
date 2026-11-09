@@ -1,13 +1,12 @@
-name: Read failed CI logs for PR 57
+name: Read failed E2E logs for PR 59
 on:
   push:
-    branches: [fix/hunt-balayage-et-version-visible]
+    branches: [feat/hunt-quebec-refonte-integree]
     paths: [.github/workflows/read-e2e-diagnostic.yml]
-  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: read-ci-pr57-42521433941
+  group: read-e2e-pr59-42680293993
   cancel-in-progress: true
 jobs:
   read-diagnostic:
@@ -19,22 +18,26 @@ jobs:
       actions: read
       pull-requests: write
     steps:
-      - name: Read the identified validate job and publish only to PR 57
+      - name: Read the identified failed E2E job and report to PR 59
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
           script: |
             const owner = 'CarlTherock', repo = 'CTR-HUNTING';
+            const runId = 42680293993, jobId = 129372835476;
+            const sha = 'e3b58328b05d74eb1400fb1c7b1840092765cb31';
             if (context.repo.owner !== owner || context.repo.repo !== repo) throw new Error('Unexpected repository');
-            const run = 42521433941;
-            const sha = '3c61c0589f3ccf5b1355580eb98ed11dd4eccf82';
-            const jobId = 128855584322;
-            const clean = (text) => text.replace(/\u001b\[[0-9;]*m/g, '').replace(/([?&](?:key|token|access_token|api_key)=)[^&\s"<>]+/gi, '$1[REDACTED]').replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]').replace(/`/g, '\\u0060');
-            let body = '## Journal validate du commit 3c61c05\nExécution source : 42521433941. Lecture du journal existant uniquement ; aucun code du dépôt exécuté, aucune fusion ni déploiement. Extrait limité aux 18 000 derniers caractères.\n\n';
+            const clean = (text) => text
+              .replace(/\u001b\[[0-9;]*m/g, '')
+              .replace(/([?&](?:key|token|access_token|api_key)=)[^&\s"<>]+/gi, '$1[REDACTED]')
+              .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+              .replace(/\b(?:gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+)\b/g, '[REDACTED]')
+              .replace(/`/g, '\u0060');
+            let body = '## Diagnostic E2E du commit e3b5832\nExécution source : 42680293993 ; job : 129372835476. Lecture du journal existant, sans checkout ni exécution du code applicatif. Extraits limités, non journal intégral.\n\n';
             try {
-              const metadata = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}', { owner, repo, job_id: jobId });
-              const job = metadata.data;
-              if (job.run_id !== run || job.name !== 'validate' || (job.head_sha && job.head_sha !== sha)) throw new Error('Job metadata does not match approved run and commit');
+              const run = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId })).data;
+              const job = (await github.rest.actions.getJobForWorkflowRun({ owner, repo, job_id: jobId })).data;
+              if (run.head_sha !== sha || run.head_branch !== 'feat/hunt-quebec-refonte-integree' || job.run_id !== runId || job.name !== 'e2e' || job.conclusion !== 'failure') throw new Error('Run, commit or job does not match the approved diagnostic');
               const response = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', { owner, repo, job_id: jobId });
               const data = response.data;
               let text;
@@ -42,8 +45,16 @@ jobs:
               else if (data instanceof ArrayBuffer) text = Buffer.from(data).toString('utf8');
               else if (ArrayBuffer.isView(data)) text = Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('utf8');
               else throw new Error('Unexpected log response format');
-              body += `Résultat : ${job.conclusion}\n\n\u0060\u0060\u0060text\n${clean(text.slice(-18000))}\n\u0060\u0060\u0060`;
+              text = clean(text);
+              const lines = text.split('\n');
+              const matches = [];
+              for (let i = 0; i < lines.length; i++) if (/failed|timed out|TimeoutError|Test timeout|Error:|Expected:|Received:|\.spec\.[cm]?[jt]s:\d+/i.test(lines[i])) matches.push(i);
+              const indices = new Set();
+              for (const i of matches.slice(-80)) for (let j = Math.max(0, i - 3); j <= Math.min(lines.length - 1, i + 4); j++) indices.add(j);
+              const errors = [...indices].sort((a, b) => a - b).map((i) => `${i + 1}: ${lines[i]}`).join('\n').slice(-18000);
+              const fence = String.fromCharCode(96).repeat(3);
+              body += `Résultat : ${job.conclusion}\n\n### Lignes d’erreur et contexte (18 000 caractères maximum)\n${fence}text\n${errors || 'Aucun motif reconnu : consulter la fin du journal ci-dessous.'}\n${fence}\n\n### Fin du journal (12 000 caractères maximum)\n${fence}text\n${text.slice(-12000)}\n${fence}`;
             } catch (error) {
               body += `Lecture impossible : ${clean(String(error.message || error))}`;
             }
-            await github.rest.issues.createComment({ owner, repo, issue_number: 57, body });
+            await github.rest.issues.createComment({ owner, repo, issue_number: 59, body });
