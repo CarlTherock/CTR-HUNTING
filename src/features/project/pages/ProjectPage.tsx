@@ -3,6 +3,7 @@ import { Check, Minus, X } from 'lucide-react'
 import { Badge, InfoSection as Section, PageHeader } from '@/components/ui'
 import type { BadgeVariant } from '@/components/ui'
 import { APP_BUILD_DATE, APP_NAME, APP_VERSION } from '@/app/appInfo'
+import { BuildCommit } from '@/features/about/BuildCommit'
 import { formatDateFr } from '@/features/backup/restoreLabels'
 import changelog from '../../../../CHANGELOG.md?raw'
 import { parseChangelogHeadings } from '@/features/about/changelogHistory'
@@ -161,6 +162,7 @@ export default function ProjectPage() {
           Version <strong className="text-ink-100">{APP_VERSION}</strong>
           {APP_BUILD_DATE && <> · compilée le {formatDateFr(APP_BUILD_DATE)}</>}
         </p>
+        <BuildCommit />
         <ul className="flex flex-col gap-1 text-xs">
           {history.map((entry) => (
             <li key={`${entry.title}${entry.date ?? ''}`}>

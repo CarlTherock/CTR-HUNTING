@@ -6,18 +6,22 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 import { buildCsp } from './build/csp.ts'
+import { readBuildCommit } from './build/commitSha.ts'
 
 // GitHub Pages serves this project from https://carltherock.github.io/CTR-HUNTING/,
 // a subpath — production assets must be built with that base, but the local
 // dev server (and preview) still runs at the domain root.
 const base = process.env.GITHUB_PAGES === 'true' ? '/CTR-HUNTING/' : '/'
+const buildCommit = readBuildCommit(fileURLToPath(new URL('.', import.meta.url)))
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
-  // Build moment shown in « À propos » (src/app/appInfo.ts). The version itself
-  // is imported from package.json, not defined here.
-  define: { __APP_BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
+  // Identity belongs to this compiled bundle, never the current remote branch.
+  define: {
+    __APP_BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+    __APP_BUILD_SHA__: JSON.stringify(buildCommit),
+  },
   // Local `vite preview` only (never part of the deployed site): lets a Cloudflare
   // quick tunnel reach it so a branch can be tried on a phone over HTTPS.
   preview: { allowedHosts: ['.trycloudflare.com'] },
