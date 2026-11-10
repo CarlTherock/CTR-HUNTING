@@ -1,12 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { runGit } = vi.hoisted(() => ({ runGit: vi.fn() }))
-vi.mock('node:child_process', () => ({ execFileSync: runGit }))
+// Les deux formes doivent pointer vers la même doublure, sans exécution réelle.
+vi.mock('node:child_process', () => ({
+  execFileSync: runGit,
+  default: { execFileSync: runGit },
+}))
+import childProcess, { execFileSync } from 'node:child_process'
 import { normalizeCommitSha, readBuildCommit } from './commitSha.ts'
 
-beforeEach(() => runGit.mockReset())
+beforeEach(() => {
+  runGit.mockReset()
+})
 
 describe('identité Git de compilation', () => {
+  it('utilise la même doublure pour les exports nommé et par défaut', () => {
+    expect(execFileSync).toBe(runGit)
+    expect(childProcess.execFileSync).toBe(runGit)
+  })
   it('lit HEAD dans le dépôt demandé avec une commande sans shell', () => {
     const sha = 'a'.repeat(40)
     runGit.mockReturnValue(`${sha}\n`)
