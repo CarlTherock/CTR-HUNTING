@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { runGit } = vi.hoisted(() => ({ runGit: vi.fn() }))
 vi.mock('node:child_process', () => ({ execFileSync: runGit }))
-import { normalizeCommitSha, readBuildCommit } from './commitSha'
+import { normalizeCommitSha, readBuildCommit } from './commitSha.ts'
 
 beforeEach(() => runGit.mockReset())
 
